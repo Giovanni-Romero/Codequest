@@ -59,6 +59,17 @@ class _BindingCollector(ast.NodeVisitor):
     themselves. Only one of those costs anything.
     """
 
+    # [AI-ENG:blocklist-vs-allowlist] This class is a blocklist widening itself, and
+    # every widening costs coverage. That is the structural weakness of enumerating what
+    # is forbidden: the attacker picks from an infinite set, you enumerate a finite one.
+    # An allowlist inverts the asymmetry — say what is permitted and everything unnamed
+    # is refused by default.
+    #
+    # The lesson transfers straight to prompt injection. Filtering for known bad phrases
+    # loses to a rephrasing; constraining the model to a fixed set of permitted actions
+    # with validated arguments does not, because the unnamed action was never reachable.
+    # When a blocklist is the only option, as here, say what it does not cover.
+
     def __init__(self) -> None:
         self.bound: set[str] = set()
 
