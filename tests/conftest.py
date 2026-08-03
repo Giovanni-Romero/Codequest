@@ -14,6 +14,15 @@ from typing import Any
 import pytest
 import yaml
 
+from codequest.models.mission import (
+    Difficulty,
+    Hint,
+    Mission,
+    Signature,
+    Teaching,
+    TestCase,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONTENT_ROOT = PROJECT_ROOT / "content"
 
@@ -99,6 +108,41 @@ def mission_factory(tmp_path: Path, valid_mission_doc: dict[str, Any]):
         return write_mission(tmp_path, document, f"mission-{counter['n']}.yaml")
 
     return _factory
+
+
+def make_mission(**overrides: Any) -> Mission:
+    """Build a minimal valid Mission in memory, overriding only what a test cares about.
+
+    Deliberately a plain function rather than only a fixture: the runner tests build
+    missions inside helpers that pytest does not inject into.
+    """
+    defaults: dict[str, Any] = {
+        "id": "py-foundations-02",
+        "title": "Sum of a list",
+        "track": "python",
+        "island": "foundations",
+        "order": 2,
+        "difficulty": Difficulty.ELEMENTARY,
+        "xp": 10,
+        "concepts": ("accumulator-pattern",),
+        "teaching": Teaching("analogy", "explanation", "example", ("point",)),
+        "brief": "brief",
+        "signature": Signature("sum_list", "def sum_list(numbers):\n    pass\n"),
+        "tests": (
+            TestCase(args=([1, 2, 3],), expect=6, visible=True),
+            TestCase(args=([],), expect=0, visible=False),
+            TestCase(args=([7],), expect=7, visible=False),
+        ),
+        "hints": (Hint(1, "question"), Hint(2, "construct"), Hint(3, "pattern")),
+        "solution": "def sum_list(numbers):\n    return 0\n",
+    }
+    return Mission(**{**defaults, **overrides})
+
+
+@pytest.fixture
+def build_mission():
+    """Fixture wrapper around :func:`make_mission`, for tests that prefer injection."""
+    return make_mission
 
 
 @pytest.fixture
