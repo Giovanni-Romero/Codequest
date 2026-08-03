@@ -1,0 +1,22 @@
+id: python
+name: Python
+language: python
+version: "3.11"
+description: |
+  From your first variable to generators, decorators, and async.
+  Ten islands, roughly one hundred missions.
+
+runner: python
+file_extension: .py
+
+islands:
+  - 01-foundations
+  - 02-collections
+  - 03-functions
+  - 04-strings-and-text
+  - 05-errors-and-edge-cases
+  - 06-files-and-data
+  - 07-objects
+  - 08-pythonic-patterns
+  - 09-algorithms
+  - 10-async-and-concurrency

@@ -1,0 +1,112 @@
+# Example mission. Copy this file as the starting point for new missions.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-02
+title: Sum of a list
+track: python
+island: foundations
+order: 2
+difficulty: elementary        # elementary | simple | moderate | challenging | expert
+tags: [loops, lists, accumulator]
+xp: 10
+
+concepts:
+  - accumulator-pattern
+  - for-loop
+
+teaching:
+  analogy: |
+    Think of walking through a supermarket with an empty basket.
+    You start with nothing. Every time you pick up an item, you add its price
+    to a running total in your head.
+    The total in your head is the variable. The walk down the aisle is the loop.
+    You have to start the total before you begin walking, not while you walk.
+
+  explanation: |
+    An accumulator is a variable you create before a loop and update inside it.
+    It carries a result across every pass of the loop.
+    You must create it before the loop starts. If you create it inside, it resets
+    on every pass and you lose everything you gathered.
+    After the loop finishes, the accumulator holds the final answer.
+
+  worked_example: |
+    # Building a sentence from a list of words
+    sentence = ""
+    for word in ["python", "is", "fun"]:
+        sentence = sentence + word + " "
+    print(sentence)   # "python is fun "
+
+  key_points:
+    - Create the accumulator before the loop. Inside the loop it resets every pass.
+    - Start a number accumulator at 0 and a text accumulator at "".
+    - Return the accumulator after the loop ends, not inside it. Returning inside
+      stops the loop on the first pass.
+    - An empty list means the loop never runs, so the answer is the starting value.
+
+brief: |
+  Write a function called sum_list that receives a list of numbers and returns
+  the total of all of them.
+
+  Do not use the built-in sum() function. Build the total yourself with a loop.
+
+  An empty list should return 0.
+
+signature:
+  entrypoint: sum_list
+  stub: |
+    def sum_list(numbers):
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  forbidden_imports: [numpy, functools, math]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3]]
+      expect: 6
+    - args: [[10, 20, 5]]
+      expect: 35
+  hidden:
+    - args: [[]]
+      expect: 0
+    - args: [[7]]
+      expect: 7
+    - args: [[-5, 5]]
+      expect: 0
+    - args: [[-1, -2, -3]]
+      expect: -6
+    - args: [[1.5, 2.5]]
+      expect: 4.0
+    - args: [[0, 0, 0]]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Where does your total live before the loop starts? If it does not exist yet
+      when the first item arrives, there is nothing to add to.
+  - level: 2
+    text: |
+      You need a variable created before the for loop. Inside the loop, update it
+      with the current item. After the loop, return it.
+  - level: 3
+    text: |
+      Here is the same pattern counting characters, not summing numbers:
+
+          count = 0
+          for letter in "hello":
+              count = count + 1
+          return count
+
+      Your version works on numbers and adds the number itself instead of 1.
+
+solution: |
+  def sum_list(numbers):
+      total = 0
+      for n in numbers:
+          total = total + n
+      return total
