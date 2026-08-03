@@ -41,15 +41,28 @@ jobs:
       - name: Integration tests
         run: pytest tests/integration
 
-  # Enable once the Windows fallback path in the runner exists.
-  # That fallback is exactly the code that breaks silently, so it needs CI.
+  # The Windows fallback in engine/runners/python.py now exists: no rlimits, so the
+  # runner degrades to a wall-clock timeout plus taskkill /T on the process tree.
+  # That path is exactly the code that breaks silently, which is why it gets its own job
+  # rather than being assumed equivalent to the Linux one.
   windows:
-    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
-      - run: pytest tests/unit
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Unit tests
+        run: pytest tests/unit
+
+      - name: Content tests
+        run: pytest tests/content
+
+      - name: Integration tests
+        run: pytest tests/integration
