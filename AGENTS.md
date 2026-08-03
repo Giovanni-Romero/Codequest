@@ -3,9 +3,20 @@
 This file tells any AI agent (Claude Code, or another) how to behave in this repository.
 Read it fully before the first action of every session.
 
+> ## ⚠️ Section 0 is SUSPENDED as of 2026-08-03
+>
+> Giovanni decided that Claude implements the code and he learns from the AI-Engineering
+> bookmarks and the per-phase HTML lessons instead. **Do not apply section 0 or the
+> "write this one for me" escape hatch.** The authoritative contract is `CLAUDE.md` §1,
+> and the replacement teaching obligation is `CLAUDE.md` §9.
+>
+> Section 0 is kept below as a record of the original intent. Everything from section 1
+> onward still applies — the review order, the architecture rules, the git workflow, and
+> the definition of done are unchanged.
+
 ---
 
-## 0. The one rule that overrides everything
+## 0. The one rule that overrides everything <sub>— SUSPENDED, see the note above</sub>
 
 **This repository is a learning project. Giovanni writes the implementation code.
 The agent teaches, reviews, and unblocks. The agent does not write the bodies of

@@ -30,23 +30,26 @@ answers to questions that are genuinely one line long.
 
 ## 1. Prime directive
 
-**Giovanni writes the implementation code. Claude teaches, gives signatures, and reviews.**
+**Claude implements. Giovanni learns from the bookmarks, the HTML lessons, and by
+playing the finished game.**
 
-Operationally, this means one hard rule:
+> **Contract change, 2026-08-03.** Until Phase 0 the rule was the opposite: Giovanni
+> wrote every function body and Claude only taught. He weighed the estimate for Phases
+> 1–2 under that rule (42–57 focused hours, 3–7 weeks of calendar) and chose delivery
+> over hand-authorship. **`AGENTS.md` §0 is suspended and must not be applied.** Every
+> other section of `AGENTS.md` still holds.
 
-> No Edit or Write from Claude may contain the **body** of a function in `src/codequest/`
-> that implements game logic.
+What this does *not* change:
 
-What Claude produces instead: the signature, type hints, a docstring describing behavior,
-and a checklist of edge cases to handle. Then Giovanni writes it.
+- The teaching obligation moved, it did not disappear. It is now discharged through
+  §9 — bookmarks in the code and one HTML lesson per phase. A phase is not done
+  without them.
+- Explanations in chat stay as described in §0. Shipping code is not a licence to stop
+  explaining what was built and why.
+- Architecture invariants (§3) and the definition of done (§7) are unchanged.
 
-**Escape hatch:** only the exact phrase **"write this one for me"** authorizes a full
-implementation — and it must then be explained line by line.
-
-**Claude writes freely:** scaffolding, `__init__.py`, config files, CI, docs, docstring
-templates, test names, mission YAML (under `mission-author`), diagrams, diagnoses.
-
-Full contract and the teaching loop: `AGENTS.md` §0 and §1.
+If Giovanni asks to go back to writing code himself for a given module, honour it for
+that module without renegotiating the rest.
 
 ---
 
@@ -159,17 +162,65 @@ This is acceptable for a local single-player game and would not be acceptable on
 - [ ] Tests cover the happy path and at least two failure paths
 - [ ] Public functions have docstrings saying *why*, not restating the code
 - [ ] No invariant from §3 is violated
-- [ ] **Giovanni can explain out loud what the code does**
-
-The last item is not decoration. If he cannot explain it, the work is not done.
+- [ ] Every AI-Engineering-relevant decision carries an `[AI-ENG:...]` bookmark (§9)
+- [ ] **At the end of a phase: the HTML lesson exists** (§9). No lesson, no phase.
 
 ---
 
 ## 8. Anti-patterns
 
-- Writing a chunk of code and explaining it afterwards. Explain **first**, always.
-- Fixing a bug silently inside a diff. Name the bug, let him fix it.
 - Adding a dependency without discussing what it costs.
 - Building three phases ahead. Ship the current checkpoint first.
 - Generating missions in bulk with no syllabus behind them.
 - Saying "you're right!" when he is not. Push back with evidence.
+- Shipping a phase without its bookmarks and its lesson. That is the whole point now.
+
+---
+
+## 9. Learning artifacts — mandatory
+
+Since Claude writes the code (§1), these two artifacts are how Giovanni actually learns.
+They are not documentation chores; they are the deliverable.
+
+### 9.1 Bookmarks in the code
+
+Any decision that transfers to AI Engineering gets a comment **on the exact line**:
+
+```python
+# [AI-ENG:sandboxing] Running untrusted code in a killable child process is the same
+# problem as sandboxing an agent's tool calls or a code-interpreter session.
+```
+
+Rules:
+- Slug is kebab-case and stable. Reuse an existing slug rather than inventing a synonym.
+- The comment states **the bridge**, not what the line does. "Parses YAML" is worthless;
+  "declarative data must be validated before use, exactly like LLM structured output" is
+  the point.
+- Keep them rare. One per genuine concept. A file peppered with bookmarks has none.
+
+Index every bookmark in `docs/ai-eng-bookmarks.md` with `file:line` and the bridge.
+Regenerate the index whenever bookmarks move — a stale line number is a broken index.
+
+### 9.2 The HTML lesson, one per phase
+
+At the end of **every** phase, write:
+
+```
+D:\Projetos\2026\_AI_Eng_Aulas\Fase<N>-<Tema>.html
+```
+
+- **Portuguese (pt-BR).** This is Giovanni's study material, not a repo file, so §0's
+  "files in English" rule does not apply here.
+- **Fully self-contained.** Inline CSS, inline SVG diagrams. No CDN, no external font,
+  no remote image. It must open offline by double-clicking.
+- **Light and dark theme**, via `prefers-color-scheme`.
+- Fixed structure:
+  1. What was built in this phase, in one paragraph
+  2. Everyday analogy for the core concept
+  3. The theory, properly — the formal definition after the intuition
+  4. The **real project code**, annotated. Never pseudocode.
+  5. The bridge to AI Engineering, naming the `[AI-ENG:...]` slugs it covers
+  6. A fixation exercise, with the answer collapsed behind a `<details>`
+
+The lesson is written from the code that actually shipped, after the phase is green —
+never from the plan.
