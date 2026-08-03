@@ -10,44 +10,10 @@ import dataclasses
 import pytest
 
 from codequest.models.curriculum import Island, Track, UnlockRule
-from codequest.models.mission import (
-    XP_BY_DIFFICULTY,
-    Constraints,
-    Difficulty,
-    Hint,
-    Mission,
-    Signature,
-    Teaching,
-    TestCase,
-)
+from codequest.models.mission import XP_BY_DIFFICULTY, Constraints, Difficulty
 from codequest.models.profile import LEVEL_THRESHOLDS, MissionStatus, Profile, Progress
 from codequest.models.verdict import CaseOutcome, FailureReason, Verdict
-
-
-def _mission(**overrides) -> Mission:
-    """Build a minimal valid Mission, overriding only what a test cares about."""
-    defaults = {
-        "id": "py-foundations-02",
-        "title": "Sum of a list",
-        "track": "python",
-        "island": "foundations",
-        "order": 2,
-        "difficulty": Difficulty.ELEMENTARY,
-        "xp": 10,
-        "concepts": ("accumulator-pattern",),
-        "teaching": Teaching("analogy", "explanation", "example", ("point",)),
-        "brief": "brief",
-        "signature": Signature("sum_list", "def sum_list(numbers):\n    pass\n"),
-        "tests": (
-            TestCase(args=([1, 2, 3],), expect=6, visible=True),
-            TestCase(args=([],), expect=0, visible=False),
-            TestCase(args=([7],), expect=7, visible=False),
-        ),
-        "hints": (Hint(1, "question"), Hint(2, "construct"), Hint(3, "pattern")),
-        "solution": "def sum_list(numbers):\n    return 0\n",
-    }
-    return Mission(**{**defaults, **overrides})
-
+from conftest import make_mission as _mission
 
 # --------------------------------------------------------------------------- mission
 

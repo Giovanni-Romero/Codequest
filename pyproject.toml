@@ -43,7 +43,9 @@ ignore = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "tests" is on the path so suites can import the shared builders from conftest.py
+# explicitly, instead of relying on pytest's implicit rootdir insertion.
+pythonpath = ["src", "tests"]
 addopts = "-q --strict-markers"
 markers = [
     "slow: tests that take more than a second",
