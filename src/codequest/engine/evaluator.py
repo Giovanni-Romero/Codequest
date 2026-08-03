@@ -39,6 +39,7 @@ _STATUS_TO_REASON: dict[str, FailureReason] = {
     "missing_entrypoint": FailureReason.MISSING_ENTRYPOINT,
     "crashed": FailureReason.RUNTIME_ERROR,
     "harness_error": FailureReason.HARNESS_ERROR,
+    "skipped": FailureReason.NOT_RUN,
 }
 
 
@@ -96,7 +97,7 @@ def _evaluate_case(index: int, case: TestCase, result: ExecutionResult) -> CaseO
     if reason is FailureReason.TIMEOUT:
         detail = (
             f"Case {index + 1} ran out of time with {shown_input}. "
-            "Something in your code never finishes — check the condition that ends your loop."
+            "Something in your code never finishes. Check the condition that ends your loop."
         )
         return CaseOutcome(index, case.visible, False, reason, detail, result.stdout)
 
@@ -105,6 +106,10 @@ def _evaluate_case(index: int, case: TestCase, result: ExecutionResult) -> CaseO
             f"Case {index + 1} used more memory than the mission allows, with {shown_input}. "
             "A list that grows on every pass of a loop is the usual cause."
         )
+        return CaseOutcome(index, case.visible, False, reason, detail, result.stdout)
+
+    if reason is FailureReason.NOT_RUN:
+        detail = f"Case {index + 1} was not run: an earlier case already settled the outcome."
         return CaseOutcome(index, case.visible, False, reason, detail, result.stdout)
 
     if reason is FailureReason.MISSING_ENTRYPOINT:
@@ -132,7 +137,7 @@ def _evaluate_case(index: int, case: TestCase, result: ExecutionResult) -> CaseO
             f"got {_format_value(result.returned)}."
         )
         if result.returned is None:
-            detail += " Your function returned nothing — check that every path ends in a return."
+            detail += " Your function returned nothing. Check that every path ends in a return."
     else:
         # No expected value here, on purpose. See the module docstring.
         detail = f"A hidden case failed with {len(case.args)} argument(s). Check your edge cases."

@@ -28,6 +28,9 @@ class FailureReason(StrEnum):
     SYNTAX_ERROR = "syntax_error"
     MISSING_ENTRYPOINT = "missing_entrypoint"
     HARNESS_ERROR = "harness_error"
+    #: The case never ran because an earlier one made the outcome unchangeable. Its own
+    #: name so the results panel can grey it out instead of claiming it failed.
+    NOT_RUN = "not_run"
 
 
 @dataclass(frozen=True, slots=True)
