@@ -67,6 +67,38 @@ def test_layer_does_not_import_forbidden_packages(layer: str) -> None:
     assert not violations, "Layer violation (see CLAUDE.md section 3):\n" + "\n".join(violations)
 
 
+def test_player_facing_strings_are_ascii_only() -> None:
+    """Non-ASCII in a printed string turns into mojibake on a Windows console.
+
+    The Windows terminal defaults to cp1252, so an em dash in a failure message reaches
+    the player as a black diamond. Docstrings and comments are exempt — they are read in
+    an editor, not printed. Only string literals that can be printed are checked.
+    """
+    offenders: list[str] = []
+
+    for module in sorted(PACKAGE_ROOT.rglob("*.py")):
+        tree = ast.parse(module.read_text(encoding="utf-8"))
+        docstrings = {
+            node.body[0].value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+            and node.body
+            and isinstance(node.body[0], ast.Expr)
+            and isinstance(node.body[0].value, ast.Constant)
+        }
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            if node in docstrings:
+                continue
+            if not node.value.isascii():
+                rel = module.relative_to(PACKAGE_ROOT.parent.parent)
+                offenders.append(f"{rel}:{node.lineno}: {node.value[:60]!r}")
+
+    assert not offenders, "non-ASCII in a runtime string:\n" + "\n".join(offenders)
+
+
 def test_expected_layers_exist() -> None:
     """The skeleton still has every layer this test is meant to police.
 
