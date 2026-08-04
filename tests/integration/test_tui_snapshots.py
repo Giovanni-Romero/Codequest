@@ -96,9 +96,7 @@ async def _open_mission(pilot) -> None:
 
 def test_mission_wide(snap_compare, context):
     """At 110 columns all four panels sit side by side."""
-    assert snap_compare(
-        CodeQuestApp(context=context), terminal_size=WIDE, run_before=_open_mission
-    )
+    assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=_open_mission)
 
 
 def test_mission_narrow(snap_compare, context):
@@ -110,9 +108,7 @@ def test_mission_narrow(snap_compare, context):
 
 def test_mission_tiny(snap_compare, context):
     """At 70 columns the view is reduced and says so. It never refuses to run."""
-    assert snap_compare(
-        CodeQuestApp(context=context), terminal_size=TINY, run_before=_open_mission
-    )
+    assert snap_compare(CodeQuestApp(context=context), terminal_size=TINY, run_before=_open_mission)
 
 
 # ------------------------------------------------------------------- the panels
@@ -135,9 +131,9 @@ def test_results_after_a_failing_run(snap_compare, context):
         await _open_mission(pilot)
         from codequest.tui.widgets.code_editor import CodeEditor
 
-        pilot.app.screen.query_one("#editor", CodeEditor).text = (
-            "def sum_list(numbers):\n    return 6\n"
-        )
+        pilot.app.screen.query_one(
+            "#editor", CodeEditor
+        ).text = "def sum_list(numbers):\n    return 6\n"
         await pilot.press("f5")
         await pilot.pause(delay=8)
 

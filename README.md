@@ -28,8 +28,9 @@ question. The game teaches perfectly well with it turned off.
 | | |
 |---|---|
 | **Current version** | 0.1.0 (in development) |
-| **Playable** | Not yet, Phase 0 |
-| **Languages available** | Python (in progress) |
+| **Playable** | **Yes** — `python -m codequest ui` |
+| **Content** | Island 1, Foundations: 10 missions, 110 XP |
+| **Languages available** | Python |
 | **Planned** | Java, TypeScript, plus Architecture, Security and AI Engineering tracks |
 
 ---
@@ -48,10 +49,19 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 ```
 
-Run it:
+Play it:
 
 ```bash
-python -m codequest
+python -m codequest ui
+```
+
+There is also a command line, which is what CI uses and what the game was built on
+before the interface existed:
+
+```bash
+python -m codequest missions                       # the catalogue
+python -m codequest run <mission.yaml> <your.py>   # judge one file, no save
+python -m codequest check                          # every mission's own solution passes
 ```
 
 ### Optional: the AI mentor

@@ -47,6 +47,7 @@ class MissionScreen(Screen):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("f5", "run", "Run", priority=True),
         Binding("f1", "hint", "Hint", priority=True),
+        Binding("f2", "toggle_mentor", "Mentor", priority=True),
         Binding("f3", "toggle_teaching", "Teaching", priority=True),
         Binding("ctrl+r", "reset_editor", "Reset", priority=True),
         Binding("escape", "app.pop_screen", "Map", priority=True),
@@ -80,7 +81,25 @@ class MissionScreen(Screen):
                         yield TestResults(id="results")
                     with TabPane("Hints", id="tab-hints"):
                         yield HintPanel(id="hints")
+                yield from self._compose_mentor()
         yield Footer()
+
+    def _compose_mentor(self):
+        """Yield the mentor panel, but only if the package is present and enabled.
+
+        Two conditions, and both are load-bearing. The flag is the player's choice; the
+        ImportError branch is what makes deleting ``src/codequest/mentor/`` a supported
+        operation rather than a crash. Neither is a fallback for the other.
+        """
+        if not self.app.context.settings.mentor_enabled:
+            return
+
+        try:
+            from codequest.tui.widgets.mentor_chat import MentorChat
+        except ImportError:
+            return
+
+        yield MentorChat(id="mentor-panel", classes="panel")
 
     def on_mount(self) -> None:
         self.sub_title = f"{self.mission.title}  -  {self.mission.xp} XP"
@@ -166,6 +185,12 @@ class MissionScreen(Screen):
         self.query_one("#results", TestResults).show_verdict(outcome.verdict, outcome.xp_awarded)
         self.app.refresh_profile()
 
+        # Hand the mentor the failure, if it is here. Where they got stuck is usually
+        # more informative than anything they will manage to type as a question.
+        mentors = self.query("#mentor-panel")
+        if mentors:
+            mentors.first().set_verdict(outcome.verdict)
+
         status = self.query_one("#run-status", Static)
         if outcome.award and outcome.award.newly_unlocked:
             unlocked = ", ".join(outcome.award.newly_unlocked)
@@ -189,6 +214,18 @@ class MissionScreen(Screen):
         profile = self.app.profile
         if profile is not None:
             self.app.context.progress.record_hint(profile, self.mission)
+
+    def action_toggle_mentor(self) -> None:
+        """Open or close the mentor panel. A no-op when the mentor is not there."""
+        panels = self.query("#mentor-panel")
+        if not panels:
+            return
+
+        panel = panels.first()
+        panel.toggle_class("open")
+        if panel.has_class("open"):
+            panel.load(self.mission, self.query_one("#hints", HintPanel).revealed)
+            panel.query_one("#mentor-input").focus()
 
     def action_toggle_teaching(self) -> None:
         panel = self.query_one("#teaching", Vertical)
