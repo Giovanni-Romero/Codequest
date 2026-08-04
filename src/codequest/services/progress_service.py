@@ -8,6 +8,7 @@ changes far more often than a schema does.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from dataclasses import dataclass
 
 from codequest.config import xp_after_hints
@@ -59,6 +60,17 @@ class ProgressService:
 
     def __init__(self, connection: sqlite3.Connection) -> None:
         self.connection = connection
+        # [AI-ENG:shared-state] Every writer below holds this lock. The UI runs an
+        # attempt on a worker thread while the main thread can still reveal a hint, and
+        # two interleaved transactions on one SQLite connection is how a save file gets
+        # corrupted. SQLite itself is serialized here, which protects individual
+        # statements; a multi-statement transaction is ours to protect.
+        #
+        # The same reasoning applies the first time an agent runs tool calls
+        # concurrently: the client being thread-safe says nothing about your multi-step
+        # operation being atomic. Reentrant, because record_attempt calls other
+        # locked methods on the way through.
+        self._lock = threading.RLock()
         self.profiles = ProfileRepository(connection)
         self.progress = ProgressRepository(connection)
         self.attempts = AttemptRepository(connection)
@@ -83,14 +95,14 @@ class ProgressService:
         if self.profiles.get_by_name(name):
             raise DuplicateProfileNameError(f"a save called '{name}' already exists")
 
-        with transaction(self.connection):
+        with self._lock, transaction(self.connection):
             return self.profiles.create(name, track)
 
     def list_profiles(self) -> list[Profile]:
         return self.profiles.list_all()
 
     def delete_profile(self, profile_id: int) -> None:
-        with transaction(self.connection):
+        with self._lock, transaction(self.connection):
             self.profiles.delete(profile_id)
 
     # ------------------------------------------------------------------ attempts
@@ -119,7 +131,7 @@ class ProgressService:
         if profile.id is None:
             raise ValueError("cannot record an attempt for an unsaved profile")
 
-        with transaction(self.connection):
+        with self._lock, transaction(self.connection):
             existing = self.progress.get(profile.id, mission.id)
             already_completed = existing is not None and existing.is_completed
             hints_used = existing.hints_used if existing else 0
@@ -171,7 +183,7 @@ class ProgressService:
         """
         if profile.id is None:
             raise ValueError("cannot record a hint for an unsaved profile")
-        with transaction(self.connection):
+        with self._lock, transaction(self.connection):
             self.progress.record_hint(profile.id, mission.id)
 
     # ------------------------------------------------------------------ unlocking

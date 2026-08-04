@@ -12,25 +12,41 @@ import pytest
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2] / "src" / "codequest"
 
-# layer -> package names it must never import from
+# layer -> packages it must never import from, at any scope.
 FORBIDDEN_IMPORTS: dict[str, tuple[str, ...]] = {
     "tui": ("engine", "storage"),
     "engine": ("tui",),
     "services": ("tui",),
+    "storage": ("tui", "engine", "services"),
     "models": ("tui", "engine", "storage", "services", "mentor"),
 }
 
+#: Packages nothing may import **at module scope**, which is what makes them optional.
+#: Deleting ``src/codequest/mentor/`` has to leave a working game, and that holds only
+#: while no module pulls it in on the way up. An import inside a function is the correct
+#: pattern and is what ``tui/widgets/mentor_chat.py`` does.
+OPTIONAL_PACKAGES = ("mentor",)
 
-def _imported_codequest_subpackages(source: str) -> set[str]:
+
+def _imported_codequest_subpackages(source: str, module_scope_only: bool = False) -> set[str]:
     """Return the ``codequest.<name>`` subpackages imported by a module.
 
     Handles both ``import codequest.engine.loader`` and ``from codequest.engine import x``,
     including the relative form ``from ..engine import x`` used inside the package.
+
+    ``module_scope_only`` is the difference between two questions that look alike:
+
+    - *Does this layer depend on that one?* Any import counts, wherever it sits. Hiding a
+      forbidden dependency inside a function does not make it not a dependency.
+    - *Is that package optional?* Only a **module-scope** import counts, because an import
+      inside a function is exactly how you make a package optional, and flagging it would
+      forbid the pattern the rule is trying to require.
     """
     found: set[str] = set()
     tree = ast.parse(source)
+    nodes = tree.body if module_scope_only else ast.walk(tree)
 
-    for node in ast.walk(tree):
+    for node in nodes:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 parts = alias.name.split(".")
@@ -67,16 +83,54 @@ def test_layer_does_not_import_forbidden_packages(layer: str) -> None:
     assert not violations, "Layer violation (see CLAUDE.md section 3):\n" + "\n".join(violations)
 
 
-def test_player_facing_strings_are_ascii_only() -> None:
-    """Non-ASCII in a printed string turns into mojibake on a Windows console.
+@pytest.mark.parametrize("optional", OPTIONAL_PACKAGES)
+def test_an_optional_package_is_never_imported_at_module_scope(optional: str) -> None:
+    """Proves the feature can be deleted, without deleting it.
 
-    The Windows terminal defaults to cp1252, so an em dash in a failure message reaches
-    the player as a black diamond. Docstrings and comments are exempt — they are read in
-    an editor, not printed. Only string literals that can be printed are checked.
+    The mentor is optional by design: no Ollama, no problem, and removing the folder
+    entirely must leave the game working. That property is invisible in normal use and
+    breaks the first time someone adds a convenient top-level import.
     """
-    offenders: list[str] = []
+    violations: list[str] = []
 
     for module in sorted(PACKAGE_ROOT.rglob("*.py")):
+        if optional in module.parts:
+            continue  # the package may of course import itself
+        imported = _imported_codequest_subpackages(
+            module.read_text(encoding="utf-8"), module_scope_only=True
+        )
+        if optional in imported:
+            rel = module.relative_to(PACKAGE_ROOT.parent.parent)
+            violations.append(f"{rel} imports codequest.{optional} at module scope")
+
+    assert not violations, (
+        f"'{optional}' is meant to be optional, so it must only be imported inside a "
+        "function:\n" + "\n".join(violations)
+    )
+
+
+def test_printed_strings_are_ascii_only() -> None:
+    """Non-ASCII in a ``print``ed string turns into mojibake on a Windows console.
+
+    The Windows terminal defaults to cp1252, so an em dash in a CLI failure message
+    reached the player as a black diamond. That bug was real and this test exists
+    because of it.
+
+    Two exemptions, both deliberate:
+
+    - **Docstrings and comments.** Read in an editor, never printed.
+    - **``tui/``.** Textual owns its output stream and writes UTF-8 regardless of the
+      console codepage, and ``docs/art-direction.md`` deliberately chose Unicode
+      box-drawing with no ASCII fallback — the thin rules *are* the chart aesthetic.
+      Applying the CLI rule there would forbid the entire visual language.
+
+    The distinction that matters: this is about ``print`` reaching a raw console, not
+    about non-ASCII being unsafe in general.
+    """
+    offenders: list[str] = []
+    printed_surface = [p for p in PACKAGE_ROOT.rglob("*.py") if "tui" not in p.parts]
+
+    for module in sorted(printed_surface):
         tree = ast.parse(module.read_text(encoding="utf-8"))
         docstrings = {
             node.body[0].value
