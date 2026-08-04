@@ -26,7 +26,50 @@ mastery       the observable proof they got it
 
 **Theme:** values, decisions, repetition
 **Band:** elementary
-**Missions:** 8
+**Missions:** 10
+
+### Mission map
+
+Each mission introduces **at most one** new concept. Everything else it touches has been
+mastered already. The reinforce column is what keeps a concept from being introduced,
+used once and forgotten.
+
+The curve is a sawtooth, not a ramp: missions 3 and 9 are relief points that reuse the
+previous concept in a friendlier shape. The feeling to design for is "that was hard, and
+now I can do it again easily."
+
+| # | Slug | Introduces | Reinforces | Note |
+|---|---|---|---|---|
+| 1 | `hello-value` | `variables` | — | The first mission anyone plays. Nothing to combine yet |
+| 2 | `type-detective` | `basic-types` | `variables` | Uses no branching: `isinstance` joined with `and`/`not`. Conditionals arrive in 4 |
+| 3 | `crate-label` | — | `basic-types`, `variables` | **Relief.** `str()` conversion, no branching either |
+| 4 | `grade-or-fail` | `conditionals` | `basic-types` | Boundary values are the lesson |
+| 5 | `count-the-vowels` | `for-loop` | `conditionals` | Loop plus a decision inside it |
+| 6 | `sum-list` | `accumulator-pattern` | `for-loop` | |
+| 7 | `longest-word` | — | `accumulator-pattern`, `conditionals`, `for-loop` | Accumulator that carries a *choice*, not a total |
+| 8 | `countdown` | `while-loop` | `conditionals` | `range` forbidden, or it is a for-loop mission again |
+| 9 | `guess-the-limit` | — | `while-loop`, `variables` | **Relief.** Same loop, friendlier framing |
+| 10 | `stats-report` | — | all six | Closing mission: combine, do not learn. Sentinel-controlled loop |
+
+**Missions 2 and 3 carry a constraint the map has to respect:** they teach types, and
+types come before conditionals, so neither may need an `if`. Mission 2 gets there with a
+boolean expression and mission 3 with plain concatenation. The first draft of mission 2
+used an `if`/`elif` chain and had to be rewritten — the one-new-concept rule is easy to
+break by accident when the natural solution reaches for a construct that has not been
+taught yet.
+
+Reinforcement count, which is the check that matters:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `variables` | 1 | 2, 10 |
+| `basic-types` | 2 | 3, 4, 10 |
+| `conditionals` | 4 | 5, 7, 8, 10 |
+| `for-loop` | 5 | 6, 7, 10 |
+| `accumulator-pattern` | 6 | 7, 10 |
+| `while-loop` | 8 | 9, 10 |
+
+Every concept is reused at least twice. No orphans.
 
 ### variables
 - **prereqs:** none
@@ -156,9 +199,20 @@ Knowing when not to reach for a tool is the harder half of the skill.
 
 ## Coverage checklist
 
-- [ ] Every concept has an explicit prereq list
-- [ ] No concept appears in a mission before its prereqs
-- [ ] Every concept is reused in at least two later missions
-- [ ] Objectives are verbs, never "understand"
-- [ ] Misconceptions are written, so hints can target them
-- [ ] The curve has relief missions after hard ones
+Checked for **Island 1 only**. Islands 2 to 10 are sketched, not designed — they get their
+own pass before their missions are written.
+
+- [x] Every concept has an explicit prereq list
+- [x] No concept appears in a mission before its prereqs — verified against the mission map
+- [x] Every concept is reused in at least two later missions — see the reinforcement table
+- [x] Objectives are verbs, never "understand"
+- [x] Misconceptions are written, so hints can target them
+- [x] The curve has relief missions after hard ones — missions 3 and 9
+- [x] No mission introduces two new concepts
+
+### What this document does not yet cover
+
+Islands 2 to 10 list concepts but have no mission map, no prereq graph and no
+misconceptions. That is deliberate: designing 90 missions now would freeze decisions that
+building Islands 1 and 2 is going to change. Each island gets a pass like the one above
+immediately before its content is written.

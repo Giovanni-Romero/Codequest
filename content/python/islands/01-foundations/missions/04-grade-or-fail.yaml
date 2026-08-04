@@ -1,0 +1,141 @@
+# Mission 4 of Foundations. Introduces: conditionals. Reinforces: basic-types.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-04
+title: The navigator's exam
+track: python
+island: foundations
+order: 4
+difficulty: elementary
+tags: [conditionals, if, elif, boundaries]
+xp: 10
+
+concepts:
+  - conditionals
+  - basic-types
+
+teaching:
+  analogy: |
+    A customs officer at the gangway asks questions in a fixed order. Do you have a
+    passport? No, turn back. Do you have cargo to declare? Yes, this way. Nothing to
+    declare? Straight through.
+
+    Each traveller answers only until the first question that applies to them. Once they
+    are sent somewhere, the remaining questions are not asked at all.
+
+    An if / elif chain works exactly like that queue. The first condition that is true
+    decides, and nothing after it is even looked at.
+
+  explanation: |
+    An if statement runs a block only when its condition is true. elif adds another
+    question, asked only when every question above it was false. else catches everything
+    that reached the end without matching.
+
+    Only one branch of the chain ever runs. This is why order matters more than beginners
+    expect: if a wide condition comes first, a narrower one below it can become
+    unreachable and will never run no matter what you pass in.
+
+    Comparisons produce True or False. Be careful with the boundary: >= includes the
+    number itself, > excludes it. Most conditional bugs live on that line.
+
+    One more trap worth naming early: a single = assigns, a double == compares. Writing
+    if score = 90 is a syntax error, not a comparison.
+
+  worked_example: |
+    # Sorting a parcel by weight, not an exam by score
+    def postage(grams):
+        if grams >= 1000:
+            return "freight"
+        elif grams >= 100:
+            return "parcel"
+        elif grams >= 20:
+            return "large letter"
+        return "letter"
+
+    print(postage(1000))   # freight, because >= includes 1000 exactly
+    print(postage(999))    # parcel
+
+  key_points:
+    - Only one branch of an if / elif chain runs. The first true condition wins.
+    - Order from narrowest to widest. A wide condition placed first makes later ones dead.
+    - ">= includes the boundary number, > excludes it. Test the exact boundary value."
+    - "= assigns a value, == compares two values. They are not interchangeable."
+
+brief: |
+  Every apprentice navigator is graded on a score out of 100. Write a function called
+  rank that receives the score and returns the rank as text:
+
+    - "gold"   for 90 or more
+    - "silver" for 70 to 89
+    - "bronze" for 50 to 69
+    - "none"   for anything below 50
+
+  The boundaries are inclusive: a score of exactly 90 is gold, and exactly 50 is bronze.
+
+signature:
+  entrypoint: rank
+  stub: |
+    def rank(score):
+        # Ask from the highest rank down. The first true answer decides.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [95]
+      expect: "gold"
+    - args: [72]
+      expect: "silver"
+  hidden:
+    - args: [90]
+      expect: "gold"
+    - args: [89]
+      expect: "silver"
+    - args: [70]
+      expect: "silver"
+    - args: [69]
+      expect: "bronze"
+    - args: [50]
+      expect: "bronze"
+    - args: [49]
+      expect: "none"
+    - args: [0]
+      expect: "none"
+    - args: [100]
+      expect: "gold"
+
+hints:
+  - level: 1
+    text: |
+      If your first question is "is the score 50 or more?", what happens to a score of 95?
+      Which rank does it get, and is that the one you wanted?
+  - level: 2
+    text: |
+      Start with the highest threshold and work down, using if then elif. Each condition
+      only needs the lower bound, because everything above it was already caught.
+  - level: 3
+    text: |
+      The same descending chain, sizing a shirt rather than ranking an exam:
+
+          if chest >= 110:
+              return "large"
+          elif chest >= 95:
+              return "medium"
+          return "small"
+
+      Notice that "medium" does not need an upper bound. Anything 110 or over never
+      reaches that line.
+
+solution: |
+  def rank(score):
+      if score >= 90:
+          return "gold"
+      elif score >= 70:
+          return "silver"
+      elif score >= 50:
+          return "bronze"
+      return "none"

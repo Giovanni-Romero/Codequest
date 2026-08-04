@@ -1,0 +1,123 @@
+# Mission 3 of Foundations. Relief mission. Reinforces: basic-types, variables.
+# Introduces nothing new: the curve needs a landing after the bool/int trap.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-03
+title: Labelling the crates
+track: python
+island: foundations
+order: 3
+difficulty: elementary
+tags: [types, conversion, strings]
+xp: 10
+
+concepts:
+  - basic-types
+  - variables
+
+teaching:
+  analogy: |
+    A dock worker writes on a crate: "rope x 12".
+
+    The rope is cargo. The 12 is a count. But the label is neither of those things, it is
+    paint on wood. To get a number onto a label you have to write it out as characters.
+
+    Python is stricter than a dock worker about this. It will not quietly turn a number
+    into text for you, because guessing what you meant is how numbers silently become
+    strings and additions silently become joins.
+
+  explanation: |
+    The plus sign means two different things depending on what is on either side. Between
+    two numbers it adds. Between two strings it joins them end to end.
+
+    Between a string and a number it does neither. Python raises a TypeError, because
+    "rope" + 12 has no sensible answer and inventing one would hide your mistake.
+
+    str(value) makes a string out of any value. str(12) gives "12", which is text made of
+    the characters 1 and 2 and is no longer a number you can do arithmetic with.
+
+    The reverse direction exists too: int("12") gives back the number 12.
+
+  worked_example: |
+    # Building a line for a ship's log, not a crate label
+    port = "Lisbon"
+    days = 4
+
+    line = port + " reached in " + str(days) + " days"
+    print(line)          # Lisbon reached in 4 days
+
+    # Without str() the line above raises TypeError, because Python will not
+    # guess that you wanted the number written out.
+
+  key_points:
+    - Plus adds numbers and joins strings. It refuses to mix the two.
+    - str(value) turns anything into text. int("12") turns text back into a number.
+    - "str(12) is not 12. It is two characters, and 'a' + str(12) works while 'a' + 12 does not."
+    - Build the label in a variable if it helps you read it. Long expressions hide mistakes.
+
+brief: |
+  Write a function called crate_label that receives the name of a cargo item and how many
+  of it there are, and returns a single line of text in exactly this shape:
+
+      rope x 12
+
+  That is: the name, a space, a lowercase x, a space, then the count.
+
+  The count arrives as a number, so you will have to turn it into text before it can join
+  the rest of the label.
+
+signature:
+  entrypoint: crate_label
+  stub: |
+    def crate_label(name, count):
+        # The count is a number. The label is text. Something has to change.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", 12]
+      expect: "rope x 12"
+    - args: ["barrel", 3]
+      expect: "barrel x 3"
+  hidden:
+    - args: ["", 0]
+      expect: " x 0"
+    - args: ["net", -1]
+      expect: "net x -1"
+    - args: ["sail", 1000000]
+      expect: "sail x 1000000"
+    - args: ["lantern", 1]
+      expect: "lantern x 1"
+    - args: ["salt cod", 250]
+      expect: "salt cod x 250"
+    - args: ["x", 0]
+      expect: "x x 0"
+
+hints:
+  - level: 1
+    text: |
+      What happens if you write "rope" + 12 straight into the return line? Try it in your
+      head, then decide what has to happen to the 12 first.
+  - level: 2
+    text: |
+      You need str() around the count. The rest is joining four pieces of text with plus:
+      the name, a space, the x with spaces around it, and the converted count.
+  - level: 3
+    text: |
+      The same joining, building a scoreboard line rather than a crate label:
+
+          player = "Ada"
+          points = 30
+          return player + " scored " + str(points)
+
+      Yours has a different separator between the two pieces, but the shape is identical.
+
+solution: |
+  def crate_label(name, count):
+      label = name + " x " + str(count)
+      return label

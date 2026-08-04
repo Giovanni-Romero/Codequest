@@ -1,0 +1,126 @@
+# Mission 2 of Foundations. Introduces: basic-types. Reinforces: variables.
+# Uses no branching on purpose: conditionals are not taught until mission 4.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-02
+title: Is that a number?
+track: python
+island: foundations
+order: 2
+difficulty: elementary
+tags: [types, isinstance, booleans]
+xp: 10
+
+concepts:
+  - basic-types
+  - variables
+
+teaching:
+  analogy: |
+    A harbour master looks at what comes off a ship and sorts it: barrels here, rope
+    there, letters in the office. Same dock, different handling, and getting the sort
+    wrong ruins the cargo.
+
+    Python does the same with values. 5 and "5" look alike written down and behave
+    nothing alike: one you can add, the other you can only join to more text.
+
+  explanation: |
+    Every value in Python has a type. The four you meet first are int (whole numbers),
+    float (numbers with a decimal point), str (text) and bool (True or False).
+
+    isinstance(value, int) asks "is this value an int?" and answers True or False. It
+    never crashes, whatever you hand it.
+
+    There is a trap here, and it is the whole point of this mission. In Python, bool is a
+    *kind of* int. True really is 1 and False really is 0, which means
+    isinstance(True, int) answers True. A check that only asks "is it an int?" will count
+    every True and every False as a number.
+
+    You can combine questions without any branching. "and" is True only when both sides
+    are True. "not" flips an answer.
+
+  worked_example: |
+    # Deciding whether a weather reading is usable, not whether cargo is a number
+    reading = 12.5
+    print(isinstance(reading, float))            # True
+    print(isinstance(reading, str))              # False
+
+    usable = isinstance(reading, float) and not isinstance(reading, str)
+    print(usable)                                # True
+
+  key_points:
+    - "isinstance(value, SomeType) answers True or False. It never raises."
+    - A bool is an int in Python, so an int check alone also catches True and False.
+    - 'The word "and" is True only when both sides are True, and "not" flips the answer.'
+    - You can return the result of a comparison directly. No if statement needed.
+
+brief: |
+  Write a function called is_whole_number that receives one value and returns True when
+  that value is a whole number, and False otherwise.
+
+  True and False are not whole numbers for the purposes of this mission, even though
+  Python treats them as ints. Neither is 5.0, because it is a float. Neither is "5",
+  because it is text.
+
+  You may not use the built-in type() function, and you do not need an if statement.
+
+signature:
+  entrypoint: is_whole_number
+  stub: |
+    def is_whole_number(value):
+        # Two questions combined into one answer. No if needed.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [type]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [7]
+      expect: true
+    - args: ["anchor"]
+      expect: false
+  hidden:
+    - args: [true]
+      expect: false
+    - args: [false]
+      expect: false
+    - args: [1.5]
+      expect: false
+    - args: [0]
+      expect: true
+    - args: [-42]
+      expect: true
+    - args: [0.0]
+      expect: false
+    - args: [""]
+      expect: false
+    - args: [[1, 2]]
+      expect: false
+
+hints:
+  - level: 1
+    text: |
+      Work out isinstance(True, int) in your head before you write anything. What does it
+      answer, and what does that do to a function that only asks whether the value is an
+      int?
+  - level: 2
+    text: |
+      You need two isinstance calls joined by "and". One asks whether it is an int. The
+      other has to rule out the case that sneaks through, using "not".
+  - level: 3
+    text: |
+      The same shape, filtering guests rather than values:
+
+          allowed = isinstance(guest, Adult) and not isinstance(guest, Staff)
+          return allowed
+
+      Every member of staff is also an adult, so the first check alone would let them in.
+      The second check removes the ones that slipped past.
+
+solution: |
+  def is_whole_number(value):
+      return isinstance(value, int) and not isinstance(value, bool)

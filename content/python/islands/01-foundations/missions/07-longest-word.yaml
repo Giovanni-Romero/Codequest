@@ -1,0 +1,137 @@
+# Mission 7 of Foundations. Introduces nothing.
+# Reinforces: accumulator-pattern, conditionals, for-loop.
+# The accumulator carries a *choice* here, not a total. Same pattern, different payload.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-07
+title: The longest name on the roster
+track: python
+island: foundations
+order: 7
+difficulty: elementary
+tags: [accumulator, comparison, loops]
+xp: 10
+
+concepts:
+  - accumulator-pattern
+  - conditionals
+  - for-loop
+
+teaching:
+  analogy: |
+    A ship's carpenter is looking for the longest plank in a pile. He picks one up, holds
+    it, and compares every other plank against the one in his hands. When he finds a
+    longer one he drops the old plank and carries the new one instead.
+
+    At the end, whatever he is holding is the answer.
+
+    Notice what he is carrying: not a running total, but a running *best*. Same discipline
+    as counting — start with something, update it as you go — but the thing being carried
+    is a candidate rather than a sum.
+
+  explanation: |
+    The accumulator pattern is not only for numbers. Anything you build up across a loop
+    is an accumulator: a total, a count, a piece of text, or the best item seen so far.
+
+    For a "find the best" loop, the accumulator holds the current winner. On each pass you
+    compare the new item against the winner and replace it only when the new one is
+    better.
+
+    Two decisions shape the answer and both are yours to make deliberately:
+
+    What do you start with? Starting with something that always loses is the safe move,
+    because then the first real item is guaranteed to replace it.
+
+    What about a tie? Using "strictly greater than" keeps the first one you found. Using
+    "greater than or equal" keeps the last. Neither is wrong, but the tests will tell you
+    which one this mission wants.
+
+  worked_example: |
+    # Finding the coldest reading of a voyage, not the longest word
+    readings = [12, 4, 19, 4, -3]
+    coldest = readings[0]
+    for reading in readings:
+        if reading < coldest:
+            coldest = reading
+    print(coldest)      # -3
+
+  key_points:
+    - An accumulator can carry a winner, not just a total. The pattern is the same.
+    - Start it with a value the first real item is guaranteed to beat.
+    - "> keeps the first of a tie, >= keeps the last. Choose on purpose, not by accident."
+    - "An empty sequence never enters the loop, so the answer is whatever you started with."
+
+brief: |
+  Write a function called longest that receives a list of words and returns the longest
+  one.
+
+  If two words are tied for longest, return the one that appears first. If the list is
+  empty, return an empty string.
+
+  You may not use max or sorted. Walk the list and decide for yourself.
+
+signature:
+  entrypoint: longest
+  stub: |
+    def longest(words):
+        # Carry the current winner. Replace it only when you find something longer.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [max, sorted]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["a", "bbb", "cc"]]
+      expect: "bbb"
+    - args: [["hi", "there"]]
+      expect: "there"
+  hidden:
+    - args: [[]]
+      expect: ""
+    - args: [["one"]]
+      expect: "one"
+    - args: [["ab", "cd"]]
+      expect: "ab"
+    - args: [["", "x"]]
+      expect: "x"
+    - args: [["aaa", "bbb"]]
+      expect: "aaa"
+    - args: [["short", "longest", "mid"]]
+      expect: "longest"
+    - args: [[""]]
+      expect: ""
+
+hints:
+  - level: 1
+    text: |
+      Before you have looked at any word, what is the longest word you have seen? What
+      value represents "nothing yet" in a way that any real word will beat?
+  - level: 2
+    text: |
+      Create a variable holding an empty string before the loop. For each word, compare
+      its length against the length of the one you are holding, and replace the held word
+      when the new one is longer. Return what you are holding after the loop.
+  - level: 3
+    text: |
+      The same pattern, finding the heaviest crate rather than the longest word:
+
+          heaviest = 0
+          for crate in crates:
+              if crate > heaviest:
+                  heaviest = crate
+          return heaviest
+
+      Yours compares len(word) instead of the value itself, and starts from "" instead
+      of 0. Think about which comparison keeps the first of a tie.
+
+solution: |
+  def longest(words):
+      best = ""
+      for word in words:
+          if len(word) > len(best):
+              best = word
+      return best

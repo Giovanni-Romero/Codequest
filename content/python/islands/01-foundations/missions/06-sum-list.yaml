@@ -1,11 +1,11 @@
 # Example mission. Copy this file as the starting point for new missions.
 # Schema reference: docs/mission-schema.md
 
-id: py-foundations-02
+id: py-foundations-06
 title: Sum of a list
 track: python
 island: foundations
-order: 2
+order: 6
 difficulty: elementary        # elementary | simple | moderate | challenging | expert
 tags: [loops, lists, accumulator]
 xp: 10
