@@ -8,8 +8,23 @@ description: Frontend work for the Textual terminal interface — screens, widge
 Textual is the frontend framework. Think of it as React for the terminal: a component
 tree, reactive state, an event loop, and CSS-like styling in `.tcss` files.
 
-Teaching contract applies. Explain the pattern, give the class skeleton, let Giovanni
-fill the logic.
+**Read `docs/art-direction.md` before writing a single line of `.tcss`.** That document
+owns *how it looks* — the palette with measured contrast ratios, the fixed character
+vocabulary, the responsive bands. This skill owns *how it is built*. A colour or a symbol
+that is not in the art direction does not go in a stylesheet; if a widget seems to need
+one, either the palette is incomplete or the widget is doing something unintended, and
+that has to be resolved first.
+
+Quick reference, full detail in that file:
+
+- Ground `ink`, panels `ink-raised`, text `parchment`, frames `brass` / `brass-dim`
+- One accent only: `beacon`, marking exactly one thing per screen
+- Focus is signalled by a **double rule** (`╔═╗`) in `brass`, nothing else
+- State symbols: `✔` pass · `✘` fail · `·` not run · `▸` current · `▪` locked
+- Progress bars use eighth-blocks `█▉▊▋▌▍▎▏`
+- Colour never carries meaning alone — always paired with a symbol
+- ≥100 cols: four panels · 80–99: teaching and results become tabs · <80: single panel
+  with a notice. Never refuse to run.
 
 ## Screen build order
 

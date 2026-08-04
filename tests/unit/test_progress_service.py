@@ -152,6 +152,103 @@ def test_different_missions_each_pay_their_own_xp(service):
     assert second.profile.total_xp == 20
 
 
+# ------------------------------------------------------------------- hint cost
+
+
+@pytest.mark.parametrize(
+    ("hints", "expected_xp"),
+    [(0, 10), (1, 9), (2, 7), (3, 4)],
+)
+def test_hints_reduce_the_xp_of_a_mission(service, hints, expected_xp):
+    """The table promised in the README, one case per row."""
+    profile = service.create_profile("giovanni", "python")
+    for _ in range(hints):
+        service.record_hint(profile, MISSION)
+
+    result = service.record_attempt(profile, MISSION, "code", PASSED)
+
+    assert result.xp_awarded == expected_xp
+    assert result.profile.total_xp == expected_xp
+
+
+def test_the_hint_discount_has_a_floor(service):
+    """A fourth or fifth hint cannot exist today, but the table must not fall off its end.
+
+    Beyond the last multiplier the floor holds. A hint is a tool, not a punishment, and
+    zeroing the reward would teach players to stay stuck in silence.
+    """
+    profile = service.create_profile("giovanni", "python")
+    for _ in range(7):
+        service.record_hint(profile, MISSION)
+
+    result = service.record_attempt(profile, MISSION, "code", PASSED)
+
+    assert result.xp_awarded == 4
+
+
+def test_a_hint_revealed_after_completing_does_not_claw_xp_back(service):
+    """Idempotency already guarantees this: there is no second payment to reduce."""
+    profile = service.create_profile("giovanni", "python")
+    first = service.record_attempt(profile, MISSION, "code", PASSED)
+
+    service.record_hint(first.profile, MISSION)
+    service.record_hint(first.profile, MISSION)
+    second = service.record_attempt(first.profile, MISSION, "code", PASSED)
+
+    assert first.xp_awarded == 10
+    assert second.xp_awarded == 0
+    assert second.profile.total_xp == 10
+
+
+def test_hints_on_one_mission_do_not_discount_another(service):
+    """The count is per mission, so peeking at a hard one must not tax an easy one."""
+    other = make_mission(id="m2", xp=10)
+    profile = service.create_profile("giovanni", "python")
+    service.record_hint(profile, MISSION)
+    service.record_hint(profile, MISSION)
+
+    result = service.record_attempt(
+        profile, other, "code", Verdict("m2", True, FailureReason.PASSED, "ok")
+    )
+
+    assert result.xp_awarded == 10
+
+
+def test_a_failed_attempt_after_hints_still_pays_nothing(service):
+    profile = service.create_profile("giovanni", "python")
+    service.record_hint(profile, MISSION)
+
+    result = service.record_attempt(profile, MISSION, "broken", FAILED)
+
+    assert result.xp_awarded == 0
+
+
+def test_the_discount_never_rounds_a_reward_to_zero(service):
+    """40% of a tiny mission would round to 0, which reads as a bug rather than a cost."""
+    tiny = make_mission(id="tiny", xp=1)
+    profile = service.create_profile("giovanni", "python")
+    for _ in range(3):
+        service.record_hint(profile, tiny)
+
+    result = service.record_attempt(
+        profile, tiny, "code", Verdict("tiny", True, FailureReason.PASSED, "ok")
+    )
+
+    assert result.xp_awarded == 1
+
+
+def test_the_discounted_amount_is_what_gets_stored_as_best_xp(service):
+    """progress.best_xp must agree with what the profile actually received."""
+    profile = service.create_profile("giovanni", "python")
+    service.record_hint(profile, MISSION)
+    service.record_hint(profile, MISSION)
+
+    result = service.record_attempt(profile, MISSION, "code", PASSED)
+
+    assert result.progress.best_xp == 7
+    assert result.profile.total_xp == 7
+
+
 # ----------------------------------------------------------------------- levels
 
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
+from codequest.config import xp_after_hints
 from codequest.models.curriculum import Island
 from codequest.models.mission import Mission
 from codequest.models.profile import MAX_PROFILES, MissionStatus, Profile, Progress
@@ -121,9 +122,19 @@ class ProgressService:
         with transaction(self.connection):
             existing = self.progress.get(profile.id, mission.id)
             already_completed = existing is not None and existing.is_completed
+            hints_used = existing.hints_used if existing else 0
 
-            # The decision, in one line: pay only the first time.
-            xp_to_award = mission.xp if (verdict.passed and not already_completed) else 0
+            # Two decisions, in order. Pay only the first time, and pay less when hints
+            # were used to get there. The hint count is read from the database inside the
+            # transaction, so it reflects exactly what was revealed before this success.
+            #
+            # Nothing extra is needed to stop a hint revealed *after* completion from
+            # reducing the reward retroactively: there is no second payment to reduce.
+            xp_to_award = (
+                xp_after_hints(mission.xp, hints_used)
+                if (verdict.passed and not already_completed)
+                else 0
+            )
 
             self.attempts.record(profile.id, mission.id, code, verdict)
             progress = self.progress.record_attempt(
@@ -151,7 +162,13 @@ class ProgressService:
         )
 
     def record_hint(self, profile: Profile, mission: Mission) -> None:
-        """Record that a hint was revealed. Never blocks, never costs XP today."""
+        """Record that a hint was revealed.
+
+        Never blocks and never refuses. The cost is applied later, when the mission is
+        first solved, by ``record_attempt`` reading this count — see
+        ``config.HINT_XP_MULTIPLIERS``. Charging at reveal time would mean a player who
+        peeks and then never solves the mission has paid for nothing.
+        """
         if profile.id is None:
             raise ValueError("cannot record a hint for an unsaved profile")
         with transaction(self.connection):
