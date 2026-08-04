@@ -1,0 +1,166 @@
+# Mission 10 of Foundations. The island's closing mission.
+# Introduces nothing. Combines all six concepts of the island.
+# Either a while loop with an index or a for loop with a break is accepted.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-10
+title: The log at end of watch
+track: python
+island: foundations
+order: 10
+difficulty: simple
+tags: [accumulator, sentinel, loops, conditionals, strings]
+xp: 20
+
+concepts:
+  - variables
+  - basic-types
+  - conditionals
+  - for-loop
+  - while-loop
+  - accumulator-pattern
+
+teaching:
+  analogy: |
+    The depth log is a strip of paper with soundings written along it, one after another.
+    When the watch ends the officer writes a single zero and puts the pen down. Anything
+    after that zero belongs to the next watch and is none of your business.
+
+    So you read from the start and you stop at the zero. Not because you ran out of paper,
+    but because a value on the paper told you to.
+
+    A value that means "stop here" rather than being data itself is called a sentinel, and
+    it is one of the oldest ideas in programming.
+
+  explanation: |
+    This mission introduces nothing new. It asks you to run four things you already know
+    at the same time, which is a different skill from running each one alone.
+
+    You need three accumulators alive at once: a count, a running total, and the largest
+    reading seen so far. Three variables, all created before the loop, all updated inside
+    it.
+
+    You need a loop that can stop early, because the sentinel decides the end rather than
+    the length of the list. A while loop with an index does this naturally; a for loop
+    with a break does it too. Either is accepted.
+
+    And you need to turn numbers into text at the end, which is the conversion from
+    mission three.
+
+    Watch the largest-value accumulator carefully. Starting it at zero looks harmless and
+    is wrong: if every reading is negative, zero was never a real reading and it wins
+    anyway. There are hidden tests for exactly that.
+
+  worked_example: |
+    # Totting up a till until the closing marker, not soundings until a zero
+    takings = [12, 30, 7, -1, 99]
+    total = 0
+    entries = 0
+    index = 0
+    while index < len(takings) and takings[index] != -1:
+        total = total + takings[index]
+        entries = entries + 1
+        index = index + 1
+    print(entries, total)      # 3 49
+
+  key_points:
+    - A sentinel is a value that means "stop", not a value to be processed.
+    - Several accumulators can run side by side. Create all of them before the loop.
+    - Starting a "largest so far" at zero is a bug when the real values can be negative.
+    - Build the text at the end, once, from the finished numbers. Not inside the loop.
+
+brief: |
+  Write a function called log_summary that receives a list of depth readings and returns a
+  one-line summary of the watch.
+
+  Read the list from the start and stop at the first zero, which marks the end of the
+  watch. The zero itself is not a reading, and anything after it must be ignored.
+
+  Return the summary in exactly this shape:
+
+      count=3 total=10 biggest=5
+
+  where count is how many readings you processed, total is their sum, and biggest is the
+  largest of them.
+
+  If there are no readings at all, every number is zero: "count=0 total=0 biggest=0".
+
+  You may not use sum or max.
+
+signature:
+  entrypoint: log_summary
+  stub: |
+    def log_summary(readings):
+        # Three accumulators, one loop that can stop early, one line of text at the end.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [sum, max]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[3, 5, 2, 0, 99, 99]]
+      expect: "count=3 total=10 biggest=5"
+    - args: [[7]]
+      expect: "count=1 total=7 biggest=7"
+  hidden:
+    - args: [[]]
+      expect: "count=0 total=0 biggest=0"
+    - args: [[0]]
+      expect: "count=0 total=0 biggest=0"
+    - args: [[-2, -5, 0]]
+      expect: "count=2 total=-7 biggest=-2"
+    - args: [[1, 1, 1]]
+      expect: "count=3 total=3 biggest=1"
+    - args: [[4, 4, 0, 1]]
+      expect: "count=2 total=8 biggest=4"
+    - args: [[-1]]
+      expect: "count=1 total=-1 biggest=-1"
+    - args: [[0, 5, 5]]
+      expect: "count=0 total=0 biggest=0"
+    - args: [[10, -3, 8]]
+      expect: "count=3 total=15 biggest=10"
+
+hints:
+  - level: 1
+    text: |
+      Two questions before you write anything. What ends your loop — running out of list,
+      or finding a zero? And what should "biggest" hold before you have seen a single
+      reading?
+  - level: 2
+    text: |
+      Create count, total and biggest before the loop. Walk the readings and stop at the
+      first zero. For each reading, add one to count, add the value to total, and replace
+      biggest when the value is larger — but make sure the very first reading always
+      becomes biggest, whatever its sign. Build the text with str() after the loop.
+  - level: 3
+    text: |
+      The "first one always wins" part, applied to a race rather than a log:
+
+          fastest = 0
+          finished = 0
+          for time in times:
+              finished = finished + 1
+              if finished == 1 or time < fastest:
+                  fastest = time
+
+      The finished == 1 check is what stops the starting value from beating a real one.
+      Yours wants the largest instead of the smallest, and has to stop at a sentinel.
+
+solution: |
+  def log_summary(readings):
+      count = 0
+      total = 0
+      biggest = 0
+      index = 0
+      while index < len(readings) and readings[index] != 0:
+          value = readings[index]
+          count = count + 1
+          total = total + value
+          if count == 1 or value > biggest:
+              biggest = value
+          index = index + 1
+      return "count=" + str(count) + " total=" + str(total) + " biggest=" + str(biggest)

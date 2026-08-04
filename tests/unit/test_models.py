@@ -69,7 +69,7 @@ def test_difficulty_round_trips_through_its_yaml_spelling():
 
 def test_verdict_reports_first_failure_and_counts():
     verdict = Verdict(
-        mission_id="py-foundations-02",
+        mission_id="py-foundations-06",
         passed=False,
         reason=FailureReason.WRONG_ANSWER,
         summary="1 of 3 cases failed",

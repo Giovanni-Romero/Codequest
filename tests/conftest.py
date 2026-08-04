@@ -117,7 +117,7 @@ def make_mission(**overrides: Any) -> Mission:
     missions inside helpers that pytest does not inject into.
     """
     defaults: dict[str, Any] = {
-        "id": "py-foundations-02",
+        "id": "py-foundations-06",
         "title": "Sum of a list",
         "track": "python",
         "island": "foundations",

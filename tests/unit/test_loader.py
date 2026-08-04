@@ -179,11 +179,11 @@ def test_yaml_that_is_not_a_mapping_is_rejected(tmp_path):
 
 def test_loads_the_shipped_example_mission():
     """The example in content/ is the reference every new mission is copied from."""
-    path = "content/python/islands/01-foundations/missions/02-sum-list.yaml"
+    path = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
 
     mission = load_mission(path)
 
-    assert mission.id == "py-foundations-02"
+    assert mission.id == "py-foundations-06"
     assert mission.signature.entrypoint == "sum_list"
     assert "sum" in mission.constraints.forbidden_builtins
     assert len(mission.visible_tests) == 2
@@ -209,7 +209,7 @@ def test_loads_the_foundations_island():
 def test_discovery_finds_the_shipped_missions():
     missions = discover_missions(CONTENT_DIR, "python")
 
-    assert any(mission.id == "py-foundations-02" for mission in missions)
+    assert any(mission.id == "py-foundations-06" for mission in missions)
 
 
 def test_discovery_is_sorted_so_runs_are_reproducible():

@@ -1,0 +1,129 @@
+# Mission 5 of Foundations. Introduces: for-loop. Reinforces: conditionals.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-05
+title: Reading the manifest
+track: python
+island: foundations
+order: 5
+difficulty: elementary
+tags: [for-loop, iteration, conditionals]
+xp: 10
+
+concepts:
+  - for-loop
+  - conditionals
+
+teaching:
+  analogy: |
+    A clerk checks a manifest by running a finger down the page, one line at a time,
+    pausing on each entry before moving to the next.
+
+    The finger is the loop. Each line the finger lands on is one pass. The clerk does not
+    decide how many lines there are — the page decides that, and the finger stops when it
+    runs out of page.
+
+    An empty page is not a special case for the clerk. The finger simply never moves, and
+    nothing happens. That is worth remembering, because it is the case most people forget.
+
+  explanation: |
+    A for loop repeats a block once for every item in a sequence. The loop variable holds
+    one item at a time, and Python advances it for you.
+
+    Iterating over a string gives you one character per pass, in order.
+
+    The loop decides how many passes to make from the length of the thing you gave it. If
+    that thing is empty, the body never runs at all. No error, no warning, just nothing.
+
+    You can put an if inside a loop. The condition is then checked once per pass, so a
+    loop over ten characters asks the question ten times.
+
+  worked_example: |
+    # Counting how many words in a sentence are shouted, not vowels in a word
+    sentence = ["hello", "STOP", "please", "NOW"]
+    shouts = 0
+    for word in sentence:
+        if word == word.upper():
+            shouts = shouts + 1
+    print(shouts)      # 2
+
+  key_points:
+    - "for item in thing: repeats once per item, and Python advances the variable for you."
+    - Looping over a string yields one character at a time, in order.
+    - An empty sequence means zero passes. The body never runs, and that is not an error.
+    - An if inside a loop is checked once per pass, not once in total.
+
+brief: |
+  Write a function called count_vowels that receives a piece of lowercase text and returns
+  how many vowels it contains.
+
+  The vowels are a, e, i, o and u. Text with no vowels returns 0, and empty text returns 0.
+
+  You may not use the count method. Walk the text one character at a time and decide for
+  yourself.
+
+signature:
+  entrypoint: count_vowels
+  stub: |
+    def count_vowels(text):
+        # Start a tally before the loop. Look at one character per pass.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [count, sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["banana"]
+      expect: 3
+    - args: ["rhythm"]
+      expect: 0
+  hidden:
+    - args: [""]
+      expect: 0
+    - args: ["aeiou"]
+      expect: 5
+    - args: ["a"]
+      expect: 1
+    - args: ["xyz"]
+      expect: 0
+    - args: ["programming"]
+      expect: 3
+    - args: ["oooo"]
+      expect: 4
+    - args: ["the quick brown fox"]
+      expect: 5
+
+hints:
+  - level: 1
+    text: |
+      Where does your tally live? If you create it inside the loop, what is its value at
+      the start of every single pass?
+  - level: 2
+    text: |
+      Create a counter set to 0 before the loop. Loop over the text one character at a
+      time. Inside the loop, check whether that character is one of the five vowels, and
+      add one when it is. Return the counter after the loop ends.
+  - level: 3
+    text: |
+      The same shape, counting spaces rather than vowels:
+
+          spaces = 0
+          for letter in text:
+              if letter == " ":
+                  spaces = spaces + 1
+          return spaces
+
+      Yours has to match five possible characters instead of one. The keyword "in" checks
+      membership: letter in "aeiou".
+
+solution: |
+  def count_vowels(text):
+      vowels = 0
+      for letter in text:
+          if letter in "aeiou":
+              vowels = vowels + 1
+      return vowels

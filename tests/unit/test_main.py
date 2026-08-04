@@ -77,7 +77,7 @@ def test_every_subcommand_is_bound_to_a_function(command):
 
 def test_missing_solution_file_is_a_readable_error(capsys, tmp_path):
     """A typo in a path is the most likely CLI mistake. It must not print a traceback."""
-    mission = "content/python/islands/01-foundations/missions/02-sum-list.yaml"
+    mission = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
 
     exit_code = main(["run", mission, str(tmp_path / "nope.py")])
 
@@ -96,7 +96,7 @@ def test_run_reports_a_passing_solution(capsys, tmp_path):
         "    return total\n",
         encoding="utf-8",
     )
-    mission = "content/python/islands/01-foundations/missions/02-sum-list.yaml"
+    mission = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
 
     exit_code = main(["run", mission, str(solution)])
 
@@ -108,7 +108,7 @@ def test_run_returns_one_for_a_failing_solution(capsys, tmp_path):
     """Exit code 1 is what lets a script or CI act on the result."""
     solution = tmp_path / "solution.py"
     solution.write_text("def sum_list(numbers):\n    return 6\n", encoding="utf-8")
-    mission = "content/python/islands/01-foundations/missions/02-sum-list.yaml"
+    mission = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
 
     exit_code = main(["run", mission, str(solution)])
 
@@ -120,7 +120,7 @@ def test_missions_lists_the_catalogue(capsys):
     exit_code = main(["missions"])
 
     assert exit_code == 0
-    assert "py-foundations-02" in capsys.readouterr().out
+    assert "py-foundations-06" in capsys.readouterr().out
 
 
 def test_saves_and_play_round_trip(capsys, tmp_path):
@@ -137,7 +137,7 @@ def test_saves_and_play_round_trip(capsys, tmp_path):
     )
 
     assert main(["new-save", "giovanni", "--db", db]) == 0
-    assert main(["play", "giovanni", "py-foundations-02", str(solution), "--db", db]) == 0
+    assert main(["play", "giovanni", "py-foundations-06", str(solution), "--db", db]) == 0
     capsys.readouterr()
 
     assert main(["saves", "--db", db]) == 0
@@ -159,10 +159,10 @@ def test_playing_the_same_mission_twice_reports_no_second_award(capsys, tmp_path
         encoding="utf-8",
     )
     main(["new-save", "giovanni", "--db", db])
-    main(["play", "giovanni", "py-foundations-02", str(solution), "--db", db])
+    main(["play", "giovanni", "py-foundations-06", str(solution), "--db", db])
     capsys.readouterr()
 
-    main(["play", "giovanni", "py-foundations-02", str(solution), "--db", db])
+    main(["play", "giovanni", "py-foundations-06", str(solution), "--db", db])
 
     assert "Already completed" in capsys.readouterr().out
 
@@ -183,7 +183,7 @@ def test_play_with_an_unknown_save_is_a_readable_error(capsys, tmp_path):
     solution = tmp_path / "solution.py"
     solution.write_text("def sum_list(n):\n    return 0\n", encoding="utf-8")
 
-    exit_code = main(["play", "ghost", "py-foundations-02", str(solution), "--db", db])
+    exit_code = main(["play", "ghost", "py-foundations-06", str(solution), "--db", db])
 
     assert exit_code == 1
     assert "No save called" in capsys.readouterr().err

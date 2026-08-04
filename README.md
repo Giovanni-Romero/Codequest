@@ -165,8 +165,19 @@ Everything is reachable from the keyboard. The mouse works, but you never need i
 ## Progression
 
 - Each mission awards XP based on difficulty (10 for elementary, up to 60 for expert)
-- Using a hint reduces the XP for that mission, but never to zero. Hints are a tool,
-  not a punishment
+- Using a hint reduces the XP for that mission, and never to zero:
+
+  | Hints used | XP you keep |
+  |---:|---:|
+  | 0 | 100% |
+  | 1 | 90% |
+  | 2 | 70% |
+  | 3 | 40% |
+
+  A hint is a tool, not a punishment. The floor exists because a player who asks for help
+  and then solves the mission has learned it, and a zero would only teach them to stay
+  stuck in silence. The cost applies when you first solve the mission — peeking at a hint
+  and walking away costs nothing.
 - Islands unlock when you complete enough missions on the previous one
 - Your solutions are kept, so you can go back and read what you wrote three weeks ago
   and see how much you have changed

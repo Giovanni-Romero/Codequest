@@ -395,6 +395,45 @@ build a retrieval function. Same YAML schema, harder briefs.
 | Repo | Monorepo | Split engine/content | Simpler solo workflow, one strong README for portfolio. Cost: content and engine version together. |
 | Mentor | Ollama, optional | Cloud API, required | Free, local, private, and the game works without it. |
 
+### 7.1 Art direction and game scope
+
+Decided 2026-08-04, after Phases 0 to 2 were already merged. Full visual contract in
+`docs/art-direction.md`.
+
+| Concern | Decision | Why |
+|---|---|---|
+| Presentation | Textual TUI, no pixel graphics | See the rejected alternatives below |
+| Aesthetic | Nautical chart | The game is already about islands, sailing and a career. The metaphor was in the README before the interface existed |
+| Palette | Night chart, dark ground | A light panel inside a dark terminal reads as a window pasted on top. Sessions are long |
+| Characters | Unicode box-drawing, no ASCII fallback | Windows Terminal and the VS Code terminal render it. The thin rules are the aesthetic; a fallback would need two versions of every visual element |
+| Game mechanics | Island map, XP, levels, unlocking, layered hints — nothing more | Already built and tested. No timer, no lives, no narrative arc |
+| Audio | None | Most people who program are already listening to something. A game soundtrack is the first thing they mute |
+| Minimum size | 100x30 comfortable, reflows to 80x24 | Below 100 columns the four panels stack into tabs. Never a hard refusal |
+
+**Hint cost.** Revealing a hint reduces that mission's XP: 100 / 90 / 70 / 40 percent for
+zero to three hints. Floored at 40 because a hint is a tool, not a punishment — zeroing the
+reward teaches players to stay stuck in silence, which is the worst outcome available.
+
+#### Rejected alternatives, and what they would have cost
+
+**pygame with real 8-bit pixel art.** Sprites, tiles, chiptune, a far more eye-catching
+portfolio screenshot. Rejected on a hidden cost: the game's core interaction is *typing
+code*, and pygame has no text editor. Building one — cursor, selection, scrolling, undo,
+copy and paste, syntax highlighting — is more work than Phases 1 and 2 combined, and none
+of it teaches anything this project set out to teach. Textual's `TextArea` supplies all of
+it, with tree-sitter highlighting, for free.
+
+**pygame with an external editor.** Pixel art plus watching a file the player edits in
+VS Code. Sidesteps the editor problem, but the player alt-tabs on every attempt and the
+game stops being one place.
+
+**Web frontend.** Contradicts section 2: no server, no network, offline-first.
+
+The engine survives any of these. `engine/` never imports `tui/`, and
+`tests/integration/test_architecture.py` enforces it, so a second frontend later is an
+addition rather than a rewrite. That is what makes "TUI now, reconsider at v2" a real
+option rather than a hope.
+
 ### Known limitations, stated honestly
 
 - `subprocess` + `resource` is not a real security boundary. A determined player can

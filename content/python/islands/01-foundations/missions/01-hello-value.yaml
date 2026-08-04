@@ -1,0 +1,117 @@
+# Mission 1 of Foundations. Introduces: variables.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-01
+title: The ship's stores
+track: python
+island: foundations
+order: 1
+difficulty: elementary
+tags: [variables, assignment]
+xp: 10
+
+concepts:
+  - variables
+
+teaching:
+  analogy: |
+    A variable is a labelled crate in the hold of a ship.
+
+    You write a name on the crate, put something inside, and from then on you can ask
+    for it by name instead of remembering where you put it.
+
+    The important part: you can open the crate later, take out what is inside, put
+    something else in, and the label stays the same. The crate is not the thing it holds.
+
+  explanation: |
+    In Python you create a variable by writing a name, an equals sign, and a value.
+
+    The equals sign does not mean "is equal to" the way it does in mathematics. It means
+    "put this value in this box". That is why total = total + 1 is not nonsense: it reads
+    the box, adds one, and puts the answer back in the same box.
+
+    A variable holds one value at a time. Assigning a new value replaces the old one, and
+    the old one is gone.
+
+  worked_example: |
+    # Tracking the temperature in a galley
+    temperature = 20
+    temperature = temperature + 5     # read 20, add 5, store 25
+    temperature = temperature - 3     # read 25, subtract 3, store 22
+    print(temperature)                # 22
+
+  key_points:
+    - The equals sign stores a value, it does not state a fact. Read it as "becomes".
+    - A name on the left, a value on the right. Never the other way around.
+    - "x = x + 1 works because the right side is worked out first, then stored."
+    - Assigning again replaces what was there. The previous value is not kept anywhere.
+
+brief: |
+  A ship leaves port with a number of water barrels, uses some during the voyage, and
+  takes on more at the next island.
+
+  Write a function called supplies_after_trip that receives three numbers: how many
+  barrels the ship started with, how many were used, and how many were taken on. Return
+  how many barrels the ship has at the end.
+
+  Use a variable to hold the running count. Do not write the whole calculation on the
+  return line.
+
+signature:
+  entrypoint: supplies_after_trip
+  stub: |
+    def supplies_after_trip(start, used, bought):
+        # Put the starting count in a variable, then update it twice.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 3, 5]
+      expect: 12
+    - args: [20, 20, 0]
+      expect: 0
+  hidden:
+    - args: [0, 0, 0]
+      expect: 0
+    - args: [5, 0, 0]
+      expect: 5
+    - args: [3, 10, 0]
+      expect: -7
+    - args: [0, 0, 7]
+      expect: 7
+    - args: [100, 40, 40]
+      expect: 100
+    - args: [1, 1, 1]
+      expect: 1
+
+hints:
+  - level: 1
+    text: |
+      Before the ship uses anything, how many barrels does it have? Where does that
+      number live while the rest of the voyage happens?
+  - level: 2
+    text: |
+      Create a variable holding the starting count. Then assign to it again to subtract
+      what was used, and once more to add what was bought. Return it at the end.
+  - level: 3
+    text: |
+      The same shape, counting coins in a purse instead of barrels:
+
+          purse = 50
+          purse = purse - 12      # spent
+          purse = purse + 30      # earned
+          return purse
+
+      Yours starts from a parameter instead of a fixed number.
+
+solution: |
+  def supplies_after_trip(start, used, bought):
+      barrels = start
+      barrels = barrels - used
+      barrels = barrels + bought
+      return barrels

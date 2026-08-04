@@ -17,6 +17,28 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+#: Fraction of a mission's XP kept after revealing N hints, indexed by hint count.
+#: Beyond the last entry the last value holds, which is the floor.
+#:
+#: The floor is deliberate and it is 40%, not 0%. A hint is a tool, not a punishment: a
+#: player who asks for help and then solves the mission has learned it. Zeroing the reward
+#: teaches them to stay stuck in silence instead, which is the worst outcome this game can
+#: produce. Design rule, not arithmetic — it lives here so it can be argued with.
+HINT_XP_MULTIPLIERS: tuple[float, ...] = (1.0, 0.9, 0.7, 0.4)
+
+
+def xp_after_hints(base_xp: int, hints_used: int) -> int:
+    """Return the XP a mission awards after ``hints_used`` hints were revealed.
+
+    Rounds to the nearest integer but never below 1 for a mission worth anything, so the
+    smallest missions do not silently become worthless. A 10 XP mission with three hints
+    pays 4; without the floor a hypothetical 1 XP mission would pay 0 and read as a bug.
+    """
+    if base_xp <= 0:
+        return 0
+    index = min(max(hints_used, 0), len(HINT_XP_MULTIPLIERS) - 1)
+    return max(1, round(base_xp * HINT_XP_MULTIPLIERS[index]))
+
 
 def _env_bool(name: str, default: bool) -> bool:
     """Read a boolean from the environment, accepting the spellings people actually type."""

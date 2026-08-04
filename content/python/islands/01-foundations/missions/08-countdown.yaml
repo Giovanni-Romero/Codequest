@@ -1,0 +1,135 @@
+# Mission 8 of Foundations. Introduces: while-loop. Reinforces: conditionals.
+# range is forbidden on purpose: with range available this is a for-loop mission again.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-08
+title: Casting off
+track: python
+island: foundations
+order: 8
+difficulty: elementary
+tags: [while-loop, termination, lists]
+xp: 10
+
+concepts:
+  - while-loop
+  - conditionals
+
+teaching:
+  analogy: |
+    A for loop is a clerk reading down a list that already exists. He knows before he
+    starts how many lines there are.
+
+    A while loop is a lookout in the crow's nest: "keep watching until you sight land".
+    Nobody knows how long that takes. It might be five minutes, it might be a week, and if
+    the ship is anchored it might be forever.
+
+    That last case is the whole risk. The lookout only comes down when something changes.
+    If nothing ever changes, he stays up there and the voyage never continues.
+
+  explanation: |
+    A while loop repeats as long as its condition stays true. It checks the condition,
+    runs the body, then checks again, and stops the moment the condition is false.
+
+    Use for when you already have the items. Use while when you have a condition and no
+    list to walk.
+
+    The mistake that defines this concept: forgetting to change the thing the condition
+    depends on. If the condition can never become false, the loop never ends. The program
+    does not crash, it hangs, which is harder to diagnose than a crash.
+
+    The check happens *before* each pass, including the first. If the condition is false
+    to begin with, the body never runs at all — the same "zero passes" case you met with
+    an empty for loop.
+
+  worked_example: |
+    # Halving a plank until it fits in a locker, not counting down to launch
+    length = 100
+    cuts = 0
+    while length > 12:
+        length = length // 2      # this line is what eventually ends the loop
+        cuts = cuts + 1
+    print(cuts)       # 3
+
+  key_points:
+    - A while loop checks its condition before every pass, including the first one.
+    - Something inside the body must move the condition towards false, or the loop hangs.
+    - A condition that is false at the start means zero passes, not one.
+    - Use for when the items already exist, while when you only have a condition.
+
+brief: |
+  Write a function called countdown that receives a starting number and returns a list
+  counting down from it to 1.
+
+  countdown(3) returns [3, 2, 1].
+
+  If the starting number is zero or negative there is nothing to count, so return an
+  empty list.
+
+  You may not use range, reversed or sorted. Build the list yourself with a while loop.
+
+signature:
+  entrypoint: countdown
+  stub: |
+    def countdown(start):
+        # Keep a value that moves towards the stopping condition on every pass.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [range, reversed, sorted]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [3]
+      expect: [3, 2, 1]
+    - args: [1]
+      expect: [1]
+  hidden:
+    - args: [0]
+      expect: []
+    - args: [-5]
+      expect: []
+    - args: [5]
+      expect: [5, 4, 3, 2, 1]
+    - args: [2]
+      expect: [2, 1]
+    - args: [-1]
+      expect: []
+    - args: [8]
+      expect: [8, 7, 6, 5, 4, 3, 2, 1]
+
+hints:
+  - level: 1
+    text: |
+      Write the loop condition first, before anything else. Now look at the body you are
+      about to write: is there a line in it that will eventually make that condition
+      false? If not, the loop never ends.
+  - level: 2
+    text: |
+      Create an empty list and a variable holding the starting number. Loop while that
+      variable is greater than zero. Inside, append it to the list and then subtract one
+      from it. Return the list.
+  - level: 3
+    text: |
+      The same shape, emptying a barrel rather than counting down:
+
+          poured = []
+          litres = 5
+          while litres > 0:
+              poured.append(litres)
+              litres = litres - 1     # without this line the loop never ends
+          return poured
+
+      Yours starts from a parameter instead of a fixed 5.
+
+solution: |
+  def countdown(start):
+      numbers = []
+      current = start
+      while current > 0:
+          numbers.append(current)
+          current = current - 1
+      return numbers

@@ -21,7 +21,7 @@ from codequest.services.progress_service import ProgressService
 from codequest.storage.db import init_db
 from conftest import CONTENT_ROOT
 
-SUM_LIST = CONTENT_ROOT / "python" / "islands" / "01-foundations" / "missions" / "02-sum-list.yaml"
+SUM_LIST = CONTENT_ROOT / "python" / "islands" / "01-foundations" / "missions" / "06-sum-list.yaml"
 
 CORRECT = """
 def sum_list(numbers):
@@ -243,12 +243,12 @@ def test_the_mission_service_loads_the_shipped_catalogue():
     service = MissionService(CONTENT_ROOT, "python")
 
     assert service.track.id == "python"
-    assert service.get_mission("py-foundations-02") is not None
+    assert service.get_mission("py-foundations-06") is not None
     assert service.islands[0].id == "foundations"
 
 
 def test_islands_know_which_missions_they_own():
     service = MissionService(CONTENT_ROOT, "python")
 
-    assert "py-foundations-02" in service.get_island("foundations").mission_ids
+    assert "py-foundations-06" in service.get_island("foundations").mission_ids
     assert service.missions_in("foundations")[0].island == "foundations"

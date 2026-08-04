@@ -1,0 +1,130 @@
+# Mission 9 of Foundations. Relief mission. Reinforces: while-loop, variables.
+# Deliberately gentler than mission 8: same loop, friendlier framing, no list to build.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-09
+title: Doubling the watch
+track: python
+island: foundations
+order: 9
+difficulty: elementary
+tags: [while-loop, doubling, termination]
+xp: 10
+
+concepts:
+  - while-loop
+  - variables
+
+teaching:
+  analogy: |
+    A quartermaster is buying rope in coils. Coils only come in sizes that double: 1, 2,
+    4, 8, 16 metres and so on. He needs enough to cover a job, so he keeps stepping up to
+    the next size until he has more than he needs, and buys that one.
+
+    He does not calculate which coil is right. He starts at the smallest and doubles until
+    it is enough. The stopping point is discovered, not worked out in advance.
+
+  explanation: |
+    This is the same while loop as the last mission, in a friendlier shape. Nothing new is
+    being introduced here — the point is to run the pattern again now that it is less
+    unfamiliar.
+
+    Start with a value. Keep changing it while a condition holds. Return it when the
+    condition finally fails.
+
+    The thing to be careful about is the boundary, and it is the same care you practised
+    with conditionals. "Keep going while the value is less than the limit" stops as soon
+    as the value reaches the limit. "While it is less than or equal" carries on one step
+    further. Those two give different answers when the limit is itself a power of two, and
+    the hidden tests check exactly that.
+
+  worked_example: |
+    # Finding the first year a debt passes a threshold, not the first power of two
+    balance = 100
+    years = 0
+    while balance <= 500:
+        balance = balance * 2
+        years = years + 1
+    print(years)      # 3, because 100 -> 200 -> 400 -> 800
+
+  key_points:
+    - Same pattern as the countdown: a value, a condition, and a body that moves one towards the other.
+    - Multiplying moves faster than adding, so these loops finish in very few passes.
+    - "Test the boundary: what should happen when the limit is itself a power of two?"
+    - A condition false at the start means zero passes, and the starting value is the answer.
+
+brief: |
+  Write a function called first_power_over that receives a limit and returns the smallest
+  power of two that is strictly greater than that limit.
+
+  The powers of two are 1, 2, 4, 8, 16, 32 and so on.
+
+  first_power_over(10) returns 16, because 8 is not greater than 10 but 16 is.
+  first_power_over(16) returns 32, because 16 is not strictly greater than 16.
+
+  A limit of zero or a negative limit returns 1, since 1 already beats it.
+
+  You may not use pow.
+
+signature:
+  entrypoint: first_power_over
+  stub: |
+    def first_power_over(limit):
+        # Start at the smallest power of two and keep doubling while it is not enough.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [pow]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10]
+      expect: 16
+    - args: [1]
+      expect: 2
+  hidden:
+    - args: [0]
+      expect: 1
+    - args: [16]
+      expect: 32
+    - args: [-5]
+      expect: 1
+    - args: [100]
+      expect: 128
+    - args: [2]
+      expect: 4
+    - args: [1000]
+      expect: 1024
+    - args: [1023]
+      expect: 1024
+
+hints:
+  - level: 1
+    text: |
+      What is the smallest power of two? If the limit is already smaller than it, how many
+      times should the loop run?
+  - level: 2
+    text: |
+      Start a variable at 1. Loop while that variable is not yet greater than the limit,
+      doubling it each pass. Return it after the loop.
+  - level: 3
+    text: |
+      The same shape, growing a rope until it spans a gap rather than beating a limit:
+
+          length = 1
+          while length <= gap:
+              length = length * 2
+          return length
+
+      That is nearly the whole answer. The care is in the comparison: think about what
+      happens when gap is exactly 8.
+
+solution: |
+  def first_power_over(limit):
+      value = 1
+      while value <= limit:
+          value = value * 2
+      return value
