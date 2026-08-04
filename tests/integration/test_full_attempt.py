@@ -144,6 +144,37 @@ def test_the_wrong_function_name_is_caught_by_the_guard(session, mission):
     assert outcome.verdict.reason is FailureReason.MISSING_ENTRYPOINT
 
 
+def test_progress_is_reported_once_per_case(session, mission):
+    """The UI needs a determinate bar, so the engine has to say how far along it is."""
+    seen: list[tuple[int, int]] = []
+
+    session.attempt(mission, CORRECT, on_case=lambda done, total: seen.append((done, total)))
+
+    assert len(seen) == len(mission.tests)
+    assert seen[0] == (1, len(mission.tests))
+    assert seen[-1] == (len(mission.tests), len(mission.tests))
+
+
+def test_skipped_cases_do_not_report_progress(session, mission):
+    """A timeout halts the run, so the bar stops where it stopped. It must not lie."""
+    seen: list[tuple[int, int]] = []
+
+    session.attempt(mission, HANGS, on_case=lambda done, total: seen.append((done, total)))
+
+    assert len(seen) == 1
+
+
+def test_a_broken_progress_callback_does_not_fail_the_attempt(session, mission):
+    """The bar is decoration; the verdict is the product. An observer must not break it."""
+
+    def explode(done: int, total: int) -> None:
+        raise RuntimeError("the widget was disposed mid-run")
+
+    outcome = session.attempt(mission, CORRECT, on_case=explode)
+
+    assert outcome.passed
+
+
 def test_no_temp_directories_are_left_behind(session, mission, tmp_path):
     """Cleanup runs in a finally block; a crash must not litter the player's disk."""
     import tempfile

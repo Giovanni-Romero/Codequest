@@ -199,7 +199,17 @@ Rules:
 - Keep them rare. One per genuine concept. A file peppered with bookmarks has none.
 
 Index every bookmark in `docs/ai-eng-bookmarks.md` with `file:line` and the bridge.
-Regenerate the index whenever bookmarks move — a stale line number is a broken index.
+A stale line number is worse than no index: it cites a specific wrong place. Line numbers
+move whenever a bookmarked file gains an import, so this is a command, not a memory:
+
+```bash
+python scripts/refresh_bookmarks.py
+```
+
+It rewrites only the `file:line` targets and leaves the bridge text alone. A new bookmark
+or a removed one is reported and needs a human — the bridge has to be written, and a
+disappearance has to be intentional. `tests/unit/test_bookmarks.py` fails when the index
+and the code disagree in either direction.
 
 ### 9.2 The HTML lesson, one per phase
 

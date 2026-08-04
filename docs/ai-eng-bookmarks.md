@@ -8,10 +8,10 @@ A regra que os governa esta no `CLAUDE.md` secao 9: o comentario diz **a ponte**
 que a linha faz. "Faz parse de YAML" nao vale nada; "dado declarativo externo precisa ser
 validado, igual a structured output de LLM" e o ponto.
 
-Ao final de cada fase sai tambem uma aula em HTML em `D:\Projetos6\_AI_Eng_Aulas`
+Ao final de cada fase sai tambem uma aula em HTML em `D:\Projetos\2026\_AI_Eng_Aulas`
 cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
 
-**12 bookmarks.** Ordenados por arquivo.
+**13 bookmarks.** Ordenados por arquivo.
 
 | Slug | Onde | Conceito | A ponte com AI Engineering |
 |---|---|---|---|
@@ -24,8 +24,9 @@ cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
 | `sandboxing` | [src/codequest/engine/runners/python.py:64](src/codequest/engine/runners/python.py#L64) | Sandbox de execucao | Executar codigo nao confiavel num processo matavel e o mesmo problema que isolar tool calls de um agente ou uma sessao de code interpreter. |
 | `channel-separation` | [src/codequest/engine/runners/python.py:222](src/codequest/engine/runners/python.py#L222) | Separacao de canal | O resultado viaja num canal que o codigo do jogador nao alcanca. Mesmo problema de extrair JSON de uma resposta que tambem tem prosa do modelo. |
 | `failure-taxonomy` | [src/codequest/models/verdict.py:16](src/codequest/models/verdict.py#L16) | Taxonomia de falha | Um eval que so diz certo/errado nao distingue recusa de alucinacao de tool call malformada, entao nao diz o que corrigir. |
-| `orchestration-gates` | [src/codequest/services/game_session.py:65](src/codequest/services/game_session.py#L65) | Portoes de orquestracao | Cadeia onde cada etapa pode parar com um motivo tipado. E a forma de uma cadeia de guardrails em volta de um modelo. |
-| `idempotency` | [src/codequest/services/progress_service.py:108](src/codequest/services/progress_service.py#L108) | Idempotencia | Efeito aplicado uma vez so, decidido por estado persistido. Um passo de agente que faz retry nao pode cobrar o cartao duas vezes. |
+| `orchestration-gates` | [src/codequest/services/game_session.py:74](src/codequest/services/game_session.py#L74) | Portoes de orquestracao | Cadeia onde cada etapa pode parar com um motivo tipado. E a forma de uma cadeia de guardrails em volta de um modelo. |
+| `shared-state` | [src/codequest/services/progress_service.py:63](src/codequest/services/progress_service.py#L63) | Estado compartilhado entre threads | A UI roda a tentativa numa worker thread enquanto a principal ainda pode revelar dica. A biblioteca ser thread-safe protege statements isolados, nao a SUA transacao de varios passos. Mesma armadilha na primeira vez que um agente dispara tool calls em paralelo. |
+| `idempotency` | [src/codequest/services/progress_service.py:120](src/codequest/services/progress_service.py#L120) | Idempotencia | Efeito aplicado uma vez so, decidido por estado persistido. Um passo de agente que faz retry nao pode cobrar o cartao duas vezes. |
 | `sql-injection` | [src/codequest/storage/repositories.py:10](src/codequest/storage/repositories.py#L10) | Injecao de SQL | Todo valor entra como placeholder. Mesma classe de bug de documento recuperado virando parte do prompt ou argumento virando parte de um shell command. |
 
 ## Por onde comecar

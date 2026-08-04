@@ -8,6 +8,8 @@ reimplementing the order.
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from codequest.engine import guard
@@ -59,8 +61,15 @@ class GameSession:
         code: str,
         profile: Profile | None = None,
         islands: tuple[Island, ...] = (),
+        on_case: Callable[[int, int], None] | None = None,
     ) -> AttemptOutcome:
         """Judge one submission against one mission, and persist the result if possible.
+
+        Args:
+            on_case: Called as ``on_case(finished, total)`` after each test case. Optional
+                so the CLI and every existing test keep working untouched. The UI uses it
+                to show "case 3 of 8" instead of a spinner — the engine knows the total,
+                so a spinner would be hiding information it already has.
 
         # [AI-ENG:orchestration-gates] The sequence is a chain of gates, and each one
         # can stop the chain with a *typed* reason: static check, preparation, execution,
@@ -100,7 +109,7 @@ class GameSession:
                 )
                 return self._finish(mission, code, verdict, profile, islands)
 
-            results = self._run_cases(prepared, mission)
+            results = self._run_cases(prepared, mission, on_case)
             verdict = evaluate(mission, mission.tests, results)
         finally:
             # In a finally block: a crash between preparation and judgement must not
@@ -109,7 +118,12 @@ class GameSession:
 
         return self._finish(mission, code, verdict, profile, islands)
 
-    def _run_cases(self, prepared, mission: Mission) -> list[ExecutionResult]:
+    def _run_cases(
+        self,
+        prepared,
+        mission: Mission,
+        on_case: Callable[[int, int], None] | None = None,
+    ) -> list[ExecutionResult]:
         """Run every case, stopping early once the outcome cannot change.
 
         A submission that times out on case one will time out on the rest, and making
@@ -118,14 +132,21 @@ class GameSession:
         """
         results: list[ExecutionResult] = []
         halted = False
+        total = len(mission.tests)
 
-        for case in mission.tests:
+        for index, case in enumerate(mission.tests, start=1):
             if halted:
                 results.append(ExecutionResult(status="skipped"))
                 continue
 
             result = self.runner.execute(prepared, case, mission.constraints)
             results.append(result)
+
+            if on_case is not None:
+                # A misbehaving observer must not fail an attempt that actually ran. The
+                # progress bar is decoration; the verdict is the product.
+                with contextlib.suppress(Exception):
+                    on_case(index, total)
 
             if result.status in {"timeout", "memory", "missing_entrypoint"}:
                 halted = True

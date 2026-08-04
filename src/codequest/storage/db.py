@@ -91,7 +91,13 @@ def connect(path: str | Path) -> sqlite3.Connection:
     if path.parent != Path():
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    connection = sqlite3.connect(path, isolation_level=None)
+    # check_same_thread=False because the UI runs an attempt on a worker thread and that
+    # attempt persists its result. Python's default guard assumes one connection per
+    # thread; the underlying library here reports threadsafety 3 (serialized), so sharing
+    # a connection is supported. What is *not* automatic is transaction interleaving, so
+    # ProgressService serialises its writers with a lock. Dropping the guard without
+    # adding that lock would trade a loud error for a rare corrupted save.
+    connection = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute("PRAGMA journal_mode = WAL")

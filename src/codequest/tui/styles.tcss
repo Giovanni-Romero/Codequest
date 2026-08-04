@@ -1,1 +1,239 @@
-/* CodeQuest theme. Filled in during Phase 4. */
+/* CodeQuest theme. Every value here comes from docs/art-direction.md.
+   A colour that is not in that document does not belong in this file. */
+
+/* ---------------------------------------------------------------- palette */
+
+$ink: #0e1720;
+$ink-raised: #152230;
+$sea: #1d3042;
+$parchment: #e8dcc4;
+$parchment-dim: #b6ab95;
+$brass: #c9a227;
+$brass-dim: #7a6520;
+$beacon: #4fb3d9;
+$verified: #5fae7f;
+$adrift: #d2603f;
+$becalmed: #828d99;
+
+/* ------------------------------------------------------------------ base */
+
+Screen {
+    background: $ink;
+    color: $parchment;
+}
+
+Header {
+    background: $ink-raised;
+    color: $brass;
+}
+
+Footer {
+    background: $ink-raised;
+    color: $parchment-dim;
+}
+
+/* A single rule in brass-dim when idle, a double rule in brass when focused.
+   That is the whole focus indicator: no glow, no background change. */
+.panel {
+    border: round $brass-dim;
+    background: $ink-raised;
+    padding: 0 1;
+}
+
+.panel:focus-within {
+    border: double $brass;
+}
+
+.panel-title {
+    color: $brass;
+    text-style: bold;
+}
+
+.muted {
+    color: $parchment-dim;
+}
+
+.locked {
+    color: $becalmed;
+}
+
+.accent {
+    color: $beacon;
+}
+
+.pass {
+    color: $verified;
+}
+
+.fail {
+    color: $adrift;
+}
+
+/* --------------------------------------------------------------- menus */
+
+#menu-frame {
+    width: 62;
+    height: auto;
+    border: round $brass-dim;
+    background: $ink-raised;
+    padding: 1 2;
+}
+
+#title {
+    color: $brass;
+    text-style: bold;
+    text-align: center;
+    width: 100%;
+}
+
+#tagline {
+    color: $parchment-dim;
+    text-align: center;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+ListView {
+    background: $ink-raised;
+    height: auto;
+    max-height: 16;
+}
+
+ListView > ListItem {
+    background: $ink-raised;
+    padding: 0 1;
+}
+
+ListView > ListItem.--highlight {
+    background: $sea;
+    color: $parchment;
+}
+
+/* ------------------------------------------------------------ island map */
+
+#island-list {
+    height: 1fr;
+    max-height: 100%;
+}
+
+/* ---------------------------------------------------------- mission screen */
+
+#mission-body {
+    height: 1fr;
+}
+
+#left-column {
+    width: 1fr;
+}
+
+#right-column {
+    width: 1fr;
+}
+
+#teaching, #brief, #results, #hints {
+    height: 1fr;
+    overflow-y: auto;
+}
+
+#editor-panel {
+    height: 2fr;
+}
+
+CodeEditor {
+    background: $ink;
+    border: none;
+    height: 1fr;
+}
+
+#run-status {
+    height: 1;
+    color: $parchment-dim;
+}
+
+/* Narrow and tiny bands. Set by MissionScreen.on_resize; the rule lives in
+   docs/art-direction.md section 5. Never a refusal to run, only a reflow. */
+MissionScreen.narrow #left-column {
+    display: none;
+}
+
+MissionScreen.narrow #right-column {
+    width: 1fr;
+}
+
+MissionScreen.tiny #left-column {
+    display: none;
+}
+
+MissionScreen.tiny #right-column {
+    width: 1fr;
+}
+
+#reduced-notice {
+    display: none;
+    height: 1;
+    color: $brass;
+    background: $ink-raised;
+}
+
+MissionScreen.tiny #reduced-notice {
+    display: block;
+}
+
+/* ------------------------------------------------------------- dialogs */
+
+#dialog-frame {
+    width: 56;
+    height: auto;
+    border: double $brass;
+    background: $ink-raised;
+    padding: 1 2;
+}
+
+#dialog-buttons {
+    height: auto;
+    align: center middle;
+    margin-top: 1;
+}
+
+Button {
+    margin: 0 1;
+    background: $sea;
+    color: $parchment;
+    border: none;
+}
+
+Button:focus {
+    background: $beacon;
+    color: $ink;
+    text-style: bold;
+}
+
+Input {
+    background: $ink;
+    color: $parchment;
+    border: round $brass-dim;
+}
+
+Input:focus {
+    border: double $brass;
+}
+
+/* -------------------------------------------------------------- mentor */
+
+#mentor-panel {
+    display: none;
+    height: 12;
+}
+
+#mentor-panel.open {
+    display: block;
+}
+
+#mentor-log {
+    height: 1fr;
+    background: $ink;
+}
+
+.mentor-offline {
+    color: $becalmed;
+}

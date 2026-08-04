@@ -53,7 +53,11 @@ def test_every_indexed_bookmark_points_at_a_real_line():
         if line_number > len(lines) or f"[AI-ENG:{slug}]" not in lines[line_number - 1]:
             wrong.append(f"{slug}: {rel_path}:{line_number} is not that bookmark")
 
-    assert not wrong, "stale index entries:\n" + "\n".join(wrong)
+    assert not wrong, (
+        "stale index entries:\n"
+        + "\n".join(wrong)
+        + "\n\nFix with: python scripts/refresh_bookmarks.py"
+    )
 
 
 def test_no_bookmark_in_the_code_is_missing_from_the_index():

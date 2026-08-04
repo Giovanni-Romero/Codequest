@@ -165,6 +165,18 @@ def cmd_play(args: argparse.Namespace) -> int:
     return 0 if outcome.passed else 1
 
 
+def cmd_ui(args: argparse.Namespace) -> int:
+    """Launch the terminal interface. The normal way to play.
+
+    The import is local so ``codequest check`` in CI never loads Textual, and so a
+    headless machine can still run the whole content suite.
+    """
+    from codequest.tui.app import run
+
+    run(database=args.db, track=args.track)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the command line parser.
 
@@ -177,6 +189,11 @@ def build_parser() -> argparse.ArgumentParser:
     def add_content_options(sub: argparse.ArgumentParser) -> None:
         sub.add_argument("--track", default="python", help="track id (default: python)")
         sub.add_argument("--content", default=None, help="content directory override")
+
+    ui = subcommands.add_parser("ui", help="launch the game (the normal way to play)")
+    ui.add_argument("--track", default="python")
+    ui.add_argument("--db", default=None, help="database path override")
+    ui.set_defaults(func=cmd_ui)
 
     run = subcommands.add_parser("run", help="run a solution file against a mission file")
     run.add_argument("mission", help="path to a mission YAML file")

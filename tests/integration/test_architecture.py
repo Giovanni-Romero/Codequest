@@ -67,16 +67,28 @@ def test_layer_does_not_import_forbidden_packages(layer: str) -> None:
     assert not violations, "Layer violation (see CLAUDE.md section 3):\n" + "\n".join(violations)
 
 
-def test_player_facing_strings_are_ascii_only() -> None:
-    """Non-ASCII in a printed string turns into mojibake on a Windows console.
+def test_printed_strings_are_ascii_only() -> None:
+    """Non-ASCII in a ``print``ed string turns into mojibake on a Windows console.
 
-    The Windows terminal defaults to cp1252, so an em dash in a failure message reaches
-    the player as a black diamond. Docstrings and comments are exempt — they are read in
-    an editor, not printed. Only string literals that can be printed are checked.
+    The Windows terminal defaults to cp1252, so an em dash in a CLI failure message
+    reached the player as a black diamond. That bug was real and this test exists
+    because of it.
+
+    Two exemptions, both deliberate:
+
+    - **Docstrings and comments.** Read in an editor, never printed.
+    - **``tui/``.** Textual owns its output stream and writes UTF-8 regardless of the
+      console codepage, and ``docs/art-direction.md`` deliberately chose Unicode
+      box-drawing with no ASCII fallback — the thin rules *are* the chart aesthetic.
+      Applying the CLI rule there would forbid the entire visual language.
+
+    The distinction that matters: this is about ``print`` reaching a raw console, not
+    about non-ASCII being unsafe in general.
     """
     offenders: list[str] = []
+    printed_surface = [p for p in PACKAGE_ROOT.rglob("*.py") if "tui" not in p.parts]
 
-    for module in sorted(PACKAGE_ROOT.rglob("*.py")):
+    for module in sorted(printed_surface):
         tree = ast.parse(module.read_text(encoding="utf-8"))
         docstrings = {
             node.body[0].value
