@@ -9,13 +9,39 @@ hoping to put it back.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# [AI-ENG:frozen-paths] A PyInstaller build has no source tree to walk up from: __file__
+# points inside the bundled archive, not beside the .exe. Two different real paths take
+# its place, and they are not the same directory:
+#
+# - Bundled, read-only data (content/) lives under sys._MEIPASS - the directory
+#   PyInstaller actually extracted or collected "datas" into. In --onedir mode that is
+#   the app's own _internal/ folder, sitting *beside* the exe, not the exe's own
+#   directory - COLLECT nests support files there rather than dropping them loose next
+#   to CodeQuest.exe.
+# - Writable, must-survive-an-update data (saves/) has to live next to the exe itself,
+#   deliberately *outside* _internal/, because replacing _internal/ wholesale is exactly
+#   how this game's own update instructions describe installing a new version.
+#
+# Getting this backwards would either lose save files on every update (if saves lived
+# inside _internal/) or fail to find the shipped content at all (the bug this comment
+# replaces - confirmed by actually running the built .exe, not by reasoning about it).
+# The same split shows up in any agent packaged for distribution: "where do my
+# read-only assets live" and "where does my mutable state live" stop being the same
+# answer the moment the code ships outside its own repo.
+if getattr(sys, "frozen", False):
+    _CONTENT_ROOT = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+    _WRITABLE_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    _CONTENT_ROOT = PROJECT_ROOT
+    _WRITABLE_ROOT = PROJECT_ROOT
 
 #: Fraction of a mission's XP kept after revealing N hints, indexed by hint count.
 #: Beyond the last entry the last value holds, which is the floor.
@@ -67,8 +93,8 @@ def _env_int(name: str, default: int) -> int:
 class Settings:
     """Everything the game reads from the outside world, resolved once."""
 
-    content_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "content")
-    save_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "saves")
+    content_dir: Path = field(default_factory=lambda: _CONTENT_ROOT / "content")
+    save_dir: Path = field(default_factory=lambda: _WRITABLE_ROOT / "saves")
     database_name: str = "codequest.db"
 
     default_timeout_ms: int = 2000
@@ -93,14 +119,14 @@ def load_settings(env_file: str | Path | None = None) -> Settings:
     Real environment variables win over the ``.env`` file, which is what makes
     ``CODEQUEST_DEBUG=1 python -m codequest`` work for a one-off run.
     """
-    load_dotenv(env_file or PROJECT_ROOT / ".env", override=False)
+    load_dotenv(env_file or _WRITABLE_ROOT / ".env", override=False)
 
     content = os.getenv("CODEQUEST_CONTENT_DIR")
     saves = os.getenv("CODEQUEST_SAVE_DIR")
 
     return Settings(
-        content_dir=Path(content) if content else PROJECT_ROOT / "content",
-        save_dir=Path(saves) if saves else PROJECT_ROOT / "saves",
+        content_dir=Path(content) if content else _CONTENT_ROOT / "content",
+        save_dir=Path(saves) if saves else _WRITABLE_ROOT / "saves",
         default_timeout_ms=_env_int("CODEQUEST_DEFAULT_TIMEOUT_MS", 2000),
         default_memory_mb=_env_int("CODEQUEST_DEFAULT_MEMORY_MB", 128),
         mentor_enabled=_env_bool("CODEQUEST_MENTOR_ENABLED", False),

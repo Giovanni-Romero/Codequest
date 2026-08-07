@@ -244,9 +244,29 @@ def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
 
+    # [AI-ENG:frozen-paths] A packaged build has no separate python.exe to hand the
+    # sandbox runner - see engine/runners/python.py. Instead the frozen executable
+    # re-invokes *itself* with this sentinel, and here it forks into the harness
+    # instead of the game. Checked before anything else, including argparse, because
+    # "__harness__" is not a real subcommand and must never reach the parser or its
+    # error messages.
+    if argv and argv[0] == "__harness__":
+        from codequest.engine.harness import main as harness_main
+
+        return harness_main(argv[1:])
+
     if not argv:
-        print(f"codequest {__version__}")
-        return 0
+        # The packaged build is launched by double-clicking it in a file
+        # manager, which passes no arguments at all. Printing the version and
+        # returning would close the console the instant it opened - the exact symptom
+        # reported from the pendrive. A shipped binary has to assume the *user's* intent
+        # (play the game), while `python -m codequest` from a source checkout keeps the
+        # developer's intent (report the version). Same entry point, two audiences.
+        if getattr(sys, "frozen", False):
+            argv = ["ui"]
+        else:
+            print(f"codequest {__version__}")
+            return 0
 
     parser = build_parser()
     args = parser.parse_args(argv)

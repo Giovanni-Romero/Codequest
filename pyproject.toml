@@ -33,6 +33,11 @@ dev = [
     "pytest-asyncio>=0.24",
     "pytest-textual-snapshot>=1.0",
 ]
+# Build-only: never installed for someone who just plays the game. Produces the
+# portable --onedir executable (see codequest.spec) for the pendrive use case.
+build = [
+    "pyinstaller>=6.10",
+]
 
 [project.scripts]
 codequest = "codequest.__main__:main"

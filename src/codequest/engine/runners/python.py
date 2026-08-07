@@ -114,7 +114,13 @@ class PythonRunner:
     # ------------------------------------------------------------------ preparation
 
     def prepare(self, submission: str, mission: Mission) -> PreparedCode:
-        """Write the submission and a copy of the harness into a fresh temp directory."""
+        """Write the submission and, outside a frozen build, a copy of the harness.
+
+        # [AI-ENG:frozen-paths] A packaged build never runs harness.py as a standalone
+        # file - it re-invokes the frozen executable itself (see execute() below), which
+        # already carries this module in-process. Copying it to disk would be copying a
+        # file that does not really exist on its own once bundled.
+        """
         try:
             workdir = tempfile.mkdtemp(prefix="codequest-")
         except OSError as exc:
@@ -123,7 +129,8 @@ class PythonRunner:
         try:
             entry_file = Path(workdir) / "submission.py"
             entry_file.write_text(submission, encoding="utf-8")
-            shutil.copyfile(harness_module.__file__, Path(workdir) / "harness.py")
+            if not getattr(sys, "frozen", False):
+                shutil.copyfile(harness_module.__file__, Path(workdir) / "harness.py")
         except OSError as exc:
             shutil.rmtree(workdir, ignore_errors=True)
             raise RunnerError(f"cannot write the sandbox files: {exc}") from exc
@@ -161,14 +168,29 @@ class PythonRunner:
         }
         request_path.write_text(json.dumps(request), encoding="utf-8")
 
-        command = [
-            self.interpreter,
-            "-I",  # isolated: ignore PYTHON* env vars and the user site directory
-            str(workdir / "harness.py"),
-            prepared.entry_file,
-            str(request_path),
-            str(result_path),
-        ]
+        if getattr(sys, "frozen", False):
+            # [AI-ENG:frozen-paths] self.interpreter is sys.executable, which inside a
+            # packaged build is CodeQuest.exe, not python.exe. "-I <script>.py" would
+            # mean nothing to it. Re-invoking itself with the "__harness__" sentinel
+            # (see __main__.py) makes the executable act as the harness for this one
+            # process instead of opening the game - still a genuinely separate,
+            # killable OS process, which is the property that actually matters here.
+            command = [
+                self.interpreter,
+                "__harness__",
+                prepared.entry_file,
+                str(request_path),
+                str(result_path),
+            ]
+        else:
+            command = [
+                self.interpreter,
+                "-I",  # isolated: ignore PYTHON* env vars and the user site directory
+                str(workdir / "harness.py"),
+                prepared.entry_file,
+                str(request_path),
+                str(result_path),
+            ]
 
         started = time.perf_counter()
         try:
