@@ -38,7 +38,13 @@ class TestCase:
     Args:
         args: Positional arguments passed to the entrypoint, in order.
         kwargs: Keyword arguments passed to the entrypoint.
-        expect: The value the entrypoint must return.
+        expect: The value the entrypoint must return. Ignored when ``raises`` is set.
+        raises: The exact name of the exception type the entrypoint must raise, e.g.
+            ``"ValueError"``. Mutually exclusive with ``expect`` — a case either has a
+            return value or an error, never both. Matched by **exact type name** rather
+            than by subclass: for a teaching game "expected ValueError, got TypeError"
+            is the useful message, and accepting any ``Exception`` subclass would let an
+            accidental crash pass as if it were the intended answer.
         tolerance: Absolute tolerance for float comparison. ``None`` means the
             evaluator requires exact equality — the right default, because a mission
             about integers should fail when it returns something that merely looks close.
@@ -54,8 +60,14 @@ class TestCase:
     args: tuple[Any, ...] = ()
     kwargs: dict[str, Any] = field(default_factory=dict)
     expect: Any = None
+    raises: str | None = None
     tolerance: float | None = None
     visible: bool = True
+
+    @property
+    def expects_error(self) -> bool:
+        """Whether this case passes by raising rather than by returning."""
+        return self.raises is not None
 
 
 @dataclass(frozen=True, slots=True)

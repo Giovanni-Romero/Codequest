@@ -17,6 +17,12 @@ produce the second kind of message.
 A hidden case that fails says *that* it failed and what shape of input it used — never
 the expected value. Leaking it turns the hidden suite into a lookup table and the
 mission stops catching the hardcoded answer it exists to catch.
+
+One deliberate exception: a case with ``raises`` set names the expected exception type
+even when hidden. That type is part of the contract the brief already states out loud
+("raise ValueError when the amount is negative"), so repeating it reveals nothing the
+player was not told, and withholding it would turn a wrong-exception failure into an
+unsolvable riddle. The *input* stays hidden as always.
 """
 
 from __future__ import annotations
@@ -118,6 +124,23 @@ def _evaluate_case(index: int, case: TestCase, result: ExecutionResult) -> CaseO
         )
 
     if reason is FailureReason.RUNTIME_ERROR:
+        # An exception is normally a failure, but a case with ``raises`` set is asking
+        # for one. Matched on the exact type name: see TestCase.raises for why subclass
+        # matching would be the wrong kindness here.
+        if case.expects_error:
+            if result.exception_type == case.raises:
+                return CaseOutcome(
+                    index, case.visible, True, FailureReason.PASSED, "", result.stdout
+                )
+            detail = (
+                f"Case {index + 1} was supposed to raise {case.raises}, "
+                f"but raised {result.exception_type} instead: {result.exception_message} "
+                f"(input: {shown_input})."
+            )
+            return CaseOutcome(
+                index, case.visible, False, FailureReason.WRONG_ANSWER, detail, result.stdout
+            )
+
         detail = (
             f"Case {index + 1} raised {result.exception_type}: {result.exception_message} "
             f"(input: {shown_input})."
@@ -127,6 +150,18 @@ def _evaluate_case(index: int, case: TestCase, result: ExecutionResult) -> CaseO
     if reason is FailureReason.HARNESS_ERROR:
         detail = "The game could not read the result of this run. This is a bug in CodeQuest."
         return CaseOutcome(index, case.visible, False, reason, detail, result.stdout)
+
+    # Reaching here with ``raises`` set means the call returned normally when it was
+    # supposed to fail. Without this branch a submission that never validates anything
+    # would quietly pass every error case it was written to catch.
+    if case.expects_error:
+        detail = (
+            f"Case {index + 1} was supposed to raise {case.raises}, but returned "
+            f"{_format_value(result.returned)} instead (input: {shown_input})."
+        )
+        return CaseOutcome(
+            index, case.visible, False, FailureReason.WRONG_ANSWER, detail, result.stdout
+        )
 
     if values_match(case.expect, result.returned, case.tolerance):
         return CaseOutcome(index, case.visible, True, FailureReason.PASSED, "", result.stdout)

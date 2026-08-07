@@ -86,8 +86,36 @@ Forbid the shortcut that skips the lesson. A mission about building a sum must f
 |---|---|---|---|
 | `args` | list | yes | Positional arguments, in order |
 | `kwargs` | object | no | Keyword arguments |
-| `expect` | any | yes | Expected return value |
+| `expect` | any | see below | Expected return value |
+| `raises` | string | see below | Exception type name the call must raise |
 | `tolerance` | float | no | For float comparison. Absent means exact equality |
+
+**Exactly one of `expect` or `raises` is required.** A case either ends by returning a
+value or by raising — never both, and never neither. Setting both is a validation error,
+because the author has not said which outcome they meant.
+
+### `raises`
+
+For missions that teach error handling: the case passes when the call raises an
+exception whose type name matches exactly.
+
+```yaml
+hidden:
+  - args: [-1]
+    raises: ValueError
+```
+
+Three rules worth knowing before using it:
+
+- **Exact type name, not subclass.** `raises: Exception` does *not* match a `ValueError`.
+  In a teaching game "expected ValueError, got TypeError" is the message that helps;
+  accepting any subclass would let an accidental crash pass as the intended answer.
+- **Returning normally fails the case.** A submission that never validates anything does
+  not quietly pass its error cases — it is told it returned a value where an exception
+  was required.
+- **Hidden cases still name the expected type.** This is the one documented exception to
+  "hidden cases never reveal the expected value": the exception type is already stated
+  in the brief, so repeating it leaks nothing. The input stays hidden.
 
 ### Hidden set must cover
 

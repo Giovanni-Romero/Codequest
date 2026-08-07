@@ -138,7 +138,8 @@ def test_empty_hidden_test_group_is_rejected(mission_factory):
     assert "tests.hidden" in str(exc_info.value)
 
 
-def test_case_without_expect_is_rejected(mission_factory):
+def test_case_with_neither_expect_nor_raises_is_rejected(mission_factory):
+    """A case with no outcome declared checks nothing at all."""
     path = mission_factory(
         tests={"visible": [{"args": [2]}], "hidden": [{"args": [0], "expect": 0}]}
     )
@@ -146,7 +147,52 @@ def test_case_without_expect_is_rejected(mission_factory):
     with pytest.raises(MissionValidationError) as exc_info:
         load_mission(path)
 
-    assert "missing 'expect'" in str(exc_info.value)
+    assert "either 'expect' or 'raises'" in str(exc_info.value)
+
+
+def test_case_with_both_expect_and_raises_is_rejected(mission_factory):
+    """Both means the author has not said which outcome they meant."""
+    path = mission_factory(
+        tests={
+            "visible": [{"args": [2], "expect": 4, "raises": "ValueError"}],
+            "hidden": [{"args": [0], "expect": 0}],
+        }
+    )
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "both 'expect' and 'raises'" in str(exc_info.value)
+
+
+def test_raises_must_be_written_as_a_string(mission_factory):
+    """A bare YAML `raises: ValueError` is a string, but `raises: 5` is an author bug."""
+    path = mission_factory(
+        tests={
+            "visible": [{"args": [2], "raises": 5}],
+            "hidden": [{"args": [0], "expect": 0}],
+        }
+    )
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "raises" in str(exc_info.value)
+
+
+def test_a_raises_case_loads_and_knows_it_expects_an_error(mission_factory):
+    path = mission_factory(
+        tests={
+            "visible": [{"args": [-1], "raises": "ValueError"}],
+            "hidden": [{"args": [0], "expect": 0}],
+        }
+    )
+
+    mission = load_mission(path)
+
+    assert mission.tests[0].raises == "ValueError"
+    assert mission.tests[0].expects_error is True
+    assert mission.tests[1].expects_error is False
 
 
 def test_malformed_yaml_names_the_file(tmp_path):

@@ -162,10 +162,28 @@ def _validate_mission(raw: Any) -> list[str]:
             for index, case in enumerate(cases):
                 if not isinstance(case, dict):
                     problems.append(f"tests.{group}[{index}] must be a mapping")
-                elif "args" not in case:
+                    continue
+                if "args" not in case:
                     problems.append(f"tests.{group}[{index}] is missing 'args'")
-                elif "expect" not in case:
-                    problems.append(f"tests.{group}[{index}] is missing 'expect'")
+
+                # A case passes either by returning a value or by raising. Demanding
+                # exactly one of the two is what stops a silently ambiguous case: with
+                # both, the author cannot say which outcome they meant, and with
+                # neither there is nothing to check at all.
+                has_expect = "expect" in case
+                has_raises = "raises" in case
+                if has_expect and has_raises:
+                    problems.append(
+                        f"tests.{group}[{index}] sets both 'expect' and 'raises' - "
+                        "a case either returns a value or raises, never both"
+                    )
+                elif not has_expect and not has_raises:
+                    problems.append(f"tests.{group}[{index}] needs either 'expect' or 'raises'")
+                elif has_raises and not isinstance(case["raises"], str):
+                    problems.append(
+                        f"tests.{group}[{index}].raises must be an exception type name, "
+                        "written as a string"
+                    )
     elif "tests" in raw:
         problems.append("tests must be a mapping with 'visible' and 'hidden'")
 
@@ -202,6 +220,7 @@ def _build_cases(tests: dict[str, Any]) -> tuple[TestCase, ...]:
                     args=tuple(raw_case.get("args") or ()),
                     kwargs=dict(raw_case.get("kwargs") or {}),
                     expect=raw_case.get("expect"),
+                    raises=raw_case.get("raises"),
                     tolerance=raw_case.get("tolerance"),
                     visible=visible,
                 )

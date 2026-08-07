@@ -227,3 +227,92 @@ def test_player_stdout_reaches_the_verdict():
     verdict = evaluate(mission, mission.tests, results)
 
     assert "checking 1" in verdict.stdout
+
+
+# --------------------------------------------------------------- cases that must raise
+
+
+def raised(exception_type: str, message: str = "boom") -> ExecutionResult:
+    return ExecutionResult(status="error", exception_type=exception_type, exception_message=message)
+
+
+def raising_mission(**overrides):
+    """A mission whose single case passes only by raising ValueError."""
+    return make_mission(
+        tests=(TestCase(args=(-1,), raises="ValueError", visible=True),), **overrides
+    )
+
+
+def test_raising_the_expected_exception_passes():
+    mission = raising_mission()
+
+    verdict = evaluate(mission, mission.tests, [raised("ValueError")])
+
+    assert verdict.passed
+    assert verdict.reason is FailureReason.PASSED
+
+
+def test_returning_a_value_when_an_exception_was_required_fails():
+    """The branch that stops a submission which never validates anything.
+
+    Without it, a function that simply returns would pass every error case a mission
+    was written to enforce.
+    """
+    mission = raising_mission()
+
+    verdict = evaluate(mission, mission.tests, [ok(0)])
+
+    assert not verdict.passed
+    assert verdict.reason is FailureReason.WRONG_ANSWER
+    assert "ValueError" in verdict.summary
+    assert "returned" in verdict.summary
+
+
+def test_raising_the_wrong_exception_type_fails_and_names_both():
+    mission = raising_mission()
+
+    verdict = evaluate(mission, mission.tests, [raised("TypeError", "bad operand")])
+
+    assert not verdict.passed
+    assert verdict.reason is FailureReason.WRONG_ANSWER
+    assert "ValueError" in verdict.summary
+    assert "TypeError" in verdict.summary
+
+
+def test_exact_type_match_means_a_base_class_does_not_satisfy_a_subclass():
+    """``raises: Exception`` must not be satisfied by a ValueError, and vice versa.
+
+    Subclass matching would let an accidental crash pass as the intended answer, which
+    is the opposite of what an error-handling mission is trying to teach.
+    """
+    mission = raising_mission()
+
+    verdict = evaluate(mission, mission.tests, [raised("Exception")])
+
+    assert not verdict.passed
+
+
+def test_a_hidden_raising_case_names_the_type_but_not_the_input():
+    """The one documented exception to the hidden-case rule, asserted rather than assumed.
+
+    The exception type is already stated in the brief, so repeating it leaks nothing.
+    The input must still be withheld.
+    """
+    mission = make_mission(
+        tests=(TestCase(args=(-99,), raises="ValueError", visible=False),),
+    )
+
+    verdict = evaluate(mission, mission.tests, [ok(0)])
+
+    assert "ValueError" in verdict.summary
+    assert "-99" not in verdict.summary
+
+
+def test_an_unexpected_exception_is_still_a_runtime_error():
+    """The ordinary path must not regress: a case with no ``raises`` still fails on error."""
+    mission = make_mission()
+
+    verdict = evaluate(mission, mission.tests, [raised("ZeroDivisionError"), ok(0), ok(7)])
+
+    assert not verdict.passed
+    assert verdict.reason is FailureReason.RUNTIME_ERROR
