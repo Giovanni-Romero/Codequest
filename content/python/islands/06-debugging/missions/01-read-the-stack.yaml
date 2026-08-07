@@ -1,0 +1,163 @@
+# Mission 1 of Debugging. Introduces: reading-tracebacks.
+# Skeleton-shaped: the traceback arrives as ordinary text, so parsing it is a normal
+# testable task. Reuses split-and-parse from Island 4.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-01
+title: Read the stack
+track: python
+island: debugging
+order: 1
+difficulty: moderate
+tags: [tracebacks, parsing, exceptions]
+xp: 30
+
+concepts:
+  - reading-tracebacks
+
+teaching:
+  analogy: |
+    A traceback is not an error message. It is a chain of custody.
+
+    Each entry says "this line called that one". The top of the chain is where the
+    program started; the bottom is where it finally broke. Reading it from the top is
+    like starting a burglary investigation with whoever built the house - technically
+    the beginning of the story, and almost never who you want.
+
+    Read it from the bottom.
+
+  explanation: |
+    A traceback has three parts, and knowing which is which turns a wall of text into
+    three short facts.
+
+    The first line is just a header: "Traceback (most recent call last)". That last
+    parenthesis is the instruction - the calls are listed oldest first, so the newest and
+    most relevant one is at the bottom.
+
+    The middle is one pair of lines per frame. A frame says which file, which line
+    number, which function, and then shows the source line itself:
+
+        File "cargo.py", line 42, in stow
+          weight = total / count
+
+    The last line is the exception type and its message:
+
+        ZeroDivisionError: division by zero
+
+    The frame that matters most is the **innermost one that belongs to your own code**.
+    Frames below it are usually library internals you did not write and cannot fix; the
+    frames above it are just how you got there.
+
+  worked_example: |
+    # Pulling facts out of a traceback with the string tools from Island 4
+    text = 'File "cargo.py", line 42, in stow'
+
+    parts = text.split(",")             # ['File "cargo.py"', ' line 42', ' in stow']
+    line_number = int(parts[1].strip().split(" ")[1])
+    function = parts[2].strip().split(" ")[1]
+
+    print(line_number)                  # 42
+    print(function)                     # stow
+
+    # And the last line of a traceback splits on the first colon:
+    final = "ZeroDivisionError: division by zero"
+    kind = final.split(":")[0]
+    print(kind)                         # ZeroDivisionError
+
+  key_points:
+    - "Read a traceback from the bottom. The header says 'most recent call last' and means it."
+    - The last line is the exception type and message. The frames above are the route that reached it.
+    - "The frame worth opening is the innermost one in code you wrote - library frames below it are rarely the bug."
+    - A traceback is text like any other. The parsing tools from the Strings island work on it.
+
+brief: |
+  Write a function called read_traceback that takes a traceback as one piece of text and
+  returns a list of exactly three values, in order:
+
+    - the exception type, as text
+    - the line number of the **last** frame, as a whole number
+    - the function name of the last frame, as text
+
+  The text you receive always has this shape, with the frames in the usual order and the
+  exception on the final line:
+
+      Traceback (most recent call last):
+        File "a.py", line 10, in outer
+          inner()
+        File "a.py", line 42, in stow
+          weight = total / count
+      ZeroDivisionError: division by zero
+
+  For that input the answer is ["ZeroDivisionError", 42, "stow"].
+
+  You may assume there is at least one frame and that every frame line follows the
+  format shown.
+
+signature:
+  entrypoint: read_traceback
+  stub: |
+    def read_traceback(text):
+        # Split into lines. The exception is the last one; the last frame is the last
+        # line that starts with "File".
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["Traceback (most recent call last):\n  File \"a.py\", line 10, in outer\n    inner()\n  File \"a.py\", line 42, in stow\n    weight = total / count\nZeroDivisionError: division by zero"]
+      expect: ["ZeroDivisionError", 42, "stow"]
+    - args: ["Traceback (most recent call last):\n  File \"m.py\", line 7, in main\n    go()\nValueError: bad value"]
+      expect: ["ValueError", 7, "main"]
+  hidden:
+    - args: ["Traceback (most recent call last):\n  File \"x.py\", line 1, in <module>\n    boom()\nNameError: name 'boom' is not defined"]
+      expect: ["NameError", 1, "<module>"]
+    - args: ["Traceback (most recent call last):\n  File \"a.py\", line 5, in one\n    two()\n  File \"a.py\", line 9, in two\n    three()\n  File \"a.py\", line 15, in three\n    x = y\nTypeError: unsupported operand"]
+      expect: ["TypeError", 15, "three"]
+    - args: ["Traceback (most recent call last):\n  File \"deep.py\", line 999, in handler\n    fail()\nKeyError: 'missing'"]
+      expect: ["KeyError", 999, "handler"]
+    - args: ["Traceback (most recent call last):\n  File \"s.py\", line 3, in load_all\n    parse()\nAssertionError: "]
+      expect: ["AssertionError", 3, "load_all"]
+
+hints:
+  - level: 1
+    text: |
+      Split the text into lines first and look at what you have. Which single line holds
+      the exception type, and how do you find the *last* line that describes a frame
+      rather than the first?
+  - level: 2
+    text: |
+      Use text.split("\n") for the lines. The exception is the last line - take
+      everything before its first colon. For the frame, loop over the lines keeping the
+      most recent one whose stripped form starts with "File", then pull the number and
+      the name out of it by splitting on commas.
+  - level: 3
+    text: |
+      Pulling the two fields out of one frame line:
+
+          bits = frame.split(",")
+          number = int(bits[1].strip().split(" ")[1])
+          name = bits[2].strip().split(" ")[1]
+
+      Yours has to find which line to run that on, and pair it with the exception type.
+
+solution: |
+  def read_traceback(text):
+      lines = text.split("\n")
+
+      final = lines[-1]
+      kind = final.split(":")[0].strip()
+
+      last_frame = ""
+      for line in lines:
+          if line.strip().startswith("File"):
+              last_frame = line
+
+      bits = last_frame.split(",")
+      number = int(bits[1].strip().split(" ")[1])
+      name = bits[2].strip().split(" ")[1]
+
+      return [kind, number, name]

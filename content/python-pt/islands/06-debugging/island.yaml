@@ -1,0 +1,24 @@
+id: debugging
+name: Depuração
+track: python
+order: 6
+theme: Descobrir por quê, não adivinhar
+description: |
+  A maioria das missões desta ilha te entrega código já pronto e já errado. E esse é o
+  ponto: não dá para praticar achar um bug em código que ainda não existe.
+
+  Nada novo é ensinado aqui. Todo bug plantado adiante é um sobre o qual uma ilha
+  anterior te avisou, encontrado do outro lado - como sintoma em vez de regra.
+
+concepts:
+  - reading-tracebacks
+  - logic-vs-data
+  - print-debugging
+  - interactive-debugger
+  - bisection
+  - assert-as-diagnosis
+
+unlock_requires:
+  missions_completed: 54
+
+completion_reward_xp: 220

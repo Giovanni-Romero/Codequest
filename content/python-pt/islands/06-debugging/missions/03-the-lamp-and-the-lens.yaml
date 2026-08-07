@@ -1,0 +1,188 @@
+# Missao 3 de Depuracao. Introduz: print-debugging, interactive-debugger.
+# Reforca: logic-vs-data.
+#
+# O painel de licao longo da ilha. Os dois conceitos sao inverificaveis - prints de
+# depuracao sao temporarios por definicao, e uma missao nunca pode RODAR breakpoint()
+# porque o sandbox herda o stdin do jogo e travaria ate o timeout. Entao o painel ensina
+# o metodo e a missao e avaliada pelo conserto. Ver o syllabus, Ilha 6.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-03
+title: A lamparina e a lente
+track: python
+island: debugging
+order: 3
+difficulty: moderate
+tags: [bug-fix, print-debugging, tooling]
+xp: 30
+
+concepts:
+  - print-debugging
+  - interactive-debugger
+  - logic-vs-data
+
+teaching:
+  analogy: |
+    Duas ferramentas para olhar dentro de um porão escuro.
+
+    Uma lamparina você pendura onde acha que está o problema. Barata, instantânea, e
+    ilumina um ponto - então onde você a pendura é a habilidade inteira. Pendure na porta
+    e você aprende só que o porão é escuro.
+
+    Uma lente demora mais para buscar e deixa você parar e examinar um caixote por vez,
+    virando-o, sem perturbar nada. Você não busca uma lente para conferir se a lamparina
+    está acesa.
+
+    A lamparina é um print. A lente é um depurador. Pegar a errada não é um erro, mas
+    saber qual é qual economiza horas.
+
+  explanation: |
+    Um print responde uma pergunta: qual era este valor neste momento?
+
+    Isso parece trivial e é a técnica inteira, porque quase todo bug é um valor que
+    estava certo e ficou errado. Seu trabalho é achar a linha onde ele mudou. Três regras
+    fazem a diferença entre achar em duas rodadas e achar em vinte.
+
+    **Rotule todo print.** Saída pelada fica ilegível em três linhas. `print(total)` te dá
+    uma coluna de números; `print("total depois de somar:", total)` te dá uma resposta.
+
+    **Imprima onde divide a busca, não onde o estrago aparece.** O fim da função é onde
+    você *notou* o problema, que quase nunca é onde ele começou. Ponha o primeiro print
+    na metade entre onde o valor estava definitivamente certo e onde está definitivamente
+    errado, depois vá para a metade que ainda contém a mudança. É a mesma divisão que a
+    missão de bisecção formaliza.
+
+    **Imprima o que você duvida, não o que já sabe.** Um print confirmando algo óbvio
+    custa uma execução e não ensina nada.
+
+    Depois apague. Prints de depuração são andaime, não o prédio - a técnica termina
+    removendo-os, que é exatamente por que nada neste jogo os avalia.
+
+    **Quando prints param de dar conta, troque pela lente.** Um laço com duzentas
+    passagens te afoga em saída; um valor que erra em algum ponto ao longo de cinco
+    chamadas significa editar cinco lugares. Python tem um depurador embutido - escreva
+    `breakpoint()` na linha onde quer parar, rode o arquivo, e você cai num prompt
+    interativo onde digita o nome de uma variável para vê-la, `n` para a próxima linha,
+    `c` para seguir.
+
+    **Não digite breakpoint() no editor deste jogo.** O sandbox não tem terminal para te
+    entregar, então ele ficaria parado até a missão dar timeout. Depure assim no seu
+    próprio editor.
+
+    O que é um fluxo que vale ter de qualquer forma, e é o que profissionais fazem: copie
+    a função quebrada para um arquivo no VS Code ou no que você usar, acrescente algumas
+    chamadas no fim com entradas cujas respostas você conhece, e rode lá. Você ganha seu
+    depurador de verdade, breakpoints que você clica em vez de digitar, e a capacidade de
+    passar o mouse numa variável e vê-la. Conserte lá, traga a função consertada de
+    volta, e aperte F5.
+
+    Prints funcionam aqui dentro também - o que você imprimir aparece no painel de
+    resultados em "sua saída", então dá para caçar um bug sem sair do jogo.
+
+  worked_example: |
+    # Cacando um valor que erra em algum lugar no meio
+    def maior_corrente(valores):
+        melhor = 0
+        for valor in valores:
+            print("checando:", valor, "melhor ate agora:", melhor)   # rotulado, no laco
+            if valor > melhor:
+                melhor = valor
+        return melhor
+
+    print(maior_corrente([-5, -2, -9]))
+    # checando: -5 melhor ate agora: 0
+    # checando: -2 melhor ate agora: 0    <- melhor nunca anda. Agora voce sabe POR QUE
+    # checando: -9 melhor ate agora: 0
+    # 0
+
+    # A saida nao diz "o bug esta na linha 2". Ela diz que melhor comecou em 0 e nada o
+    # superou - o que aponta direto para o valor inicial.
+
+  key_points:
+    - "Rotule todo print. Uma coluna de números sem rótulo não é evidência."
+    - Imprima onde divide o intervalo suspeito ao meio, não no fim onde você notou o problema.
+    - Prints de depuração são andaime. A técnica termina apagando-os, que é por que nada os avalia.
+    - "breakpoint() abre o depurador do Python - no seu próprio editor. Neste sandbox ele travaria até o timeout."
+    - Copiar a função quebrada para o VS Code, chamá-la com entradas conhecidas e consertar lá é um fluxo real, não trapaça.
+
+brief: |
+  A função abaixo deveria retornar a maior leitura de uma lista, ou None quando a lista
+  está vazia.
+
+  Ela está pronta, e está errada: numa lista onde toda leitura é negativa ela retorna 0,
+  que nunca esteve na lista.
+
+  Encontre o bug e conserte. Instrumente como quiser - prints dentro do laço aparecem no
+  seu painel de resultados, ou copie para o seu editor e percorra passo a passo.
+
+signature:
+  entrypoint: highest_reading
+  stub: |
+    def highest_reading(readings):
+        if not readings:
+            return None
+
+        best = 0
+        for reading in readings:
+            if reading > best:
+                best = reading
+
+        return best
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[3, 9, 4]]
+      expect: 9
+    - args: [[-5, -2, -9]]
+      expect: -2
+  hidden:
+    - args: [[]]
+      expect: null
+    - args: [[-1]]
+      expect: -1
+    - args: [[0]]
+      expect: 0
+    - args: [[-100, -100]]
+      expect: -100
+    - args: [[5, -5]]
+      expect: 5
+    - args: [[-3, 0, -7]]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Ponha um print rotulado dentro do laço mostrando a leitura atual e best, depois rode
+      com [-5, -2, -9]. A saída vai te mostrar que best nunca muda. Pergunte por que nada
+      nunca foi maior que ele.
+  - level: 2
+    text: |
+      best começa em 0, e 0 não é uma leitura. É um valor inventado pela função, e numa
+      lista toda negativa nada nunca o supera. O valor inicial precisa vir dos dados em
+      vez de sair do nada.
+  - level: 3
+    text: |
+      O mesmo conserto, num menor-até-agora:
+
+          menor = valores[0]        # comece de algo que esta de fato na lista
+          for valor in valores:
+              if valor < menor:
+                  menor = valor
+
+      A sua procura o maior, e o caso vazio já está tratado acima dela.
+
+solution: |
+  def highest_reading(readings):
+      if not readings:
+          return None
+
+      best = readings[0]
+      for reading in readings:
+          if reading > best:
+              best = reading
+
+      return best

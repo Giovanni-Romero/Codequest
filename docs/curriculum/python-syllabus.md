@@ -685,25 +685,150 @@ Every concept is reused at least twice. No orphans.
 
 **Theme:** finding out why, not guessing
 **Band:** moderate
-Concepts: `reading-tracebacks`, `print-debugging`, `bisection`, `assert-as-diagnosis`,
-`interactive-debugger`, `logic-vs-data`
+**Missions:** 10
 
-Added after Island 5 on purpose, not before: reading a traceback usefully depends on
-already knowing what an exception is, which Island 5 just taught. This island does not
-teach new error-handling constructs — it teaches what to do with your own eyes and hands
-when a program you already know how to write is not doing what you meant.
+Added after Island 5 on purpose: reading a traceback usefully depends on already knowing
+what an exception is. This island teaches no new syntax at all — it teaches what to do
+with your own eyes and hands when a program you already know how to write is not doing
+what you meant.
 
-Design note: `logic-vs-data` is the first question every mission in this island should
-train — "is the code wrong, or is what I fed it wrong?" — because it is the fork every
-real debugging session starts from. `bisection` (narrowing down *where* in a chain of
-operations something goes wrong, by checking a middle point) is worth its own mission
-separate from `print-debugging`, because it is a strategy, not a tool.
+**Concepts (6):** `reading-tracebacks`, `logic-vs-data`, `print-debugging`,
+`interactive-debugger`, `bisection`, `assert-as-diagnosis`
 
-`[AI-ENG:debugging-methodology]` bridge, to write once this island has real missions:
-isolating a failure by bisection and forming a testable hypothesis before changing
-anything is the same discipline `superpowers:systematic-debugging` names for an agent
-debugging its own tool calls — a human doing it to a Python function first is the same
-muscle, smaller stakes.
+### The mission shape changes here, and it has to
+
+Every island so far handed the player an empty skeleton to fill in. Most of this island
+hands them **complete code that is wrong**, and the job is to find the bug and fix it.
+
+That is not a stylistic choice. You cannot practise debugging on code that does not exist
+yet, and a skeleton mission teaches authoring, not investigation. The engine supports
+this today with no change: `signature.stub` is only pre-filled editor content, and
+`tests/content/test_all_missions.py` verifies that the *solution* passes — it never
+requires the stub to fail.
+
+**Every planted bug is a misconception an earlier island warned about.** The accumulator
+created inside the loop (Island 1), the helper that mutates its caller's list (Island 3),
+`>=` where `>` was meant (Island 1), the mutable default (Island 3). This island is where
+those warnings get collected: the player meets each one from the other side, as a symptom
+rather than a rule.
+
+### What could not be verified, and what was done instead
+
+`print-debugging` is the one concept here with no testable artifact. Debug prints are
+temporary by definition — the skill ends with removing them, so there is nothing left to
+assert on.
+
+Asserting on captured `stdout` was considered and **rejected**. Exact matching would test
+whether the player reproduced the author's wording character for character; loose matching
+("does the output contain X") is passed by one unconditional `print` and verifies nothing.
+Any rule strict enough to mean something is strict enough to be about formatting rather
+than investigation. It would also reward permanently keeping prints that professionals
+remove before committing, and would fail a player who reached for a debugger or `logging`
+instead — both equally correct.
+
+So mission 3 teaches print-debugging in its panel and is assessed on **the fixed code**.
+The print is the method; the working function is the deliverable. This costs nothing in
+practice, because the player really can debug with prints inside the game: `stdout` is
+already captured and rendered in the results panel (`tui/widgets/test_results.py`).
+
+`interactive-debugger` shares that mission rather than getting its own. It is equally
+unverifiable, and there is a concrete hazard: the sandbox subprocess inherits the game's
+stdin (`engine/runners/python.py` passes no `stdin=`), so a submission calling
+`breakpoint()` would block on a terminal read until the wall-clock timeout kills it. A
+mission must never require running it. The panel teaches it as the tool you reach for when
+prints stop scaling, including the workflow of copying the broken function into your own
+editor, stepping through it there, and bringing the fix back.
+
+### Mission map
+
+| # | Slug | Introduces | Shape | Note |
+|---|---|---|---|---|
+| 1 | `read-the-stack` | `reading-tracebacks` | skeleton | A traceback arrives as text; extract the type, line and innermost frame |
+| 2 | `the-wrong-question` | `logic-vs-data` | fix | Is the code wrong, or is what I fed it wrong? |
+| 3 | `the-lamp-and-the-lens` | `print-debugging`, `interactive-debugger` | fix | The long teaching panel of the island. Assessed on the fix |
+| 4 | `halve-the-search` | `bisection` | skeleton | Binary search for the first bad reading. `git bisect` as an algorithm |
+| 5 | `the-off-by-one` | — | fix | **Relief.** One character wrong, and the whole island in miniature |
+| 6 | `the-honest-assert` | `assert-as-diagnosis` | skeleton | `assert` fires, verified with `raises: AssertionError` |
+| 7 | `the-leaking-helper` | — | fix | Island 3's mutation bug, met as a symptom |
+| 8 | `the-reset-tally` | — | fix | Island 1's accumulator-inside-the-loop, met as a symptom |
+| 9 | `the-shared-basket` | — | fix | **Relief.** Island 3's mutable default, met as a symptom |
+| 10 | `the-whole-investigation` | — | fix | Closing. A bug that has to be *located* before it can be fixed |
+
+Reinforcement:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `reading-tracebacks` | 1 | 2, 7, 10 |
+| `logic-vs-data` | 2 | 5, 8, 10 |
+| `print-debugging` | 3 | 8, 10 |
+| `interactive-debugger` | 3 | — |
+| `bisection` | 4 | 10 |
+| `assert-as-diagnosis` | 6 | 10 |
+
+`interactive-debugger` is introduced once and never reinforced, breaking the two-reuse
+rule. That is deliberate and is the honest consequence of the hazard above: no mission may
+run a debugger, so no mission can reinforce it. Recording the exception is better than
+inventing a mission that pretends to.
+
+### reading-tracebacks
+- **prereqs:** exceptions, split-and-parse
+- **objective:** read a traceback from the bottom up and name the file, line and call that
+  actually failed
+- **misconceptions:** reading a traceback top-down and blaming the first frame, which is
+  usually library code; believing the last line is the only useful part; being scared off
+  by the length rather than noticing it is a call chain
+- **mastery:** given a traceback, points at the innermost frame belonging to their own
+  code and says what it was doing
+
+### logic-vs-data
+- **prereqs:** input-validation, reading-tracebacks
+- **objective:** decide whether a failure comes from wrong code or from wrong input before
+  changing anything
+- **misconceptions:** editing the code as the first move every time; assuming the input is
+  fine because it came from inside the same program; assuming the input is at fault
+  because the code "looks right"
+- **mastery:** given a failing case, states which of the two it is and what evidence says so
+
+### print-debugging
+- **prereqs:** logic-vs-data
+- **objective:** find where a value first becomes wrong by making the program say what it
+  is holding
+- **misconceptions:** printing only at the end, where the damage is visible but the cause
+  is not; printing a value without labelling which one it is; adding prints at random
+  rather than narrowing the range; leaving them in afterwards
+- **mastery:** places a print at the point that splits the suspect range roughly in half,
+  and labels it well enough to read the output without counting lines
+
+### interactive-debugger
+- **prereqs:** print-debugging
+- **objective:** know when prints stop being enough and what replaces them
+- **misconceptions:** believing a debugger is for experts rather than for loops with many
+  passes; believing you must abandon your editor to use one
+- **mastery:** describes a situation where stepping beats printing, and vice versa
+
+### bisection
+- **prereqs:** print-debugging
+- **objective:** halve the suspect range with each check instead of scanning it
+- **misconceptions:** checking candidates one by one from the start; believing bisection
+  needs a sorted list rather than a monotonic property ("everything after the first bad
+  one is bad"); forgetting that a range with nothing wrong in it has no answer
+- **mastery:** locates a first-bad element in a long sequence with far fewer checks than
+  its length
+
+### assert-as-diagnosis
+- **prereqs:** raising, logic-vs-data
+- **objective:** state an assumption in code so it announces itself the moment it stops
+  being true
+- **misconceptions:** using `assert` for user input validation, which is what `raise`
+  is for and which `python -O` strips out entirely; asserting something already obvious
+  from the line above; writing an assert with no message
+- **mastery:** explains why a check that must survive in production is a `raise` and not
+  an `assert`
+
+`[AI-ENG:debugging-methodology]` bridge, to attach when mission 4 is written: halving the
+suspect range and forming a falsifiable hypothesis before changing anything is the same
+discipline `superpowers:systematic-debugging` names for an agent debugging its own tool
+calls. Same muscle, smaller stakes, and the human version comes first.
 
 ---
 
@@ -757,7 +882,7 @@ Knowing when not to reach for a tool is the harder half of the skill.
 
 ## Coverage checklist
 
-Checked for **Islands 1 to 5**. Islands 6 to 11 are sketched, not designed — they get
+Checked for **Islands 1 to 6**. Islands 7 to 11 are sketched, not designed — they get
 their own pass before their missions are written.
 
 - [x] Every concept has an explicit prereq list

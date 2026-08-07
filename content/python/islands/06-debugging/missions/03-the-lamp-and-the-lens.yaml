@@ -1,0 +1,189 @@
+# Mission 3 of Debugging. Introduces: print-debugging, interactive-debugger.
+# Reinforces: logic-vs-data.
+#
+# The long teaching panel of the island. Both concepts are unverifiable - debug prints
+# are temporary by definition, and a mission must never RUN breakpoint() because the
+# sandbox inherits the game's stdin and would block until the timeout. So the panel
+# teaches the method and the mission is assessed on the fix. See the syllabus, Island 6.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-03
+title: The lamp and the lens
+track: python
+island: debugging
+order: 3
+difficulty: moderate
+tags: [bug-fix, print-debugging, tooling]
+xp: 30
+
+concepts:
+  - print-debugging
+  - interactive-debugger
+  - logic-vs-data
+
+teaching:
+  analogy: |
+    Two tools for looking into a dark hold.
+
+    A lamp you hang where you think the trouble is. Cheap, instant, and it lights one
+    spot - so where you hang it is the entire skill. Hang it at the door and you learn
+    only that the hold is dark.
+
+    A lens is slower to fetch and lets you stop and examine one crate at a time, turning
+    it over, without disturbing anything. You do not carry a lens to check whether the
+    lamp is on.
+
+    The lamp is a print. The lens is a debugger. Reaching for the wrong one is not a
+    mistake, but knowing which is which saves hours.
+
+  explanation: |
+    A print answers one question: what was this value at this moment?
+
+    That sounds trivial and it is the entire technique, because almost every bug is a
+    value that was right and then became wrong. Your job is to find the line where it
+    changed. Three rules make the difference between finding it in two runs and finding
+    it in twenty.
+
+    **Label every print.** Bare output is unreadable within three lines. `print(total)`
+    gives you a column of numbers; `print("total after add:", total)` gives you an
+    answer.
+
+    **Print where it splits the search, not where the damage shows.** The end of the
+    function is where you *noticed* the problem, which is almost never where it started.
+    Put the first print halfway between where the value was definitely right and where
+    it is definitely wrong, then move to whichever half still contains the change. That
+    is the same halving the bisection mission makes formal.
+
+    **Print the thing you doubt, not the thing you already know.** A print confirming
+    something obvious costs a run and teaches nothing.
+
+    Then delete them. Debug prints are scaffolding, not the building - the technique ends
+    with removing them, which is exactly why nothing in this game grades them.
+
+    **When prints stop scaling, switch to the lens.** A loop with two hundred passes
+    drowns you in output; a value that goes wrong somewhere across five function calls
+    means editing five places. Python has a debugger built in - write `breakpoint()` on
+    the line you want to stop at, run the file, and you land in an interactive prompt
+    where you type a variable's name to see it, `n` to run the next line, `c` to carry
+    on.
+
+    **Do not type breakpoint() into this game's editor.** The sandbox has no terminal to
+    hand you, so it would sit there until the mission times out. Debug that way in your
+    own editor.
+
+    Which is a workflow worth having anyway, and is what professionals do: copy the
+    broken function into a file in VS Code or whatever you use, add a couple of calls at
+    the bottom with inputs whose answers you know, and run it there. You get your real
+    debugger, breakpoints you click rather than type, and the ability to hover a variable
+    and see it. Fix it there, bring the fixed function back here, and press F5.
+
+    Prints work in here too - whatever you print shows up in the results panel under
+    "your output", so you can hunt a bug without leaving the game at all.
+
+  worked_example: |
+    # Hunting a value that goes wrong somewhere in the middle
+    def running_max(values):
+        best = 0
+        for value in values:
+            print("checking:", value, "best so far:", best)   # labelled, inside the loop
+            if value > best:
+                best = value
+        return best
+
+    print(running_max([-5, -2, -9]))
+    # checking: -5 best so far: 0
+    # checking: -2 best so far: 0      <- best never moves. Now you know WHY, not just that
+    # checking: -9 best so far: 0
+    # 0
+
+    # The output does not say "the bug is on line 2". It says best started at 0 and
+    # nothing beat it - which points straight at the starting value.
+
+  key_points:
+    - "Label every print. An unlabelled column of numbers is not evidence."
+    - Print where it halves the suspect range, not at the end where you noticed the problem.
+    - Debug prints are scaffolding. The technique ends with deleting them, which is why nothing grades them.
+    - "breakpoint() opens Python's debugger - in your own editor. In this sandbox it would hang until the timeout."
+    - Copying the broken function into VS Code, calling it with known inputs, and fixing it there is a real workflow, not cheating.
+
+brief: |
+  The function below is meant to return the highest reading in a list, or None when the
+  list is empty.
+
+  It is finished, and it is wrong: on a list where every reading is negative it returns
+  0, which was never in the list at all.
+
+  Find the bug and fix it. Instrument it however you like - prints inside the loop will
+  show up in your results panel, or copy it into your own editor and step through it.
+
+signature:
+  entrypoint: highest_reading
+  stub: |
+    def highest_reading(readings):
+        if not readings:
+            return None
+
+        best = 0
+        for reading in readings:
+            if reading > best:
+                best = reading
+
+        return best
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[3, 9, 4]]
+      expect: 9
+    - args: [[-5, -2, -9]]
+      expect: -2
+  hidden:
+    - args: [[]]
+      expect: null
+    - args: [[-1]]
+      expect: -1
+    - args: [[0]]
+      expect: 0
+    - args: [[-100, -100]]
+      expect: -100
+    - args: [[5, -5]]
+      expect: 5
+    - args: [[-3, 0, -7]]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Put a labelled print inside the loop showing the current reading and best, then run
+      it with [-5, -2, -9]. The output will show you that best never changes. Ask why
+      nothing was ever bigger than it.
+  - level: 2
+    text: |
+      best starts at 0, and 0 is not a reading. It is a value invented by the function,
+      and on an all-negative list nothing ever beats it. The starting value has to come
+      from the data instead of from thin air.
+  - level: 3
+    text: |
+      The same fix, on a smallest-so-far:
+
+          lowest = values[0]        # start from something that is actually in the list
+          for value in values:
+              if value < lowest:
+                  lowest = value
+
+      Yours looks for the largest, and the empty case is already handled above it.
+
+solution: |
+  def highest_reading(readings):
+      if not readings:
+          return None
+
+      best = readings[0]
+      for reading in readings:
+          if reading > best:
+              best = reading
+
+      return best

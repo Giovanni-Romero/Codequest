@@ -1,0 +1,25 @@
+id: debugging
+name: Debugging
+track: python
+order: 6
+theme: Finding out why, not guessing
+description: |
+  Most of the missions on this island hand you code that is already finished and
+  already wrong. That is the point: you cannot practise finding a bug in code that
+  does not exist yet.
+
+  Nothing new is taught here. Every bug planted ahead is one an earlier island warned
+  you about, met from the other side - as a symptom instead of a rule.
+
+concepts:
+  - reading-tracebacks
+  - logic-vs-data
+  - print-debugging
+  - interactive-debugger
+  - bisection
+  - assert-as-diagnosis
+
+unlock_requires:
+  missions_completed: 54
+
+completion_reward_xp: 220

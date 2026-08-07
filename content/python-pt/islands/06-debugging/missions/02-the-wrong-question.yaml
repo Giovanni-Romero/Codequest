@@ -1,0 +1,155 @@
+# Missao 2 de Depuracao. Introduz: logic-vs-data. Reforca: reading-tracebacks.
+#
+# PRIMEIRA MISSAO DE CONSERTAR BUG. O stub esta completo e ERRADO de proposito - o
+# trabalho do jogador e achar e consertar, nao preencher um esqueleto. O motor suporta
+# isso sem mudanca: `stub` e so conteudo pre-preenchido do editor, e a suite de conteudo
+# verifica que a SOLUTION passa, nunca que o stub falha. Ver o syllabus, Ilha 6.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-02
+title: A pergunta errada
+track: python
+island: debugging
+order: 2
+difficulty: moderate
+tags: [bug-fix, logic-vs-data]
+xp: 30
+
+concepts:
+  - logic-vs-data
+  - reading-tracebacks
+
+teaching:
+  analogy: |
+    Um instrumento marca errado. Existem exatamente duas explicações e elas precisam de
+    pessoas diferentes: o instrumento está quebrado, ou alguém está segurando ele de
+    cabeça para baixo.
+
+    Mandar para a oficina quando o problema é como está sendo segurado desperdiça uma
+    semana e volta com "nenhum defeito encontrado". Toda sessão de depuração começa
+    escolhendo uma dessas duas portas, e escolhendo por evidência em vez de por hábito.
+
+  explanation: |
+    Uma falha está no **código** ou nos **dados**. Pergunte qual antes de mudar qualquer
+    coisa, porque os dois precisam de correções opostas:
+
+      - código errado, dados corretos -> conserte a lógica
+      - código correto, dados errados -> a lógica pode estar boa e quem chamou é o
+        culpado, ou a função deveria ter recusado a entrada (que é o trabalho da Ilha 5)
+
+    O jeito mais rápido de distinguir é achar uma entrada cuja resposta certa você já
+    conhece, rodar, e ver se o código a produz. Se o código erra o caso fácil, o código
+    está errado. Se ele acerta todo caso que você monta à mão mas falha em produção,
+    olhe a entrada.
+
+    Um traceback geralmente responde isso para você. Ele nomeia a linha e mostra o valor
+    que chegou ali, e esse valor é impossível (dados) ou mal tratado (lógica).
+
+    O hábito a construir: **primeiro não mude nada.** Leia, forme uma hipótese, depois
+    teste. Editar antes de ter hipótese produz um programa que falha diferente.
+
+  worked_example: |
+    # Mesmo sintoma, duas causas diferentes
+    def media(valores):
+        return sum(valores) / len(valores)
+
+    print(media([2, 4]))         # 3.0 - o caso facil esta certo, a logica esta boa
+    # print(media([]))           # ZeroDivisionError - os DADOS estavam vazios
+
+    def media_quebrada(valores):
+        return sum(valores) / (len(valores) - 1)
+
+    print(media_quebrada([2, 4]))  # 4.0 - o caso facil esta errado, o CODIGO esta errado
+
+    # Uma chamada de cada, e voce sabe qual porta abrir.
+
+  key_points:
+    - "Duas portas: código errado, ou dados errados. Escolha por evidência, não por hábito."
+    - Rode uma entrada cuja resposta você já sabe. Se ela sai errada, o código está errado.
+    - O traceback nomeia a linha e o valor. Um valor impossível aponta para os dados.
+    - Não mude nada até ter uma hipótese. Editar antes só faz falhar diferente.
+
+brief: |
+  A função abaixo deveria retornar a porcentagem de leituras que vieram abaixo de um
+  limite seguro, arredondada a uma casa decimal.
+
+  Ela já está escrita, e está errada. Em breach_rate([1, 2, 8, 9], 5) deveria dar 50.0,
+  porque duas das quatro leituras estão abaixo de 5.
+
+  Encontre o bug e conserte. O resto da função está correto - resista a reescrever o que
+  já funciona.
+
+  Uma lista vazia de leituras não tem porcentagem a relatar, então retorna 0.0.
+
+signature:
+  entrypoint: breach_rate
+  stub: |
+    def breach_rate(readings, limit):
+        if not readings:
+            return 0.0
+
+        breaches = 0
+        for reading in readings:
+            if reading > limit:
+                breaches = breaches + 1
+
+        return round(breaches / len(readings) * 100, 1)
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 8, 9], 5]
+      expect: 50.0
+    - args: [[1, 1, 1, 1], 5]
+      expect: 100.0
+  hidden:
+    - args: [[], 5]
+      expect: 0.0
+    - args: [[9, 9], 5]
+      expect: 0.0
+    - args: [[5, 5], 5]
+      expect: 0.0
+    - args: [[4], 5]
+      expect: 100.0
+    - args: [[1, 2, 3], 5]
+      expect: 100.0
+    - args: [[1, 9, 9], 5]
+      expect: 33.3
+
+hints:
+  - level: 1
+    text: |
+      Não leia a função inteira procurando algo que pareça estranho. Pegue o exemplo do
+      enunciado, percorra o laço à mão com aquelas quatro leituras, e anote o que
+      breaches guarda depois de cada passagem. Compare com o que deveria guardar.
+  - level: 2
+    text: |
+      O laço de contagem é onde a contagem sai errada, e é um caractere. O enunciado diz
+      "abaixo do limite". Leia a comparação do if em voz alta e confira se ela diz a
+      mesma coisa.
+  - level: 3
+    text: |
+      A mesma classe de bug, em outro contador:
+
+          # conta itens EM estoque, mas o enunciado pediu os esgotados
+          for item in itens:
+              if item["restam"] > 0:
+                  faltando = faltando + 1
+
+      O seu é o mesmo tipo de descasamento entre o que o enunciado pede e o que a
+      condição testa.
+
+solution: |
+  def breach_rate(readings, limit):
+      if not readings:
+          return 0.0
+
+      breaches = 0
+      for reading in readings:
+          if reading < limit:
+              breaches = breaches + 1
+
+      return round(breaches / len(readings) * 100, 1)

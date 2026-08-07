@@ -73,6 +73,35 @@ def test_the_declared_solution_passes_its_own_tests(path):
     assert outcome.passed, f"{path.name}: {outcome.verdict.summary}"
 
 
+#: Missions whose stub is deliberately complete and wrong - the Debugging island's
+#: shape, where the task is to find and fix a bug rather than fill in a skeleton.
+BUG_FIX_PATHS = [path for path in MISSION_PATHS if "bug-fix" in load_mission(path).tags]
+
+
+def test_there_are_bug_fix_missions_to_validate():
+    """Guards against a vacuous check: if the tag is ever renamed, the test below would
+    silently stop covering anything."""
+    assert BUG_FIX_PATHS, "no mission is tagged 'bug-fix'"
+
+
+@pytest.mark.parametrize("path", BUG_FIX_PATHS, ids=_ids(BUG_FIX_PATHS))
+def test_a_bug_fix_missions_stub_actually_fails(path):
+    """The one guarantee this mission shape needs, and the only test that can give it.
+
+    A skeleton mission is obviously incomplete, so nothing has to verify that. A bug-fix
+    mission ships a stub that *looks* finished, and if a typo in the planted bug happens
+    to make it correct, the mission still validates perfectly - the solution passes, the
+    schema is fine - while asking the player to fix code that already works.
+    """
+    mission = load_mission(path)
+
+    outcome = GameSession().attempt(mission, mission.signature.stub)
+
+    assert not outcome.passed, (
+        f"{path.name}: the stub passes its own tests, so there is no bug to find"
+    )
+
+
 @pytest.mark.parametrize("path", MISSION_PATHS, ids=_ids(MISSION_PATHS))
 def test_the_solution_obeys_the_missions_own_constraints(path):
     """A solution using a builtin the mission forbids would teach the opposite lesson."""
