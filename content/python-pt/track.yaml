@@ -1,0 +1,23 @@
+id: python
+name: Python
+language: python
+version: "3.11"
+description: |
+  Da sua primeira variável a geradores, decorators e código assíncrono.
+  Onze ilhas, cerca de cem missões.
+
+runner: python
+file_extension: .py
+
+islands:
+  - 01-foundations
+  - 02-collections
+  - 03-functions
+  - 04-strings-and-text
+  - 05-errors-and-edge-cases
+  - 06-debugging
+  - 07-files-and-data
+  - 08-objects
+  - 09-pythonic-patterns
+  - 10-algorithms
+  - 11-async-and-concurrency

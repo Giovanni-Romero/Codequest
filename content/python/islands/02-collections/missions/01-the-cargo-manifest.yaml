@@ -1,0 +1,112 @@
+# Mission 1 of Collections. Introduces: lists. Reinforces: for-loop.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-01
+title: The cargo manifest
+track: python
+island: collections
+order: 1
+difficulty: elementary
+tags: [lists, append]
+xp: 10
+
+concepts:
+  - lists
+
+teaching:
+  analogy: |
+    A list is a rope you tie knots into as cargo comes aboard. Each knot marks one item,
+    tied at the loose end of the rope as it arrives. The order of the knots is the order
+    things were loaded, and nothing moves once it is tied.
+
+  explanation: |
+    A list is Python's way of holding many values in one variable, in order. You start
+    with an empty list, written as [], and add to it with .append(value), which puts the
+    new value at the end.
+
+    A list can hold as many items as you add, growing one at a time. Looping over a list
+    with "for item in my_list" (which you already know from Island 1) visits every item,
+    in the order they were appended.
+
+  worked_example: |
+    # Collecting names as guests board a rowboat, not cargo in a hold
+    boat = []
+    boat.append("Mara")
+    boat.append("Tomas")
+    boat.append("Iris")
+    print(boat)          # ['Mara', 'Tomas', 'Iris']
+    print(len(boat))     # 3
+
+  key_points:
+    - "[] creates an empty list. .append(value) adds one item at the end, in place."
+    - The order items were appended is the order they stay in - a list remembers order, on purpose.
+    - len(a_list) tells you how many items are in it right now.
+    - "Appending does not return a new list - it changes the list you already have and gives back nothing (None)."
+
+brief: |
+  A supply is loaded onto the ship one barrel at a time, and each barrel gets its own
+  line in the manifest, even though every barrel holds the same thing.
+
+  Write a function called load_manifest that receives how many barrels were loaded and
+  the name of what is inside them, and returns a list with that name repeated once for
+  every barrel.
+
+  load_manifest(3, "water") returns ["water", "water", "water"]. Zero barrels returns an
+  empty list.
+
+signature:
+  entrypoint: load_manifest
+  stub: |
+    def load_manifest(count, name):
+        # Start with nothing, then append once per barrel.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [3, "water"]
+      expect: ["water", "water", "water"]
+    - args: [1, "rope"]
+      expect: ["rope"]
+  hidden:
+    - args: [0, "anything"]
+      expect: []
+    - args: [5, "salt"]
+      expect: ["salt", "salt", "salt", "salt", "salt"]
+    - args: [2, ""]
+      expect: ["", ""]
+    - args: [7, "x"]
+      expect: ["x", "x", "x", "x", "x", "x", "x"]
+
+hints:
+  - level: 1
+    text: |
+      Before you load anything, what do you start with? An empty container has to exist
+      before you can put things into it.
+  - level: 2
+    text: |
+      Create an empty list before the loop. Loop count times (a "for _ in range(count):"
+      counts without needing an existing sequence), and inside the loop append name to
+      the list each time. Return the list after the loop.
+  - level: 3
+    text: |
+      The same shape, collecting boarding calls instead of manifest entries:
+
+          calls = []
+          for _ in range(3):
+              calls.append("all aboard")
+          return calls
+
+      Yours uses a variable count instead of a fixed 3, and a variable name instead of a
+      fixed string.
+
+solution: |
+  def load_manifest(count, name):
+      manifest = []
+      for _ in range(count):
+          manifest.append(name)
+      return manifest

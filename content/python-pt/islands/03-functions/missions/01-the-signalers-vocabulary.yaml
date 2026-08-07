@@ -1,0 +1,138 @@
+# Missao 1 de Funcoes. Introduz: parameters.
+# Casos ocultos chamam a funcao POR PALAVRA-CHAVE de proposito - e isso que torna
+# "nomes de parametro sao um contrato" uma licao verificavel, nao so afirmada.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-01
+title: O vocabulário do sinaleiro
+track: python
+island: functions
+order: 1
+difficulty: simple
+tags: [parameters, keyword-arguments]
+xp: 20
+
+concepts:
+  - parameters
+
+teaching:
+  analogy: |
+    O sinaleiro do navio e a estação em terra combinam uma folha de código antes de
+    qualquer um zarpar. "Bandeira, depois quantidade, depois urgência." Uma vez combinada
+    essa folha, o sinaleiro não pode reordená-la nem renomear uma coluna em silêncio - a
+    estação está lendo da mesma folha, e uma mudança de um lado é uma mensagem
+    embaralhada do outro.
+
+    Os parâmetros de uma função são essa folha de código. Os nomes e a ordem são o
+    acordo, não anotações particulares de rascunho.
+
+  explanation: |
+    Quando você chama uma função, Python casa o que você passa com os parâmetros da
+    definição. Por padrão ele casa por posição: o primeiro argumento vai para o primeiro
+    parâmetro, o segundo para o segundo, e assim por diante.
+
+    Mas quem chama também pode passar um argumento por nome: send(flag="red", count=3).
+    Agora a ordem não importa, e é o *nome* do parâmetro que faz o casamento.
+
+    Essa é a parte que surpreende. Você pode renomear uma variável local dentro da sua
+    função à vontade e nada lá fora percebe. Renomeie um parâmetro e todo mundo que o
+    passava por nome quebra. Os nomes na sua linha do def fazem parte do que você está
+    prometendo, do mesmo jeito que o valor de retorno.
+
+  worked_example: |
+    # Uma tarifa de taxi, nao um sinal - o que importa aqui e como os argumentos chegam
+    def tarifa(distancia, passageiros):
+        return distancia * 2 * passageiros
+
+    print(tarifa(10, 3))                        # 60 - casado por posicao
+    print(tarifa(passageiros=3, distancia=10))  # 60 - casado por nome, ordem irrelevante
+    print(tarifa(10, passageiros=3))            # 60 - posicional primeiro, depois por nome
+
+    # print(tarifa(passageiros=3, 10))          # SyntaxError: posicional depois de nomeado
+    # print(tarifa(10, pessoas=3))              # TypeError: nao existe 'pessoas'
+
+  key_points:
+    - Argumentos casam com parâmetros por posição por padrão, e por nome quando quem chama usa nome=valor.
+    - Renomear um parâmetro quebra todo mundo que o passava por nome - os nomes são públicos, não privados.
+    - Depois que você passa um argumento por nome, tudo depois dele também precisa ser por nome.
+    - Um parâmetro é só uma variável que recebe seu valor inicial de quem chamou.
+
+brief: |
+    Escreva uma função chamada signal que monta uma linha de código de bandeiras para a
+    estação em terra.
+
+    Ela recebe exatamente três parâmetros, e eles precisam ter estes nomes e esta ordem
+    exatamente, porque a estação os chama por nome:
+
+      - flag: a cor da bandeira, um texto
+      - count: quantas vezes içá-la, um número inteiro
+      - urgent: True ou False
+
+    Retorne a bandeira, depois um espaço, depois "x" grudado na quantidade. Se urgent for
+    True, acrescente um espaço e a palavra "URGENT" no final.
+
+    signal("red", 3, False) retorna "red x3", e signal("red", 3, True) retorna
+    "red x3 URGENT".
+
+signature:
+  entrypoint: signal
+  stub: |
+    def signal(flag, count, urgent):
+        # Os tres nomes de parametro acima sao o acordo. Nao os renomeie.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["red", 3, false]
+      expect: "red x3"
+    - args: ["blue", 1, true]
+      expect: "blue x1 URGENT"
+  hidden:
+    # Estes chamam por palavra-chave, o que so funciona se os nomes baterem com o brief.
+    - args: []
+      kwargs: { flag: "green", count: 2, urgent: false }
+      expect: "green x2"
+    - args: ["black"]
+      kwargs: { count: 9, urgent: true }
+      expect: "black x9 URGENT"
+    - args: []
+      kwargs: { urgent: true, flag: "white", count: 1 }
+      expect: "white x1 URGENT"
+    - args: ["red", 0, false]
+      expect: "red x0"
+    - args: ["", 5, false]
+      expect: " x5"
+
+hints:
+  - level: 1
+    text: |
+      Dois dos três parâmetros sempre aparecem na resposta, e um deles só muda se algo a
+      mais é acrescentado no final. Qual é qual?
+  - level: 2
+    text: |
+      Monte primeiro a parte comum: a bandeira, um espaço, "x", e a quantidade convertida
+      em texto. Depois use um if em urgent para decidir se acrescenta " URGENT" antes de
+      retornar.
+  - level: 3
+    text: |
+      A mesma forma, etiquetando uma encomenda em vez de um sinal:
+
+          etiqueta = destino + " #" + str(peso)
+          if fragil:
+              etiqueta = etiqueta + " CUIDADO"
+          return etiqueta
+
+      A sua junta as duas partes de um jeito diferente, mas a forma se-então-acrescenta é
+      idêntica.
+
+solution: |
+  def signal(flag, count, urgent):
+      line = flag + " x" + str(count)
+      if urgent:
+          line = line + " URGENT"
+      return line

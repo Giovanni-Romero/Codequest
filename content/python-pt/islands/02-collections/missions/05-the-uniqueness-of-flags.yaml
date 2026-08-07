@@ -1,0 +1,99 @@
+# Missao 5 de Colecoes. Introduz: sets. Reforca: lists.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-05
+title: A singularidade das bandeiras
+track: python
+island: collections
+order: 5
+difficulty: elementary
+tags: [sets, deduplication]
+xp: 10
+
+concepts:
+  - sets
+
+teaching:
+  analogy: |
+    Três vigias podem gritar "tubarão!" sobre o mesmo tubarão. Uma contagem de gritos dá
+    três; uma contagem de perigos distintos avistados dá um. Um set é o segundo tipo de
+    contagem - ele só se importa se algo foi visto, não quantas vezes.
+
+  explanation: |
+    Um set guarda valores sem duplicatas e sem ordem garantida. Você constrói um a
+    partir de uma lista com set(uma_lista), e Python descarta cada repetição
+    automaticamente. len(um_set) então diz quantos valores distintos sobraram.
+
+    Um set não é uma lista com as repetições educadamente removidas no lugar - é um tipo
+    diferente de recipiente, e ele esquece a ordem em que as coisas chegaram.
+
+  worked_example: |
+    # Contando quantos portos distintos um navio visitou, nao bandeiras avistadas
+    paradas = ["Lisboa", "Porto", "Lisboa", "Cadiz", "Porto"]
+    portos_distintos = set(paradas)
+    print(portos_distintos)        # {'Lisboa', 'Porto', 'Cadiz'} - ordem nao garantida
+    print(len(portos_distintos))   # 3
+
+  key_points:
+    - set(uma_lista) constrói um set a partir de uma lista, descartando cada duplicata.
+    - Um set não tem ordem - não confie em qual valor vem primeiro quando você olha um.
+    - "len(um_set) conta valores distintos - exatamente a pergunta 'quantas coisas diferentes', não 'quantas vezes'."
+    - Uma lista vazia vira um set vazio - zero valores distintos é uma resposta válida.
+
+brief: |
+  Vigias relatam por rádio bandeiras de sinal avistadas ao longo do dia, e a mesma
+  bandeira costuma ser chamada mais de uma vez.
+
+  Escreva uma função chamada distinct_flags que recebe uma lista de nomes de bandeiras
+  (com repetições) e retorna quantas bandeiras diferentes foram realmente vistas - não
+  quantas vezes foram chamadas.
+
+signature:
+  entrypoint: distinct_flags
+  stub: |
+    def distinct_flags(flags):
+        # Transforme a lista num set, depois conte o que sobrou.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["red", "blue", "red", "green"]]
+      expect: 3
+    - args: [["a", "a", "a"]]
+      expect: 1
+  hidden:
+    - args: [[]]
+      expect: 0
+    - args: [["solo"]]
+      expect: 1
+    - args: [["x", "y", "z"]]
+      expect: 3
+    - args: [["p", "p", "q", "q", "r"]]
+      expect: 3
+
+hints:
+  - level: 1
+    text: |
+      Que recipiente do Python existe especificamente para descartar duplicatas por
+      você, sem você escrever um único laço?
+  - level: 2
+    text: |
+      Transforme a lista num set com set(...), depois pergunte o tamanho dele com
+      len(...).
+  - level: 3
+    text: |
+      A mesma ideia, contando idiomas distintos falados por uma tripulação:
+
+          falados = ["en", "pt", "en", "es"]
+          return len(set(falados))
+
+      A sua recebe a lista como parâmetro em vez de uma fixa.
+
+solution: |
+  def distinct_flags(flags):
+      return len(set(flags))

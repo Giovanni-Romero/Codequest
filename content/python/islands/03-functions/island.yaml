@@ -1,0 +1,25 @@
+id: functions
+name: Functions
+track: python
+order: 3
+theme: Naming and reusing behavior
+description: |
+  You have been writing functions since your first mission. This island is about what
+  was going on inside them: how arguments find their way to parameters, what a name
+  means once you leave the body it was born in, and why a function that quietly changes
+  something outside itself is the hardest kind of bug to find.
+
+concepts:
+  - parameters
+  - return-values
+  - default-arguments
+  - mutable-default-trap
+  - scope
+  - pure-vs-side-effects
+  - args-kwargs
+  - first-class-functions
+
+unlock_requires:
+  missions_completed: 22
+
+completion_reward_xp: 180

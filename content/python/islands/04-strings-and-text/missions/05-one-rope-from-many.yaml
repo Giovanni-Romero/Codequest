@@ -1,0 +1,131 @@
+# Mission 5 of Strings and Text. Introduces: join-vs-concat.
+# Reinforces: string-immutability, lists.
+# The list holds NUMBERS on purpose: joining them without converting first is the
+# misconception this mission exists to catch, and it fails loudly with TypeError.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-05
+title: One rope from many
+track: python
+island: strings-and-text
+order: 5
+difficulty: simple
+tags: [join, concatenation, lists]
+xp: 20
+
+concepts:
+  - join-vs-concat
+  - string-immutability
+
+teaching:
+  analogy: |
+    Splicing a long rope from short strands, you do not tie a knot after the last strand
+    and then go back to cut it off. You lay the strands out and put a splice *between*
+    each pair - which means there is always one fewer splice than there are strands.
+
+    Gluing on a separator after every piece and trimming the last one is how you end up
+    with a rope that has a stub on the end.
+
+  explanation: |
+    "sep".join(pieces) builds one string from many, putting the separator between them -
+    never before the first, never after the last. Note where it is called: on the
+    **separator**, not on the list. That reads backwards the first few times and then
+    stops.
+
+    It only accepts strings. A list of numbers raises TypeError, because Python will not
+    guess how you wanted them written. Convert first.
+
+    Why not just use + in a loop? It works, and for three items nobody would notice. But
+    strings are immutable, so every + builds an entirely new string and throws the
+    previous one away. Joining a thousand pieces that way copies the whole growing result
+    a thousand times. join walks the list once.
+
+    So: + is fine for two or three fixed pieces you can see. join is for a collection of
+    unknown length.
+
+  worked_example: |
+    # Building a CSV row from mixed values, not a rope
+    values = [7, 3, 11]
+
+    as_text = [str(v) for v in values]     # ['7', '3', '11'] - convert first
+    row = ",".join(as_text)
+    print(row)                             # 7,3,11
+
+    print(" and ".join(["salt", "rope"]))  # salt and rope
+    print("-".join([]))                    # "" - nothing to put a separator between
+    print("-".join(["solo"]))              # solo - one piece, no separator at all
+
+    # ",".join(values)                     # TypeError: sequence item 0: expected str,
+    #                                      # int found
+
+  key_points:
+    - '"sep".join(pieces) is called on the separator, not on the list. The separator goes between, never on the ends.'
+    - join accepts strings only. Convert numbers with str() before joining them.
+    - An empty list joins to an empty string, and a single item joins to itself with no separator.
+    - "+ in a loop rebuilds the whole string every pass, because strings are immutable. join walks the list once."
+
+brief: |
+  A spliced rope is recorded as the strand lengths that went into it, written out with
+  plus signs between them.
+
+  Write a function called rope_line that takes strands, a list of numbers, and returns
+  one line of text with those numbers separated by " + " - a space, a plus, a space.
+
+  rope_line([12, 8, 5]) returns "12 + 8 + 5".
+
+  A single strand returns just that number as text. An empty list returns an empty
+  string. There must be no separator at either end.
+
+signature:
+  entrypoint: rope_line
+  stub: |
+    def rope_line(strands):
+        # join puts the separator between the pieces. It needs every piece to be text.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[12, 8, 5]]
+      expect: "12 + 8 + 5"
+    - args: [[7]]
+      expect: "7"
+  hidden:
+    - args: [[]]
+      expect: ""
+    - args: [[0, 0]]
+      expect: "0 + 0"
+    - args: [[1, 2, 3, 4, 5]]
+      expect: "1 + 2 + 3 + 4 + 5"
+    - args: [[-3, 10]]
+      expect: "-3 + 10"
+    - args: [[2.5, 1]]
+      expect: "2.5 + 1"
+
+hints:
+  - level: 1
+    text: |
+      Try " + ".join([12, 8, 5]) in your head. Python refuses it, and the error names
+      exactly what is wrong. What has to happen to the list before join will accept it?
+  - level: 2
+    text: |
+      Build a list where every number has been turned into text with str(), using a
+      comprehension or a loop. Then call " + ".join(...) on that list and return the
+      result.
+  - level: 3
+    text: |
+      The same two steps, with a different separator:
+
+          pieces = [str(v) for v in values]
+          return " | ".join(pieces)
+
+      Yours separates with a plus sign surrounded by spaces.
+
+solution: |
+  def rope_line(strands):
+      pieces = [str(strand) for strand in strands]
+      return " + ".join(pieces)

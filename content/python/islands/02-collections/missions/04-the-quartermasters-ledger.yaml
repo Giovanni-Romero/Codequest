@@ -1,0 +1,101 @@
+# Mission 4 of Collections. Introduces: dictionaries.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-04
+title: The quartermaster's ledger
+track: python
+island: collections
+order: 4
+difficulty: elementary
+tags: [dictionaries, get]
+xp: 10
+
+concepts:
+  - dictionaries
+
+teaching:
+  analogy: |
+    A ledger is a coat check, but for names instead of coats: you look up a name and get
+    back what belongs to it. If a name was never checked in, the attendant does not
+    panic or guess - they just tell you there is nothing under that name.
+
+  explanation: |
+    A dictionary holds values under keys instead of positions - you write
+    ledger = {"Ana": 10, "Bo": 3}, and look something up with ledger["Ana"].
+
+    But square brackets on a missing key raise a KeyError and crash your program.
+    ledger.get("Cid") looks up the same way but returns None on a miss instead of
+    crashing - and ledger.get("Cid", 0) lets you choose what comes back instead of None.
+
+  worked_example: |
+    # Looking up a fare by destination, not coins by crew name
+    fares = {"harbor": 2, "lighthouse": 5}
+    print(fares["harbor"])          # 2
+    print(fares.get("market"))      # None - no crash
+    print(fares.get("market", 0))   # 0 - the default we chose
+
+  key_points:
+    - d[key] raises KeyError on a miss. d.get(key) returns None instead.
+    - "d.get(key, default) lets you choose the fallback instead of accepting None."
+    - Keys can be any immutable value, not just strings, but strings are the most common.
+    - An empty dictionary {} is valid and has no keys at all - every lookup on it is a miss.
+
+brief: |
+  The quartermaster keeps a ledger mapping each crew member's name to how many ration
+  coins they have left.
+
+  Write a function called coins_for that receives the ledger (a dictionary mapping names
+  to coin counts) and a name, and returns that person's coin count.
+
+  If the name is not in the ledger, return 0 instead of letting the lookup fail - nobody
+  starts in debt just because their name was never written down.
+
+signature:
+  entrypoint: coins_for
+  stub: |
+    def coins_for(ledger, name):
+        # Look the name up with a default, instead of square brackets.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [{"Ana": 10, "Bo": 3}, "Ana"]
+      expect: 10
+    - args: [{"Ana": 10, "Bo": 3}, "Cid"]
+      expect: 0
+  hidden:
+    - args: [{}, "Anyone"]
+      expect: 0
+    - args: [{"Only": 5}, "Only"]
+      expect: 5
+    - args: [{"Zed": 0}, "Zed"]
+      expect: 0
+    - args: [{"A": 1, "B": 2, "C": 3}, "B"]
+      expect: 2
+
+hints:
+  - level: 1
+    text: |
+      What are the two ways to look something up in a dictionary, and what is different
+      about how each one handles a name that was never written down?
+  - level: 2
+    text: |
+      Use .get() on the ledger instead of square brackets, and give it a second
+      argument: the value to return when the name is not there.
+  - level: 3
+    text: |
+      Same idea, looking up a nickname that might not exist:
+
+          nicknames = {"Sam": "Sammy"}
+          return nicknames.get(name, "no nickname")
+
+      Yours returns a number default instead of a string one.
+
+solution: |
+  def coins_for(ledger, name):
+      return ledger.get(name, 0)

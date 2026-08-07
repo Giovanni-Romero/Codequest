@@ -1,0 +1,167 @@
+# Mission 10 of Foundations. The island's closing mission.
+# Introduces nothing. Combines all six concepts of the island.
+# Either a while loop with an index or a for loop with a break is accepted.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-10
+title: O diário do fim do turno
+track: python
+island: foundations
+order: 10
+difficulty: simple
+tags: [accumulator, sentinel, loops, conditionals, strings]
+xp: 20
+
+concepts:
+  - variables
+  - basic-types
+  - conditionals
+  - for-loop
+  - while-loop
+  - accumulator-pattern
+
+teaching:
+  analogy: |
+    O diário de profundidade é uma tira de papel com sondagens anotadas ao longo dela,
+    uma após a outra. Quando o turno termina o oficial escreve um único zero e larga a
+    caneta. Tudo depois desse zero pertence ao próximo turno e não é da sua conta.
+
+    Então você lê do início e para no zero. Não porque o papel acabou, mas porque um
+    valor no papel te disse para parar.
+
+    Um valor que significa "pare aqui" em vez de ser um dado em si é chamado de
+    sentinela, e é uma das ideias mais antigas da programação.
+
+  explanation: |
+    Esta missão não introduz nada novo. Ela pede para você rodar quatro coisas que
+    você já conhece ao mesmo tempo, o que é uma habilidade diferente de rodar cada
+    uma sozinha.
+
+    Você precisa de três acumuladores vivos ao mesmo tempo: uma contagem, um total
+    corrente, e a maior leitura vista até agora. Três variáveis, todas criadas antes
+    do laço, todas atualizadas dentro dele.
+
+    Você precisa de um laço que pode parar cedo, porque a sentinela decide o fim em
+    vez do comprimento da lista. Um laço while com um índice faz isso naturalmente;
+    um laço for com um break também faz. Qualquer um é aceito.
+
+    E você precisa transformar números em texto no final, que é a conversão da
+    missão três.
+
+    Tome cuidado com o acumulador do maior valor. Começá-lo em zero parece inofensivo
+    e está errado: se toda leitura é negativa, zero nunca foi uma leitura real e vence
+    mesmo assim. Existem testes ocultos exatamente para isso.
+
+  worked_example: |
+    # Somando um caixa ate o marcador de fechamento, nao sondagens ate um zero
+    caixa = [12, 30, 7, -1, 99]
+    total = 0
+    entradas = 0
+    indice = 0
+    while indice < len(caixa) and caixa[indice] != -1:
+        total = total + caixa[indice]
+        entradas = entradas + 1
+        indice = indice + 1
+    print(entradas, total)      # 3 49
+
+  key_points:
+    - Uma sentinela é um valor que significa "pare", não um valor a ser processado.
+    - Vários acumuladores podem rodar lado a lado. Crie todos eles antes do laço.
+    - Começar um "maior até agora" em zero é um bug quando os valores reais podem ser negativos.
+    - Construa o texto no final, uma vez, a partir dos números prontos. Não dentro do laço.
+
+brief: |
+  Escreva uma função chamada log_summary que recebe uma lista de leituras de
+  profundidade e retorna um resumo de uma linha do turno.
+
+  Leia a lista do início e pare no primeiro zero, que marca o fim do turno. O zero em
+  si não é uma leitura, e tudo depois dele deve ser ignorado.
+
+  Retorne o resumo exatamente neste formato:
+
+      count=3 total=10 biggest=5
+
+  onde count é quantas leituras você processou, total é a soma delas, e biggest é a
+  maior delas.
+
+  Se não houver leituras, todo número é zero: "count=0 total=0 biggest=0".
+
+  Você não pode usar sum ou max.
+
+signature:
+  entrypoint: log_summary
+  stub: |
+    def log_summary(readings):
+        # Tres acumuladores, um laco que pode parar cedo, uma linha de texto no final.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [sum, max]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[3, 5, 2, 0, 99, 99]]
+      expect: "count=3 total=10 biggest=5"
+    - args: [[7]]
+      expect: "count=1 total=7 biggest=7"
+  hidden:
+    - args: [[]]
+      expect: "count=0 total=0 biggest=0"
+    - args: [[0]]
+      expect: "count=0 total=0 biggest=0"
+    - args: [[-2, -5, 0]]
+      expect: "count=2 total=-7 biggest=-2"
+    - args: [[1, 1, 1]]
+      expect: "count=3 total=3 biggest=1"
+    - args: [[4, 4, 0, 1]]
+      expect: "count=2 total=8 biggest=4"
+    - args: [[-1]]
+      expect: "count=1 total=-1 biggest=-1"
+    - args: [[0, 5, 5]]
+      expect: "count=0 total=0 biggest=0"
+    - args: [[10, -3, 8]]
+      expect: "count=3 total=15 biggest=10"
+
+hints:
+  - level: 1
+    text: |
+      Duas perguntas antes de escrever qualquer coisa. O que termina seu laço — a lista
+      acabar, ou encontrar um zero? E o que "biggest" deveria guardar antes de você ter
+      visto uma única leitura?
+  - level: 2
+    text: |
+      Crie count, total e biggest antes do laço. Percorra as leituras e pare no primeiro
+      zero. Para cada leitura, some um a count, some o valor a total, e substitua
+      biggest quando o valor for maior — mas garanta que a primeiríssima leitura sempre
+      se torne biggest, seja qual for seu sinal. Construa o texto com str() depois do laço.
+  - level: 3
+    text: |
+      A parte "o primeiro sempre vence", aplicada a uma corrida em vez de um diário:
+
+          mais_rapido = 0
+          terminados = 0
+          for tempo in tempos:
+              terminados = terminados + 1
+              if terminados == 1 or tempo < mais_rapido:
+                  mais_rapido = tempo
+
+      A checagem terminados == 1 é o que impede o valor inicial de vencer um valor
+      real. A sua quer o maior em vez do menor, e tem que parar numa sentinela.
+
+solution: |
+  def log_summary(readings):
+      count = 0
+      total = 0
+      biggest = 0
+      index = 0
+      while index < len(readings) and readings[index] != 0:
+          value = readings[index]
+          count = count + 1
+          total = total + value
+          if count == 1 or value > biggest:
+              biggest = value
+          index = index + 1
+      return "count=" + str(count) + " total=" + str(total) + " biggest=" + str(biggest)

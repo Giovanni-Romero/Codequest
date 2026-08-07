@@ -1,0 +1,131 @@
+# Mission 7 of Functions. Relief mission. Introduces nothing.
+# Reinforces: default-arguments, scope, return-values.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-07
+title: The quartermaster's round
+track: python
+island: functions
+order: 7
+difficulty: elementary
+tags: [defaults, clamping]
+xp: 10
+
+concepts:
+  - default-arguments
+  - scope
+  - return-values
+
+teaching:
+  analogy: |
+    The quartermaster walks the hold with a clipboard. For each item: how many do we
+    have, how many should we have, order the difference. If we already have more than
+    we should, the answer is not "order minus four" - it is "order nothing".
+
+  explanation: |
+    Nothing new. This mission puts three things you already have side by side: a default
+    argument, a module-level constant read from inside a function, and a local variable
+    you adjust before returning it.
+
+    The one bit of judgment is the floor. A subtraction can go negative, and a negative
+    order is meaningless here, so the function clamps it: if the number comes out below
+    zero, the answer is zero.
+
+    Notice where the default comes from. STANDARD_HOLD is read when the def line runs,
+    not on each call - the same "evaluated once" rule from the standing order mission,
+    which is harmless because a number cannot be changed underneath you.
+
+  worked_example: |
+    # Topping up a card balance rather than a ship's hold
+    MINIMUM = 25
+
+    def top_up(balance, floor=MINIMUM):
+        amount = floor - balance
+        if amount < 0:
+            amount = 0
+        return amount
+
+    print(top_up(10))         # 15
+    print(top_up(40))         # 0  - already above the floor, order nothing
+    print(top_up(10, 100))    # 90 - caller overrode the floor
+
+  key_points:
+    - A default can be a module-level constant, read once when the function is defined.
+    - Clamping means refusing to return a value that makes no sense, even when the arithmetic produced it.
+    - The local you adjust is yours; the constant it came from is untouched.
+    - Returning early and clamping both solve "this answer is wrong", in different shapes.
+
+brief: |
+  Write a function called restock that says how many units to order.
+
+  It takes current (how many are in the hold now) and target (how many there should be),
+  where target defaults to the module-level STANDARD_HOLD already in the stub.
+
+  Return how many units are needed to reach the target. If the hold already holds the
+  target or more, return 0 rather than a negative number.
+
+signature:
+  entrypoint: restock
+  stub: |
+    STANDARD_HOLD = 100
+
+
+    def restock(current, target=STANDARD_HOLD):
+        # Work out the gap, then refuse to return a negative one.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [60]
+      expect: 40
+    - args: [120]
+      expect: 0
+  hidden:
+    - args: [0]
+      expect: 100
+    - args: [100]
+      expect: 0
+    - args: [99]
+      expect: 1
+    - args: [10, 30]
+      expect: 20
+    - args: [30, 10]
+      expect: 0
+    - args: [5]
+      kwargs: { target: 5 }
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Do the subtraction first and look at what it can produce. Which of those results
+      is a sensible order, and which one needs to be replaced before you return it?
+  - level: 2
+    text: |
+      Store target minus current in a local variable. Use an if to set that local to 0
+      when it came out below zero. Return the local.
+  - level: 3
+    text: |
+      The same clamp, on a countdown that must not go past zero:
+
+          left = deadline - elapsed
+          if left < 0:
+              left = 0
+          return left
+
+      Yours subtracts two different quantities but clamps in exactly the same place.
+
+solution: |
+  STANDARD_HOLD = 100
+
+
+  def restock(current, target=STANDARD_HOLD):
+      needed = target - current
+      if needed < 0:
+          needed = 0
+      return needed

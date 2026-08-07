@@ -1,0 +1,128 @@
+# Missao 4 de Strings e Texto. Introduz: f-strings.
+# Reforca: string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-04
+title: A etiqueta impressa
+track: python
+island: strings-and-text
+order: 4
+difficulty: simple
+tags: [f-strings, formatting]
+xp: 20
+
+concepts:
+  - f-strings
+  - string-methods
+
+teaching:
+  analogy: |
+    Uma prensa tipográfica trabalha a partir de uma forma: tipos fixos para as palavras
+    que nunca mudam, e espaços vazios onde as partes variáveis se encaixam. O tipógrafo
+    olha a forma e vê a etiqueta pronta, porque os espaços estão exatamente onde os
+    valores vão cair.
+
+    Compare com descrever a etiqueta por telefone, um fragmento de cada vez - "a palavra
+    caixote, depois um espaço, depois o número, depois..." Mesma saída. Só uma das duas
+    pode ser conferida de relance.
+
+  explanation: |
+    Uma f-string é essa forma. Ponha a letra f antes das aspas e escreva seus valores
+    entre chaves, no lugar:
+
+        f"caixote {numero} pesa {quilos} kg"
+
+    O que estiver dentro das chaves é uma expressão Python comum, avaliada naquele
+    momento e convertida em texto para você. Sem chamadas a str(), sem cadeia de +.
+
+    Essa última parte importa mais que a arrumação: `"total: " + 5` levanta TypeError,
+    que é um bug que você encontra desde a Ilha 1. Uma f-string não consegue cometer esse
+    erro, porque a conversão não é opcional.
+
+    Uma f-string é avaliada imediatamente, uma vez. Ela não é um molde reutilizável que
+    você preenche depois - quando a linha rodou, ela já é uma string pronta.
+
+  worked_example: |
+    # Uma nota de entrega, nao uma etiqueta de caixote
+    cidade = "Porto"
+    caixas = 3
+    peso = 12.5
+
+    jeito_antigo = "para " + cidade + ": " + str(caixas) + " caixas, " + str(peso) + " kg"
+    jeito_novo = f"para {cidade}: {caixas} caixas, {peso} kg"
+
+    print(jeito_antigo == jeito_novo)   # True - saida identica
+    print(jeito_novo)                   # para Porto: 3 caixas, 12.5 kg
+
+    # Qualquer expressao cabe dentro das chaves:
+    print(f"media {peso / caixas} kg por caixa")
+
+  key_points:
+    - "O f antes da aspa de abertura é o que faz funcionar. Sem ele você recebe as chaves literais."
+    - Valores são convertidos em texto automaticamente, então sem str() e sem TypeError por misturar tipos.
+    - Qualquer coisa dentro das chaves é uma expressão, não só um nome de variável.
+    - Uma f-string roda uma vez, onde está escrita. É uma string pronta, não um molde guardado para depois.
+
+brief: |
+  Todo caixote ganha uma etiqueta impressa antes de ir para o porão.
+
+  Escreva uma função chamada crate_label que recebe name (texto), count (um número
+  inteiro) e weight (um número), e retorna exatamente esta linha:
+
+      SALT COD x3 - 12.5 kg
+
+  Ou seja: o nome em maiúsculas com os espaços das pontas aparados, um espaço, "x"
+  grudado na contagem, um espaço, um hífen, um espaço, o peso, um espaço, e "kg".
+
+  Monte a linha com uma f-string.
+
+signature:
+  entrypoint: crate_label
+  stub: |
+    def crate_label(name, count, weight):
+        # Uma f-string. Limpe o nome antes, se ele precisar.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  salt cod  ", 3, 12.5]
+      expect: "SALT COD x3 - 12.5 kg"
+    - args: ["rope", 1, 4]
+      expect: "ROPE x1 - 4 kg"
+  hidden:
+    - args: ["", 0, 0]
+      expect: " x0 - 0 kg"
+    - args: ["nails", 100, 0.5]
+      expect: "NAILS x100 - 0.5 kg"
+    - args: ["  MIXED case  ", 2, 7]
+      expect: "MIXED CASE x2 - 7 kg"
+    - args: ["a", 1, -3]
+      expect: "A x1 - -3 kg"
+
+hints:
+  - level: 1
+    text: |
+      Dois trabalhos, e só um deles é novo. Que parte da etiqueta precisa de limpeza
+      antes de ser colocada, e que partes só caem nos seus espaços?
+  - level: 2
+    text: |
+      Limpe o nome com .strip().upper() primeiro - numa variável ou dentro das chaves.
+      Depois escreva uma f-string com três espaços e o texto fixo entre eles.
+  - level: 3
+    text: |
+      A mesma forma, numa nota diferente:
+
+          quem = cliente.strip().title()
+          return f"{quem} #{pedido_id} - {total} EUR"
+
+      A sua dobra a caixa de outro jeito e tem seu próprio texto fixo entre os espaços.
+
+solution: |
+  def crate_label(name, count, weight):
+      cleaned = name.strip().upper()
+      return f"{cleaned} x{count} - {weight} kg"

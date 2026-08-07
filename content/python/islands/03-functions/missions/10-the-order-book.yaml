@@ -1,0 +1,199 @@
+# Mission 10 of Functions. Introduces: first-class-functions.
+# Reinforces: parameters, return-values, dictionaries.
+#
+# STRUCTURAL NOTE: a function cannot cross the JSON boundary between the game and the
+# sandbox - it can be neither passed in as a test argument nor returned as a result
+# (engine/harness.py falls back to repr, which contains a memory address). So this
+# mission teaches functions-as-values through a dispatch table keyed by a string, which
+# is the shape that survives the boundary. See the syllabus, Island 3 "Engine limits".
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-10
+title: The order book
+track: python
+island: functions
+order: 10
+difficulty: simple
+tags: [first-class-functions, dispatch-table]
+xp: 20
+
+concepts:
+  - first-class-functions
+  - parameters
+  - return-values
+
+teaching:
+  analogy: |
+    The bosun keeps a book of standing drills. Each one has a name - "reef", "sound",
+    "douse" - and a card describing how to carry it out. When an order comes down, the
+    bosun does not recite every drill checking which one matches. He looks the name up in
+    the book and follows the card he finds.
+
+    The book holds the drills themselves, not descriptions of them. Looking one up gets
+    you a drill you can carry out.
+
+  explanation: |
+    A function is a value. You can put it in a variable, store it in a list or a
+    dictionary, and pass it around - the same as a number or a string.
+
+    The distinction that matters, and the one that trips everybody at first:
+
+        double        # the function itself
+        double(4)     # calling it, which gives you 8
+
+    Leaving off the parentheses is not a mistake here, it is the whole point. You store
+    the function without the parentheses, and add them later, when you actually want it
+    to run.
+
+    That gives you a dispatch table: a dictionary from names to functions. Look up the
+    name, get a function back, then call it.
+
+        table = {"double": double, "square": square}
+        chosen = table["double"]      # a function
+        print(chosen(4))              # 8 - now it runs
+
+    This replaces a long if/elif chain, and adding a new operation becomes adding one
+    line to the dictionary instead of editing the logic.
+
+  worked_example: |
+    # A dispatch table for text tidying, not for numbers
+    def shout(text):
+        return text.upper()
+
+    def hush(text):
+        return text.lower()
+
+    STYLES = {"shout": shout, "hush": hush}
+
+    def restyle(text, style):
+        handler = STYLES.get(style)        # a function, or None
+        if handler is None:
+            return text                   # unknown style, leave it be
+        return handler(text)
+
+    print(restyle("ahoy", "shout"))        # AHOY
+    print(restyle("AHOY", "hush"))         # ahoy
+    print(restyle("ahoy", "whisper"))      # ahoy - no such style
+
+  key_points:
+    - "A function without parentheses is the function itself; with parentheses it runs. Storing one means storing it without."
+    - A dictionary from names to functions replaces an if/elif chain and grows by one line per new option.
+    - "Look the function up, put it in a variable, then call that variable: table[name](value)."
+    - "dict.get on a missing key gives None, which is the natural place to handle an unknown name."
+
+brief: |
+  The bosun's order book holds three drills, each of which transforms a single number:
+
+    - "double" gives the number times two
+    - "square" gives the number times itself
+    - "negate" gives the number with its sign flipped
+
+  Write a function called run_drill that takes numbers (a list of numbers) and drill (the
+  name of a drill, as a string), and returns a new list with the named drill applied to
+  every number.
+
+  Build a dictionary mapping each name to the function that carries it out, and look the
+  drill up in it. Do not write an if/elif chain comparing the name three times - the
+  dictionary is the mission.
+
+  If the drill name is not in the book, return the numbers unchanged, as a new list.
+
+signature:
+  entrypoint: run_drill
+  stub: |
+    def double(n):
+        # your code here
+        pass
+
+
+    def square(n):
+        # your code here
+        pass
+
+
+    def negate(n):
+        # your code here
+        pass
+
+
+    def run_drill(numbers, drill):
+        # Build the book, look the drill up, then apply it to every number.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3], "double"]
+      expect: [2, 4, 6]
+    - args: [[1, 2, 3], "square"]
+      expect: [1, 4, 9]
+  hidden:
+    - args: [[1, 2, 3], "negate"]
+      expect: [-1, -2, -3]
+    - args: [[1, 2, 3], "hoist"]
+      expect: [1, 2, 3]
+    - args: [[], "double"]
+      expect: []
+    - args: [[], "nonsense"]
+      expect: []
+    - args: [[0], "negate"]
+      expect: [0]
+    - args: [[-4], "square"]
+      expect: [16]
+    - args: [[5], "double"]
+      expect: [10]
+
+hints:
+  - level: 1
+    text: |
+      If you wrote {"double": double(n)} in your dictionary, what would actually be
+      stored in it - and could you still choose to run it later? What changes if you
+      leave the parentheses off?
+  - level: 2
+    text: |
+      Make a dictionary whose values are the three function names with no parentheses.
+      Use .get to look up the drill; if it comes back None, return a copy of the numbers.
+      Otherwise loop over the numbers, call the looked-up function on each, and collect
+      the results.
+  - level: 3
+    text: |
+      Looking up and applying, in a different book:
+
+          handler = ACTIONS.get(command)
+          if handler is None:
+              return list(values)
+          result = []
+          for value in values:
+              result.append(handler(value))
+          return result
+
+      Yours builds its book from three drills you wrote yourself just above it.
+
+solution: |
+  def double(n):
+      return n * 2
+
+
+  def square(n):
+      return n * n
+
+
+  def negate(n):
+      return -n
+
+
+  def run_drill(numbers, drill):
+      book = {"double": double, "square": square, "negate": negate}
+
+      handler = book.get(drill)
+      if handler is None:
+          return list(numbers)
+
+      result = []
+      for number in numbers:
+          result.append(handler(number))
+      return result

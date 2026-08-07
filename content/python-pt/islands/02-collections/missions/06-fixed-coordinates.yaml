@@ -1,0 +1,110 @@
+# Missao 6 de Colecoes. Introduz: tuples.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-06
+title: Coordenadas fixas
+track: python
+island: collections
+order: 6
+difficulty: simple
+tags: [tuples, unpacking]
+xp: 20
+
+concepts:
+  - tuples
+
+teaching:
+  analogy: |
+    A posição de um farol nunca muda depois de mapeada - diferente de um navio, ela não
+    tem por que ser movida acidentalmente por uma linha de código perdida. Uma tupla é o
+    jeito do Python de dizer "esse grupo de valores pertence junto, e nada aqui deveria
+    ser reatribuído pedaço por pedaço."
+
+  explanation: |
+    Uma tupla agrupa um número fixo de valores num só, escrita (x, y), ou construída por
+    uma função que retorna dois ou mais valores de uma vez. Diferente de uma lista, uma
+    tupla não pode ser mudada depois de construída: sem append, sem reatribuir um slot.
+
+    Você lê os pedaços de uma tupla desempacotando-a em nomes: x, y = ponto te dá os dois
+    valores numa linha, em ordem. É a mesma ideia de indexar, só que para quantos valores
+    couberem na forma que você espera, todos de uma vez.
+
+  worked_example: |
+    # Separando um nome completo em partes, nao coordenadas
+    nome_completo = ("Ada", "Lovelace")
+    primeiro, ultimo = nome_completo
+    print(primeiro)              # Ada
+    print(ultimo)                # Lovelace
+    print(nome_completo[0])      # Ada - uma tupla tambem pode ser indexada como uma lista
+
+  key_points:
+    - "Uma tupla é escrita com parênteses e vírgulas: (a, b). A vírgula é o que importa - (1) é só o número 1."
+    - "primeiro, ultimo = uma_tupla a desempacota em dois nomes numa linha, em ordem."
+    - Uma tupla não tem .append e não pode ser reatribuída no lugar - construa uma nova em vez de mutar.
+    - Uma tupla ainda pode ser indexada como uma lista, com colchetes, se você só precisa de um pedaço.
+
+brief: |
+  A posição de um farol é fixa uma vez mapeada: dois números, x e y, que nunca mudam
+  independentemente um do outro.
+
+  Escreva uma função chamada midpoint que recebe dois pares de coordenadas e retorna um
+  novo par (x, y) que fica exatamente na metade entre eles.
+
+  Retorne sua resposta como uma tupla - um par fixo de dois valores que pertencem
+  juntos, não uma lista que cresce.
+
+signature:
+  entrypoint: midpoint
+  stub: |
+    def midpoint(point_a, point_b):
+        # Desempacote os dois pontos, tire a media de cada parte, retorne uma tupla.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[0, 0], [4, 4]]
+      expect: [2, 2]
+    - args: [[0, 0], [0, 0]]
+      expect: [0, 0]
+  hidden:
+    - args: [[1, 1], [3, 3]]
+      expect: [2, 2]
+    - args: [[-2, -2], [2, 2]]
+      expect: [0, 0]
+    - args: [[0, 0], [3, 3]]
+      expect: [1.5, 1.5]
+    - args: [[5, 10], [15, 20]]
+      expect: [10, 15]
+
+hints:
+  - level: 1
+    text: |
+      Você precisa de quatro números no total antes de poder tirar qualquer média - dois
+      de cada ponto. Como você retira os dois valores de um par numa linha?
+  - level: 2
+    text: |
+      Desempacote cada ponto em dois nomes: x1, y1 = point_a e x2, y2 = point_b. Tire a
+      média dos valores x e dos valores y separadamente, e retorne-os juntos como uma
+      tupla.
+  - level: 3
+    text: |
+      Mesma forma, encontrando a média de duas faixas de preço:
+
+          baixo, alto = faixa_de_preco
+          justo = (baixo + alto) / 2
+          return justo
+
+      A sua tem dois valores para calcular a média em vez de um, e retorna como um par.
+
+solution: |
+  def midpoint(point_a, point_b):
+      x1, y1 = point_a
+      x2, y2 = point_b
+      mx = (x1 + x2) / 2
+      my = (y1 + y2) / 2
+      return (mx, my)

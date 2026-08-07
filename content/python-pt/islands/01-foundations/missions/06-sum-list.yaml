@@ -1,0 +1,112 @@
+# Example mission. Copy this file as the starting point for new missions.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-06
+title: Soma de uma lista
+track: python
+island: foundations
+order: 6
+difficulty: elementary        # elementary | simple | moderate | challenging | expert
+tags: [loops, lists, accumulator]
+xp: 10
+
+concepts:
+  - accumulator-pattern
+  - for-loop
+
+teaching:
+  analogy: |
+    Pense em caminhar por um supermercado com um cesto vazio.
+    Você começa sem nada. Toda vez que pega um item, soma o preço dele a um total
+    corrente na cabeça.
+    O total na sua cabeça é a variável. A caminhada pelo corredor é o laço.
+    Você tem que começar o total antes de começar a caminhar, não enquanto caminha.
+
+  explanation: |
+    Um acumulador é uma variável que você cria antes de um laço e atualiza dentro dele.
+    Ele carrega um resultado ao longo de cada passagem do laço.
+    Você precisa criá-lo antes do laço começar. Se você o criar dentro, ele reinicia
+    a cada passagem e você perde tudo que juntou.
+    Depois que o laço termina, o acumulador guarda a resposta final.
+
+  worked_example: |
+    # Montando uma frase a partir de uma lista de palavras
+    frase = ""
+    for palavra in ["python", "e", "divertido"]:
+        frase = frase + palavra + " "
+    print(frase)   # "python e divertido "
+
+  key_points:
+    - Crie o acumulador antes do laço. Dentro do laço ele reinicia a cada passagem.
+    - Comece um acumulador numérico em 0 e um acumulador de texto em "".
+    - Retorne o acumulador depois que o laço termina, não dentro dele. Retornar dentro
+      para o laço na primeira passagem.
+    - Uma lista vazia significa que o laço nunca executa, então a resposta é o valor inicial.
+
+brief: |
+  Escreva uma função chamada sum_list que recebe uma lista de números e retorna
+  a soma de todos eles.
+
+  Não use a função embutida sum(). Construa o total você mesmo com um laço.
+
+  Uma lista vazia deve retornar 0.
+
+signature:
+  entrypoint: sum_list
+  stub: |
+    def sum_list(numbers):
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  forbidden_imports: [numpy, functools, math]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3]]
+      expect: 6
+    - args: [[10, 20, 5]]
+      expect: 35
+  hidden:
+    - args: [[]]
+      expect: 0
+    - args: [[7]]
+      expect: 7
+    - args: [[-5, 5]]
+      expect: 0
+    - args: [[-1, -2, -3]]
+      expect: -6
+    - args: [[1.5, 2.5]]
+      expect: 4.0
+    - args: [[0, 0, 0]]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Onde mora seu total antes do laço começar? Se ele ainda não existe quando o
+      primeiro item chega, não há nada a somar.
+  - level: 2
+    text: |
+      Você precisa de uma variável criada antes do laço for. Dentro do laço, atualize-a
+      com o item atual. Depois do laço, retorne-a.
+  - level: 3
+    text: |
+      Aqui está o mesmo padrão contando caracteres, não somando números:
+
+          contagem = 0
+          for letra in "ola":
+              contagem = contagem + 1
+          return contagem
+
+      A sua versão trabalha com números e soma o próprio número em vez de 1.
+
+solution: |
+  def sum_list(numbers):
+      total = 0
+      for n in numbers:
+          total = total + n
+      return total

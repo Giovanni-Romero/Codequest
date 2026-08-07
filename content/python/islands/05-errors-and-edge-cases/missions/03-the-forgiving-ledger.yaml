@@ -1,0 +1,120 @@
+# Mission 3 of Errors and Edge Cases. Relief mission. Introduces nothing.
+# Reinforces: try-except, dictionaries.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-03
+title: The forgiving ledger
+track: python
+island: errors-and-edge-cases
+order: 3
+difficulty: elementary
+tags: [try-except, dictionaries]
+xp: 10
+
+concepts:
+  - try-except
+
+teaching:
+  analogy: |
+    A ledger with no entry for a crewman does not mean he owes an infinite debt. It means
+    nobody has written anything down yet, and the sensible reading of a blank line is
+    zero.
+
+  explanation: |
+    Nothing new. This is try / except applied to a dictionary lookup instead of a
+    division.
+
+    Square brackets on a missing key raise KeyError - you met that back on the Collections
+    island, where .get() was the answer. Both are correct here, and knowing that they are
+    two solutions to the same problem is worth more than either one alone.
+
+    Which to reach for is a real question with a real answer: when a miss is expected and
+    ordinary, .get() says so in one short line. try / except is for when the failure is
+    genuinely exceptional, or when the thing that can fail is not a lookup at all.
+
+    This mission wants the try / except version, to practise the shape. The next island
+    would want the other one.
+
+  worked_example: |
+    # A settings lookup, not a ledger
+    def timeout_for(settings, name):
+        try:
+            return settings[name]
+        except KeyError:
+            return 30
+
+    print(timeout_for({"api": 5}, "api"))    # 5
+    print(timeout_for({"api": 5}, "db"))     # 30 - handled
+
+    # The same thing with .get, for comparison:
+    # return settings.get(name, 30)
+
+  key_points:
+    - "d[key] raises KeyError on a miss; .get(key, default) returns the default instead."
+    - Both are right. Choose .get for an ordinary miss, try/except when the failure is genuinely unusual.
+    - The except block names KeyError specifically, so a different bug is not silently swallowed.
+    - Returning a sensible default is a decision about meaning, not a way of hiding a problem.
+
+brief: |
+  Write a function called coins_owed that takes ledger (a dictionary mapping crew names
+  to coin counts) and name, and returns that person's coins.
+
+  A name that is not in the ledger has nothing written against it, which reads as 0.
+
+  Use try / except around the lookup rather than .get() - this mission is practising the
+  shape, and the teaching panel explains when you would choose the other one.
+
+signature:
+  entrypoint: coins_owed
+  stub: |
+    def coins_owed(ledger, name):
+        # Look it up. Decide what a missing name means.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [{"Ana": 10, "Bo": 3}, "Ana"]
+      expect: 10
+    - args: [{"Ana": 10, "Bo": 3}, "Cid"]
+      expect: 0
+  hidden:
+    - args: [{}, "Anyone"]
+      expect: 0
+    - args: [{"Zed": 0}, "Zed"]
+      expect: 0
+    - args: [{"A": 1, "B": 2}, "B"]
+      expect: 2
+    - args: [{"Solo": -5}, "Solo"]
+      expect: -5
+
+hints:
+  - level: 1
+    text: |
+      Which exception does a dictionary raise when the key is not there? You met it on
+      the Collections island, when .get() was introduced as the way around it.
+  - level: 2
+    text: |
+      Put ledger[name] inside a try and return it. Catch KeyError and return 0 from the
+      handler.
+  - level: 3
+    text: |
+      The same shape, on a different lookup:
+
+          try:
+              return stock[item]
+          except KeyError:
+              return 0
+
+      Yours uses the two parameter names it was given.
+
+solution: |
+  def coins_owed(ledger, name):
+      try:
+          return ledger[name]
+      except KeyError:
+          return 0

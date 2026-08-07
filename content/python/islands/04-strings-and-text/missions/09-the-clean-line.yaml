@@ -1,0 +1,136 @@
+# Mission 9 of Strings and Text. Relief mission. Introduces nothing.
+# Reinforces: split-and-parse, f-strings, string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-09
+title: The clean line
+track: python
+island: strings-and-text
+order: 9
+difficulty: elementary
+tags: [split, f-strings, string-methods]
+xp: 10
+
+concepts:
+  - split-and-parse
+  - f-strings
+  - string-methods
+
+teaching:
+  analogy: |
+    A message comes in scrawled and goes out printed. Same information, read once and
+    written once, with the untidiness left behind at the door.
+
+  explanation: |
+    Nothing new. Read a line apart with split, tidy the pieces with the string methods,
+    write a new line with an f-string. Three tools from this island, in the order they
+    naturally fall.
+
+    The only thing worth attention is that a name is text and a number is not. The count
+    has to become an int before it can be compared to anything, even if all you do
+    afterwards is print it back out - because the moment a rule appears ("mark it low if
+    under ten") a string will compare wrongly or refuse outright.
+
+  worked_example: |
+    # Reformatting a seat booking, not a cargo note
+    raw = "  bo  |  2  "
+
+    name, seats = raw.split("|")
+    name = name.strip().title()
+    seats = int(seats.strip())
+
+    line = f"{name}: {seats} seats"
+    if seats == 1:
+        line = f"{name}: 1 seat"
+
+    print(line)          # Bo: 2 seats
+
+  key_points:
+    - Read apart, tidy, write back out. Three tools in the order the work happens.
+    - Convert the numeric field even when you only intend to display it - the next rule always arrives.
+    - Unpacking a two-item split into two names is the same tuple unpacking from the Functions island.
+    - The line you return is new. Nothing you were handed was modified.
+
+brief: |
+  A quartermaster's note arrives as text with two fields separated by a vertical bar:
+
+      salt cod | 12
+
+  That is the item name and the count, either of which may have stray spaces.
+
+  Write a function called clean_note that takes such a note and returns one line in
+  exactly this shape:
+
+      Salt Cod x12
+
+  That is: the name trimmed with the first letter of each word capitalised, a space, "x"
+  joined to the count.
+
+  When the count is below ten, add " LOW" to the end of the line.
+
+  You may assume the note always has exactly two fields.
+
+signature:
+  entrypoint: clean_note
+  stub: |
+    def clean_note(note):
+        # Split, tidy both pieces, then build one new line.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["salt cod | 12"]
+      expect: "Salt Cod x12"
+    - args: ["  rope  |  4  "]
+      expect: "Rope x4 LOW"
+  hidden:
+    - args: ["nails|10"]
+      expect: "Nails x10"
+    - args: ["nails|9"]
+      expect: "Nails x9 LOW"
+    - args: ["a|0"]
+      expect: "A x0 LOW"
+    - args: ["two words here | 100"]
+      expect: "Two Words Here x100"
+    - args: ["  MIXED case  |  1  "]
+      expect: "Mixed Case x1 LOW"
+
+hints:
+  - level: 1
+    text: |
+      Ten is the boundary and the brief says "below ten". Check what your comparison does
+      with a count of exactly 10 before you trust it.
+  - level: 2
+    text: |
+      Split on "|" into two pieces. Strip and .title() the name. Strip and int() the
+      count. Build the line with an f-string, then add " LOW" with an if when the count
+      is less than 10.
+  - level: 3
+    text: |
+      The same shape, on a different note:
+
+          left, right = row.split(":")
+          label = left.strip().upper()
+          amount = int(right.strip())
+          line = f"{label} = {amount}"
+          if amount > 100:
+              line = line + " HIGH"
+          return line
+
+      Yours folds case differently and flags the other end of the range.
+
+solution: |
+  def clean_note(note):
+      raw_name, raw_count = note.split("|")
+      name = raw_name.strip().title()
+      count = int(raw_count.strip())
+
+      line = f"{name} x{count}"
+      if count < 10:
+          line = line + " LOW"
+      return line

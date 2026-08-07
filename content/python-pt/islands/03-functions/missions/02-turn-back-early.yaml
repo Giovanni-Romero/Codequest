@@ -1,0 +1,129 @@
+# Missao 2 de Funcoes. Introduz: return-values. Reforca: parameters.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-02
+title: Voltar cedo
+track: python
+island: functions
+order: 2
+difficulty: simple
+tags: [return, early-exit, none]
+xp: 20
+
+concepts:
+  - return-values
+  - parameters
+
+teaching:
+  analogy: |
+    Um vigia varrendo o horizonte atrás de um perigo não termina de varrer o círculo
+    inteiro por educação. No instante em que avista um, ele grita lá de cima e para de
+    varrer - o trabalho era "me avise sobre o primeiro", e está feito.
+
+    Se ele varre o horizonte inteiro e não acha nada, ainda assim precisa dizer alguma
+    coisa. Silêncio seria indistinguível de um vigia que dormiu.
+
+  explanation: |
+    Um return encerra a função imediatamente. Não o laço em que ele por acaso está - a
+    função inteira. Tudo depois dele, em qualquer indentação, é pulado.
+
+    É isso que permite escrever um laço que para na primeira ocorrência: retorne a
+    resposta de dentro do laço, e não há necessidade de guardá-la, nem de break, nem de
+    uma variável de bandeira.
+
+    Uma função que chega ao fim do corpo sem encontrar um return ainda retorna algo: ela
+    retorna None. Isso não é um erro, e não é "nada" - None é um valor de verdade, que
+    você pode checar e comparar.
+
+    Retornar não é imprimir. print mostra um valor na tela e não entrega nada a quem
+    chamou. Só o return devolve um valor.
+
+  worked_example: |
+    # Encontrando a primeira palavra maior que um limite, nao a primeira sondagem
+    def primeira_longa(palavras, limite):
+        for palavra in palavras:
+            if len(palavra) > limite:
+                return palavra       # encerra a funcao inteira aqui mesmo
+        return None                  # so alcancado se o laco acabou sem achar nada
+
+    print(primeira_longa(["a", "vela", "ancoradouro"], 3))   # ancoradouro
+    print(primeira_longa(["a", "um"], 3))                    # None
+
+  key_points:
+    - return encerra a função inteira imediatamente, não só o laço em que ele está.
+    - Retornar de dentro de um laço é como você para na primeira ocorrência, sem bandeira e sem break.
+    - Uma função que termina sem return devolve None, que é um valor, não uma ausência.
+    - print mostra algo para um humano. return entrega algo a quem chamou. Não são intercambiáveis.
+
+brief: |
+  O diário de profundidade é varrido atrás da primeira leitura perigosamente rasa.
+
+  Escreva uma função chamada first_breach que recebe readings (uma lista de números de
+  profundidade) e limit (um número), e retorna a primeira leitura da lista que é
+  estritamente menor que limit.
+
+  Se nenhuma leitura está abaixo do limite, retorne None. Uma lista vazia de leituras
+  também retorna None.
+
+  Retorne a leitura em si, não a posição dela.
+
+signature:
+  entrypoint: first_breach
+  stub: |
+    def first_breach(readings, limit):
+        # Pare assim que encontrar uma. Diga None se nunca encontrar.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 8, 3, 9], 5]
+      expect: 3
+    - args: [[10, 8, 9], 5]
+      expect: null
+  hidden:
+    - args: [[], 5]
+      expect: null
+    - args: [[2, 1], 5]
+      expect: 2
+    - args: [[5, 5, 5], 5]
+      expect: null
+    - args: [[6, 4, 2], 5]
+      expect: 4
+    - args: [[-1, -9], 0]
+      expect: -1
+    - args: [[7], 100]
+      expect: 7
+
+hints:
+  - level: 1
+    text: |
+      Depois que você encontrou a primeira leitura rasa, existe alguma razão para
+      continuar olhando o resto da lista? Que comando permite sair imediatamente?
+  - level: 2
+    text: |
+      Percorra as leituras. Dentro do laço, se a leitura atual está abaixo do limite,
+      retorne-a ali mesmo. Depois que o laço termina, retorne None - chegar naquela linha
+      significa que nada bateu.
+  - level: 3
+    text: |
+      A mesma forma de saída antecipada, caçando o primeiro item esgotado:
+
+          for item in estoque:
+              if item["restam"] == 0:
+                  return item["nome"]
+          return None
+
+      A sua compara um número com um limite em vez de com zero, e retorna o próprio valor
+      em vez de um campo dele.
+
+solution: |
+  def first_breach(readings, limit):
+      for reading in readings:
+          if reading < limit:
+              return reading
+      return None

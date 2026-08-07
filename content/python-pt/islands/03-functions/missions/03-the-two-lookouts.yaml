@@ -1,0 +1,154 @@
+# Missao 3 de Funcoes. Missao de alivio. Reforca: parameters, return-values.
+# Nao introduz nada novo: a primeira missao em que o jogador escreve DUAS funcoes, que e
+# a preparacao de que as missoes 5 e 8 dependem estruturalmente.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-03
+title: Os dois vigias
+track: python
+island: functions
+order: 3
+difficulty: elementary
+tags: [helper-functions, composition]
+xp: 10
+
+concepts:
+  - parameters
+  - return-values
+
+teaching:
+  analogy: |
+    Dois vigias dividem o trabalho. Um observa e conta; o outro pega esse número e
+    escreve a linha no diário. Nenhum faz o trabalho do outro, e nenhum precisa saber
+    como o outro faz o seu - a contagem é toda a conversa entre eles.
+
+  explanation: |
+    Nada novo aqui. Você já escreve funções e já retorna valores; esta missão só pede que
+    você escreva duas, onde uma chama a outra.
+
+    Uma função chamando outra é o caso comum, não um caso avançado. Quem chama passa
+    argumentos, o auxiliar retorna um valor, e quem chamou usa esse valor. O auxiliar não
+    faz ideia de quem o chamou.
+
+    Dividir o trabalho assim vale a linha extra de def quando cada pedaço tem um nome que
+    você consegue dizer em voz alta. "Contar as sondagens" e "escrever a linha" são duas
+    frases, então ficam confortáveis como duas funções.
+
+  worked_example: |
+    # Duas funcoes para um recibo de loja, nao um diario de bordo
+    def subtotal(precos):
+        total = 0
+        for preco in precos:
+            total = total + preco
+        return total
+
+    def recibo(precos):
+        valor = subtotal(precos)           # chama o auxiliar, usa o que ele retorna
+        return "total: " + str(valor)
+
+    print(recibo([3, 4, 5]))               # total: 12
+
+  key_points:
+    - Uma função pode chamar qualquer outra função definida no mesmo arquivo, em qualquer ordem.
+    - O auxiliar retorna um valor; quem chamou decide o que fazer com ele. Esse return é o único canal entre os dois.
+    - Duas funções valem a pena quando cada uma tem um nome que cabe numa frase curta.
+    - Só o valor de retorno da função principal é verificado. Auxiliares existem para tornar essa resposta mais fácil de montar.
+
+brief: |
+  No fim de um turno o diário ganha uma linha dizendo quantas leituras de profundidade
+  vieram abaixo do limite seguro.
+
+  Escreva uma função chamada watch_line que recebe readings (uma lista de números),
+  limit (um número), e retorna uma linha de texto exatamente neste formato:
+
+      3 breaches
+
+  Conte quantas leituras estão estritamente abaixo do limite, depois monte a linha.
+
+  Quando há exatamente uma sondagem a linha diz "1 breach" - singular, sem "es". Zero
+  sondagens diz "0 breaches".
+
+  Escreva uma segunda função chamada count_breaches que faz a contagem, e faça watch_line
+  chamá-la. Manter os dois trabalhos separados é o ponto desta missão.
+
+signature:
+  entrypoint: watch_line
+  stub: |
+    def count_breaches(readings, limit):
+        # Conte quantas leituras estao estritamente abaixo do limite.
+        # seu codigo aqui
+        pass
+
+
+    def watch_line(readings, limit):
+        # Chame count_breaches, depois monte a linha com o que ela devolver.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 3, 8, 2], 5]
+      expect: "2 breaches"
+    - args: [[10, 3], 5]
+      expect: "1 breach"
+  hidden:
+    - args: [[], 5]
+      expect: "0 breaches"
+    - args: [[9, 9, 9], 5]
+      expect: "0 breaches"
+    - args: [[1, 1, 1], 5]
+      expect: "3 breaches"
+    - args: [[5, 5], 5]
+      expect: "0 breaches"
+    - args: [[4], 5]
+      expect: "1 breach"
+
+hints:
+  - level: 1
+    text: |
+      Você já sabe contar coisas numa lista com um laço. A única pergunta nova é onde
+      essa contagem mora depois de pronta - como watch_line põe a mão nela?
+  - level: 2
+    text: |
+      count_breaches percorre e retorna um número. watch_line a chama, guarda o resultado
+      numa variável, e então usa um if nesse número para escolher entre "breach" e
+      "breaches" antes de juntar tudo numa string só.
+  - level: 3
+    text: |
+      A mesma divisão em duas funções, contando assentos vazios:
+
+          def vazios(assentos):
+              n = 0
+              for assento in assentos:
+                  if assento is None:
+                      n = n + 1
+              return n
+
+          def linha_assentos(assentos):
+              n = vazios(assentos)
+              palavra = "assentos"
+              if n == 1:
+                  palavra = "assento"
+              return str(n) + " " + palavra
+
+      A sua conta contra um limite em vez de contra None.
+
+solution: |
+  def count_breaches(readings, limit):
+      count = 0
+      for reading in readings:
+          if reading < limit:
+              count = count + 1
+      return count
+
+
+  def watch_line(readings, limit):
+      count = count_breaches(readings, limit)
+      word = "breaches"
+      if count == 1:
+          word = "breach"
+      return str(count) + " " + word

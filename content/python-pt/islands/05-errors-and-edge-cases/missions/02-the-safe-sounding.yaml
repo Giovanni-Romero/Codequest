@@ -1,0 +1,134 @@
+# Missao 2 de Erros e Casos-Limite. Introduz: try-except. Reforca: exceptions.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-02
+title: A sondagem segura
+track: python
+island: errors-and-edge-cases
+order: 2
+difficulty: simple
+tags: [try-except, fallback]
+xp: 20
+
+concepts:
+  - try-except
+  - exceptions
+
+teaching:
+  analogy: |
+    O contramestre, diferente do marujo, sabe sim o que fazer com um porão vazio:
+    escrever "nenhum a bordo" no diário e seguir o turno. Ele pode fazer isso porque a
+    decisão é dele. Ninguém acima dele precisa ficar sabendo.
+
+    Capturar um erro é reivindicar essa autoridade. Só reivindique quando você
+    genuinamente tem uma resposta, porque a alternativa a capturar não é "quebrar" - é
+    "deixar quem sabe mais decidir".
+
+  explanation: |
+    try / except roda um bloco e, se uma exceção correspondente for levantada dentro
+    dele, roda o tratador em vez de parar.
+
+        try:
+            return total / contagem
+        except ZeroDivisionError:
+            return 0
+
+    Nomeie a exceção que você está tratando. Um `except:` pelado captura tudo, inclusive
+    erros de digitação no seu próprio código e a interrupção que você aperta para parar o
+    programa - ele transforma todo engano em silêncio, que é o tipo de bug mais difícil
+    de achar.
+
+    Mantenha o bloco try reduzido à linha que de fato pode falhar. Envolver dez linhas
+    significa que uma falha sem relação na linha nove é tratada por uma regra escrita
+    para a linha um, e a resposta errada volta parecendo correta.
+
+    O bloco except só roda quando algo falhou. Quando nada falha, ele é pulado
+    inteiramente.
+
+  worked_example: |
+    # Lendo uma configuracao que pode estar faltando, nao sondando um porao
+    def numero_porta(texto):
+        try:
+            return int(texto)
+        except ValueError:
+            return 8080          # um padrao sensato quando o texto nao e um numero
+
+    print(numero_porta("3000"))  # 3000
+    print(numero_porta("abc"))   # 8080 - tratado, sem quebrar
+    print(numero_porta(""))      # 8080
+
+    # Repare no que NAO esta envolvido: so a linha que pode falhar esta dentro do try.
+
+  key_points:
+    - "Nomeie a exceção que você captura. Um except: pelado engole seus próprios erros de digitação também."
+    - Mantenha o bloco try na linha que pode falhar, ou um erro sem relação recebe o tratador errado.
+    - O bloco except roda só na falha - quando nada levanta, ele é pulado.
+    - Capture quando você genuinamente sabe a resposta. Caso contrário deixar subir é a escolha melhor.
+
+brief: |
+  A mesma média da missão anterior, mas desta vez do assento do contramestre: um turno
+  vazio significa que nenhuma sondagem foi feita, e o diário registra isso como 0.
+
+  Escreva uma função chamada safe_average que recebe readings, uma lista de números, e
+  retorna a média deles - exceto que uma lista vazia retorna 0 em vez de falhar.
+
+  Capture o erro em vez de checar o tamanho antes. Checar é o assunto de uma missão
+  posterior; esta é sobre tratamento.
+
+signature:
+  entrypoint: safe_average
+  stub: |
+    def safe_average(readings):
+        # Tente a divisao. Decida o que fazer quando ela nao puder ser feita.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20, 30]]
+      expect: 20.0
+    - args: [[]]
+      expect: 0
+  hidden:
+    - args: [[5]]
+      expect: 5.0
+    - args: [[1, 2]]
+      expect: 1.5
+    - args: [[0, 0]]
+      expect: 0.0
+    - args: [[-4, 4]]
+      expect: 0.0
+    - args: [[7, 8, 9]]
+      expect: 8.0
+
+hints:
+  - level: 1
+    text: |
+      Você já sabe qual erro uma lista vazia produz aqui - a missão anterior o fez
+      acontecer de propósito. Que estrutura permite rodar aquela linha mesmo assim e
+      decidir o que acontece se ela falhar?
+  - level: 2
+    text: |
+      Ponha a divisão dentro de um bloco try e retorne. Acrescente um bloco
+      except ZeroDivisionError que retorna 0. Nomeie essa exceção em vez de capturar tudo.
+  - level: 3
+    text: |
+      A mesma forma, numa busca que pode não achar:
+
+          try:
+              return precos[item]
+          except KeyError:
+              return 0
+
+      A sua captura uma exceção diferente, levantada por uma operação diferente.
+
+solution: |
+  def safe_average(readings):
+      try:
+          return sum(readings) / len(readings)
+      except ZeroDivisionError:
+          return 0

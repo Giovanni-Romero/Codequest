@@ -1,6 +1,8 @@
 """Tests for the command line entry point.
 
-Three things matter here: the bare invocation still prints the version, the path the
+Four things matter here: the bare invocation prints the version from a source checkout,
+the *packaged* build instead opens the game (double-clicking the exe passes no
+arguments, and a bare version print would close the console immediately), the path the
 real process takes (``argv is None``) is exercised, and the subcommands are wired to
 functions rather than merely declared.
 """
@@ -23,6 +25,36 @@ def test_no_arguments_prints_version(capsys):
     assert exit_code == 0
     assert captured.out.strip() == f"codequest {__version__}"
     assert captured.err == ""
+
+
+def test_no_arguments_launches_the_ui_when_frozen(monkeypatch, capsys):
+    """In a packaged build an empty argument list means "play", not "print the version".
+
+    ``sys.frozen`` is the attribute PyInstaller sets on the interpreter it bundles; it
+    simply does not exist in a source checkout, hence ``raising=False`` on the delete.
+    The UI itself is stubbed out: this asserts the *routing* decision, and actually
+    starting Textual would need a terminal no test runner has.
+    """
+    launched: list[dict] = []
+    monkeypatch.setattr(
+        "codequest.tui.app.run",
+        lambda **kwargs: launched.append(kwargs),
+    )
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+
+    exit_code = main([])
+
+    assert exit_code == 0
+    assert launched == [{"database": None, "track": "python"}]
+    assert capsys.readouterr().out == ""
+
+
+def test_no_arguments_prints_version_when_not_frozen(monkeypatch, capsys):
+    """The source checkout keeps the old behaviour, explicitly and not by accident."""
+    monkeypatch.delattr(sys, "frozen", raising=False)
+
+    assert main([]) == 0
+    assert capsys.readouterr().out.strip() == f"codequest {__version__}"
 
 
 def test_unknown_argument_exits_with_the_usage_error_code(capsys):

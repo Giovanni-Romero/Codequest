@@ -1,0 +1,130 @@
+# Mission 1 of Strings and Text. Introduces: string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-01
+title: The smudged manifest
+track: python
+island: strings-and-text
+order: 1
+difficulty: simple
+tags: [string-methods, cleaning]
+xp: 20
+
+concepts:
+  - string-methods
+
+teaching:
+  analogy: |
+    A manifest comes aboard wet, written by six different hands. One clerk wrote in
+    capitals, another left a thumb-width of blank paper before every entry, a third spelt
+    the port with the old name nobody uses anymore.
+
+    None of that changes what the cargo *is*. Before anyone can compare two entries, the
+    handwriting has to stop mattering.
+
+  explanation: |
+    Strings come with methods that do this cleaning for you. A method is a function that
+    belongs to a value, called with a dot: text.strip().
+
+    The four that earn their place early:
+
+      - .strip() removes whitespace from the front and the back. Only the ends, never
+        the middle.
+      - .lower() and .upper() fold the case, so "LISBON" and "lisbon" can be compared.
+      - .replace(old, new) swaps every occurrence of one piece of text for another.
+      - .startswith(prefix) answers True or False.
+
+    Every one of them hands you a **new** string. None of them changes the one you called
+    it on - which is the subject of the next mission, and the reason you must assign the
+    result to something.
+
+  worked_example: |
+    # Tidying a username, not a cargo entry
+    raw = "  Ada_Lovelace  "
+
+    trimmed = raw.strip()             # "Ada_Lovelace"
+    lowered = trimmed.lower()         # "ada_lovelace"
+    spaced = lowered.replace("_", " ")  # "ada lovelace"
+
+    print(spaced)                     # ada lovelace
+    print(raw)                        # "  Ada_Lovelace  " - untouched
+    print(spaced.startswith("ada"))   # True
+
+  key_points:
+    - "A method is called with a dot on the value itself: text.strip(), not strip(text)."
+    - .strip() trims only the ends. Spaces in the middle survive, on purpose.
+    - Folding case with .lower() is how you compare text written by two different people.
+    - "Every one of these returns a new string. Assign the result, or nothing you did survives."
+
+brief: |
+  Write a function called tidy_entry that takes one manifest entry as text and returns
+  its cleaned form.
+
+  Cleaning means, in this order:
+
+    - remove any whitespace at the front and the back
+    - replace every underscore with a single space
+    - fold the whole thing to lowercase
+
+  tidy_entry("  Salt_Cod  ") returns "salt cod". Text that is already clean comes back
+  unchanged, and an empty entry returns an empty string.
+
+signature:
+  entrypoint: tidy_entry
+  stub: |
+    def tidy_entry(entry):
+        # Three cleaning steps. Each one hands you a new string - keep hold of it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  Salt_Cod  "]
+      expect: "salt cod"
+    - args: ["rope"]
+      expect: "rope"
+  hidden:
+    - args: [""]
+      expect: ""
+    - args: ["   "]
+      expect: ""
+    - args: ["A_B_C"]
+      expect: "a b c"
+    - args: ["  MIXED case  "]
+      expect: "mixed case"
+    - args: ["no_change_needed"]
+      expect: "no change needed"
+    - args: ["  _leading_  "]
+      expect: " leading "
+
+hints:
+  - level: 1
+    text: |
+      Each cleaning step gives you back a new piece of text rather than changing the one
+      you had. What has to happen to that new piece before the next step can work on it?
+  - level: 2
+    text: |
+      Call .strip() on the entry and keep the result in a variable. Call .replace("_", " ")
+      on that. Call .lower() on that. Return the last one. You can also chain them in one
+      expression if you find it clearer.
+  - level: 3
+    text: |
+      The same chain, tidying a filename:
+
+          name = raw.strip()
+          name = name.replace("-", " ")
+          name = name.lower()
+          return name
+
+      Yours swaps a different character and works on a manifest entry.
+
+solution: |
+  def tidy_entry(entry):
+      cleaned = entry.strip()
+      cleaned = cleaned.replace("_", " ")
+      cleaned = cleaned.lower()
+      return cleaned

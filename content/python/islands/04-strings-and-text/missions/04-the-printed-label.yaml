@@ -1,0 +1,127 @@
+# Mission 4 of Strings and Text. Introduces: f-strings.
+# Reinforces: string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-04
+title: The printed label
+track: python
+island: strings-and-text
+order: 4
+difficulty: simple
+tags: [f-strings, formatting]
+xp: 20
+
+concepts:
+  - f-strings
+  - string-methods
+
+teaching:
+  analogy: |
+    A printing press works from a form: fixed type for the words that never change, and
+    empty slots where the changing parts drop in. The compositor reads the form and sees
+    the finished label, because the slots are shown exactly where the values will land.
+
+    Compare that to describing the label over the telephone, one fragment at a time -
+    "the word crate, then a space, then the number, then..." Same output. Only one of
+    them can be checked at a glance.
+
+  explanation: |
+    An f-string is that form. Put the letter f before the quotes and write your values in
+    braces, in place:
+
+        f"crate {number} weighs {kilos} kg"
+
+    Whatever is inside the braces is an ordinary Python expression, evaluated at that
+    moment and converted to text for you. No str() calls, no chain of +.
+
+    That last part matters more than the tidiness: `"total: " + 5` raises TypeError,
+    which is a bug you have hit since Island 1. An f-string cannot make that mistake,
+    because the conversion is not optional.
+
+    An f-string is evaluated immediately, once. It is not a reusable template you fill in
+    later - by the time the line has run, it is just a finished string.
+
+  worked_example: |
+    # A delivery slip, not a crate label
+    town = "Porto"
+    boxes = 3
+    weight = 12.5
+
+    old_way = "to " + town + ": " + str(boxes) + " boxes, " + str(weight) + " kg"
+    new_way = f"to {town}: {boxes} boxes, {weight} kg"
+
+    print(old_way == new_way)      # True - identical output
+    print(new_way)                 # to Porto: 3 boxes, 12.5 kg
+
+    # Any expression fits inside the braces:
+    print(f"average {weight / boxes} kg per box")
+
+  key_points:
+    - "The f before the opening quote is what makes it work. Without it you get literal braces."
+    - Values are converted to text automatically, so no str() and no TypeError from mixing types.
+    - Anything inside the braces is an expression, not just a variable name.
+    - An f-string runs once, where it is written. It is a finished string, not a template kept for later.
+
+brief: |
+  Every crate gets a printed label before it goes into the hold.
+
+  Write a function called crate_label that takes name (text), count (a whole number) and
+  weight (a number), and returns exactly this line:
+
+      SALT COD x3 - 12.5 kg
+
+  That is: the name in uppercase with surrounding whitespace trimmed, a space, "x" joined
+  to the count, a space, a hyphen, a space, the weight, a space, and "kg".
+
+  Build the line with an f-string.
+
+signature:
+  entrypoint: crate_label
+  stub: |
+    def crate_label(name, count, weight):
+        # One f-string. Clean the name first if it needs it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  salt cod  ", 3, 12.5]
+      expect: "SALT COD x3 - 12.5 kg"
+    - args: ["rope", 1, 4]
+      expect: "ROPE x1 - 4 kg"
+  hidden:
+    - args: ["", 0, 0]
+      expect: " x0 - 0 kg"
+    - args: ["nails", 100, 0.5]
+      expect: "NAILS x100 - 0.5 kg"
+    - args: ["  MIXED case  ", 2, 7]
+      expect: "MIXED CASE x2 - 7 kg"
+    - args: ["a", 1, -3]
+      expect: "A x1 - -3 kg"
+
+hints:
+  - level: 1
+    text: |
+      Two jobs, and only one of them is new. Which part of the label needs cleaning
+      before it can be placed, and which parts just drop into their slots?
+  - level: 2
+    text: |
+      Clean the name with .strip().upper() first - either into a variable or inside the
+      braces. Then write one f-string with three slots and the fixed text between them.
+  - level: 3
+    text: |
+      The same form, on a different slip:
+
+          who = customer.strip().title()
+          return f"{who} #{order_id} - {total} EUR"
+
+      Yours folds case differently and has its own fixed text between the slots.
+
+solution: |
+  def crate_label(name, count, weight):
+      cleaned = name.strip().upper()
+      return f"{cleaned} x{count} - {weight} kg"

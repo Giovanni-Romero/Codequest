@@ -1,0 +1,123 @@
+# Missao 6 de Strings e Texto. Missao de alivio. Nao introduz nada.
+# Reforca: f-strings, join-vs-concat.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-06
+title: A folha de sinais
+track: python
+island: strings-and-text
+order: 6
+difficulty: elementary
+tags: [f-strings, join]
+xp: 10
+
+concepts:
+  - f-strings
+  - join-vs-concat
+
+teaching:
+  analogy: |
+    A folha de sinais pregada junto ao leme é uma linha só: as bandeiras do dia, em
+    ordem, separadas por barras, com a contagem na frente para o oficial de turno saber
+    de relance se está faltando alguma.
+
+  explanation: |
+    Nada novo aqui. As duas últimas missões te deram as duas metades disto: join constrói
+    o meio a partir de uma lista de tamanho desconhecido, e uma f-string encaixa esse
+    meio numa linha com o texto fixo em volta.
+
+    Elas se combinam do jeito óbvio. Monte a parte juntada primeiro, guarde numa variável
+    com nome, depois coloque. Aninhar uma chamada de join dentro das chaves de uma
+    f-string é legal e, passando disso, mais difícil de ler do que as duas linhas que
+    substitui - o mesmo julgamento que a missão de comprehension pediu na ilha de
+    Coleções.
+
+  worked_example: |
+    # Uma nota de embalagem, nao uma folha de sinais
+    itens = ["cha", "geleia", "corda"]
+
+    listados = ", ".join(itens)
+    linha = f"{len(itens)} itens: {listados}"
+
+    print(linha)                 # 3 itens: cha, geleia, corda
+    print(f"0 itens: {', '.join([])}")   # 0 itens:  - juntar nada da nada
+
+  key_points:
+    - join monta a parte cujo tamanho você não sabe; uma f-string a emoldura com a parte que você sabe.
+    - Nomear o pedaço juntado antes de colocá-lo geralmente lê melhor que aninhar a chamada nas chaves.
+    - "len() na lista dá a contagem sem contar nada à mão."
+    - Uma lista vazia ainda produz uma linha válida - a seção juntada simplesmente fica vazia.
+
+brief: |
+  Escreva uma função chamada signal_sheet que recebe flags, uma lista de nomes de
+  bandeiras, e retorna uma linha exatamente neste formato:
+
+      3 flags: red/blue/green
+
+  Ou seja: o número de bandeiras, um espaço, a palavra "flags", dois-pontos, um espaço, e
+  então os nomes das bandeiras separados por uma única barra sem espaços ao redor.
+
+  Com exatamente uma bandeira a palavra é "flag", singular. Sem bandeira nenhuma a linha
+  é "0 flags:" - os dois-pontos ficam, e não há nada depois deles, nem um espaço.
+
+signature:
+  entrypoint: signal_sheet
+  stub: |
+    def signal_sheet(flags):
+        # Junte os nomes, escolha a palavra certa, depois coloque as duas numa linha.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["red", "blue", "green"]]
+      expect: "3 flags: red/blue/green"
+    - args: [["red"]]
+      expect: "1 flag: red"
+  hidden:
+    - args: [[]]
+      expect: "0 flags:"
+    - args: [["a", "b"]]
+      expect: "2 flags: a/b"
+    - args: [["x", "y", "z", "w"]]
+      expect: "4 flags: x/y/z/w"
+    - args: [["solo"]]
+      expect: "1 flag: solo"
+
+hints:
+  - level: 1
+    text: |
+      Escreva à mão como a linha fica para zero bandeiras, uma bandeira e três bandeiras.
+      Duas coisas mudam entre elas, não uma.
+  - level: 2
+    text: |
+      Junte as bandeiras com "/" numa variável. Escolha "flag" ou "flags" com um if em
+      len(flags). Depois retorne uma f-string colocando a contagem, a palavra e os nomes
+      juntados. Confira o caso vazio contra sua f-string - o espaço depois dos
+      dois-pontos não pode aparecer.
+  - level: 3
+    text: |
+      A mesma montagem, numa folha diferente:
+
+          listados = ", ".join(nomes)
+          palavra = "convidados"
+          if len(nomes) == 1:
+              palavra = "convidado"
+          return f"{len(nomes)} {palavra}: {listados}".rstrip()
+
+      O .rstrip() no final ali é um jeito de tratar o caso vazio. Existem outros, e a sua
+      só precisa de um deles.
+
+solution: |
+  def signal_sheet(flags):
+      listed = "/".join(flags)
+      word = "flags"
+      if len(flags) == 1:
+          word = "flag"
+      if not flags:
+          return f"{len(flags)} {word}:"
+      return f"{len(flags)} {word}: {listed}"

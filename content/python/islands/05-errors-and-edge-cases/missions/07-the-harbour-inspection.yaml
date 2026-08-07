@@ -1,0 +1,155 @@
+# Mission 7 of Errors and Edge Cases. Introduces: input-validation.
+# Reinforces: raising, string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-07
+title: The harbour inspection
+track: python
+island: errors-and-edge-cases
+order: 7
+difficulty: moderate
+tags: [validation, raising, string-methods]
+xp: 30
+
+concepts:
+  - input-validation
+  - raising
+
+teaching:
+  analogy: |
+    The inspection happens at the gangway, not in the hold. Anything wrong is caught while
+    it is still one crate on a plank, before it has been stowed, logged, and buried under
+    forty others. The cost of turning it away is a minute; the cost of finding it three
+    days out is the whole cargo.
+
+  explanation: |
+    Validation belongs at the boundary - the first lines of the function, before any work
+    happens. Once you have transformed a value, split it, converted it or stored it, a
+    problem with it is far harder to trace back to where it came in.
+
+    That produces a shape worth recognising, and you have written it before as the guard
+    clause on the Functions island: every rejection first, one after another, then the
+    real work on a clean line at the bottom. No nesting, no else. By the time you reach
+    the bottom of the checks, the rest of the function is allowed to assume its inputs are
+    sound - and that assumption is what keeps the body readable.
+
+    Validate the shape as well as the type. "It is a string" is rarely the whole rule; it
+    is usually "a string, not empty once trimmed, and one of these three values".
+
+    Do not trust a value because it came from another part of your own program. Most bad
+    input has an entirely innocent origin.
+
+  worked_example: |
+    # Registering a passenger, not inspecting cargo
+    def register(name, age):
+        if not isinstance(name, str):
+            raise TypeError(f"name must be text, got {type(name).__name__}")
+        cleaned = name.strip()
+        if not cleaned:
+            raise ValueError("name must not be blank")
+        if age < 0:
+            raise ValueError(f"age cannot be negative, got {age}")
+
+        # Below this line, every input is known good.
+        return f"{cleaned.title()} ({age})"
+
+    print(register("  ada  ", 36))     # Ada (36)
+    # print(register("   ", 36))       # ValueError: name must not be blank
+
+  key_points:
+    - Validate at the top, before any work. A bad value that has already been transformed is much harder to trace.
+    - Every rejection first, then the real work on a clean line. No nesting, no else.
+    - "Check the shape, not only the type: not empty, in range, one of the allowed values."
+    - Below the last check, the rest of the function may assume its inputs are sound. That is what buys the readability.
+
+brief: |
+  Every crate is inspected at the gangway before it is written into the manifest.
+
+  Write a function called inspect_crate that takes name and weight, and returns the
+  cleaned entry as text in the form "salt cod:12" - the name trimmed and lowercased, a
+  colon, the weight.
+
+  Reject at the top, in this order:
+
+    - name is not text at all: raise TypeError
+    - name is empty once trimmed: raise ValueError
+    - weight is not a whole number: raise TypeError
+    - weight is zero or below: raise ValueError
+
+  A crate that passes all four is written into the manifest.
+
+  Note that True is an int in Python, as the Foundations island showed - a weight of True
+  must be rejected as the wrong type, not accepted as 1.
+
+signature:
+  entrypoint: inspect_crate
+  stub: |
+    def inspect_crate(name, weight):
+        # Four rejections, in order, at the top. Then one clean line of real work.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  Salt Cod  ", 12]
+      expect: "salt cod:12"
+    - args: ["   ", 12]
+      raises: ValueError
+  hidden:
+    - args: ["rope", 1]
+      expect: "rope:1"
+    - args: [5, 12]
+      raises: TypeError
+    - args: ["rope", 0]
+      raises: ValueError
+    - args: ["rope", -3]
+      raises: ValueError
+    - args: ["rope", 1.5]
+      raises: TypeError
+    - args: ["rope", true]
+      raises: TypeError
+    - args: ["", 5]
+      raises: ValueError
+    - args: ["MIXED Case", 100]
+      expect: "mixed case:100"
+
+hints:
+  - level: 1
+    text: |
+      One of these checks has to happen before another one is even safe to attempt. Which
+      check would itself crash if you ran it on the wrong kind of value?
+  - level: 2
+    text: |
+      Check isinstance(name, str) first and raise TypeError, because .strip() on a number
+      would crash. Then strip and check it is not empty. For the weight, use
+      isinstance(weight, int) and not isinstance(weight, bool) to reject True, then check
+      it is above zero. Build the answer after all four.
+  - level: 3
+    text: |
+      The type guard that excludes booleans, from the Foundations island:
+
+          if not isinstance(value, int) or isinstance(value, bool):
+              raise TypeError(f"expected a whole number, got {value!r}")
+
+      Yours pairs that with a text check and two range checks.
+
+solution: |
+  def inspect_crate(name, weight):
+      if not isinstance(name, str):
+          raise TypeError(f"name must be text, got {type(name).__name__}")
+
+      cleaned = name.strip().lower()
+      if not cleaned:
+          raise ValueError("name must not be blank")
+
+      if not isinstance(weight, int) or isinstance(weight, bool):
+          raise TypeError(f"weight must be a whole number, got {type(weight).__name__}")
+
+      if weight <= 0:
+          raise ValueError(f"weight must be above zero, got {weight}")
+
+      return f"{cleaned}:{weight}"

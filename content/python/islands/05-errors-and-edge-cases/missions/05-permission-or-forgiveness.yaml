@@ -1,0 +1,184 @@
+# Mission 5 of Errors and Edge Cases. Introduces: eafp-vs-lbyl.
+# Reinforces: try-except, raising.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-05
+title: Permission or forgiveness
+track: python
+island: errors-and-edge-cases
+order: 5
+difficulty: simple
+tags: [eafp, lbyl, style]
+xp: 20
+
+concepts:
+  - eafp-vs-lbyl
+  - try-except
+
+teaching:
+  analogy: |
+    Two ways to take the last lifeboat seat. Look first, see it is free, then sit - or sit
+    down and apologise if someone was already there.
+
+    Looking first sounds obviously safer until you notice the gap: between your glance and
+    your weight landing, someone else can take it. The check told you about the past, and
+    you acted in the present.
+
+  explanation: |
+    LBYL - Look Before You Leap - checks first: `if key in data:` then use it.
+
+    EAFP - Easier to Ask Forgiveness than Permission - does it and handles the failure:
+    `try:` use it `except KeyError:`. This is the more Pythonic default, and there is a
+    reason beyond taste.
+
+    A check and the action after it are two separate steps, and anything that can change
+    between them will eventually change between them. With a dictionary in one program
+    that gap is theoretical; with a file, a network or another thread it is a real bug
+    with a name - a race condition.
+
+    EAFP also does one lookup instead of two, and reads better when failure is rare.
+
+    LBYL is the better choice when the check is cheap and clear and there is nothing to
+    race against - `if not items:` before dividing is easier to read than catching
+    ZeroDivisionError, and nobody is going to argue.
+
+    Both are correct here. The point is choosing, not reciting.
+
+  worked_example: |
+    # The same lookup written both ways
+    stock = {"rope": 4}
+
+    def count_lbyl(name):
+        if name in stock:            # look
+            return stock[name]       # then leap
+        return 0
+
+    def count_eafp(name):
+        try:
+            return stock[name]       # leap
+        except KeyError:
+            return 0                 # apologise
+
+    print(count_lbyl("rope"), count_eafp("rope"))    # 4 4
+    print(count_lbyl("salt"), count_eafp("salt"))    # 0 0
+
+  key_points:
+    - "LBYL checks first; EAFP tries first and handles the failure. Both are correct code."
+    - A check and the action after it are two steps, and the gap between them is where race conditions live.
+    - EAFP is the Pythonic default, especially when failure is rare and the check would be a second lookup.
+    - LBYL wins when the check is cheap, obvious and nothing can change underneath it.
+
+brief: |
+  A depth reading arrives as text and has to become a number.
+
+  Write two functions that do exactly the same job, one in each style. Both take a piece
+  of text and return it converted to a whole number, or 0 when it is not a number at all.
+
+    - parse_lbyl checks first, without try / except. The string method that tells you
+      whether text is made only of digits is .isdigit()
+    - parse_eafp converts first and handles the failure with try / except
+
+  Then write parse_depth, which the game calls, taking text and a style - either "lbyl"
+  or "eafp" - and returning the result from the matching function. Any other style raises
+  ValueError.
+
+  Note that .isdigit() is False for "-5", so parse_lbyl returns 0 there while parse_eafp
+  returns -5. That difference is real and it is the point: the two styles are not always
+  identical, and the checking version is only as good as its check.
+
+signature:
+  entrypoint: parse_depth
+  stub: |
+    def parse_lbyl(text):
+        # Check that it is all digits, then convert. No try/except.
+        # your code here
+        pass
+
+
+    def parse_eafp(text):
+        # Convert, and handle the failure.
+        # your code here
+        pass
+
+
+    def parse_depth(text, style):
+        # Dispatch to the requested style. Refuse a style you do not have.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["42", "lbyl"]
+      expect: 42
+    - args: ["oops", "eafp"]
+      expect: 0
+  hidden:
+    - args: ["42", "eafp"]
+      expect: 42
+    - args: ["oops", "lbyl"]
+      expect: 0
+    - args: ["", "lbyl"]
+      expect: 0
+    - args: ["", "eafp"]
+      expect: 0
+    - args: ["-5", "lbyl"]
+      expect: 0
+    - args: ["-5", "eafp"]
+      expect: -5
+    - args: ["7", "sideways"]
+      raises: ValueError
+    - args: ["0", "eafp"]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Work out what each version does with "-5" before writing either. They disagree, and
+      the brief tells you that is expected - so do not try to make them match.
+  - level: 2
+    text: |
+      parse_lbyl returns int(text) when text.isdigit() is true, and 0 otherwise.
+      parse_eafp puts int(text) in a try and returns 0 from an except ValueError.
+      parse_depth checks the style, calls the right one, and raises ValueError for
+      anything else.
+  - level: 3
+    text: |
+      The two styles, on a different conversion:
+
+          def as_float_lbyl(s):
+              if s.replace(".", "").isdigit():
+                  return float(s)
+              return 0.0
+
+          def as_float_eafp(s):
+              try:
+                  return float(s)
+              except ValueError:
+                  return 0.0
+
+      Yours converts to a whole number and has a third function choosing between them.
+
+solution: |
+  def parse_lbyl(text):
+      if text.isdigit():
+          return int(text)
+      return 0
+
+
+  def parse_eafp(text):
+      try:
+          return int(text)
+      except ValueError:
+          return 0
+
+
+  def parse_depth(text, style):
+      if style == "lbyl":
+          return parse_lbyl(text)
+      if style == "eafp":
+          return parse_eafp(text)
+      raise ValueError(f"unknown style {style!r}")

@@ -1,0 +1,152 @@
+# Mission 8 of Functions. Introduces: pure-vs-side-effects.
+# Reinforces: scope, lists, mutable-default-trap.
+#
+# STRUCTURAL NOTE: the harness only reports the entrypoint's RETURN value - it never
+# shows the caller what happened to the arguments afterwards. So a mutating helper is
+# only detectable if something calls it twice on the same list within one invocation.
+# Same constraint that shaped mission 5. See the syllabus, Island 3 "Engine limits".
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-08
+title: Leave no trace
+track: python
+island: functions
+order: 8
+difficulty: simple
+tags: [purity, side-effects, aliasing]
+xp: 20
+
+concepts:
+  - pure-vs-side-effects
+  - scope
+
+teaching:
+  analogy: |
+    Two clerks are each asked to copy the master manifest and add one line to their copy.
+    The first clerk photocopies it, writes on the copy, and hands it back - the master is
+    exactly as it was. The second clerk writes straight onto the master and hands you
+    that.
+
+    Ask both of them twice and the difference stops being philosophical. The second
+    clerk's two "copies" are the same sheet, carrying both additions, and the master is
+    ruined.
+
+  explanation: |
+    A function is *pure* when its result depends only on its arguments and it changes
+    nothing outside itself. Same inputs, same output, no trace left behind.
+
+    Passing a list to a function does not copy it. The parameter is another name for the
+    caller's list - the same object. So items.append(x) inside a function reaches out and
+    modifies the caller's data. That is a side effect, and it happens whether or not you
+    also return something.
+
+    To leave the caller alone, build a new list instead of changing theirs:
+
+        new = items + [x]        # a new list, caller's untouched
+        items.append(x)          # the caller's list, modified in place
+
+    Side effects are not banned - a program that changes nothing does nothing. The rule
+    is that they should be obvious from the function's name and documented behaviour,
+    never a surprise the caller discovers later.
+
+  worked_example: |
+    # The same trap, on a playlist rather than a manifest
+    def queue_bad(songs, extra):
+        songs.append(extra)          # reaches into the caller's list
+        return songs
+
+    def queue_ok(songs, extra):
+        return songs + [extra]       # builds a new one
+
+    original = ["a"]
+    print(queue_bad(original, "b"))  # ['a', 'b']
+    print(original)                  # ['a', 'b']  <- the caller's list changed
+
+    original = ["a"]
+    print(queue_ok(original, "b"))   # ['a', 'b']
+    print(original)                  # ['a']       <- untouched
+
+  key_points:
+    - A parameter holding a list is the caller's list, not a copy of it.
+    - "append, remove, sort and clear change the object in place. Building with + creates a new one."
+    - A pure function can be called twice with the same arguments and give the same answer both times.
+    - Side effects are fine when they are the point of the function. They are bugs when they are a surprise.
+
+brief: |
+  The ship keeps one master manifest. Two different departments each need their own
+  version of it with one extra item added - and the master must survive the process
+  unchanged, because a third department is going to ask for it next.
+
+  Write a function called add_item that takes items and item, and returns a new list
+  with item on the end. It must not change the list it was given.
+
+  Then write two_manifests that takes base, first and second, and returns a list holding
+  two manifests: base plus first, and base plus second.
+
+  two_manifests(["rope"], "salt", "nails") returns [["rope", "salt"], ["rope", "nails"]].
+
+  Notice what that means: the second manifest must not contain "salt". If it does, your
+  add_item is writing on the master.
+
+signature:
+  entrypoint: two_manifests
+  stub: |
+    def add_item(items, item):
+        # Give back a new list. Leave the one you were handed exactly as you found it.
+        # your code here
+        pass
+
+
+    def two_manifests(base, first, second):
+        # Two independent manifests, both grown from the same base.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope"], "salt", "nails"]
+      expect: [["rope", "salt"], ["rope", "nails"]]
+    - args: [[], "a", "b"]
+      expect: [["a"], ["b"]]
+  hidden:
+    - args: [["x", "y"], "p", "q"]
+      expect: [["x", "y", "p"], ["x", "y", "q"]]
+    - args: [[], "same", "same"]
+      expect: [["same"], ["same"]]
+    - args: [["only"], "1", "2"]
+      expect: [["only", "1"], ["only", "2"]]
+    - args: [[1, 2], 3, 4]
+      expect: [[1, 2, 3], [1, 2, 4]]
+
+hints:
+  - level: 1
+    text: |
+      Trace it by hand. If add_item appends to the list it was given, what is in base by
+      the time the second call runs? And what are the two things you returned - are they
+      even two different lists?
+  - level: 2
+    text: |
+      add_item should return items + [item], which builds a brand new list. Do not use
+      append on the parameter. two_manifests then calls add_item twice on the same base
+      and returns both results in a list.
+  - level: 3
+    text: |
+      Building instead of mutating, on a tag list:
+
+          def tagged(tags, new_tag):
+              return tags + [new_tag]
+
+      That single line is the whole difference between this mission passing and failing.
+      The other function just calls it twice.
+
+solution: |
+  def add_item(items, item):
+      return items + [item]
+
+
+  def two_manifests(base, first, second):
+      return [add_item(base, first), add_item(base, second)]

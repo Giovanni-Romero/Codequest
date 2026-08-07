@@ -1,0 +1,109 @@
+# Mission 6 of Collections. Introduces: tuples.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-06
+title: Fixed coordinates
+track: python
+island: collections
+order: 6
+difficulty: simple
+tags: [tuples, unpacking]
+xp: 20
+
+concepts:
+  - tuples
+
+teaching:
+  analogy: |
+    A lighthouse's position never changes once it is charted - unlike a ship, it has no
+    business being accidentally moved by a stray line of code. A tuple is Python's way
+    of saying "this group of values belongs together, and nothing here should be
+    reassigned piece by piece."
+
+  explanation: |
+    A tuple groups a fixed number of values into one - written (x, y), or built by a
+    function that returns two or more values at once. Unlike a list, a tuple cannot be
+    changed after it is built: no append, no reassigning one slot.
+
+    You read a tuple's pieces by unpacking it into names: x, y = point gives you both
+    values in one line, in order. This is the same idea as indexing, just for however
+    many values fit the shape you expect, all at once.
+
+  worked_example: |
+    # Splitting a full name into parts, not coordinates
+    full_name = ("Ada", "Lovelace")
+    first, last = full_name
+    print(first)            # Ada
+    print(last)             # Lovelace
+    print(full_name[0])     # Ada - a tuple can also be indexed like a list
+
+  key_points:
+    - "A tuple is written with parentheses and commas: (a, b). The comma is what matters - (1) is just the number 1."
+    - "first, last = a_tuple unpacks it into two names in one line, in order."
+    - A tuple has no .append and cannot be reassigned in place - build a new one instead of mutating.
+    - A tuple can still be indexed like a list, with square brackets, if you only need one piece.
+
+brief: |
+  A lighthouse position is fixed once charted: two numbers, x and y, that never change
+  independently of each other.
+
+  Write a function called midpoint that receives two coordinate pairs and returns a new
+  pair (x, y) that sits exactly halfway between them.
+
+  Return your answer as a tuple - a fixed pair of two values that belong together, not a
+  growable list.
+
+signature:
+  entrypoint: midpoint
+  stub: |
+    def midpoint(point_a, point_b):
+        # Unpack both points, average each part, return a tuple of the two averages.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[0, 0], [4, 4]]
+      expect: [2, 2]
+    - args: [[0, 0], [0, 0]]
+      expect: [0, 0]
+  hidden:
+    - args: [[1, 1], [3, 3]]
+      expect: [2, 2]
+    - args: [[-2, -2], [2, 2]]
+      expect: [0, 0]
+    - args: [[0, 0], [3, 3]]
+      expect: [1.5, 1.5]
+    - args: [[5, 10], [15, 20]]
+      expect: [10, 15]
+
+hints:
+  - level: 1
+    text: |
+      You need four numbers total before you can average anything - two from each point.
+      How do you pull both values out of a pair in one line?
+  - level: 2
+    text: |
+      Unpack each point into two names: x1, y1 = point_a and x2, y2 = point_b. Average
+      the x values and the y values separately, and return them together as a tuple.
+  - level: 3
+    text: |
+      Same shape, finding the average of two prices:
+
+          low, high = price_range
+          fair = (low + high) / 2
+          return fair
+
+      Yours has two values to average instead of one, and returns them as a pair.
+
+solution: |
+  def midpoint(point_a, point_b):
+      x1, y1 = point_a
+      x2, y2 = point_b
+      mx = (x1 + x2) / 2
+      my = (y1 + y2) / 2
+      return (mx, my)

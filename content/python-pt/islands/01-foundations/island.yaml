@@ -1,0 +1,21 @@
+id: foundations
+name: Fundamentos
+track: python
+order: 1
+theme: Valores, decisões e repetição
+description: |
+  Onde todo programador começa. Você aprende a guardar um valor, tomar uma
+  decisão, repetir uma ação e carregar um resultado ao longo de um laço.
+
+concepts:
+  - variables
+  - basic-types
+  - conditionals
+  - for-loop
+  - while-loop
+  - accumulator-pattern
+
+unlock_requires:
+  missions_completed: 0
+
+completion_reward_xp: 120

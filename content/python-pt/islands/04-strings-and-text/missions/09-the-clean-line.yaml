@@ -1,0 +1,138 @@
+# Missao 9 de Strings e Texto. Missao de alivio. Nao introduz nada.
+# Reforca: split-and-parse, f-strings, string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-09
+title: A linha limpa
+track: python
+island: strings-and-text
+order: 9
+difficulty: elementary
+tags: [split, f-strings, string-methods]
+xp: 10
+
+concepts:
+  - split-and-parse
+  - f-strings
+  - string-methods
+
+teaching:
+  analogy: |
+    Uma mensagem entra rabiscada e sai impressa. Mesma informação, lida uma vez e escrita
+    uma vez, com a bagunça deixada na porta.
+
+  explanation: |
+    Nada novo. Leia a linha em pedaços com split, arrume os pedaços com os métodos de
+    string, escreva uma linha nova com uma f-string. Três ferramentas desta ilha, na
+    ordem em que naturalmente caem.
+
+    A única coisa que merece atenção é que um nome é texto e um número não é. A contagem
+    precisa virar int antes de poder ser comparada com qualquer coisa, mesmo que tudo que
+    você faça depois seja imprimi-la de volta - porque no momento em que uma regra
+    aparece ("marque como baixo se abaixo de dez") uma string compara errado ou recusa de
+    vez.
+
+  worked_example: |
+    # Reformatando uma reserva de assento, nao uma nota de carga
+    bruto = "  bo  |  2  "
+
+    nome, assentos = bruto.split("|")
+    nome = nome.strip().title()
+    assentos = int(assentos.strip())
+
+    linha = f"{nome}: {assentos} assentos"
+    if assentos == 1:
+        linha = f"{nome}: 1 assento"
+
+    print(linha)         # Bo: 2 assentos
+
+  key_points:
+    - Leia em pedaços, arrume, escreva de volta. Três ferramentas na ordem em que o trabalho acontece.
+    - Converta o campo numérico mesmo quando você só pretende exibi-lo - a próxima regra sempre chega.
+    - Desempacotar um split de dois itens em dois nomes é o mesmo desempacotamento de tupla da ilha de Funções.
+    - A linha que você retorna é nova. Nada do que você recebeu foi modificado.
+
+brief: |
+  Uma nota do comissário chega como texto com dois campos separados por uma barra
+  vertical:
+
+      salt cod | 12
+
+  Ou seja, o nome do item e a contagem, e qualquer um dos dois pode ter espaços sobrando.
+
+  Escreva uma função chamada clean_note que recebe uma nota dessas e retorna uma linha
+  exatamente neste formato:
+
+      Salt Cod x12
+
+  Ou seja: o nome aparado com a primeira letra de cada palavra em maiúscula, um espaço,
+  "x" grudado na contagem.
+
+  Quando a contagem for menor que dez, acrescente " LOW" ao final da linha.
+
+  Você pode assumir que a nota sempre tem exatamente dois campos.
+
+signature:
+  entrypoint: clean_note
+  stub: |
+    def clean_note(note):
+        # Divida, arrume os dois pedacos, depois monte uma linha nova.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["salt cod | 12"]
+      expect: "Salt Cod x12"
+    - args: ["  rope  |  4  "]
+      expect: "Rope x4 LOW"
+  hidden:
+    - args: ["nails|10"]
+      expect: "Nails x10"
+    - args: ["nails|9"]
+      expect: "Nails x9 LOW"
+    - args: ["a|0"]
+      expect: "A x0 LOW"
+    - args: ["two words here | 100"]
+      expect: "Two Words Here x100"
+    - args: ["  MIXED case  |  1  "]
+      expect: "Mixed Case x1 LOW"
+
+hints:
+  - level: 1
+    text: |
+      Dez é a fronteira e o brief diz "menor que dez". Confira o que sua comparação faz
+      com uma contagem de exatamente 10 antes de confiar nela.
+  - level: 2
+    text: |
+      Divida em "|" em dois pedaços. Apare e aplique .title() no nome. Apare e converta a
+      contagem com int(). Monte a linha com uma f-string, depois acrescente " LOW" com um
+      if quando a contagem for menor que 10.
+  - level: 3
+    text: |
+      A mesma forma, numa nota diferente:
+
+          esquerda, direita = linha.split(":")
+          rotulo = esquerda.strip().upper()
+          valor = int(direita.strip())
+          saida = f"{rotulo} = {valor}"
+          if valor > 100:
+              saida = saida + " HIGH"
+          return saida
+
+      A sua dobra a caixa de outro jeito e sinaliza a outra ponta da faixa.
+
+solution: |
+  def clean_note(note):
+      raw_name, raw_count = note.split("|")
+      name = raw_name.strip().title()
+      count = int(raw_count.strip())
+
+      line = f"{name} x{count}"
+      if count < 10:
+          line = line + " LOW"
+      return line

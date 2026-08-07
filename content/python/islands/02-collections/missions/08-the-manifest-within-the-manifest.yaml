@@ -1,0 +1,148 @@
+# Mission 8 of Collections. Introduces: nested-structures. Reinforces: lists, dictionaries.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-08
+title: The manifest within the manifest
+track: python
+island: collections
+order: 8
+difficulty: simple
+tags: [nested-structures, dictionaries, lists]
+xp: 20
+
+concepts:
+  - nested-structures
+  - lists
+  - dictionaries
+
+teaching:
+  analogy: |
+    The manifest is not one flat list anymore - it is a filing cabinet of folders
+    (decks), each folder holding a stack of index cards (crates), each card carrying a
+    couple of facts (name, weight). To correct one card, you open the right folder, flip
+    to the right card, and change only that one fact. You do not empty the whole cabinet
+    and refile everything from scratch.
+
+  explanation: |
+    A dictionary can hold a list as a value, and that list can hold dictionaries, and so
+    on - that is nesting. To reach something buried inside, you chain the same access
+    you already know, one layer at a time: manifest[deck] gets the list for one deck,
+    then a loop over that list finds the right crate dictionary, and crate["weight"]
+    reaches the field you actually want to change.
+
+    Nothing about nesting is new syntax - it is the same square-bracket access you
+    already have, used more than once in a row.
+
+  worked_example: |
+    # Bumping a student's score in a gradebook, not a crate's weight
+    gradebook = {"math": [{"name": "Lee", "score": 70}]}
+    for student in gradebook["math"]:
+        if student["name"] == "Lee":
+            student["score"] = student["score"] + 5
+    print(gradebook)   # {'math': [{'name': 'Lee', 'score': 75}]}
+
+  key_points:
+    - Nesting is just accessing more than once in a row - no new syntax, only more of what you know.
+    - To change one value deep inside a structure, walk to it with the same brackets you always use, then assign at the very last step.
+    - A missing key or an item that never matches means nothing to change - check for that before assuming the path exists.
+    - Mutating a dictionary or list you already hold changes it in place - you do not have to rebuild the whole thing to fix one field.
+
+brief: |
+  The manifest is organized by deck: each deck name maps to a list of crate entries, and
+  each crate entry is a dictionary with a "name" and a "weight".
+
+  Write a function called bump_weight that receives the full manifest, a deck name, a
+  crate name, and an amount, and returns the manifest with that one crate's weight
+  increased by the amount - every other deck, crate, and weight untouched.
+
+  If the deck or the crate name does not exist, return the manifest completely
+  unchanged.
+
+signature:
+  entrypoint: bump_weight
+  stub: |
+    def bump_weight(manifest, deck, crate_name, amount):
+        # Find the right deck, then the right crate inside it, then update its weight.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - {"upper": [{"name": "rope", "weight": 10}], "lower": [{"name": "salt", "weight": 20}, {"name": "nails", "weight": 5}]}
+        - "lower"
+        - "nails"
+        - 3
+      expect: {"upper": [{"name": "rope", "weight": 10}], "lower": [{"name": "salt", "weight": 20}, {"name": "nails", "weight": 8}]}
+    - args:
+        - {"deck1": [{"name": "a", "weight": 1}]}
+        - "deck1"
+        - "a"
+        - 9
+      expect: {"deck1": [{"name": "a", "weight": 10}]}
+  hidden:
+    - args:
+        - {"d": [{"name": "x", "weight": 5}]}
+        - "missing"
+        - "x"
+        - 100
+      expect: {"d": [{"name": "x", "weight": 5}]}
+    - args:
+        - {"d": [{"name": "x", "weight": 5}]}
+        - "d"
+        - "nope"
+        - 100
+      expect: {"d": [{"name": "x", "weight": 5}]}
+    - args:
+        - {"d": [{"name": "x", "weight": 10}]}
+        - "d"
+        - "x"
+        - -4
+      expect: {"d": [{"name": "x", "weight": 6}]}
+    - args:
+        - {"d": [{"name": "a", "weight": 1}, {"name": "b", "weight": 2}, {"name": "c", "weight": 3}]}
+        - "d"
+        - "b"
+        - 5
+      expect: {"d": [{"name": "a", "weight": 1}, {"name": "b", "weight": 7}, {"name": "c", "weight": 3}]}
+    - args:
+        - {"up": [{"name": "x", "weight": 1}], "low": [{"name": "y", "weight": 2}]}
+        - "low"
+        - "y"
+        - 8
+      expect: {"up": [{"name": "x", "weight": 1}], "low": [{"name": "y", "weight": 10}]}
+
+hints:
+  - level: 1
+    text: |
+      How do you get from the whole manifest down to one specific crate? Write out each
+      step separately before combining them: manifest, to the right deck's list, to the
+      right crate in that list, to its weight.
+  - level: 2
+    text: |
+      Check the deck exists. Loop over that deck's list of crates, and when you find one
+      whose name matches, update its weight and return the manifest. If nothing matched,
+      hand back the manifest unchanged.
+  - level: 3
+    text: |
+      Same shape, giving a bonus to one worker in a nested payroll structure:
+
+          for worker in payroll[department]:
+              if worker["id"] == target_id:
+                  worker["pay"] = worker["pay"] + bonus
+
+      Yours also has to handle the department not existing at all.
+
+solution: |
+  def bump_weight(manifest, deck, crate_name, amount):
+      if deck not in manifest:
+          return manifest
+      for crate in manifest[deck]:
+          if crate["name"] == crate_name:
+              crate["weight"] = crate["weight"] + amount
+              return manifest
+      return manifest

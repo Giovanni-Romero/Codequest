@@ -1,0 +1,191 @@
+# Mission 11 of Functions. Relief mission. Introduces nothing.
+# Reinforces: first-class-functions, args-kwargs, default-arguments.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-11
+title: Choosing the tool
+track: python
+island: functions
+order: 11
+difficulty: elementary
+tags: [dispatch-table, defaults, kwargs]
+xp: 10
+
+concepts:
+  - first-class-functions
+  - args-kwargs
+  - default-arguments
+
+teaching:
+  analogy: |
+    A surveyor arrives at the hold with one question to answer and a bag of instruments.
+    Which instrument depends on the question, and there is one she reaches for by habit
+    when nobody says otherwise. Occasionally she is told to ignore part of the cargo
+    before measuring.
+
+  explanation: |
+    Nothing new. This is the dispatch table from the order book, given a default so the
+    common question needs no arguments at all, and a bag of keyword options for the
+    unusual request.
+
+    Three things you already have, sitting next to each other:
+
+      - a parameter with a default, for the survey people ask for most
+      - a dictionary of names to functions, so adding a fourth survey is one line
+      - **options, so a caller can adjust the run without the signature growing
+
+    When an option is not passed at all, options simply has no such key - which is
+    exactly what .get with a fallback is for.
+
+  worked_example: |
+    # Surveying a shelf of books rather than a hold
+    def newest(years):
+        return max(years)
+
+    def oldest(years):
+        return min(years)
+
+    SURVEYS = {"newest": newest, "oldest": oldest}
+
+    def shelf(years, kind="newest", **options):
+        if options.get("since"):
+            years = [y for y in years if y >= options["since"]]
+        if not years:
+            return 0
+        return SURVEYS[kind](years)
+
+    print(shelf([1990, 2005, 2020]))                     # 2020 - the default survey
+    print(shelf([1990, 2005, 2020], "oldest"))           # 1990
+    print(shelf([1990, 2005, 2020], "oldest", since=2000))  # 2005
+
+  key_points:
+    - A default turns the most common call into the shortest one.
+    - "**options lets a caller adjust behaviour without every possible setting appearing in the signature."
+    - "options.get(name) returns None when the caller never mentioned it - no need to check membership first."
+    - Reassigning a parameter to a filtered copy is safe. Filtering with a comprehension builds a new list, so the caller's list is untouched.
+
+brief: |
+  Write a function called survey that measures a hold of cargo weights.
+
+  It takes:
+
+    - numbers: a list of weights
+    - how: which survey to run, defaulting to "count"
+    - any number of keyword options
+
+  The surveys are:
+
+    - "count": how many weights there are
+    - "biggest": the largest weight
+    - "smallest": the smallest weight
+
+  Build a dictionary from those names to three small functions, the same way the order
+  book did. If how is not one of the three, return 0.
+
+  One option is recognised: when ignore_negatives is True, drop every negative weight
+  before running the survey. Leave the caller's list alone while you do it.
+
+  An empty list of weights - whether it arrived empty or became empty after filtering -
+  returns 0 for every survey.
+
+signature:
+  entrypoint: survey
+  stub: |
+    def count(values):
+        # your code here
+        pass
+
+
+    def biggest(values):
+        # your code here
+        pass
+
+
+    def smallest(values):
+        # your code here
+        pass
+
+
+    def survey(numbers, how="count", **options):
+        # Filter if asked, pick the survey out of the book, run it on what is left.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[3, 9, 1]]
+      expect: 3
+    - args: [[3, 9, 1], "biggest"]
+      expect: 9
+  hidden:
+    - args: [[3, 9, 1], "smallest"]
+      expect: 1
+    - args: [[-5, 2, 7], "smallest"]
+      expect: -5
+    - args: [[-5, 2, 7], "smallest"]
+      kwargs: { ignore_negatives: true }
+      expect: 2
+    - args: [[-5, -2], "count"]
+      kwargs: { ignore_negatives: true }
+      expect: 0
+    - args: [[], "biggest"]
+      expect: 0
+    - args: [[1, 2], "hoist"]
+      expect: 0
+    - args: [[4]]
+      expect: 1
+    - args: [[-1, -2, 5], "count"]
+      expect: 3
+
+hints:
+  - level: 1
+    text: |
+      Three things happen in order here, and getting the order right is most of the work.
+      Which has to happen before the survey runs, and which decides whether it runs at
+      all?
+  - level: 2
+    text: |
+      First, if options.get("ignore_negatives") is true, rebuild numbers as a filtered
+      copy. Then, if the list is empty, return 0. Then look how up in your dictionary of
+      surveys with .get, return 0 when it is missing, and otherwise call it on the list.
+  - level: 3
+    text: |
+      The filter and the lookup, on a different survey:
+
+          if options.get("only_paid"):
+              rows = [r for r in rows if r > 0]
+          tool = TOOLS.get(kind)
+          if tool is None:
+              return 0
+          return tool(rows)
+
+      Yours also has to decide what an empty list means before it reaches the tool.
+
+solution: |
+  def count(values):
+      return len(values)
+
+
+  def biggest(values):
+      return max(values)
+
+
+  def smallest(values):
+      return min(values)
+
+
+  def survey(numbers, how="count", **options):
+      if options.get("ignore_negatives"):
+          numbers = [number for number in numbers if number >= 0]
+
+      if not numbers:
+          return 0
+
+      tool = {"count": count, "biggest": biggest, "smallest": smallest}.get(how)
+      if tool is None:
+          return 0
+      return tool(numbers)

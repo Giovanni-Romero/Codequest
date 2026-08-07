@@ -1,0 +1,124 @@
+# Missao 4 de Funcoes. Introduz: default-arguments. Reforca: parameters.
+# Prepara a missao 5 de proposito: os defaults desta missao sao todos numeros imutaveis,
+# que e exatamente por que ela funciona e exatamente o que a missao 5 quebra.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-04
+title: A ordem permanente
+track: python
+island: functions
+order: 4
+difficulty: simple
+tags: [default-arguments, optional-parameters]
+xp: 20
+
+concepts:
+  - default-arguments
+  - parameters
+
+teaching:
+  analogy: |
+    A cozinha tem uma ordem permanente: duas rações por tripulante por dia, a não ser que
+    o comissário diga outra coisa. Ninguém repete "duas" toda manhã. É o padrão, e ele só
+    é mencionado nos dias em que muda.
+
+    Um argumento padrão é essa ordem permanente escrita dentro da própria função.
+
+  explanation: |
+    Você pode dar a um parâmetro um valor padrão na linha do def: def racao(tripulacao,
+    por_cabeca=2). Agora quem chama pode passar um argumento ou dois. Deixe de fora e o
+    parâmetro assume o padrão; passe e o seu valor vence.
+
+    Parâmetros com padrão precisam vir depois dos sem padrão. Python não teria como
+    descobrir qual argumento você pulou, então ele recusa a definição de cara.
+
+    Existe uma coisa sobre padrões que pega quase todo mundo eventualmente, e vale saber
+    antes de encontrá-la: a expressão do padrão é avaliada **uma vez**, quando a linha do
+    def roda, não a cada chamada. Para um número ou um texto isso não faz diferença
+    nenhuma. A próxima missão é sobre o que acontece quando não é um número.
+
+  worked_example: |
+    # Uma taxa de entrega com uma tarifa permanente, nao uma racao
+    def cobranca(itens, tarifa=3):
+        return itens * tarifa
+
+    print(cobranca(4))              # 12 - tarifa cai no padrao 3
+    print(cobranca(4, 10))          # 40 - quem chama sobrescreve
+    print(cobranca(4, tarifa=10))   # 40 - a mesma coisa, por nome
+
+    # def quebrada(tarifa=3, itens):   # SyntaxError: sem padrao depois de com padrao
+
+  key_points:
+    - "def f(a, b=2) torna b opcional. Chamar f(5) é o mesmo que chamar f(5, 2)."
+    - Parâmetros com padrão precisam vir por último, ou Python recusa definir a função.
+    - A expressão do padrão roda uma vez quando a função é definida, não uma vez por chamada.
+    - Um padrão deve ser a resposta certa na maioria das vezes, não qualquer valor que evite um erro.
+
+brief: |
+  Escreva uma função chamada rations que calcula quanta comida distribuir.
+
+  Ela recebe três parâmetros nesta ordem:
+
+    - crew: quantas pessoas estão a bordo
+    - days: quantos dias a distribuição precisa cobrir
+    - per_head: quantas rações uma pessoa come por dia, com padrão 2
+
+  Retorne o total de rações: crew vezes days vezes per_head.
+
+  Quem não mencionar per_head precisa receber a ordem permanente de 2. Zero tripulantes
+  ou zero dias retorna 0.
+
+signature:
+  entrypoint: rations
+  stub: |
+    def rations(crew, days, per_head=2):
+        # per_head ja tem sua ordem permanente. So use.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 3]
+      expect: 60
+    - args: [10, 3, 1]
+      expect: 30
+  hidden:
+    - args: [0, 5]
+      expect: 0
+    - args: [5, 0]
+      expect: 0
+    - args: [1, 1]
+      expect: 2
+    - args: [4, 2]
+      kwargs: { per_head: 5 }
+      expect: 40
+    - args: [7, 1, 0]
+      expect: 0
+    - args: [2, 2, 3]
+      expect: 12
+
+hints:
+  - level: 1
+    text: |
+      O esqueleto já dá a per_head o padrão dela. Dentro do corpo, existe algo especial
+      que você precisa fazer para lidar com o caso em que quem chamou deixou de fora?
+  - level: 2
+    text: |
+      Nada de especial - quando o corpo roda, per_head já guarda ou o valor de quem
+      chamou, ou 2. Multiplique os três parâmetros e retorne o resultado.
+  - level: 3
+    text: |
+      A mesma forma, precificando uma estadia com uma diária padrão:
+
+          def custo_estadia(quartos, noites, diaria=80):
+              return quartos * noites * diaria
+
+      A sua tem a mesma multiplicação de três e uma ordem permanente diferente.
+
+solution: |
+  def rations(crew, days, per_head=2):
+      return crew * days * per_head

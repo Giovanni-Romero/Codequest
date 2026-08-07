@@ -1,0 +1,143 @@
+# Missao 10 de Strings e Texto. Missao de fechamento. Nao introduz nada.
+# Combina os seis conceitos da ilha.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-10
+title: O manifesto completo
+track: python
+island: strings-and-text
+order: 10
+difficulty: simple
+tags: [split, join, f-strings, encoding]
+xp: 20
+
+concepts:
+  - string-methods
+  - string-immutability
+  - f-strings
+  - join-vs-concat
+  - split-and-parse
+  - encoding-basics
+
+teaching:
+  analogy: |
+    Fim do carregamento. O comissário tem uma pilha de notas rabiscadas e precisa de uma
+    página impressa: cada item na própria linha, arrumado, numerado, e um rodapé dizendo
+    quanto espaço a página inteira vai ocupar no telégrafo.
+
+  explanation: |
+    Nada novo. Cada peça tem sua própria missão por trás: split para ler as notas em
+    pedaços, os métodos de string para arrumá-las, f-strings para escrever cada linha,
+    join para fazer uma página de muitas linhas, e a contagem de bytes para o rodapé.
+
+    A única decisão é a ordem. Leia e arrume tudo primeiro, monte todas as linhas, depois
+    junte uma vez só no final. Montar a página adicionando a uma string conforme avança
+    funcionaria e é o hábito que vale quebrar - é o "+ num laço" contra o qual esta ilha
+    argumentou, e aqui o argumento não é teórico, porque a página cresce a cada nota.
+
+    Repare que o rodapé mede a página pronta, então ele não pode ser calculado antes do
+    join acontecer.
+
+  worked_example: |
+    # Montando um recibo impresso em vez de um manifesto
+    notas = [" cha : 2 ", "GELEIA:1"]
+
+    linhas = []
+    for indice, nota in enumerate(notas, start=1):
+        esquerda, direita = nota.split(":")
+        item = esquerda.strip().lower()
+        qtd = int(direita.strip())
+        linhas.append(f"{indice}. {item} x{qtd}")
+
+    pagina = "\n".join(linhas)
+    print(pagina)
+    print(f"[{len(pagina.encode('utf-8'))} bytes]")
+
+  key_points:
+    - Uma missão de fechamento monta o que você já tem. Nada aqui precisa de ferramenta nova.
+    - "Monte cada linha primeiro, depois junte uma vez. Fazer a string crescer dentro do laço é o hábito que esta ilha existe para quebrar."
+    - "enumerate(itens, start=1) te dá a posição e o item juntos, numerados a partir de um."
+    - A contagem de bytes mede o texto pronto, então é a última coisa que você consegue calcular.
+
+brief: |
+  Escreva uma função chamada build_manifest que recebe notes, uma lista de entradas de
+  texto, cada uma com um nome de item e uma contagem separados por dois-pontos:
+
+      salt cod : 12
+
+  Retorne uma lista com exatamente dois valores:
+
+    - a página pronta como um texto só, onde cada nota vira uma linha dizendo
+      "1. salt cod x12" - a posição começando em 1, um ponto, um espaço, o nome aparado e
+      em minúsculas, um espaço, "x" grudado na contagem - com as linhas separadas por um
+      único caractere de nova linha
+    - quantos bytes essa página pronta ocupa codificada como UTF-8
+
+  Uma lista vazia de notas retorna ["", 0].
+
+  Você pode assumir que toda nota tem exatamente dois campos.
+
+signature:
+  entrypoint: build_manifest
+  stub: |
+    def build_manifest(notes):
+        # Leia e arrume cada nota numa linha. Junte uma vez. Depois meca o resultado.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["salt cod : 12", "ROPE:1"]]
+      expect: ["1. salt cod x12\n2. rope x1", 26]
+    - args: [["nails:100"]]
+      expect: ["1. nails x100", 13]
+  hidden:
+    - args: [[]]
+      expect: ["", 0]
+    - args: [["  a  :  0  "]]
+      expect: ["1. a x0", 7]
+    - args: [["café : 2"]]
+      expect: ["1. café x2", 11]
+    - args: [["x:1", "y:2", "z:3"]]
+      expect: ["1. x x1\n2. y x2\n3. z x3", 23]
+
+hints:
+  - level: 1
+    text: |
+      Três etapas, e uma delas só pode acontecer depois de outra ter terminado. Qual
+      número da resposta depende da página inteira já existir?
+  - level: 2
+    text: |
+      Percorra as notas com enumerate(notes, start=1). Divida cada uma em ":", arrume o
+      nome com .strip().lower(), converta a contagem com int(), e adicione uma linha de
+      f-string a uma lista. Depois do laço, junte essa lista com "\n" e meça a página
+      juntada com .encode("utf-8").
+  - level: 3
+    text: |
+      A montagem, numa página diferente:
+
+          linhas = []
+          for i, entrada in enumerate(entradas, start=1):
+              a, b = entrada.split("=")
+              linhas.append(f"{i}) {a.strip()} -> {b.strip()}")
+          pagina = "\n".join(linhas)
+          return [pagina, len(pagina)]
+
+      A sua numera diferente, põe o nome em minúsculas, converte a contagem, e mede em
+      bytes em vez de caracteres.
+
+solution: |
+  def build_manifest(notes):
+      lines = []
+      for position, note in enumerate(notes, start=1):
+          raw_name, raw_count = note.split(":")
+          name = raw_name.strip().lower()
+          count = int(raw_count.strip())
+          lines.append(f"{position}. {name} x{count}")
+
+      page = "\n".join(lines)
+      return [page, len(page.encode("utf-8"))]

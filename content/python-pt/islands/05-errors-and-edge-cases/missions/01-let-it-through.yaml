@@ -1,0 +1,130 @@
+# Missao 1 de Erros e Casos-Limite. Introduz: exceptions.
+#
+# A unica missao desta ilha cuja resposta certa NAO e tratar o erro. Ela usa o campo
+# `raises:` de caso de teste, que foi adicionado ao motor especificamente porque esta
+# ilha nao poderia ser escrita sem ele. Ver docs/mission-schema.md.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-01
+title: Deixe passar
+track: python
+island: errors-and-edge-cases
+order: 1
+difficulty: simple
+tags: [exceptions, propagation]
+xp: 20
+
+concepts:
+  - exceptions
+
+teaching:
+  analogy: |
+    Um marujo mandado buscar um caixote num porão vazio não inventa um caixote, e não
+    fica lá parado fingindo segurar um. Ele sobe e diz que o porão está vazio. Agora o
+    problema é do contramestre, porque é ele quem sabe o que fazer a respeito - o marujo
+    só sabe que não pode fazer o que pediram.
+
+  explanation: |
+    Quando uma operação não pode ser executada, Python levanta uma exceção. A função para
+    imediatamente naquela linha. Nada depois dela roda, e nenhum valor é retornado - nem
+    None, nada.
+
+    A exceção então sobe para quem chamou a função, e se ninguém lidar com ela ali, ela
+    continua subindo. Essa subida é o mecanismo inteiro, e é por isso que um erro num
+    auxiliar pequeno pode encerrar um programa que nunca o mencionou.
+
+    Alguns que você vai encontrar o tempo todo:
+
+      - ZeroDivisionError - dividir por zero
+      - ValueError - o tipo certo, um valor impossível, como int("hello")
+      - TypeError - o tipo completamente errado, como "a" + 1
+      - KeyError e IndexError - pedir algo que não está lá
+
+    Uma função não é obrigada a capturar nada. Deixar um erro subir é frequentemente a
+    escolha correta: significa "não consigo decidir o que fazer sobre isso, e fingir o
+    contrário seria pior".
+
+  worked_example: |
+    # Observando um erro subir por uma funcao e atravessar outra
+    def metade(n):
+        return 10 / n          # levanta aqui quando n e 0
+
+    def relatar(n):
+        resultado = metade(n)  # nada captura, entao passa direto
+        return f"deu {resultado}"  # nunca alcancado quando n e 0
+
+    print(relatar(2))          # deu 5.0
+    # print(relatar(0))        # ZeroDivisionError: division by zero
+    #                          # relatar() nao retorna nada - ela nunca terminou
+
+  key_points:
+    - Uma exceção para a função naquela linha. Ela não retorna None, ela não retorna nada.
+    - "Sem captura, o erro sobe para quem chamou, e para quem chamou aquele, até algo tratá-lo."
+    - Não capturar é uma decisão de verdade, não um passo faltando - uma função que não pode resolver o problema não deve fingir que pode.
+    - "Cada tipo nomeia um problema diferente: ValueError é um valor ruim, TypeError é um tipo errado."
+
+brief: |
+  A profundidade média de um turno é a soma das leituras dividida por quantas foram.
+
+  Escreva uma função chamada average_depth que recebe readings, uma lista de números, e
+  retorna a média delas.
+
+  Quando a lista está vazia não existe média - dividir por zero é exatamente o que a
+  situação é, e quem chamou é quem tem que decidir o que um turno vazio significa. Então
+  deixe esse erro acontecer. Não capture, não retorne 0, e não retorne None.
+
+  Toda outra lista retorna a média verdadeira dela.
+
+signature:
+  entrypoint: average_depth
+  stub: |
+    def average_depth(readings):
+        # Divida por quantas sao. Numa lista vazia, deixe o erro subir.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20, 30]]
+      expect: 20.0
+    - args: [[]]
+      raises: ZeroDivisionError
+  hidden:
+    - args: [[5]]
+      expect: 5.0
+    - args: [[1, 2]]
+      expect: 1.5
+    - args: [[0, 0]]
+      expect: 0.0
+    - args: [[-10, 10]]
+      expect: 0.0
+    - args: [[3, 4, 5, 6]]
+      expect: 4.5
+
+hints:
+  - level: 1
+    text: |
+      Escreva a versão comum primeiro, sem nenhum tratamento especial. Agora descubra o
+      que ela faz quando a lista está vazia. Isso é um bug que você precisa consertar, ou
+      é exatamente o que o brief pediu?
+  - level: 2
+    text: |
+      Some as leituras e divida por len(readings). Não acrescente mais nada. Numa lista
+      vazia len é 0, a divisão levanta ZeroDivisionError sozinha, e esse é o comportamento
+      exigido.
+  - level: 3
+    text: |
+      A mesma forma, tirando média de notas:
+
+          def media(notas):
+              return sum(notas) / len(notas)
+
+      Essa é a função inteira. A missão é reconhecer que nenhuma guarda pertence aqui.
+
+solution: |
+  def average_depth(readings):
+      return sum(readings) / len(readings)

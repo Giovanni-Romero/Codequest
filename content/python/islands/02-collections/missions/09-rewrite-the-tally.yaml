@@ -1,0 +1,102 @@
+# Mission 9 of Collections. Introduces: list-comprehension. Reinforces: lists.
+# Deliberate callback to mission 3's task, rewritten in one line.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-09
+title: Rewrite the tally
+track: python
+island: collections
+order: 9
+difficulty: simple
+tags: [list-comprehension]
+xp: 20
+
+concepts:
+  - list-comprehension
+
+teaching:
+  analogy: |
+    A comprehension is the same inspection round from before, just written on one line
+    instead of narrated step by step - "take everything from the hold, keep only what
+    is over the limit" said in one breath instead of four sentences.
+
+  explanation: |
+    A list comprehension builds a list in one expression: [value for value in sequence
+    if condition]. It does exactly what the loop-and-append version does - for every
+    item, check the condition, and if it is true, include the value in the new list.
+
+    The comprehension is not a different tool. It is the same for-loop-with-append idea,
+    compressed into an expression Python reads in one pass.
+
+  worked_example: |
+    # Picking out long words from a sentence, not heavy crates
+    words = ["a", "voyage", "to", "remember"]
+    long_words = [word for word in words if len(word) > 3]
+    print(long_words)      # ['voyage', 'remember']
+
+  key_points:
+    - "[expr for item in sequence if condition] is the loop-append pattern, in one line."
+    - The part before "for" is what goes into the new list - it can transform the item, not just pass it through.
+    - "The if at the end filters. Without it, every item is included."
+    - A comprehension always builds a new list - it never mutates the sequence you are reading from.
+
+brief: |
+  You already solved this once, the long way, in an earlier mission: filtering the
+  crates over a weight limit into a new list.
+
+  Write a function called heavy_crates_fast that does exactly the same thing - receives
+  a list of weights and a limit, returns the weights strictly greater than the limit,
+  same order - but build the result with a single list comprehension instead of a loop
+  and .append().
+
+signature:
+  entrypoint: heavy_crates_fast
+  stub: |
+    def heavy_crates_fast(weights, limit):
+        # One line: [expr for item in sequence if condition]
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 25, 5, 40], 20]
+      expect: [25, 40]
+    - args: [[1, 2, 3], 5]
+      expect: []
+  hidden:
+    - args: [[], 10]
+      expect: []
+    - args: [[50], 10]
+      expect: [50]
+    - args: [[10, 10, 10], 10]
+      expect: []
+    - args: [[-5, 0, 5], -1]
+      expect: [0, 5]
+    - args: [[100, 200, 300], 0]
+      expect: [100, 200, 300]
+
+hints:
+  - level: 1
+    text: |
+      You already wrote the loop version of this exact task. What three things does that
+      loop do, in order: what does it check, what does it keep, and what does it never
+      touch?
+  - level: 2
+    text: |
+      The pattern is [weight for weight in weights if weight > limit] - read it right to
+      left: for every weight in weights, if it is over the limit, keep it.
+  - level: 3
+    text: |
+      Same rewrite, on a different filter:
+
+          survivors = [level for level in levels if level > 80]
+
+      Yours uses your two parameter names instead of these two.
+
+solution: |
+  def heavy_crates_fast(weights, limit):
+      return [weight for weight in weights if weight > limit]

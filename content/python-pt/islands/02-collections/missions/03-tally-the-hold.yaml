@@ -1,0 +1,111 @@
+# Missao 3 de Colecoes. Missao de alivio. Reforca: lists.
+# Nao introduz nada novo. Sua tarefa e reescrita como comprehension na missao 9.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-03
+title: Contando o porão
+track: python
+island: collections
+order: 3
+difficulty: elementary
+tags: [lists, filtering]
+xp: 10
+
+concepts:
+  - lists
+
+teaching:
+  analogy: |
+    Um inspetor do porto caminha pelo porão com uma prancheta, olhando a etiqueta de
+    cada caixote e só anotando os que passam do limite de peso. Todo o resto recebe um
+    olhar e é ignorado - a prancheta só se enche com os que importam.
+
+  explanation: |
+    Esta é a mesma forma de laço-e-decisão que você usa desde a Ilha 1, agora
+    construindo uma nova lista em vez de um total corrente. Comece uma lista vazia antes
+    do laço. Para cada item, decida com um if se ele pertence, e se pertencer, adicione.
+
+    Tudo que falha no teste simplesmente nunca é adicionado. Você não precisa remover
+    nada, porque nunca adicionou em primeiro lugar.
+
+  worked_example: |
+    # Escolhendo indicativos de radio curtos numa lista maior, nao caixotes pesados
+    indicativos = ["QRP", "ALPHA", "SOS", "BRAVO"]
+    curtos = []
+    for indicativo in indicativos:
+        if len(indicativo) <= 3:
+            curtos.append(indicativo)
+    print(curtos)     # ['QRP', 'SOS']
+
+  key_points:
+    - Filtrar é construir uma nova lista com append, guardado por um if - nada novo, só combinado.
+    - Um item que falha na condição nunca é adicionado. Você não o remove, só nunca o colocou.
+    - A lista resultado pode ser mais curta que a entrada, do mesmo tamanho, ou vazia - tudo correto, dependendo dos dados.
+    - "> é estrito: igual ao limite não conta como acima dele."
+
+brief: |
+  Escreva uma função chamada heavy_crates que recebe o manifesto como uma lista de pesos
+  de caixotes e um limite de peso, e retorna uma nova lista contendo apenas os pesos que
+  são estritamente maiores que o limite, na mesma ordem em que apareceram.
+
+  Um peso exatamente igual ao limite não conta como pesado.
+
+signature:
+  entrypoint: heavy_crates
+  stub: |
+    def heavy_crates(weights, limit):
+        # Construa uma nova lista. So adicione o que passa na checagem.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 25, 5, 40], 20]
+      expect: [25, 40]
+    - args: [[1, 2, 3], 5]
+      expect: []
+  hidden:
+    - args: [[], 10]
+      expect: []
+    - args: [[50], 10]
+      expect: [50]
+    - args: [[10, 10, 10], 10]
+      expect: []
+    - args: [[-5, 0, 5], -1]
+      expect: [0, 5]
+    - args: [[100, 200, 300], 0]
+      expect: [100, 200, 300]
+
+hints:
+  - level: 1
+    text: |
+      Qual das suas duas ferramentas conhecidas decide se um item entra, e qual constrói
+      a nova lista? Você precisa das duas, uma dentro da outra.
+  - level: 2
+    text: |
+      Comece uma lista vazia antes do laço. Percorra cada peso. Dentro do laço, use um
+      if para checar se ele é estritamente maior que o limite, e adicione só quando isso
+      for verdade.
+  - level: 3
+    text: |
+      Mesma forma, escolhendo alarmes altos num registro de níveis de som:
+
+          altos = []
+          for nivel in niveis:
+              if nivel > 80:
+                  altos.append(nivel)
+          return altos
+
+      A sua recebe o limite como parâmetro em vez de um 80 fixo.
+
+solution: |
+  def heavy_crates(weights, limit):
+      heavy = []
+      for weight in weights:
+          if weight > limit:
+              heavy.append(weight)
+      return heavy

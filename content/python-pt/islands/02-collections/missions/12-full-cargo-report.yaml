@@ -1,0 +1,139 @@
+# Missao 12 de Colecoes. Missao de fechamento. Nao introduz nada.
+# Reforca: lists, dictionaries, sets, tuples, nested-structures, list-comprehension,
+# when-not-to-comprehend.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-12
+title: Relatório completo de carga
+track: python
+island: collections
+order: 12
+difficulty: simple
+tags: [dictionaries, sets, tuples, nested-structures]
+xp: 20
+
+concepts:
+  - lists
+  - dictionaries
+  - sets
+  - tuples
+  - nested-structures
+  - list-comprehension
+  - when-not-to-comprehend
+
+teaching:
+  analogy: |
+    A capitã não quer seis papeizinhos separados antes da partida. Ela quer um
+    relatório: peso por convés, e quantos conveses estão realmente carregando alguma
+    coisa. Tudo que você aprendeu nesta ilha existe para construir exatamente esse tipo
+    de resposta - uma estrutura, vários fatos, montados a partir do que você já sabe.
+
+  explanation: |
+    Nada novo aqui. Esta missão pede para você rodar várias coisas que já conhece ao
+    mesmo tempo: ler uma lista de dicionários de caixote, acumular totais num
+    dicionário, deduplicar uma lista de nomes num set, e empacotar dois resultados
+    juntos como uma tupla.
+
+    Se você constrói a lista de nomes de conveses com um laço ou uma comprehension é
+    escolha sua aqui - as duas estão corretas, escolha a que ler mais clara para você
+    desta vez.
+
+  worked_example: |
+    # Resumindo pedidos por cliente, nao caixotes por conves
+    pedidos = [{"customer": "Ana", "total": 12}, {"customer": "Bo", "total": 5},
+               {"customer": "Ana", "total": 3}]
+
+    gasto = {}
+    for pedido in pedidos:
+        nome = pedido["customer"]
+        gasto[nome] = gasto.get(nome, 0) + pedido["total"]
+
+    nomes = [pedido["customer"] for pedido in pedidos]
+    contagem_clientes = len(set(nomes))
+
+    print((gasto, contagem_clientes))   # ({'Ana': 15, 'Bo': 5}, 2)
+
+  key_points:
+    - Uma missão de fechamento combina o que você já sabe - nada aqui precisa de uma construção nova.
+    - "dict.get(chave, 0) mais reatribuição é o padrão acumulador da Ilha 1, só que indexado por nome em vez de um único total corrente."
+    - Deduplicar com set() responde "quantos distintos", completamente separado de qualquer total que você construiu.
+    - Retornar uma tupla de dois resultados é só construir um par, igual a qualquer outra tupla.
+
+brief: |
+  Escreva uma função chamada cargo_report que recebe uma lista de dicionários de
+  caixote (cada um com "name", "weight", e "deck"), e retorna um par: um dicionário
+  mapeando cada nome de convés para seu peso total, e a contagem de conveses distintos
+  que aparecem na lista.
+
+  Retorne os dois juntos como um único resultado: (totals, deck_count).
+
+signature:
+  entrypoint: cargo_report
+  stub: |
+    def cargo_report(crates):
+        # Construa o dicionario de totais. Separadamente, conte os conveses distintos.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{"name": "rope", "weight": 10, "deck": "upper"}, {"name": "salt", "weight": 20, "deck": "lower"}, {"name": "nails", "weight": 5, "deck": "upper"}]
+      expect: [{"upper": 15, "lower": 20}, 2]
+    - args:
+        - [{"name": "x", "weight": 7, "deck": "only"}]
+      expect: [{"only": 7}, 1]
+  hidden:
+    - args: [[]]
+      expect: [{}, 0]
+    - args:
+        - [{"name": "a", "weight": 1, "deck": "d"}, {"name": "b", "weight": 2, "deck": "d"}, {"name": "c", "weight": 3, "deck": "d"}]
+      expect: [{"d": 6}, 1]
+    - args:
+        - [{"name": "a", "weight": 5, "deck": "x"}, {"name": "b", "weight": 5, "deck": "y"}, {"name": "c", "weight": 5, "deck": "z"}]
+      expect: [{"x": 5, "y": 5, "z": 5}, 3]
+    - args:
+        - [{"name": "neg", "weight": -3, "deck": "d"}]
+      expect: [{"d": -3}, 1]
+
+hints:
+  - level: 1
+    text: |
+      Isso são dois trabalhos separados, não um. O que você precisa acompanhar para os
+      totais, e o que você precisa acompanhar para a contagem distinta - são até a mesma
+      pergunta?
+  - level: 2
+    text: |
+      Construa totals do jeito que você construiu o livro-razão e o relatório anterior:
+      percorra os caixotes, e para cada um faça totals[deck] = totals.get(deck, 0) +
+      weight. Depois, separadamente, colete cada nome de convés numa lista ou
+      comprehension e envolva com set(...) para contar os distintos. Retorne os dois
+      como uma tupla.
+  - level: 3
+    text: |
+      As duas partes, num relatório totalmente diferente:
+
+          gasto = {}
+          for venda in vendas:
+              gasto[venda["region"]] = gasto.get(venda["region"], 0) + venda["amount"]
+          regioes = len(set(venda["region"] for venda in vendas))
+          return (gasto, regioes)
+
+      A sua indexa por convés e peso em vez de região e valor.
+
+solution: |
+  def cargo_report(crates):
+      totals = {}
+      for crate in crates:
+          deck = crate["deck"]
+          weight = crate["weight"]
+          totals[deck] = totals.get(deck, 0) + weight
+
+      deck_names = [crate["deck"] for crate in crates]
+      decks_seen = set(deck_names)
+
+      return (totals, len(decks_seen))

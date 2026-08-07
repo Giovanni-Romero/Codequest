@@ -1,0 +1,130 @@
+# Mission 1 of Errors and Edge Cases. Introduces: exceptions.
+#
+# The only mission in this island whose correct answer is NOT to handle the error. It
+# uses the `raises:` test-case field, which was added to the engine specifically because
+# this island could not otherwise be authored. See docs/mission-schema.md.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-01
+title: Let it through
+track: python
+island: errors-and-edge-cases
+order: 1
+difficulty: simple
+tags: [exceptions, propagation]
+xp: 20
+
+concepts:
+  - exceptions
+
+teaching:
+  analogy: |
+    A deckhand told to fetch a crate from an empty hold does not invent a crate, and does
+    not stand there quietly pretending to hold one. He comes back up and says the hold is
+    empty. It is the bosun's problem now, because the bosun is the one who knows what to
+    do about it - the deckhand only knows that he cannot do what he was asked.
+
+  explanation: |
+    When an operation cannot be carried out, Python raises an exception. The function
+    stops immediately at that line. Nothing after it runs, and no value is returned - not
+    None, nothing at all.
+
+    The exception then travels up to whoever called the function, and if nobody deals with
+    it there, it keeps going up. That travel is the whole mechanism, and it is why an
+    error in a small helper can end a program that never mentioned it.
+
+    Some you will meet constantly:
+
+      - ZeroDivisionError - dividing by zero
+      - ValueError - the right type, an impossible value, like int("hello")
+      - TypeError - the wrong type entirely, like "a" + 1
+      - KeyError and IndexError - asking for something that is not there
+
+    A function is not obliged to catch anything. Letting an error travel is often the
+    correct choice: it means "I cannot decide what to do about this, and pretending
+    otherwise would be worse".
+
+  worked_example: |
+    # Watching an error travel out of one function and through another
+    def halve(n):
+        return 10 / n          # raises here when n is 0
+
+    def report(n):
+        result = halve(n)      # nothing catches it, so it passes straight through
+        return f"got {result}"  # never reached when n is 0
+
+    print(report(2))           # got 5.0
+    # print(report(0))         # ZeroDivisionError: division by zero
+    #                          # report() returns nothing at all - it never finished
+
+  key_points:
+    - An exception stops the function at that line. It does not return None, it returns nothing.
+    - "Uncaught, the error travels to the caller, and to their caller, until something handles it."
+    - Not catching is a real decision, not a missing step - a function that cannot fix the problem should not pretend to.
+    - "Each type names a different problem: ValueError is a bad value, TypeError is a wrong type."
+
+brief: |
+  The average depth of a watch is the sum of the readings divided by how many there were.
+
+  Write a function called average_depth that takes readings, a list of numbers, and
+  returns their average.
+
+  When the list is empty there is no average - dividing by zero is exactly what the
+  situation is, and the caller is the one who has to decide what an empty watch means.
+  So let that error happen. Do not catch it, do not return 0, and do not return None.
+
+  Every other list returns its true average.
+
+signature:
+  entrypoint: average_depth
+  stub: |
+    def average_depth(readings):
+        # Divide by how many there are. On an empty list, let the error travel.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20, 30]]
+      expect: 20.0
+    - args: [[]]
+      raises: ZeroDivisionError
+  hidden:
+    - args: [[5]]
+      expect: 5.0
+    - args: [[1, 2]]
+      expect: 1.5
+    - args: [[0, 0]]
+      expect: 0.0
+    - args: [[-10, 10]]
+      expect: 0.0
+    - args: [[3, 4, 5, 6]]
+      expect: 4.5
+
+hints:
+  - level: 1
+    text: |
+      Write the ordinary version first, with no special handling at all. Now work out
+      what it does when the list is empty. Is that a bug you need to fix, or is it
+      exactly what the brief asked for?
+  - level: 2
+    text: |
+      Sum the readings and divide by len(readings). Add nothing else. On an empty list
+      len is 0, the division raises ZeroDivisionError on its own, and that is the
+      required behaviour.
+  - level: 3
+    text: |
+      The same shape, averaging scores:
+
+          def mean(scores):
+              return sum(scores) / len(scores)
+
+      That is the whole function. The mission is recognising that no guard belongs here.
+
+solution: |
+  def average_depth(readings):
+      return sum(readings) / len(readings)

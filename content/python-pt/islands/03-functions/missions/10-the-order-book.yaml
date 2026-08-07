@@ -1,0 +1,200 @@
+# Missao 10 de Funcoes. Introduz: first-class-functions.
+# Reforca: parameters, return-values, dictionaries.
+#
+# NOTA ESTRUTURAL: uma funcao nao atravessa a fronteira JSON entre o jogo e o sandbox -
+# ela nao pode ser passada como argumento de teste nem retornada como resultado
+# (engine/harness.py cai para repr, que contem um endereco de memoria). Entao esta missao
+# ensina funcao-como-valor por uma tabela de despacho indexada por string, que e a forma
+# que sobrevive a fronteira. Ver o syllabus, Ilha 3.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-10
+title: O livro de ordens
+track: python
+island: functions
+order: 10
+difficulty: simple
+tags: [first-class-functions, dispatch-table]
+xp: 20
+
+concepts:
+  - first-class-functions
+  - parameters
+  - return-values
+
+teaching:
+  analogy: |
+    O contramestre mantém um livro de manobras. Cada uma tem um nome - "rizar", "sondar",
+    "arriar" - e uma ficha descrevendo como executá-la. Quando uma ordem desce, o
+    contramestre não recita todas as manobras conferindo qual bate. Ele procura o nome no
+    livro e segue a ficha que encontrar.
+
+    O livro guarda as manobras em si, não descrições delas. Procurar uma te dá uma
+    manobra que você pode executar.
+
+  explanation: |
+    Uma função é um valor. Você pode pôr numa variável, guardar numa lista ou num
+    dicionário, e passar adiante - igual a um número ou a um texto.
+
+    A distinção que importa, e a que pega todo mundo no começo:
+
+        dobrar        # a função em si
+        dobrar(4)     # chamá-la, o que te dá 8
+
+    Deixar os parênteses de fora não é um erro aqui, é o ponto inteiro. Você guarda a
+    função sem os parênteses, e os acrescenta depois, quando de fato quiser que ela rode.
+
+    Isso te dá uma tabela de despacho: um dicionário de nomes para funções. Procure o
+    nome, receba uma função de volta, então chame-a.
+
+        tabela = {"dobrar": dobrar, "quadrado": quadrado}
+        escolhida = tabela["dobrar"]      # uma funcao
+        print(escolhida(4))               # 8 - agora ela roda
+
+    Isso substitui uma longa cadeia if/elif, e acrescentar uma operação nova vira
+    acrescentar uma linha ao dicionário em vez de editar a lógica.
+
+  worked_example: |
+    # Uma tabela de despacho para arrumar texto, nao para numeros
+    def gritar(texto):
+        return texto.upper()
+
+    def sussurrar(texto):
+        return texto.lower()
+
+    ESTILOS = {"gritar": gritar, "sussurrar": sussurrar}
+
+    def reestilizar(texto, estilo):
+        tratador = ESTILOS.get(estilo)      # uma funcao, ou None
+        if tratador is None:
+            return texto                    # estilo desconhecido, deixe como esta
+        return tratador(texto)
+
+    print(reestilizar("ola", "gritar"))      # OLA
+    print(reestilizar("OLA", "sussurrar"))   # ola
+    print(reestilizar("ola", "cochichar"))   # ola - nao existe esse estilo
+
+  key_points:
+    - "Uma função sem parênteses é a função em si; com parênteses ela roda. Guardar uma significa guardar sem."
+    - Um dicionário de nomes para funções substitui uma cadeia if/elif e cresce uma linha por opção nova.
+    - "Procure a função, ponha numa variável, depois chame essa variável: tabela[nome](valor)."
+    - "dict.get numa chave ausente dá None, que é o lugar natural para tratar um nome desconhecido."
+
+brief: |
+  O livro de ordens do contramestre tem três manobras, cada uma transformando um único
+  número:
+
+    - "double" dá o número vezes dois
+    - "square" dá o número vezes ele mesmo
+    - "negate" dá o número com o sinal invertido
+
+  Escreva uma função chamada run_drill que recebe numbers (uma lista de números) e drill
+  (o nome de uma manobra, como texto), e retorna uma lista nova com a manobra aplicada a
+  cada número.
+
+  Monte um dicionário mapeando cada nome para a função que o executa, e procure a manobra
+  nele. Não escreva uma cadeia if/elif comparando o nome três vezes - o dicionário é a
+  missão.
+
+  Se o nome da manobra não está no livro, retorne os números sem mudança, como uma lista
+  nova.
+
+signature:
+  entrypoint: run_drill
+  stub: |
+    def double(n):
+        # seu codigo aqui
+        pass
+
+
+    def square(n):
+        # seu codigo aqui
+        pass
+
+
+    def negate(n):
+        # seu codigo aqui
+        pass
+
+
+    def run_drill(numbers, drill):
+        # Monte o livro, procure a manobra, depois aplique-a a cada numero.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3], "double"]
+      expect: [2, 4, 6]
+    - args: [[1, 2, 3], "square"]
+      expect: [1, 4, 9]
+  hidden:
+    - args: [[1, 2, 3], "negate"]
+      expect: [-1, -2, -3]
+    - args: [[1, 2, 3], "hoist"]
+      expect: [1, 2, 3]
+    - args: [[], "double"]
+      expect: []
+    - args: [[], "nonsense"]
+      expect: []
+    - args: [[0], "negate"]
+      expect: [0]
+    - args: [[-4], "square"]
+      expect: [16]
+    - args: [[5], "double"]
+      expect: [10]
+
+hints:
+  - level: 1
+    text: |
+      Se você escrevesse {"double": double(n)} no seu dicionário, o que estaria de fato
+      guardado nele - e você ainda poderia escolher rodá-lo depois? O que muda se você
+      deixar os parênteses de fora?
+  - level: 2
+    text: |
+      Faça um dicionário cujos valores são os três nomes de função sem parênteses. Use
+      .get para procurar a manobra; se voltar None, retorne uma cópia dos números. Caso
+      contrário percorra os números, chame a função encontrada em cada um, e junte os
+      resultados.
+  - level: 3
+    text: |
+      Procurar e aplicar, num livro diferente:
+
+          tratador = ACOES.get(comando)
+          if tratador is None:
+              return list(valores)
+          resultado = []
+          for valor in valores:
+              resultado.append(tratador(valor))
+          return resultado
+
+      A sua monta o livro a partir de três manobras que você mesmo escreveu logo acima.
+
+solution: |
+  def double(n):
+      return n * 2
+
+
+  def square(n):
+      return n * n
+
+
+  def negate(n):
+      return -n
+
+
+  def run_drill(numbers, drill):
+      book = {"double": double, "square": square, "negate": negate}
+
+      handler = book.get(drill)
+      if handler is None:
+          return list(numbers)
+
+      result = []
+      for number in numbers:
+          result.append(handler(number))
+      return result

@@ -1,0 +1,169 @@
+# Missao 5 de Funcoes. Introduz: mutable-default-trap.
+# Reforca: default-arguments, lists.
+#
+# NOTA ESTRUTURAL PARA AUTORES FUTUROS: o motor roda um subprocesso novo por caso de
+# teste, entao um default mutavel e reconstruido a cada caso e o bug classico e invisivel
+# ENTRE casos. E por isso que a funcao principal desta missao precisa chamar seu auxiliar
+# mais de uma vez dentro de uma unica invocacao - e o unico lugar onde a lista
+# compartilhada pode ser vista. Ver docs/curriculum/python-syllabus.md, Ilha 3.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-05
+title: O caixote compartilhado
+track: python
+island: functions
+order: 5
+difficulty: simple
+tags: [default-arguments, mutable-default, gotcha]
+xp: 20
+
+concepts:
+  - mutable-default-trap
+  - default-arguments
+
+teaching:
+  analogy: |
+    Um estivador recebe a ordem: "empacote estes itens num caixote. Se eu não te entregar
+    um caixote, pegue um novo." Razoável. Só que o estivador ouve isso uma vez, caminha
+    até o canto, pega um caixote vazio específico, e daí em diante "um novo" sempre
+    significa aquele mesmo caixote.
+
+    O segundo lote vai para o caixote do primeiro lote. O terceiro também. Ninguém percebe
+    até alguém abrir.
+
+  explanation: |
+    Um valor padrão é criado uma vez, quando a linha do def roda - não a cada chamada da
+    função. Para um número isso é invisível: 2 é 2 para sempre. Para uma lista é uma
+    armadilha, porque uma lista pode ser *modificada*, e toda chamada que cai no padrão
+    está trabalhando exatamente no mesmo objeto lista.
+
+    def pack(items, crate=[]) não significa "uma lista vazia nova a cada chamada".
+    Significa "esta única lista, criada uma vez, compartilhada por toda chamada que não
+    trouxer a sua".
+
+    A correção é uma sentinela: dê ao parâmetro o padrão None, e construa a lista de
+    verdade dentro do corpo. Isso roda em toda chamada, que é o que você queria desde o
+    começo.
+
+        def pack(items, crate=None):
+            if crate is None:
+                crate = []
+
+    Use "is None", não "== None". Você está perguntando se é aquele objeto exato.
+
+  worked_example: |
+    # A armadilha e a correcao, numa lista de convidados em vez de um caixote
+    def convidar_ruim(nome, convidados=[]):     # criada UMA VEZ
+        convidados.append(nome)
+        return convidados
+
+    print(convidar_ruim("Ana"))                 # ['Ana']
+    print(convidar_ruim("Bo"))                  # ['Ana', 'Bo']   <- Ana continua la
+
+    def convidar_ok(nome, convidados=None):     # criada por chamada
+        if convidados is None:
+            convidados = []
+        convidados.append(nome)
+        return convidados
+
+    print(convidar_ok("Ana"))                   # ['Ana']
+    print(convidar_ok("Bo"))                    # ['Bo']          <- como esperado
+
+  key_points:
+    - Um padrão é avaliado uma vez na definição, e toda chamada que o usa compartilha aquele único objeto.
+    - "Isso só morde em valores que você pode modificar: listas, dicts e sets. Números, textos e tuplas são seguros."
+    - "A correção é sempre a mesma: padrão None, depois construa o valor de verdade dentro do corpo."
+    - "Compare com 'is None' em vez de '== None' - você está perguntando sobre identidade, não igualdade."
+
+brief: |
+  A carga chega em lotes. Cada lote é uma lista de nomes de itens, e cada lote precisa
+  terminar no seu próprio caixote separado.
+
+  Escreva uma função chamada pack_batches que recebe batches (uma lista de lotes) e
+  retorna uma lista de caixotes, um por lote, na mesma ordem. Um caixote é só uma lista
+  com os nomes dos itens daquele lote.
+
+  pack_batches([["rope"], ["salt", "nails"]]) retorna [["rope"], ["salt", "nails"]].
+
+  Escreva um auxiliar chamado pack que recebe items e um crate opcional, empacota os
+  itens no caixote, e o retorna. Quando nenhum caixote é entregue, pack precisa começar
+  um genuinamente novo - e acertar essa parte é a missão inteira.
+
+  Uma lista vazia de lotes retorna uma lista vazia. Um lote sem itens ainda ganha seu
+  próprio caixote, que fica vazio.
+
+signature:
+  entrypoint: pack_batches
+  stub: |
+    def pack(items, crate=None):
+        # Um caixote novo toda vez que ninguem te entregar um. Cuidado em como fazer isso.
+        # seu codigo aqui
+        pass
+
+
+    def pack_batches(batches):
+        # Chame pack uma vez por lote e junte o que voltar.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["rope"]]]
+      expect: [["rope"]]
+    # Dois lotes e onde um caixote compartilhado se revela.
+    - args: [[["rope"], ["salt", "nails"]]]
+      expect: [["rope"], ["salt", "nails"]]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [[[], []]]
+      expect: [[], []]
+    - args: [[["a"], ["b"], ["c"]]]
+      expect: [["a"], ["b"], ["c"]]
+    - args: [[["a", "b"], [], ["c"]]]
+      expect: [["a", "b"], [], ["c"]]
+    - args: [[["x"], ["x"], ["x"]]]
+      expect: [["x"], ["x"], ["x"]]
+
+hints:
+  - level: 1
+    text: |
+      Calcule no papel o que pack(["a"]) e depois pack(["b"]) retornam se o parâmetro
+      crate tiver como padrão uma lista vazia escrita direto na linha do def. Quando
+      exatamente aquela lista foi criada?
+  - level: 2
+    text: |
+      Dê a crate o padrão None. Primeira coisa no corpo, verifique se ele é None e, se
+      for, atribua uma lista vazia nova a ele. Depois adicione cada item e retorne o
+      caixote. pack_batches só percorre os lotes, chama pack em cada um, e adiciona o
+      resultado na lista dela.
+  - level: 3
+    text: |
+      A forma da sentinela, coletando pontuações em vez de carga:
+
+          def registrar(pontos, ficha=None):
+              if ficha is None:
+                  ficha = []
+              ficha.append(pontos)
+              return ficha
+
+      A sua adiciona vários itens em vez de um, e outra coisa a chama uma vez por lote.
+
+solution: |
+  def pack(items, crate=None):
+      if crate is None:
+          crate = []
+      for item in items:
+          crate.append(item)
+      return crate
+
+
+  def pack_batches(batches):
+      crates = []
+      for batch in batches:
+          crates.append(pack(batch))
+      return crates

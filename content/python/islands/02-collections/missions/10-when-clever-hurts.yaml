@@ -1,0 +1,134 @@
+# Mission 10 of Collections. Introduces: when-not-to-comprehend.
+# Reinforces: dictionaries, nested-structures.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-10
+title: When clever hurts
+track: python
+island: collections
+order: 10
+difficulty: simple
+tags: [readability, judgment]
+xp: 20
+
+concepts:
+  - when-not-to-comprehend
+
+teaching:
+  analogy: |
+    You can fold a nautical chart into an origami boat. It is technically possible, and
+    it makes a fun party trick, but nobody navigates with it afterward - the chart still
+    needs to be readable as a chart. Code is the same: a comprehension nested inside a
+    comprehension is a trick you can pull off, and the person reading it later - often
+    you, in three months - pays for the cleverness.
+
+  explanation: |
+    Everything a comprehension can do, a loop can also do. A comprehension is never
+    required, only sometimes convenient. When a comprehension needs a nested loop, an
+    extra condition, or a second comprehension inside it just to fit on one line, that
+    line stops being a shortcut and starts being a puzzle.
+
+    The rule of thumb: if you would have to read a comprehension twice to know what it
+    does, write the loop instead. It costs a few more lines and saves the next reader
+    real time.
+
+  worked_example: |
+    # The unreadable one-liner (do not write this):
+    # flat = [item for order in orders for item in order["items"] if item["ready"]]
+
+    # The same result, readable:
+    flat = []
+    for order in orders:
+        for item in order["items"]:
+            if item["ready"]:
+                flat.append(item)
+
+  key_points:
+    - A comprehension is optional. Every comprehension has an equivalent loop, never the reverse requirement.
+    - Nesting a loop inside a comprehension's for clause, or a comprehension inside another, is a sign to switch to an explicit loop.
+    - Readability is not about line count - four clear lines beat one line that needs to be read twice.
+    - The person paying for cleverness later is usually you, reading your own code after you have forgotten why you wrote it that way.
+
+brief: |
+  A crate's manifest entry can itself hold a list of tags, like "fragile" or "wet".
+
+  Write a function called tagged_names that receives a list of crate dictionaries (each
+  with a "name" and a "tags" list) and one tag to search for, and returns the names of
+  every crate that has that tag.
+
+  Write this one as a plain loop, not a comprehension - nesting the tag-check inside the
+  crate-check inside a comprehension would technically fit on one line, and that line
+  would be a lot harder to read than a few lines of loop. Being able to write it short
+  does not mean you should.
+
+signature:
+  entrypoint: tagged_names
+  stub: |
+    def tagged_names(crates, tag):
+        # Loop over the crates. For each one, check its tags list.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{"name": "rope", "tags": ["dry"]}, {"name": "salt", "tags": ["wet", "heavy"]}]
+        - "wet"
+      expect: ["salt"]
+    - args:
+        - [{"name": "a", "tags": []}]
+        - "x"
+      expect: []
+  hidden:
+    - args: [[], "anything"]
+      expect: []
+    - args:
+        - [{"name": "n", "tags": ["a", "b", "c"]}]
+        - "b"
+      expect: ["n"]
+    - args:
+        - [{"name": "x", "tags": ["z"]}, {"name": "y", "tags": ["z"]}]
+        - "z"
+      expect: ["x", "y"]
+    - args:
+        - [{"name": "solo", "tags": ["only"]}]
+        - "only"
+      expect: ["solo"]
+    - args:
+        - [{"name": "p", "tags": ["a"]}, {"name": "q", "tags": ["a", "b"]}, {"name": "r", "tags": ["b"]}]
+        - "a"
+      expect: ["p", "q"]
+
+hints:
+  - level: 1
+    text: |
+      This task needs to check something inside something else - a tag inside a crate's
+      tag list, for every crate. Could you write that as one comprehension? Probably.
+      Should you? That is the actual question this mission is asking.
+  - level: 2
+    text: |
+      Use two steps: loop over the crates, and for each one check whether the tag you
+      are looking for is in that crate's tag list, using "in".
+  - level: 3
+    text: |
+      Same two-step shape, checking whether a passenger has a specific piece of luggage
+      tagged, across a whole manifest:
+
+          found = []
+          for passenger in passengers:
+              if "priority" in passenger["labels"]:
+                  found.append(passenger["name"])
+
+      Yours takes the tag to search for as a parameter instead of a fixed one.
+
+solution: |
+  def tagged_names(crates, tag):
+      names = []
+      for crate in crates:
+          if tag in crate["tags"]:
+              names.append(crate["name"])
+      return names

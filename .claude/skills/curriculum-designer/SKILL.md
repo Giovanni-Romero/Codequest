@@ -51,9 +51,9 @@ Difficulty bands map to islands, not to individual missions inside them:
 |---|---|---|
 | elementary | 1-2 | One concept, guided, hints are generous |
 | simple | 3-4 | Two known concepts combined |
-| moderate | 5-6 | Player must choose the approach |
-| challenging | 7-8 | Efficiency and edge cases matter |
-| expert | 9+ | Open-ended, multiple valid designs |
+| moderate | 5-8 | Player must choose the approach |
+| challenging | 9-10 | Efficiency and edge cases matter |
+| expert | 11+ | Open-ended, multiple valid designs |
 
 ## The difficulty curve
 
@@ -61,18 +61,19 @@ Aim for a sawtooth, not a ramp. After a hard mission, put an easier one that reu
 the same concept in a friendlier shape. Constant escalation burns people out. The
 feeling to design for is "that was hard, and now I can do it again easily."
 
-## Python track shape (v1.0 reference)
+## Python track shape (v1.1 reference)
 
 1. **Foundations** — variables, types, conditionals, loops, accumulator
 2. **Collections** — lists, dicts, sets, tuples, comprehensions, when NOT to comprehend
 3. **Functions** — parameters, defaults, return values, scope, pure vs side effects
 4. **Strings and text** — slicing, formatting, parsing, encoding basics
 5. **Errors and edge cases** — exceptions, validation, defensive design
-6. **Files and data** — reading, writing, JSON, CSV, context managers
-7. **Objects** — classes, methods, dataclasses, composition over inheritance
-8. **Pythonic patterns** — iterators, generators, decorators, context managers
-9. **Algorithms** — complexity, searching, sorting, recursion
-10. **Async and concurrency** — when it helps, when it does not
+6. **Debugging** — reading tracebacks, print-debugging, bisection, the debugger, logic vs data
+7. **Files and data** — reading, writing, JSON, CSV, context managers
+8. **Objects** — classes, methods, dataclasses, composition over inheritance
+9. **Pythonic patterns** — iterators, generators, decorators, context managers
+10. **Algorithms** — complexity, searching, sorting, recursion
+11. **Async and concurrency** — when it helps, when it does not
 
 ## Cross-cutting tracks (v1.3)
 

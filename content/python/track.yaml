@@ -4,7 +4,7 @@ language: python
 version: "3.11"
 description: |
   From your first variable to generators, decorators, and async.
-  Ten islands, roughly one hundred missions.
+  Eleven islands, roughly a hundred missions.
 
 runner: python
 file_extension: .py
@@ -15,8 +15,9 @@ islands:
   - 03-functions
   - 04-strings-and-text
   - 05-errors-and-edge-cases
-  - 06-files-and-data
-  - 07-objects
-  - 08-pythonic-patterns
-  - 09-algorithms
-  - 10-async-and-concurrency
+  - 06-debugging
+  - 07-files-and-data
+  - 08-objects
+  - 09-pythonic-patterns
+  - 10-algorithms
+  - 11-async-and-concurrency

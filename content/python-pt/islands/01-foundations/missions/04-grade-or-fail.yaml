@@ -1,0 +1,142 @@
+# Mission 4 of Foundations. Introduces: conditionals. Reinforces: basic-types.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-04
+title: O exame do navegador
+track: python
+island: foundations
+order: 4
+difficulty: elementary
+tags: [conditionals, if, elif, boundaries]
+xp: 10
+
+concepts:
+  - conditionals
+  - basic-types
+
+teaching:
+  analogy: |
+    Um fiscal da alfândega na prancha de desembarque faz perguntas numa ordem fixa. Tem
+    passaporte? Não, volte. Tem carga a declarar? Sim, por aqui. Nada a declarar?
+    Siga direto.
+
+    Cada viajante responde só até a primeira pergunta que se aplica a ele. Uma vez
+    encaminhado, as perguntas restantes nem são feitas.
+
+    Uma cadeia if / elif funciona exatamente como essa fila. A primeira condição
+    verdadeira decide, e nada depois dela sequer é olhado.
+
+  explanation: |
+    Um if executa um bloco só quando sua condição é verdadeira. elif adiciona outra
+    pergunta, feita só quando toda pergunta acima dela foi falsa. else pega tudo que
+    chegou ao final sem ter combinado com nada.
+
+    Só um ramo da cadeia executa. É por isso que a ordem importa mais do que iniciantes
+    esperam: se uma condição ampla vem primeiro, uma mais estreita abaixo dela pode se
+    tornar inalcançável e nunca vai rodar, não importa o que você passe.
+
+    Comparações produzem True ou False. Cuidado com o limite: >= inclui o próprio
+    número, > o exclui. A maioria dos bugs de condicional mora nessa linha.
+
+    Mais uma armadilha que vale citar cedo: um único = atribui, um duplo == compara.
+    Escrever if score = 90 é um erro de sintaxe, não uma comparação.
+
+  worked_example: |
+    # Classificando um pacote por peso, não um exame por nota
+    def postagem(gramas):
+        if gramas >= 1000:
+            return "frete"
+        elif gramas >= 100:
+            return "encomenda"
+        elif gramas >= 20:
+            return "carta grande"
+        return "carta"
+
+    print(postagem(1000))   # frete, porque >= inclui 1000 exatamente
+    print(postagem(999))    # encomenda
+
+  key_points:
+    - Só um ramo de uma cadeia if / elif executa. A primeira condição verdadeira vence.
+    - Ordene do mais estreito para o mais amplo. Uma condição ampla primeiro mata as de baixo.
+    - ">= inclui o número limite, > o exclui. Teste o valor exato do limite."
+    - "= atribui um valor, == compara dois valores. Não são intercambiáveis."
+
+brief: |
+  Todo aprendiz de navegador é avaliado com uma nota de 0 a 100. Escreva uma função
+  chamada rank que recebe a nota e retorna a classificação como texto:
+
+    - "gold"   para 90 ou mais
+    - "silver" para 70 a 89
+    - "bronze" para 50 a 69
+    - "none"   para qualquer coisa abaixo de 50
+
+  Os limites são inclusivos: uma nota exatamente 90 é gold, e exatamente 50 é bronze.
+
+signature:
+  entrypoint: rank
+  stub: |
+    def rank(score):
+        # Pergunte da classificacao mais alta para baixo. A primeira resposta verdadeira decide.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [95]
+      expect: "gold"
+    - args: [72]
+      expect: "silver"
+  hidden:
+    - args: [90]
+      expect: "gold"
+    - args: [89]
+      expect: "silver"
+    - args: [70]
+      expect: "silver"
+    - args: [69]
+      expect: "bronze"
+    - args: [50]
+      expect: "bronze"
+    - args: [49]
+      expect: "none"
+    - args: [0]
+      expect: "none"
+    - args: [100]
+      expect: "gold"
+
+hints:
+  - level: 1
+    text: |
+      Se sua primeira pergunta é "a nota é 50 ou mais?", o que acontece com uma nota de
+      95? Que classificação ela recebe, e é essa que você queria?
+  - level: 2
+    text: |
+      Comece pelo limite mais alto e vá descendo, usando if e depois elif. Cada condição
+      só precisa do limite inferior, porque tudo acima dele já foi capturado.
+  - level: 3
+    text: |
+      A mesma cadeia decrescente, definindo o tamanho de uma camisa em vez de classificar
+      um exame:
+
+          if peito >= 110:
+              return "grande"
+          elif peito >= 95:
+              return "medio"
+          return "pequeno"
+
+      Note que "medio" não precisa de um limite superior. Qualquer coisa 110 ou mais
+      nunca chega naquela linha.
+
+solution: |
+  def rank(score):
+      if score >= 90:
+          return "gold"
+      elif score >= 70:
+          return "silver"
+      elif score >= 50:
+          return "bronze"
+      return "none"

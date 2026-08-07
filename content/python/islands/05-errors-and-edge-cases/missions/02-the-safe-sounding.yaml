@@ -1,0 +1,133 @@
+# Mission 2 of Errors and Edge Cases. Introduces: try-except. Reinforces: exceptions.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-02
+title: The safe sounding
+track: python
+island: errors-and-edge-cases
+order: 2
+difficulty: simple
+tags: [try-except, fallback]
+xp: 20
+
+concepts:
+  - try-except
+  - exceptions
+
+teaching:
+  analogy: |
+    The bosun, unlike the deckhand, does know what to do about an empty hold: write "none
+    aboard" in the log and carry on with the watch. He can do that because it is his
+    decision to make. Nobody above him needs to hear about it.
+
+    Catching an error is claiming that authority. Only claim it when you genuinely have
+    an answer, because the alternative to catching is not "crash" - it is "let someone
+    who knows more decide".
+
+  explanation: |
+    try / except runs a block and, if a matching exception is raised inside it, runs the
+    handler instead of stopping.
+
+        try:
+            return total / count
+        except ZeroDivisionError:
+            return 0
+
+    Name the exception you are handling. A bare `except:` catches everything, including
+    typos in your own code and the interrupt you press to stop the program - it turns
+    every mistake into silence, which is the hardest kind of bug to find.
+
+    Keep the try block down to the line that can actually fail. Wrapping ten lines means
+    an unrelated failure in line nine gets handled by a rule written for line one, and
+    the wrong answer comes back looking correct.
+
+    The except block only runs when something failed. When nothing does, it is skipped
+    entirely.
+
+  worked_example: |
+    # Reading a setting that may be missing, not sounding a hold
+    def port_number(text):
+        try:
+            return int(text)
+        except ValueError:
+            return 8080          # a sensible default when the text is not a number
+
+    print(port_number("3000"))   # 3000
+    print(port_number("abc"))    # 8080 - handled, no crash
+    print(port_number(""))       # 8080
+
+    # Note what is NOT wrapped: only the line that can fail is inside the try.
+
+  key_points:
+    - "Name the exception you catch. A bare except: swallows your own typos too."
+    - Keep the try block to the line that can fail, or an unrelated error gets the wrong handler.
+    - The except block runs only on failure - when nothing raises, it is skipped.
+    - Catch when you genuinely know the answer. Otherwise letting it travel is the better choice.
+
+brief: |
+  The same average as the last mission, but this time from the bosun's seat: an empty
+  watch means no soundings were taken, and the log records that as 0.
+
+  Write a function called safe_average that takes readings, a list of numbers, and
+  returns their average - except that an empty list returns 0 instead of failing.
+
+  Catch the error rather than checking the length first. Checking is the subject of a
+  later mission; this one is about handling.
+
+signature:
+  entrypoint: safe_average
+  stub: |
+    def safe_average(readings):
+        # Try the division. Decide what to do when it cannot be done.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20, 30]]
+      expect: 20.0
+    - args: [[]]
+      expect: 0
+  hidden:
+    - args: [[5]]
+      expect: 5.0
+    - args: [[1, 2]]
+      expect: 1.5
+    - args: [[0, 0]]
+      expect: 0.0
+    - args: [[-4, 4]]
+      expect: 0.0
+    - args: [[7, 8, 9]]
+      expect: 8.0
+
+hints:
+  - level: 1
+    text: |
+      You already know which error an empty list produces here - the last mission made it
+      happen on purpose. What structure lets you run that line anyway and decide what
+      happens if it fails?
+  - level: 2
+    text: |
+      Put the division inside a try block and return it. Add an except ZeroDivisionError
+      block that returns 0. Name that exception rather than catching everything.
+  - level: 3
+    text: |
+      The same shape, on a lookup that may miss:
+
+          try:
+              return prices[item]
+          except KeyError:
+              return 0
+
+      Yours catches a different exception, raised by a different operation.
+
+solution: |
+  def safe_average(readings):
+      try:
+          return sum(readings) / len(readings)
+      except ZeroDivisionError:
+          return 0

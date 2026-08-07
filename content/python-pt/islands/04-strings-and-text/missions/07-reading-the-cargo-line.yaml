@@ -1,0 +1,129 @@
+# Missao 7 de Strings e Texto. Introduz: split-and-parse.
+# Reforca: lists, string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-07
+title: Lendo a linha de carga
+track: python
+island: strings-and-text
+order: 7
+difficulty: simple
+tags: [split, parsing, conversion]
+xp: 20
+
+concepts:
+  - split-and-parse
+  - string-methods
+
+teaching:
+  analogy: |
+    Um telegrama chega como uma sequência ininterrupta de palavras com barras onde ficam
+    as pausas. O trabalho do escriturário é cortá-lo nas barras e entregar cada pedaço a
+    quem precisa dele - e o pedaço que diz "12" ainda precisa ser entendido como número
+    por quem está contando barris, não deixado como dois caracteres numa página.
+
+  explanation: |
+    texto.split(sep) corta uma string onde quer que o separador apareça e retorna os
+    pedaços como uma lista. É o oposto exato de join, e os dois costumam aparecer juntos.
+
+    Duas coisas pegam as pessoas, as duas valendo saber antes de você tropeçar nelas:
+
+    Chamado sem argumento, .split() divide em qualquer sequência de espaços em branco e
+    descarta pedaços vazios. Chamado com " ", ele divide em cada espaço isolado e mantém
+    os vazios. Esses são comportamentos diferentes, não o mesmo escrito de dois jeitos.
+
+    Todo pedaço volta como **string**, sempre. "12" não é 12. Se você precisa de um
+    número, int() ou float() é seu próximo passo, e .strip() geralmente vem antes, porque
+    separadores costumam ter espaços ao lado.
+
+  worked_example: |
+    # Lendo uma data em vez de uma linha de carga
+    linha = " 2026 - 08 - 06 "
+
+    partes = linha.split("-")
+    print(partes)                     # [' 2026 ', ' 08 ', ' 06 '] - repare os espacos
+
+    ano = int(partes[0].strip())      # apare, depois converta
+    print(ano + 1)                    # 2027 - agora e um numero de verdade
+
+    print("a b  c".split())           # ['a', 'b', 'c'] - sequencias de espaco colapsam
+    print("a b  c".split(" "))        # ['a', 'b', '', 'c'] - e aqui nao
+
+  key_points:
+    - split é o oposto de join - uma string em muitos pedaços, cortada no separador.
+    - "Todo pedaço é uma string. int(pedaço) é um passo separado, e não é opcional."
+    - ".split() sem argumento colapsa sequências de espaço; .split(' ') não."
+    - Apare cada pedaço antes de convertê-lo, porque separadores geralmente têm espaços ao lado.
+
+brief: |
+  Uma linha de carga chega como um texto só com três campos separados por ponto e vírgula:
+
+      salt cod ; 12 ; 4.5
+
+  Ou seja, o nome do item, a contagem, e o peso por unidade. Qualquer campo pode ter
+  espaços sobrando ao redor.
+
+  Escreva uma função chamada read_cargo_line que recebe uma linha dessas e retorna uma
+  lista com exatamente três valores, em ordem:
+
+    - o nome, aparado, como texto
+    - a contagem, como número inteiro
+    - o peso, como número decimal
+
+  read_cargo_line("salt cod ; 12 ; 4.5") retorna ["salt cod", 12, 4.5].
+
+  Você pode assumir que a linha sempre tem exatamente três campos.
+
+signature:
+  entrypoint: read_cargo_line
+  stub: |
+    def read_cargo_line(line):
+        # Corte no separador, arrume cada pedaco, converta os dois que sao numeros.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["salt cod ; 12 ; 4.5"]
+      expect: ["salt cod", 12, 4.5]
+    - args: ["rope;1;0.5"]
+      expect: ["rope", 1, 0.5]
+  hidden:
+    - args: ["  nails  ;  100  ;  0.01  "]
+      expect: ["nails", 100, 0.01]
+    - args: ["a;0;0"]
+      expect: ["a", 0, 0.0]
+    - args: ["two words ; 7 ; 3"]
+      expect: ["two words", 7, 3.0]
+    - args: ["x ; -5 ; -1.5"]
+      expect: ["x", -5, -1.5]
+
+hints:
+  - level: 1
+    text: |
+      Depois de cortar a linha em três pedaços, qual é o tipo de cada um? Qual dos três
+      já é o tipo que a resposta precisa, e quais dois não são?
+  - level: 2
+    text: |
+      Divida a linha em ";" para obter três pedaços. Apare cada um. Retorne uma lista com
+      o primeiro pedaço como está, int() do segundo, e float() do terceiro.
+  - level: 3
+    text: |
+      A mesma forma corta-apara-converte, num registro diferente:
+
+          partes = linha.split(",")
+          return [partes[0].strip(), int(partes[1].strip())]
+
+      A sua tem um terceiro campo que precisa de uma conversão diferente.
+
+solution: |
+  def read_cargo_line(line):
+      parts = line.split(";")
+      name = parts[0].strip()
+      count = int(parts[1].strip())
+      weight = float(parts[2].strip())
+      return [name, count, weight]

@@ -1,0 +1,130 @@
+# Mission 5 of Foundations. Introduces: for-loop. Reinforces: conditionals.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-05
+title: Lendo o manifesto de carga
+track: python
+island: foundations
+order: 5
+difficulty: elementary
+tags: [for-loop, iteration, conditionals]
+xp: 10
+
+concepts:
+  - for-loop
+  - conditionals
+
+teaching:
+  analogy: |
+    Um escriturário confere um manifesto passando o dedo página abaixo, uma linha por
+    vez, parando em cada item antes de seguir para o próximo.
+
+    O dedo é o laço. Cada linha onde o dedo pousa é uma passagem. O escriturário não
+    decide quantas linhas existem — a página decide isso, e o dedo para quando a página
+    acaba.
+
+    Uma página vazia não é um caso especial para o escriturário. O dedo simplesmente
+    nunca se move, e nada acontece. Vale lembrar disso, porque é o caso que a maioria
+    esquece.
+
+  explanation: |
+    Um laço for repete um bloco uma vez para cada item de uma sequência. A variável do
+    laço guarda um item por vez, e Python a avança para você.
+
+    Iterar sobre um texto entrega um caractere por passagem, em ordem.
+
+    O laço decide quantas passagens fazer a partir do tamanho da coisa que você deu a
+    ele. Se essa coisa está vazia, o corpo nunca executa. Sem erro, sem aviso, só nada.
+
+    Você pode colocar um if dentro de um laço. A condição é então checada uma vez por
+    passagem, então um laço sobre dez caracteres faz a pergunta dez vezes.
+
+  worked_example: |
+    # Contando quantas palavras de uma frase estao gritadas, nao vogais de uma palavra
+    frase = ["ola", "PARE", "por favor", "AGORA"]
+    gritos = 0
+    for palavra in frase:
+        if palavra == palavra.upper():
+            gritos = gritos + 1
+    print(gritos)      # 2
+
+  key_points:
+    - "for item in coisa: repete uma vez por item, e Python avança a variável para você."
+    - Iterar sobre um texto entrega um caractere por vez, em ordem.
+    - Uma sequência vazia significa zero passagens. O corpo nunca executa, e isso não é um erro.
+    - Um if dentro de um laço é checado uma vez por passagem, não uma vez no total.
+
+brief: |
+  Escreva uma função chamada count_vowels que recebe um texto em minúsculas e retorna
+  quantas vogais ele contém.
+
+  As vogais são a, e, i, o e u. Texto sem vogais retorna 0, e texto vazio retorna 0.
+
+  Você não pode usar o método count. Percorra o texto um caractere por vez e decida
+  por conta própria.
+
+signature:
+  entrypoint: count_vowels
+  stub: |
+    def count_vowels(text):
+        # Comece uma contagem antes do laco. Olhe um caractere por passagem.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [count, sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["banana"]
+      expect: 3
+    - args: ["rhythm"]
+      expect: 0
+  hidden:
+    - args: [""]
+      expect: 0
+    - args: ["aeiou"]
+      expect: 5
+    - args: ["a"]
+      expect: 1
+    - args: ["xyz"]
+      expect: 0
+    - args: ["programming"]
+      expect: 3
+    - args: ["oooo"]
+      expect: 4
+    - args: ["the quick brown fox"]
+      expect: 5
+
+hints:
+  - level: 1
+    text: |
+      Onde mora sua contagem? Se você a cria dentro do laço, qual é o valor dela no
+      início de cada passagem?
+  - level: 2
+    text: |
+      Crie um contador começando em 0 antes do laço. Percorra o texto um caractere por
+      vez. Dentro do laço, verifique se aquele caractere é uma das cinco vogais, e some
+      um quando for. Retorne o contador depois que o laço terminar.
+  - level: 3
+    text: |
+      A mesma forma, contando espaços em vez de vogais:
+
+          espacos = 0
+          for letra in text:
+              if letra == " ":
+                  espacos = espacos + 1
+          return espacos
+
+      A sua tem que combinar com cinco caracteres possíveis em vez de um. A palavra-chave
+      "in" checa pertencimento: letra in "aeiou".
+
+solution: |
+  def count_vowels(text):
+      vowels = 0
+      for letter in text:
+          if letter in "aeiou":
+              vowels = vowels + 1
+      return vowels

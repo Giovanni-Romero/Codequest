@@ -1,0 +1,140 @@
+# Mission 9 of Errors and Edge Cases. Relief mission. Introduces nothing.
+# Reinforces: try-except, input-validation, defensive-design.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-09
+title: The careful clerk
+track: python
+island: errors-and-edge-cases
+order: 9
+difficulty: elementary
+tags: [try-except, validation, lists]
+xp: 10
+
+concepts:
+  - try-except
+  - input-validation
+  - defensive-design
+
+teaching:
+  analogy: |
+    A clerk copying a damaged page does not stop at the first smudged line and abandon
+    the book, and does not invent a number to fill the gap either. He copies what is
+    legible and keeps a count of what was not, so the total at the bottom can be trusted
+    and the missing lines can be chased later.
+
+  explanation: |
+    Nothing new. This is a loop with a try / except inside it, which is a shape worth
+    seeing on its own because it changes what "failing" means.
+
+    So far a failure ended the whole function. Inside a loop, a handler lets one item fail
+    without taking the other ninety-nine with it. Whether that is right depends entirely
+    on the job: for a batch import, skipping one bad row is correct; for a bank transfer,
+    partial success is far worse than none.
+
+    Counting the skips is the part that makes it defensive rather than negligent. A
+    function that quietly drops bad entries and reports nothing is exactly the swallowing
+    the last mission warned about. Reporting how many were dropped turns it into
+    information.
+
+  worked_example: |
+    # Totalling a column of scanned figures, not a manifest
+    def total_of(cells):
+        total = 0
+        skipped = 0
+        for cell in cells:
+            try:
+                total = total + int(cell)
+            except ValueError:
+                skipped = skipped + 1
+        return [total, skipped]
+
+    print(total_of(["10", "x", "5"]))    # [15, 1]
+    print(total_of([]))                  # [0, 0]
+
+  key_points:
+    - A try/except inside a loop lets one item fail without ending the whole run.
+    - Whether skipping is right depends on the job. Partial success is not always better than none.
+    - Count what you skipped. Dropping bad entries silently is the swallowing to avoid.
+    - The counter lives outside the loop - the same accumulator from the Foundations island.
+
+brief: |
+  Weights arrive from the scanner as text, and some entries are unreadable.
+
+  Write a function called tally_weights that takes entries, a list of text values, and
+  returns a list of exactly two whole numbers:
+
+    - the total of every entry that could be read as a whole number
+    - how many entries could not be
+
+  tally_weights(["10", "x", "5"]) returns [15, 1]. An empty list returns [0, 0].
+
+signature:
+  entrypoint: tally_weights
+  stub: |
+    def tally_weights(entries):
+        # One bad entry must not end the count. Keep track of how many there were.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["10", "x", "5"]]
+      expect: [15, 1]
+    - args: [["1", "2", "3"]]
+      expect: [6, 0]
+  hidden:
+    - args: [[]]
+      expect: [0, 0]
+    - args: [["a", "b"]]
+      expect: [0, 2]
+    - args: [["-4", "4"]]
+      expect: [0, 0]
+    - args: [[""]]
+      expect: [0, 1]
+    - args: [["  7  "]]
+      expect: [7, 0]
+    - args: [["1.5"]]
+      expect: [0, 1]
+
+hints:
+  - level: 1
+    text: |
+      Two numbers come out, so two things are being tracked. Where do both of them have
+      to be created for the count to survive the whole loop?
+  - level: 2
+    text: |
+      Create a total and a skipped counter before the loop, both at 0. Inside the loop,
+      put int(entry) in a try and add it to the total; in except ValueError, add one to
+      skipped. Return both in a list after the loop.
+  - level: 3
+    text: |
+      The same shape, counting valid codes:
+
+          good = 0
+          bad = 0
+          for code in codes:
+              try:
+                  check(code)
+                  good = good + 1
+              except ValueError:
+                  bad = bad + 1
+          return [good, bad]
+
+      Yours sums the values rather than counting them, and its failure comes from the
+      conversion itself.
+
+solution: |
+  def tally_weights(entries):
+      total = 0
+      skipped = 0
+      for entry in entries:
+          try:
+              total = total + int(entry)
+          except ValueError:
+              skipped = skipped + 1
+      return [total, skipped]

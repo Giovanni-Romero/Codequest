@@ -15,6 +15,33 @@ concept this mission introduces. One mission introduces exactly one new concept.
 
 `content/<language>/islands/<NN>-<island>/missions/<NN>-<slug>.yaml`
 
+## Every mission ships bilingual: English, then a Portuguese mirror
+
+Established with the Foundations island (`content/python-pt/`). Once the English
+mission in `content/python/` is finished and passes review, produce its mirror in
+`content/python-pt/` at the identical path. Rules for the mirror, no exceptions:
+
+- `id`, `track`, `island`, `order`, `difficulty`, `xp`, `concepts`, `tags`,
+  `signature.entrypoint`, `tests`, `constraints`, and `solution` are **byte-identical**
+  to the English file. These are keyed into the save's progress table and checked by
+  the same hidden tests in both languages — changing any of them breaks a save that
+  switches language mid-game, or lets the two language versions silently test
+  different things.
+- Only prose gets translated: `title`, `teaching.*`, `brief`, `hints[].text`, and any
+  comment inside `signature.stub` that isn't the entrypoint line itself.
+- Translate the *teaching*, not just the words — an analogy that only works as a pun in
+  English needs a real Portuguese equivalent, not a literal translation that loses the
+  shape. If the analogy breaks in translation, find a new one for that language rather
+  than force the original through.
+- Run `codequest check --content content --track python-pt` after the mirror is done —
+  the same solution file, unchanged, must still pass every hidden test. `--content` is
+  the *root* content directory, not the language folder itself: `MissionService` joins
+  `--content` with `--track` to find `track.yaml` (`<content>/<track>/track.yaml`), so
+  `--content content/python-pt` doubles up into `content/python-pt/python-pt/track.yaml`
+  and fails with a confusing `FileNotFoundError`. `python-pt` is a **directory name**
+  passed as `--track`, not a second track id — the loaded `Track.id` inside the file is
+  still `python` either way.
+
 ## The teaching block is the heart
 
 Order matters. Analogy first, because intuition before formalism.

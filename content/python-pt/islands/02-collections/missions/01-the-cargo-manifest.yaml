@@ -1,0 +1,112 @@
+# Missao 1 de Colecoes. Introduz: lists. Reforca: for-loop.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-01
+title: O manifesto de carga
+track: python
+island: collections
+order: 1
+difficulty: elementary
+tags: [lists, append]
+xp: 10
+
+concepts:
+  - lists
+
+teaching:
+  analogy: |
+    Uma lista é uma corda em que você amarra nós conforme a carga embarca. Cada nó marca
+    um item, amarrado na ponta solta da corda quando ele chega. A ordem dos nós é a ordem
+    em que as coisas foram carregadas, e nada se move depois de amarrado.
+
+  explanation: |
+    Uma lista é o jeito do Python de guardar vários valores numa única variável, em
+    ordem. Você começa com uma lista vazia, escrita como [], e adiciona a ela com
+    .append(valor), que coloca o novo valor no final.
+
+    Uma lista pode guardar quantos itens você adicionar, crescendo um de cada vez.
+    Percorrer uma lista com "for item in minha_lista" (que você já conhece da Ilha 1)
+    visita cada item, na ordem em que foram adicionados.
+
+  worked_example: |
+    # Coletando nomes conforme convidados embarcam num barco a remo, nao carga num porao
+    barco = []
+    barco.append("Mara")
+    barco.append("Tomas")
+    barco.append("Iris")
+    print(barco)          # ['Mara', 'Tomas', 'Iris']
+    print(len(barco))     # 3
+
+  key_points:
+    - "[] cria uma lista vazia. .append(valor) adiciona um item no final, no lugar."
+    - A ordem em que os itens foram adicionados é a ordem em que ficam - uma lista lembra a ordem, de propósito.
+    - len(uma_lista) diz quantos itens existem nela agora.
+    - "Adicionar não retorna uma lista nova - muda a lista que você já tem e não devolve nada (None)."
+
+brief: |
+  Um suprimento é carregado no navio um barril de cada vez, e cada barril ganha sua
+  própria linha no manifesto, mesmo que todo barril carregue a mesma coisa.
+
+  Escreva uma função chamada load_manifest que recebe quantos barris foram carregados e
+  o nome do que está dentro deles, e retorna uma lista com esse nome repetido uma vez
+  para cada barril.
+
+  load_manifest(3, "water") retorna ["water", "water", "water"]. Zero barris retorna uma
+  lista vazia.
+
+signature:
+  entrypoint: load_manifest
+  stub: |
+    def load_manifest(count, name):
+        # Comece do nada, depois adicione uma vez por barril.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [3, "water"]
+      expect: ["water", "water", "water"]
+    - args: [1, "rope"]
+      expect: ["rope"]
+  hidden:
+    - args: [0, "anything"]
+      expect: []
+    - args: [5, "salt"]
+      expect: ["salt", "salt", "salt", "salt", "salt"]
+    - args: [2, ""]
+      expect: ["", ""]
+    - args: [7, "x"]
+      expect: ["x", "x", "x", "x", "x", "x", "x"]
+
+hints:
+  - level: 1
+    text: |
+      Antes de carregar qualquer coisa, com o que você começa? Um recipiente vazio
+      precisa existir antes de você poder colocar coisas dentro dele.
+  - level: 2
+    text: |
+      Crie uma lista vazia antes do laço. Faça um laço count vezes (um
+      "for _ in range(count):" conta sem precisar de uma sequência existente), e dentro
+      do laço adicione name à lista a cada vez. Retorne a lista depois do laço.
+  - level: 3
+    text: |
+      A mesma forma, coletando chamados de embarque em vez de entradas de manifesto:
+
+          chamados = []
+          for _ in range(3):
+              chamados.append("todos a bordo")
+          return chamados
+
+      A sua usa uma variável count em vez de um 3 fixo, e uma variável name em vez de um
+      texto fixo.
+
+solution: |
+  def load_manifest(count, name):
+      manifest = []
+      for _ in range(count):
+          manifest.append(name)
+      return manifest

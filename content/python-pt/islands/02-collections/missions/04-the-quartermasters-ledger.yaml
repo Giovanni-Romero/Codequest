@@ -1,0 +1,103 @@
+# Missao 4 de Colecoes. Introduz: dictionaries.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-04
+title: O livro-razão do comissário
+track: python
+island: collections
+order: 4
+difficulty: elementary
+tags: [dictionaries, get]
+xp: 10
+
+concepts:
+  - dictionaries
+
+teaching:
+  analogy: |
+    Um livro-razão é um guarda-volumes, mas para nomes em vez de casacos: você procura
+    um nome e recebe de volta o que pertence a ele. Se um nome nunca foi registrado, o
+    atendente não entra em pânico nem adivinha - ele só te diz que não há nada sob esse
+    nome.
+
+  explanation: |
+    Um dicionário guarda valores sob chaves em vez de posições - você escreve
+    razao = {"Ana": 10, "Bo": 3}, e busca algo com razao["Ana"].
+
+    Mas colchetes numa chave ausente levantam um KeyError e derrubam seu programa.
+    razao.get("Cid") busca do mesmo jeito mas retorna None numa falta em vez de quebrar -
+    e razao.get("Cid", 0) te deixa escolher o que volta em vez de None.
+
+  worked_example: |
+    # Consultando uma tarifa por destino, nao moedas por nome de tripulante
+    tarifas = {"porto": 2, "farol": 5}
+    print(tarifas["porto"])          # 2
+    print(tarifas.get("mercado"))    # None - sem quebrar
+    print(tarifas.get("mercado", 0)) # 0 - o padrao que escolhemos
+
+  key_points:
+    - d[chave] levanta KeyError numa falta. d.get(chave) retorna None em vez disso.
+    - "d.get(chave, padrao) te deixa escolher o valor de reserva em vez de aceitar None."
+    - Chaves podem ser qualquer valor imutável, não só strings, mas strings são as mais comuns.
+    - Um dicionário vazio {} é válido e não tem chave nenhuma - toda busca nele é uma falta.
+
+brief: |
+  O comissário mantém um livro-razão mapeando o nome de cada tripulante para quantas
+  moedas de ração lhe restam.
+
+  Escreva uma função chamada coins_for que recebe o livro-razão (um dicionário mapeando
+  nomes para contagens de moedas) e um nome, e retorna a contagem de moedas dessa
+  pessoa.
+
+  Se o nome não está no livro-razão, retorne 0 em vez de deixar a busca falhar - ninguém
+  começa devendo só porque seu nome nunca foi anotado.
+
+signature:
+  entrypoint: coins_for
+  stub: |
+    def coins_for(ledger, name):
+        # Busque o nome com um valor padrao, em vez de colchetes.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [{"Ana": 10, "Bo": 3}, "Ana"]
+      expect: 10
+    - args: [{"Ana": 10, "Bo": 3}, "Cid"]
+      expect: 0
+  hidden:
+    - args: [{}, "Anyone"]
+      expect: 0
+    - args: [{"Only": 5}, "Only"]
+      expect: 5
+    - args: [{"Zed": 0}, "Zed"]
+      expect: 0
+    - args: [{"A": 1, "B": 2, "C": 3}, "B"]
+      expect: 2
+
+hints:
+  - level: 1
+    text: |
+      Quais são as duas formas de buscar algo num dicionário, e o que muda em como cada
+      uma trata um nome que nunca foi anotado?
+  - level: 2
+    text: |
+      Use .get() no livro-razão em vez de colchetes, e dê a ele um segundo argumento: o
+      valor a retornar quando o nome não está lá.
+  - level: 3
+    text: |
+      A mesma ideia, buscando um apelido que pode não existir:
+
+          apelidos = {"Sam": "Sammy"}
+          return apelidos.get(name, "sem apelido")
+
+      A sua retorna um número padrão em vez de um texto.
+
+solution: |
+  def coins_for(ledger, name):
+      return ledger.get(name, 0)

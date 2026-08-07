@@ -1,0 +1,111 @@
+# Mission 3 of Collections. Relief mission. Reinforces: lists.
+# Introduces nothing new. Its task is rewritten as a comprehension in mission 9.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-03
+title: Tally the hold
+track: python
+island: collections
+order: 3
+difficulty: elementary
+tags: [lists, filtering]
+xp: 10
+
+concepts:
+  - lists
+
+teaching:
+  analogy: |
+    A harbor inspector walks the hold with a clipboard, glancing at each crate's tag and
+    only writing down the ones that break the weight limit. Everything else gets a look
+    and gets skipped - the clipboard only fills up with the ones that matter.
+
+  explanation: |
+    This is the same loop-and-decide shape you have used since Island 1, now building a
+    new list instead of a running total. Start an empty list before the loop. For each
+    item, decide with an if whether it belongs, and if it does, append it.
+
+    Everything that fails the test is simply never appended. You do not need to remove
+    anything, because you never added it in the first place.
+
+  worked_example: |
+    # Picking out short call signs from a longer list, not heavy crates
+    signs = ["QRP", "ALPHA", "SOS", "BRAVO"]
+    short_signs = []
+    for sign in signs:
+        if len(sign) <= 3:
+            short_signs.append(sign)
+    print(short_signs)     # ['QRP', 'SOS']
+
+  key_points:
+    - Filtering is building a new list with append, guarded by an if - nothing new, just combined.
+    - An item that fails the condition is never appended. You do not remove it, you just never added it.
+    - The result list can be shorter than the input, the same length, or empty - all correct, depending on the data.
+    - "> is strict: equal to the limit does not count as over it."
+
+brief: |
+  Write a function called heavy_crates that receives the manifest as a list of crate
+  weights and a weight limit, and returns a new list containing only the weights that
+  are strictly greater than the limit, in the same order they appeared.
+
+  A weight exactly equal to the limit does not count as heavy.
+
+signature:
+  entrypoint: heavy_crates
+  stub: |
+    def heavy_crates(weights, limit):
+        # Build a new list. Only append what passes the check.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 25, 5, 40], 20]
+      expect: [25, 40]
+    - args: [[1, 2, 3], 5]
+      expect: []
+  hidden:
+    - args: [[], 10]
+      expect: []
+    - args: [[50], 10]
+      expect: [50]
+    - args: [[10, 10, 10], 10]
+      expect: []
+    - args: [[-5, 0, 5], -1]
+      expect: [0, 5]
+    - args: [[100, 200, 300], 0]
+      expect: [100, 200, 300]
+
+hints:
+  - level: 1
+    text: |
+      Which of your two known tools decides whether an item goes in, and which one
+      builds the new list? You need both, one inside the other.
+  - level: 2
+    text: |
+      Start an empty list before the loop. Loop over every weight. Inside the loop, use
+      an if to check whether it is strictly greater than the limit, and append it only
+      when that is true.
+  - level: 3
+    text: |
+      Same shape, picking loud alarms out of a log of sound levels:
+
+          loud = []
+          for level in levels:
+              if level > 80:
+                  loud.append(level)
+          return loud
+
+      Yours takes the limit as a parameter instead of a fixed 80.
+
+solution: |
+  def heavy_crates(weights, limit):
+      heavy = []
+      for weight in weights:
+          if weight > limit:
+              heavy.append(weight)
+      return heavy

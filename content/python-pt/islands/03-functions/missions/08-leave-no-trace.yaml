@@ -1,0 +1,151 @@
+# Missao 8 de Funcoes. Introduz: pure-vs-side-effects.
+# Reforca: scope, lists, mutable-default-trap.
+#
+# NOTA ESTRUTURAL: o harness so reporta o valor de RETORNO da funcao principal - ele
+# nunca mostra a quem chamou o que aconteceu com os argumentos depois. Entao um auxiliar
+# que muta so e detectavel se algo o chamar duas vezes na mesma lista dentro de uma
+# invocacao. Mesma restricao que moldou a missao 5. Ver o syllabus, Ilha 3.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-08
+title: Não deixe rastro
+track: python
+island: functions
+order: 8
+difficulty: simple
+tags: [purity, side-effects, aliasing]
+xp: 20
+
+concepts:
+  - pure-vs-side-effects
+  - scope
+
+teaching:
+  analogy: |
+    Dois escriturários recebem a mesma tarefa: copiar o manifesto mestre e acrescentar
+    uma linha à cópia. O primeiro tira uma xerox, escreve na cópia, e devolve - o mestre
+    está exatamente como estava. O segundo escreve direto no mestre e te entrega ele.
+
+    Peça a mesma coisa duas vezes aos dois e a diferença deixa de ser filosófica. As duas
+    "cópias" do segundo escriturário são a mesma folha, carregando as duas adições, e o
+    mestre está arruinado.
+
+  explanation: |
+    Uma função é *pura* quando o resultado dela depende só dos argumentos e ela não muda
+    nada fora de si mesma. Mesmas entradas, mesma saída, nenhum rastro deixado.
+
+    Passar uma lista para uma função não a copia. O parâmetro é outro nome para a lista de
+    quem chamou - o mesmo objeto. Então items.append(x) dentro de uma função estica o
+    braço e modifica os dados de quem chamou. Isso é um efeito colateral, e acontece
+    retornando algo ou não.
+
+    Para deixar quem chamou em paz, construa uma lista nova em vez de mudar a dele:
+
+        nova = items + [x]       # uma lista nova, a de quem chamou intocada
+        items.append(x)          # a lista de quem chamou, modificada no lugar
+
+    Efeitos colaterais não são proibidos - um programa que não muda nada não faz nada. A
+    regra é que eles devem ser óbvios pelo nome e pelo comportamento documentado da
+    função, nunca uma surpresa que quem chamou descobre depois.
+
+  worked_example: |
+    # A mesma armadilha, numa playlist em vez de um manifesto
+    def fila_ruim(musicas, extra):
+        musicas.append(extra)          # estica o braco na lista de quem chamou
+        return musicas
+
+    def fila_ok(musicas, extra):
+        return musicas + [extra]       # constroi uma nova
+
+    original = ["a"]
+    print(fila_ruim(original, "b"))    # ['a', 'b']
+    print(original)                    # ['a', 'b']  <- a lista de quem chamou mudou
+
+    original = ["a"]
+    print(fila_ok(original, "b"))      # ['a', 'b']
+    print(original)                    # ['a']       <- intocada
+
+  key_points:
+    - Um parâmetro que guarda uma lista é a lista de quem chamou, não uma cópia dela.
+    - "append, remove, sort e clear mudam o objeto no lugar. Construir com + cria um novo."
+    - Uma função pura pode ser chamada duas vezes com os mesmos argumentos e dar a mesma resposta nas duas.
+    - Efeitos colaterais são bons quando são o objetivo da função. São bugs quando são uma surpresa.
+
+brief: |
+  O navio mantém um manifesto mestre. Dois departamentos diferentes precisam cada um da
+  sua própria versão dele com um item a mais - e o mestre precisa sobreviver ao processo
+  inalterado, porque um terceiro departamento vai pedi-lo em seguida.
+
+  Escreva uma função chamada add_item que recebe items e item, e retorna uma lista nova
+  com item no final. Ela não pode mudar a lista que recebeu.
+
+  Depois escreva two_manifests que recebe base, first e second, e retorna uma lista com
+  dois manifestos: base mais first, e base mais second.
+
+  two_manifests(["rope"], "salt", "nails") retorna [["rope", "salt"], ["rope", "nails"]].
+
+  Repare no que isso significa: o segundo manifesto não pode conter "salt". Se contiver,
+  sua add_item está escrevendo no mestre.
+
+signature:
+  entrypoint: two_manifests
+  stub: |
+    def add_item(items, item):
+        # Devolva uma lista nova. Deixe a que voce recebeu exatamente como a encontrou.
+        # seu codigo aqui
+        pass
+
+
+    def two_manifests(base, first, second):
+        # Dois manifestos independentes, os dois crescidos da mesma base.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope"], "salt", "nails"]
+      expect: [["rope", "salt"], ["rope", "nails"]]
+    - args: [[], "a", "b"]
+      expect: [["a"], ["b"]]
+  hidden:
+    - args: [["x", "y"], "p", "q"]
+      expect: [["x", "y", "p"], ["x", "y", "q"]]
+    - args: [[], "same", "same"]
+      expect: [["same"], ["same"]]
+    - args: [["only"], "1", "2"]
+      expect: [["only", "1"], ["only", "2"]]
+    - args: [[1, 2], 3, 4]
+      expect: [[1, 2, 3], [1, 2, 4]]
+
+hints:
+  - level: 1
+    text: |
+      Trace na mão. Se add_item adiciona na lista que recebeu, o que está em base quando
+      a segunda chamada roda? E as duas coisas que você retornou - elas são sequer duas
+      listas diferentes?
+  - level: 2
+    text: |
+      add_item deve retornar items + [item], que constrói uma lista completamente nova.
+      Não use append no parâmetro. two_manifests então chama add_item duas vezes na mesma
+      base e retorna os dois resultados numa lista.
+  - level: 3
+    text: |
+      Construir em vez de mutar, numa lista de etiquetas:
+
+          def etiquetado(etiquetas, nova):
+              return etiquetas + [nova]
+
+      Essa única linha é toda a diferença entre esta missão passar e falhar. A outra
+      função só a chama duas vezes.
+
+solution: |
+  def add_item(items, item):
+      return items + [item]
+
+
+  def two_manifests(base, first, second):
+      return [add_item(base, first), add_item(base, second)]

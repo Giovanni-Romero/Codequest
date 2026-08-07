@@ -1,0 +1,124 @@
+# Mission 4 of Functions. Introduces: default-arguments. Reinforces: parameters.
+# Deliberately sets up mission 5: this mission's defaults are all immutable numbers,
+# which is exactly why it works and exactly what mission 5 breaks.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-04
+title: The standing order
+track: python
+island: functions
+order: 4
+difficulty: simple
+tags: [default-arguments, optional-parameters]
+xp: 20
+
+concepts:
+  - default-arguments
+  - parameters
+
+teaching:
+  analogy: |
+    The galley has a standing order: two rations per crew member per day, unless the
+    quartermaster says otherwise. Nobody repeats "two" every morning. It is the default,
+    and it only gets mentioned on the days it changes.
+
+    A default argument is that standing order written into the function itself.
+
+  explanation: |
+    You can give a parameter a default value in the def line: def ration(crew,
+    per_head=2). Now a caller may pass one argument or two. Leave it out and the
+    parameter takes the default; pass it and yours wins.
+
+    Parameters with defaults must come after the ones without. Python has no way to work
+    out which argument you skipped otherwise, so it refuses the definition outright.
+
+    There is one thing about defaults that catches almost everyone eventually, and it is
+    worth knowing before you meet it: the default expression is evaluated **once**, when
+    the def line runs, not fresh on every call. For a number or a string that makes no
+    difference at all. The next mission is about what happens when it is not a number.
+
+  worked_example: |
+    # A delivery charge with a standing rate, not a ration
+    def charge(items, rate=3):
+        return items * rate
+
+    print(charge(4))            # 12 - rate falls back to 3
+    print(charge(4, 10))        # 40 - the caller overrides it
+    print(charge(4, rate=10))   # 40 - same thing, by name
+
+    # def broken(rate=3, items):   # SyntaxError: non-default after default
+
+  key_points:
+    - "def f(a, b=2) makes b optional. Calling f(5) is the same as calling f(5, 2)."
+    - Parameters with defaults must come last, or Python refuses to define the function.
+    - The default expression runs once when the function is defined, not once per call.
+    - A default should be the answer that is right most of the time, not just any value that avoids an error.
+
+brief: |
+  Write a function called rations that works out how much food to issue.
+
+  It takes three parameters in this order:
+
+    - crew: how many people are aboard
+    - days: how many days the issue must cover
+    - per_head: how many rations one person eats in a day, defaulting to 2
+
+  Return the total number of rations: crew times days times per_head.
+
+  A caller who does not mention per_head must get the standing order of 2. Zero crew or
+  zero days returns 0.
+
+signature:
+  entrypoint: rations
+  stub: |
+    def rations(crew, days, per_head=2):
+        # per_head already has its standing order. Just use it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 3]
+      expect: 60
+    - args: [10, 3, 1]
+      expect: 30
+  hidden:
+    - args: [0, 5]
+      expect: 0
+    - args: [5, 0]
+      expect: 0
+    - args: [1, 1]
+      expect: 2
+    - args: [4, 2]
+      kwargs: { per_head: 5 }
+      expect: 40
+    - args: [7, 1, 0]
+      expect: 0
+    - args: [2, 2, 3]
+      expect: 12
+
+hints:
+  - level: 1
+    text: |
+      The stub already gives per_head its default. Inside the body, is there anything
+      special you have to do to handle the case where the caller left it out?
+  - level: 2
+    text: |
+      Nothing special at all - by the time the body runs, per_head holds either the
+      caller's value or 2. Multiply the three parameters together and return the result.
+  - level: 3
+    text: |
+      The same shape, pricing a stay with a default nightly rate:
+
+          def stay_cost(rooms, nights, rate=80):
+              return rooms * nights * rate
+
+      Yours has the same three-way multiply and a different standing order.
+
+solution: |
+  def rations(crew, days, per_head=2):
+      return crew * days * per_head

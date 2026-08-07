@@ -1,0 +1,25 @@
+id: functions
+name: Funções
+track: python
+order: 3
+theme: Nomear e reaproveitar comportamento
+description: |
+  Você escreve funções desde a sua primeira missão. Esta ilha é sobre o que estava
+  acontecendo dentro delas: como os argumentos encontram seus parâmetros, o que um nome
+  significa depois que você sai do corpo onde ele nasceu, e por que uma função que muda
+  algo fora de si mesma em silêncio é o tipo de bug mais difícil de encontrar.
+
+concepts:
+  - parameters
+  - return-values
+  - default-arguments
+  - mutable-default-trap
+  - scope
+  - pure-vs-side-effects
+  - args-kwargs
+  - first-class-functions
+
+unlock_requires:
+  missions_completed: 22
+
+completion_reward_xp: 180

@@ -1,0 +1,156 @@
+# Mission 8 of Errors and Edge Cases. Introduces: defensive-design.
+# Reinforces: input-validation, raising, f-strings.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-08
+title: Fail loudly
+track: python
+island: errors-and-edge-cases
+order: 8
+difficulty: moderate
+tags: [defensive-design, messages, raising]
+xp: 30
+
+concepts:
+  - defensive-design
+  - input-validation
+
+teaching:
+  analogy: |
+    A leak found at the waterline is a repair. The same leak found at night, three days
+    out, because the pump has been quietly keeping up and nobody looked, is an emergency.
+    Nothing about the leak changed. Only how long it was allowed to stay quiet.
+
+  explanation: |
+    Defensive design is not catching everything and carrying on. That is the opposite - a
+    program that swallows problems keeps running while being wrong, which is the most
+    expensive way to fail.
+
+    It is two habits.
+
+    **Fail early.** Stop at the first thing you know is broken, at the place where you
+    still know why. A function that limps on with a value it knows is wrong pushes the
+    failure somewhere it will make no sense.
+
+    **Fail usefully.** The message is read by a person, hours later, with no memory of
+    the code. Three things make it worth reading: what was expected, what actually
+    arrived, and where. "Invalid input" has none of them.
+
+        raise ValueError("invalid input")
+        raise ValueError(f"depth must be 0-500 m, got {depth} for berth {berth!r}")
+
+    The second one costs eight seconds to write and saves an afternoon.
+
+    The !r in an f-string shows a value the way Python would write it, with the quotes on
+    a string. That matters here: it is how you tell an empty string from a string of
+    spaces in a log.
+
+  worked_example: |
+    # A booking limit, not a berth depth
+    MAX_GUESTS = 8
+
+    def seat(table, guests):
+        if guests > MAX_GUESTS:
+            raise ValueError(
+                f"table {table!r} seats at most {MAX_GUESTS}, got {guests}"
+            )
+        return f"{table}:{guests}"
+
+    print(seat("window", 4))       # window:4
+    # print(seat("window", 12))    # ValueError: table 'window' seats at most 8, got 12
+    #                              # expected, actual, and which table - all three
+
+  key_points:
+    - Defensive does not mean catching everything. A program that swallows problems runs on while being wrong.
+    - Fail at the first thing you know is broken, where you still know why.
+    - "A message needs three things: what was expected, what arrived, and where."
+    - "!r in an f-string shows the value as Python writes it, which is how you tell '' apart from '  ' later."
+
+brief: |
+  Berths have a maximum depth and cannot take a ship that draws more.
+
+  Write a function called assign_berth that takes berth (text), draught (a number) and
+  max_depth (a number), and returns "berth:draught" using the trimmed berth name.
+
+  It must refuse, in this order:
+
+    - berth is empty once trimmed: raise ValueError
+    - draught is zero or below: raise ValueError
+    - draught is greater than max_depth: raise ValueError
+
+  Every refusal message must contain the berth name and the offending number, so whoever
+  reads the log later can act on it without going back to the code.
+
+  The tests check the behaviour, not your exact wording - but the messages are the point
+  of the mission, so write them as though someone will read them at three in the morning.
+
+signature:
+  entrypoint: assign_berth
+  stub: |
+    def assign_berth(berth, draught, max_depth):
+        # Refuse early, and say what was expected, what arrived, and where.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  north  ", 4, 6]
+      expect: "north:4"
+    - args: ["north", 9, 6]
+      raises: ValueError
+  hidden:
+    - args: ["a", 6, 6]
+      expect: "a:6"
+    - args: ["", 4, 6]
+      raises: ValueError
+    - args: ["   ", 4, 6]
+      raises: ValueError
+    - args: ["north", 0, 6]
+      raises: ValueError
+    - args: ["north", -1, 6]
+      raises: ValueError
+    - args: ["south", 2.5, 3]
+      expect: "south:2.5"
+    - args: ["south", 3.1, 3]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      A draught exactly equal to max_depth fits - the brief says "greater than" is the
+      refusal. Check what your comparison does at exactly the limit before trusting it.
+  - level: 2
+    text: |
+      Trim the berth name first and reject it if nothing is left. Then reject a draught
+      of zero or below. Then reject a draught above max_depth. Build each message with an
+      f-string containing the berth and the number. Return the answer after all three.
+  - level: 3
+    text: |
+      One refusal, written the way the mission wants:
+
+          if weight > limit:
+              raise ValueError(
+                  f"crate {name!r} exceeds the {limit} kg limit, got {weight}"
+              )
+
+      Yours has three of these, each naming a different rule.
+
+solution: |
+  def assign_berth(berth, draught, max_depth):
+      name = berth.strip()
+      if not name:
+          raise ValueError(f"berth name must not be blank, got {berth!r}")
+
+      if draught <= 0:
+          raise ValueError(f"berth {name!r}: draught must be above zero, got {draught}")
+
+      if draught > max_depth:
+          raise ValueError(
+              f"berth {name!r} is {max_depth} m deep, but the ship draws {draught} m"
+          )
+
+      return f"{name}:{draught}"

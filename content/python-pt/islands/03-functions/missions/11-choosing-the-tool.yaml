@@ -1,0 +1,192 @@
+# Missao 11 de Funcoes. Missao de alivio. Nao introduz nada.
+# Reforca: first-class-functions, args-kwargs, default-arguments.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-11
+title: Escolhendo a ferramenta
+track: python
+island: functions
+order: 11
+difficulty: elementary
+tags: [dispatch-table, defaults, kwargs]
+xp: 10
+
+concepts:
+  - first-class-functions
+  - args-kwargs
+  - default-arguments
+
+teaching:
+  analogy: |
+    Uma vistoriadora chega ao porão com uma pergunta a responder e uma bolsa de
+    instrumentos. Qual instrumento depende da pergunta, e existe um que ela pega por
+    hábito quando ninguém diz nada. De vez em quando mandam ignorar parte da carga antes
+    de medir.
+
+  explanation: |
+    Nada novo. Esta é a tabela de despacho do livro de ordens, com um padrão para a
+    pergunta comum não precisar de argumento nenhum, e uma bolsa de opções nomeadas para
+    o pedido incomum.
+
+    Três coisas que você já tem, lado a lado:
+
+      - um parâmetro com padrão, para a vistoria que as pessoas mais pedem
+      - um dicionário de nomes para funções, para acrescentar uma quarta vistoria ser uma linha
+      - **options, para quem chama ajustar a execução sem a assinatura crescer
+
+    Quando uma opção não é passada, options simplesmente não tem aquela chave - que é
+    exatamente para o que .get com um valor de reserva existe.
+
+  worked_example: |
+    # Vistoriando uma estante de livros em vez de um porao
+    def mais_novo(anos):
+        return max(anos)
+
+    def mais_velho(anos):
+        return min(anos)
+
+    VISTORIAS = {"novo": mais_novo, "velho": mais_velho}
+
+    def estante(anos, tipo="novo", **opcoes):
+        if opcoes.get("desde"):
+            anos = [a for a in anos if a >= opcoes["desde"]]
+        if not anos:
+            return 0
+        return VISTORIAS[tipo](anos)
+
+    print(estante([1990, 2005, 2020]))                    # 2020 - a vistoria padrao
+    print(estante([1990, 2005, 2020], "velho"))           # 1990
+    print(estante([1990, 2005, 2020], "velho", desde=2000))  # 2005
+
+  key_points:
+    - Um padrão transforma a chamada mais comum na mais curta.
+    - "**options deixa quem chama ajustar o comportamento sem toda configuração possível aparecer na assinatura."
+    - "options.get(nome) retorna None quando quem chamou nunca mencionou - não precisa checar se a chave existe antes."
+    - Reatribuir um parâmetro a uma cópia filtrada é seguro. Filtrar com uma comprehension constrói uma lista nova, então a lista de quem chamou fica intocada.
+
+brief: |
+  Escreva uma função chamada survey que mede um porão de pesos de carga.
+
+  Ela recebe:
+
+    - numbers: uma lista de pesos
+    - how: qual vistoria rodar, com padrão "count"
+    - qualquer quantidade de opções nomeadas
+
+  As vistorias são:
+
+    - "count": quantos pesos existem
+    - "biggest": o maior peso
+    - "smallest": o menor peso
+
+  Monte um dicionário desses nomes para três funções pequenas, do mesmo jeito que o livro
+  de ordens fez. Se how não é uma das três, retorne 0.
+
+  Uma opção é reconhecida: quando ignore_negatives é True, descarte todo peso negativo
+  antes de rodar a vistoria. Deixe a lista de quem chamou em paz enquanto faz isso.
+
+  Uma lista vazia de pesos - tenha chegado vazia ou ficado vazia depois do filtro -
+  retorna 0 para toda vistoria.
+
+signature:
+  entrypoint: survey
+  stub: |
+    def count(values):
+        # seu codigo aqui
+        pass
+
+
+    def biggest(values):
+        # seu codigo aqui
+        pass
+
+
+    def smallest(values):
+        # seu codigo aqui
+        pass
+
+
+    def survey(numbers, how="count", **options):
+        # Filtre se pedirem, escolha a vistoria no livro, rode no que sobrou.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[3, 9, 1]]
+      expect: 3
+    - args: [[3, 9, 1], "biggest"]
+      expect: 9
+  hidden:
+    - args: [[3, 9, 1], "smallest"]
+      expect: 1
+    - args: [[-5, 2, 7], "smallest"]
+      expect: -5
+    - args: [[-5, 2, 7], "smallest"]
+      kwargs: { ignore_negatives: true }
+      expect: 2
+    - args: [[-5, -2], "count"]
+      kwargs: { ignore_negatives: true }
+      expect: 0
+    - args: [[], "biggest"]
+      expect: 0
+    - args: [[1, 2], "hoist"]
+      expect: 0
+    - args: [[4]]
+      expect: 1
+    - args: [[-1, -2, 5], "count"]
+      expect: 3
+
+hints:
+  - level: 1
+    text: |
+      Três coisas acontecem em ordem aqui, e acertar a ordem é a maior parte do trabalho.
+      Qual precisa acontecer antes da vistoria rodar, e qual decide se ela roda?
+  - level: 2
+    text: |
+      Primeiro, se options.get("ignore_negatives") for verdadeiro, reconstrua numbers
+      como uma cópia filtrada. Depois, se a lista está vazia, retorne 0. Depois procure
+      how no seu dicionário de vistorias com .get, retorne 0 quando estiver ausente, e
+      caso contrário chame-a na lista.
+  - level: 3
+    text: |
+      O filtro e a busca, numa vistoria diferente:
+
+          if opcoes.get("so_pagos"):
+              linhas = [l for l in linhas if l > 0]
+          ferramenta = FERRAMENTAS.get(tipo)
+          if ferramenta is None:
+              return 0
+          return ferramenta(linhas)
+
+      A sua também precisa decidir o que uma lista vazia significa antes de chegar na
+      ferramenta.
+
+solution: |
+  def count(values):
+      return len(values)
+
+
+  def biggest(values):
+      return max(values)
+
+
+  def smallest(values):
+      return min(values)
+
+
+  def survey(numbers, how="count", **options):
+      if options.get("ignore_negatives"):
+          numbers = [number for number in numbers if number >= 0]
+
+      if not numbers:
+          return 0
+
+      tool = {"count": count, "biggest": biggest, "smallest": smallest}.get(how)
+      if tool is None:
+          return 0
+      return tool(numbers)

@@ -1,0 +1,135 @@
+# Missao 10 de Colecoes. Introduz: when-not-to-comprehend.
+# Reforca: dictionaries, nested-structures.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-10
+title: Quando a esperteza atrapalha
+track: python
+island: collections
+order: 10
+difficulty: simple
+tags: [readability, judgment]
+xp: 20
+
+concepts:
+  - when-not-to-comprehend
+
+teaching:
+  analogy: |
+    Você pode dobrar uma carta náutica num barquinho de origami. É tecnicamente
+    possível, e faz um truque de festa divertido, mas ninguém navega com ele depois - a
+    carta ainda precisa ser legível como carta. Código é a mesma coisa: uma comprehension
+    aninhada dentro de outra é um truque que você consegue fazer, e quem lê depois -
+    muitas vezes você mesmo, em três meses - paga pela esperteza.
+
+  explanation: |
+    Tudo que uma comprehension pode fazer, um laço também pode fazer. Uma comprehension
+    nunca é obrigatória, só às vezes conveniente. Quando uma comprehension precisa de um
+    laço aninhado, uma condição extra, ou uma segunda comprehension dentro dela só para
+    caber numa linha, essa linha deixa de ser um atalho e vira um quebra-cabeça.
+
+    A regra prática: se você teria que ler uma comprehension duas vezes para saber o que
+    ela faz, escreva o laço. Custa algumas linhas a mais e economiza tempo de verdade
+    para quem ler depois.
+
+  worked_example: |
+    # A linha ilegivel (nao escreva isso):
+    # achatado = [item for pedido in pedidos for item in pedido["items"] if item["ready"]]
+
+    # O mesmo resultado, legivel:
+    achatado = []
+    for pedido in pedidos:
+        for item in pedido["items"]:
+            if item["ready"]:
+                achatado.append(item)
+
+  key_points:
+    - Uma comprehension é opcional. Toda comprehension tem um laço equivalente, nunca o contrário.
+    - Aninhar um laço dentro do for de uma comprehension, ou uma comprehension dentro de outra, é sinal de trocar para um laço explícito.
+    - Legibilidade não é sobre número de linhas - quatro linhas claras vencem uma linha que precisa ser lida duas vezes.
+    - Quem paga pela esperteza depois geralmente é você mesmo, lendo seu próprio código depois de esquecer por que o escreveu daquele jeito.
+
+brief: |
+  A entrada de manifesto de um caixote pode ela mesma ter uma lista de etiquetas, como
+  "frágil" ou "molhado".
+
+  Escreva uma função chamada tagged_names que recebe uma lista de dicionários de
+  caixote (cada um com um "name" e uma lista "tags") e uma etiqueta para procurar, e
+  retorna os nomes de todo caixote que tem essa etiqueta.
+
+  Escreva esta como um laço simples, não uma comprehension - aninhar a checagem de
+  etiqueta dentro da checagem de caixote dentro de uma comprehension caberia
+  tecnicamente numa linha, e essa linha seria bem mais difícil de ler do que algumas
+  linhas de laço. Conseguir escrever curto não significa que você deveria.
+
+signature:
+  entrypoint: tagged_names
+  stub: |
+    def tagged_names(crates, tag):
+        # Percorra os caixotes. Para cada um, cheque sua lista de tags.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{"name": "rope", "tags": ["dry"]}, {"name": "salt", "tags": ["wet", "heavy"]}]
+        - "wet"
+      expect: ["salt"]
+    - args:
+        - [{"name": "a", "tags": []}]
+        - "x"
+      expect: []
+  hidden:
+    - args: [[], "anything"]
+      expect: []
+    - args:
+        - [{"name": "n", "tags": ["a", "b", "c"]}]
+        - "b"
+      expect: ["n"]
+    - args:
+        - [{"name": "x", "tags": ["z"]}, {"name": "y", "tags": ["z"]}]
+        - "z"
+      expect: ["x", "y"]
+    - args:
+        - [{"name": "solo", "tags": ["only"]}]
+        - "only"
+      expect: ["solo"]
+    - args:
+        - [{"name": "p", "tags": ["a"]}, {"name": "q", "tags": ["a", "b"]}, {"name": "r", "tags": ["b"]}]
+        - "a"
+      expect: ["p", "q"]
+
+hints:
+  - level: 1
+    text: |
+      Esta tarefa precisa checar algo dentro de outra coisa - uma etiqueta dentro da
+      lista de etiquetas de um caixote, para cada caixote. Dá para escrever isso numa
+      comprehension só? Provavelmente. Deveria? Essa é a pergunta real desta missão.
+  - level: 2
+    text: |
+      Use dois passos: percorra os caixotes, e para cada um cheque se a etiqueta que
+      você procura está na lista de etiquetas desse caixote, usando "in".
+  - level: 3
+    text: |
+      Mesma forma em dois passos, checando se um passageiro tem uma bagagem específica
+      etiquetada, num manifesto inteiro:
+
+          encontrados = []
+          for passageiro in passageiros:
+              if "prioridade" in passageiro["labels"]:
+                  encontrados.append(passageiro["name"])
+
+      A sua recebe a etiqueta a procurar como parâmetro em vez de uma fixa.
+
+solution: |
+  def tagged_names(crates, tag):
+      names = []
+      for crate in crates:
+          if tag in crate["tags"]:
+              names.append(crate["name"])
+      return names

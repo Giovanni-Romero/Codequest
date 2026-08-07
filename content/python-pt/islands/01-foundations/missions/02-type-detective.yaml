@@ -1,0 +1,126 @@
+# Mission 2 of Foundations. Introduces: basic-types. Reinforces: variables.
+# Uses no branching on purpose: conditionals are not taught until mission 4.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-02
+title: Isso é um número?
+track: python
+island: foundations
+order: 2
+difficulty: elementary
+tags: [types, isinstance, booleans]
+xp: 10
+
+concepts:
+  - basic-types
+  - variables
+
+teaching:
+  analogy: |
+    Um capitão do porto olha o que desembarca de um navio e separa: barris aqui, corda
+    ali, cartas no escritório. Mesmo cais, tratamento diferente, e separar errado
+    estraga a carga.
+
+    Python faz o mesmo com os valores. 5 e "5" parecem iguais escritos, mas se comportam
+    de formas completamente diferentes: um você pode somar, o outro só pode juntar a
+    mais texto.
+
+  explanation: |
+    Todo valor em Python tem um tipo. Os quatro que você encontra primeiro são int
+    (números inteiros), float (números com ponto decimal), str (texto) e bool (True
+    ou False).
+
+    isinstance(valor, int) pergunta "esse valor é um int?" e responde True ou False.
+    Nunca quebra, seja lá o que você passar para ela.
+
+    Existe uma armadilha aqui, e é o ponto central desta missão. Em Python, bool é uma
+    *espécie* de int. True realmente é 1 e False realmente é 0, o que significa que
+    isinstance(True, int) responde True. Uma checagem que só pergunta "é um int?" vai
+    contar todo True e todo False como número.
+
+    Você pode combinar perguntas sem nenhum desvio condicional. "and" é True só quando
+    os dois lados são True. "not" inverte uma resposta.
+
+  worked_example: |
+    # Decidindo se uma leitura do tempo é utilizável, não se a carga é um número
+    leitura = 12.5
+    print(isinstance(leitura, float))            # True
+    print(isinstance(leitura, str))              # False
+
+    utilizavel = isinstance(leitura, float) and not isinstance(leitura, str)
+    print(utilizavel)                            # True
+
+  key_points:
+    - "isinstance(valor, AlgumTipo) responde True ou False. Nunca levanta um erro."
+    - Um bool é um int em Python, então uma checagem de int sozinha também pega True e False.
+    - 'A palavra "and" é True só quando os dois lados são True, e "not" inverte a resposta.'
+    - Você pode retornar o resultado de uma comparação diretamente. Não precisa de if.
+
+brief: |
+  Escreva uma função chamada is_whole_number que recebe um valor e retorna True quando
+  esse valor é um número inteiro, e False caso contrário.
+
+  True e False não são números inteiros para os fins desta missão, mesmo que Python os
+  trate como ints. 5.0 também não é, porque é um float. "5" também não é, porque é texto.
+
+  Você não pode usar a função embutida type(), e não precisa de um if.
+
+signature:
+  entrypoint: is_whole_number
+  stub: |
+    def is_whole_number(value):
+        # Duas perguntas combinadas numa única resposta. Sem if.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [type]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [7]
+      expect: true
+    - args: ["anchor"]
+      expect: false
+  hidden:
+    - args: [true]
+      expect: false
+    - args: [false]
+      expect: false
+    - args: [1.5]
+      expect: false
+    - args: [0]
+      expect: true
+    - args: [-42]
+      expect: true
+    - args: [0.0]
+      expect: false
+    - args: [""]
+      expect: false
+    - args: [[1, 2]]
+      expect: false
+
+hints:
+  - level: 1
+    text: |
+      Calcule isinstance(True, int) de cabeça antes de escrever qualquer coisa. O que ela
+      responde, e o que isso faz com uma função que só pergunta se o valor é um int?
+  - level: 2
+    text: |
+      Você precisa de duas chamadas isinstance ligadas por "and". Uma pergunta se é um
+      int. A outra tem que descartar o caso que escapa, usando "not".
+  - level: 3
+    text: |
+      A mesma forma, filtrando convidados em vez de valores:
+
+          permitido = isinstance(convidado, Adulto) and not isinstance(convidado, Funcionario)
+          return permitido
+
+      Todo funcionário também é um adulto, então a primeira checagem sozinha os deixaria
+      entrar. A segunda checagem remove os que escaparam.
+
+solution: |
+  def is_whole_number(value):
+      return isinstance(value, int) and not isinstance(value, bool)

@@ -1,0 +1,136 @@
+# Mission 1 of Functions. Introduces: parameters.
+# Hidden cases call the function BY KEYWORD on purpose - that is what makes "parameter
+# names are a contract" an enforceable lesson instead of an assertion.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-01
+title: The signaler's vocabulary
+track: python
+island: functions
+order: 1
+difficulty: simple
+tags: [parameters, keyword-arguments]
+xp: 20
+
+concepts:
+  - parameters
+
+teaching:
+  analogy: |
+    A ship's signaler and the shore station agree on a code sheet before anyone sails.
+    "Flag, then count, then urgency." Once that sheet is agreed, the signaler cannot
+    quietly reorder it or rename a column - the shore station is reading from the same
+    sheet, and a change on one side is a garbled message on the other.
+
+    A function's parameters are that code sheet. The names and the order are the
+    agreement, not private scratch notes.
+
+  explanation: |
+    When you call a function, Python matches what you pass to the parameters in the
+    definition. By default it matches by position: the first argument goes to the first
+    parameter, the second to the second, and so on.
+
+    But a caller can also pass an argument by name: send(flag="red", count=3). Now the
+    order does not matter, and the parameter's *name* is what does the matching.
+
+    That is the part that surprises people. You can rename a local variable inside your
+    function freely and nothing outside notices. Rename a parameter and every caller
+    who used it by name breaks. The names in your def line are part of what you are
+    promising, the same way the return value is.
+
+  worked_example: |
+    # A taxi fare, not a signal - what matters here is how the arguments arrive
+    def fare(distance, riders):
+        return distance * 2 * riders
+
+    print(fare(10, 3))                    # 60 - matched by position
+    print(fare(riders=3, distance=10))    # 60 - matched by name, order irrelevant
+    print(fare(10, riders=3))             # 60 - positional first, then by name
+
+    # print(fare(riders=3, 10))           # SyntaxError: positional after keyword
+    # print(fare(10, passengers=3))       # TypeError: there is no 'passengers'
+
+  key_points:
+    - Arguments match parameters by position by default, and by name when the caller uses name=value.
+    - Renaming a parameter breaks every caller who passed it by name - the names are public, not private.
+    - Once you pass one argument by name, everything after it must also be by name.
+    - A parameter is just a variable that gets its starting value from the caller.
+
+brief: |
+    Write a function called signal that builds one line of flag code for the shore
+    station.
+
+    It takes exactly three parameters, and they must be named and ordered exactly like
+    this, because the station calls them by name:
+
+      - flag: the flag colour, a string
+      - count: how many times to raise it, a whole number
+      - urgent: True or False
+
+    Return the flag, then a space, then "x" joined to the count. If urgent is True, add
+    a space and the word "URGENT" at the end.
+
+    signal("red", 3, False) returns "red x3", and signal("red", 3, True) returns
+    "red x3 URGENT".
+
+signature:
+  entrypoint: signal
+  stub: |
+    def signal(flag, count, urgent):
+        # The three parameter names above are the agreement. Do not rename them.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["red", 3, false]
+      expect: "red x3"
+    - args: ["blue", 1, true]
+      expect: "blue x1 URGENT"
+  hidden:
+    # These call by keyword, which only works if the parameter names match the brief.
+    - args: []
+      kwargs: { flag: "green", count: 2, urgent: false }
+      expect: "green x2"
+    - args: ["black"]
+      kwargs: { count: 9, urgent: true }
+      expect: "black x9 URGENT"
+    - args: []
+      kwargs: { urgent: true, flag: "white", count: 1 }
+      expect: "white x1 URGENT"
+    - args: ["red", 0, false]
+      expect: "red x0"
+    - args: ["", 5, false]
+      expect: " x5"
+
+hints:
+  - level: 1
+    text: |
+      Two of the three parameters always appear in the answer, and one of them only
+      changes whether something extra is added at the end. Which is which?
+  - level: 2
+    text: |
+      Build the common part first: the flag, a space, "x", and the count converted to
+      text. Then use an if on urgent to decide whether to add " URGENT" to it before
+      returning.
+  - level: 3
+    text: |
+      The same shape, labelling a parcel rather than a signal:
+
+          label = destination + " #" + str(weight)
+          if fragile:
+              label = label + " HANDLE WITH CARE"
+          return label
+
+      Yours joins its two pieces differently, but the if-then-extend shape is identical.
+
+solution: |
+  def signal(flag, count, urgent):
+      line = flag + " x" + str(count)
+      if urgent:
+          line = line + " URGENT"
+      return line

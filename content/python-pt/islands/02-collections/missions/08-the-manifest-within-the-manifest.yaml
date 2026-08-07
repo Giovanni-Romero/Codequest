@@ -1,0 +1,150 @@
+# Missao 8 de Colecoes. Introduz: nested-structures. Reforca: lists, dictionaries.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-08
+title: O manifesto dentro do manifesto
+track: python
+island: collections
+order: 8
+difficulty: simple
+tags: [nested-structures, dictionaries, lists]
+xp: 20
+
+concepts:
+  - nested-structures
+  - lists
+  - dictionaries
+
+teaching:
+  analogy: |
+    O manifesto não é mais uma lista plana - é um arquivo de pastas (conveses), cada
+    pasta guardando uma pilha de fichas (caixotes), cada ficha carregando alguns fatos
+    (nome, peso). Para corrigir uma ficha, você abre a pasta certa, folheia até a ficha
+    certa, e muda só aquele fato. Você não esvazia o arquivo inteiro e arquiva tudo de
+    novo do zero.
+
+  explanation: |
+    Um dicionário pode guardar uma lista como valor, e essa lista pode guardar
+    dicionários, e assim por diante - isso é aninhamento. Para alcançar algo enterrado
+    lá dentro, você encadeia o mesmo acesso que já conhece, uma camada de cada vez:
+    manifest[deck] pega a lista de um convés, depois um laço nessa lista encontra o
+    dicionário do caixote certo, e crate["weight"] alcança o campo que você quer mudar.
+
+    Nada no aninhamento é sintaxe nova - é o mesmo acesso com colchetes que você já tem,
+    usado mais de uma vez seguida.
+
+  worked_example: |
+    # Aumentando a nota de um aluno num diario de classe, nao o peso de um caixote
+    diario = {"matematica": [{"name": "Lee", "score": 70}]}
+    for aluno in diario["matematica"]:
+        if aluno["name"] == "Lee":
+            aluno["score"] = aluno["score"] + 5
+    print(diario)   # {'matematica': [{'name': 'Lee', 'score': 75}]}
+
+  key_points:
+    - Aninhamento é só acessar mais de uma vez seguida - sem sintaxe nova, só mais do que você já sabe.
+    - Para mudar um valor bem enterrado numa estrutura, ande até ele com os mesmos colchetes de sempre, depois atribua só no último passo.
+    - Uma chave ausente ou um item que nunca combina significa nada a mudar - verifique isso antes de assumir que o caminho existe.
+    - Mutar um dicionário ou lista que você já tem muda no lugar - você não precisa reconstruir a estrutura inteira para corrigir um campo.
+
+brief: |
+  O manifesto é organizado por convés: o nome de cada convés mapeia para uma lista de
+  entradas de caixote, e cada entrada de caixote é um dicionário com um "name" e um
+  "weight".
+
+  Escreva uma função chamada bump_weight que recebe o manifesto completo, um nome de
+  convés, um nome de caixote, e uma quantidade, e retorna o manifesto com o peso desse
+  caixote aumentado pela quantidade - todo outro convés, caixote e peso intocado.
+
+  Se o convés ou o nome do caixote não existe, retorne o manifesto completamente
+  inalterado.
+
+signature:
+  entrypoint: bump_weight
+  stub: |
+    def bump_weight(manifest, deck, crate_name, amount):
+        # Encontre o conves certo, depois o caixote certo dentro dele, depois atualize o peso.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - {"upper": [{"name": "rope", "weight": 10}], "lower": [{"name": "salt", "weight": 20}, {"name": "nails", "weight": 5}]}
+        - "lower"
+        - "nails"
+        - 3
+      expect: {"upper": [{"name": "rope", "weight": 10}], "lower": [{"name": "salt", "weight": 20}, {"name": "nails", "weight": 8}]}
+    - args:
+        - {"deck1": [{"name": "a", "weight": 1}]}
+        - "deck1"
+        - "a"
+        - 9
+      expect: {"deck1": [{"name": "a", "weight": 10}]}
+  hidden:
+    - args:
+        - {"d": [{"name": "x", "weight": 5}]}
+        - "missing"
+        - "x"
+        - 100
+      expect: {"d": [{"name": "x", "weight": 5}]}
+    - args:
+        - {"d": [{"name": "x", "weight": 5}]}
+        - "d"
+        - "nope"
+        - 100
+      expect: {"d": [{"name": "x", "weight": 5}]}
+    - args:
+        - {"d": [{"name": "x", "weight": 10}]}
+        - "d"
+        - "x"
+        - -4
+      expect: {"d": [{"name": "x", "weight": 6}]}
+    - args:
+        - {"d": [{"name": "a", "weight": 1}, {"name": "b", "weight": 2}, {"name": "c", "weight": 3}]}
+        - "d"
+        - "b"
+        - 5
+      expect: {"d": [{"name": "a", "weight": 1}, {"name": "b", "weight": 7}, {"name": "c", "weight": 3}]}
+    - args:
+        - {"up": [{"name": "x", "weight": 1}], "low": [{"name": "y", "weight": 2}]}
+        - "low"
+        - "y"
+        - 8
+      expect: {"up": [{"name": "x", "weight": 1}], "low": [{"name": "y", "weight": 10}]}
+
+hints:
+  - level: 1
+    text: |
+      Como você vai do manifesto inteiro até um caixote específico? Escreva cada passo
+      separadamente antes de combiná-los: manifesto, até a lista do convés certo, até o
+      caixote certo nessa lista, até o peso dele.
+  - level: 2
+    text: |
+      Verifique se o convés existe. Percorra a lista de caixotes desse convés, e quando
+      encontrar um cujo nome bate, atualize o peso e retorne o manifesto. Se nada bateu,
+      devolva o manifesto sem mudanças.
+  - level: 3
+    text: |
+      Mesma forma, dando um bônus a um funcionário numa estrutura de folha de pagamento
+      aninhada:
+
+          for funcionario in folha[departamento]:
+              if funcionario["id"] == id_alvo:
+                  funcionario["pay"] = funcionario["pay"] + bonus
+
+      A sua também precisa lidar com o departamento não existindo.
+
+solution: |
+  def bump_weight(manifest, deck, crate_name, amount):
+      if deck not in manifest:
+          return manifest
+      for crate in manifest[deck]:
+          if crate["name"] == crate_name:
+              crate["weight"] = crate["weight"] + amount
+              return manifest
+      return manifest

@@ -1,0 +1,129 @@
+# Mission 2 of Functions. Introduces: return-values. Reinforces: parameters.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-02
+title: Turn back early
+track: python
+island: functions
+order: 2
+difficulty: simple
+tags: [return, early-exit, none]
+xp: 20
+
+concepts:
+  - return-values
+  - parameters
+
+teaching:
+  analogy: |
+    A lookout scanning the horizon for a hazard does not finish sweeping the whole
+    circle out of politeness. The moment they sight one, they call it down and stop
+    scanning - the job was "tell me about the first one", and it is done.
+
+    If they sweep the entire horizon and find nothing, they still have to say something.
+    Silence would be indistinguishable from a lookout who fell asleep.
+
+  explanation: |
+    A return statement ends the function immediately. Not the loop it happens to be
+    inside - the whole function. Everything after it, at any indentation, is skipped.
+
+    That is what lets you write a loop that stops at its first match: return the answer
+    from inside the loop, and there is no need to remember it, no need to break, and no
+    need for a flag variable.
+
+    A function that reaches the end of its body without hitting a return still returns
+    something: it returns None. That is not an error, and it is not "nothing" - None is
+    a real value you can check for and compare against.
+
+    Returning is not printing. print shows a value on screen and gives the caller
+    nothing. Only return hands a value back.
+
+  worked_example: |
+    # Finding the first word longer than a limit, not the first breach
+    def first_long_word(words, limit):
+        for word in words:
+            if len(word) > limit:
+                return word          # ends the whole function right here
+        return None                  # only reached if the loop finished with no match
+
+    print(first_long_word(["a", "sail", "anchorage"], 3))   # anchorage
+    print(first_long_word(["a", "an"], 3))                  # None
+
+  key_points:
+    - return ends the entire function immediately, not just the loop it sits in.
+    - Returning from inside a loop is how you stop at the first match without a flag or a break.
+    - A function that finishes without a return gives back None, which is a value, not an absence.
+    - print shows something to a human. return hands something to the caller. They are not interchangeable.
+
+brief: |
+  The depth log is scanned for the first reading that is dangerously shallow.
+
+  Write a function called first_breach that takes readings (a list of depth numbers)
+  and limit (a number), and returns the first reading in the list that is strictly less
+  than limit.
+
+  If no reading is below the limit, return None. An empty list of readings also returns
+  None.
+
+  Return the reading itself, not its position.
+
+signature:
+  entrypoint: first_breach
+  stub: |
+    def first_breach(readings, limit):
+        # Stop as soon as you find one. Say None if you never do.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 8, 3, 9], 5]
+      expect: 3
+    - args: [[10, 8, 9], 5]
+      expect: null
+  hidden:
+    - args: [[], 5]
+      expect: null
+    - args: [[2, 1], 5]
+      expect: 2
+    - args: [[5, 5, 5], 5]
+      expect: null
+    - args: [[6, 4, 2], 5]
+      expect: 4
+    - args: [[-1, -9], 0]
+      expect: -1
+    - args: [[7], 100]
+      expect: 7
+
+hints:
+  - level: 1
+    text: |
+      Once you have found the first shallow reading, is there any reason to keep looking
+      at the rest of the list? What statement lets you leave immediately?
+  - level: 2
+    text: |
+      Loop over the readings. Inside the loop, if the current reading is below the limit,
+      return it right there. After the loop ends, return None - reaching that line means
+      nothing matched.
+  - level: 3
+    text: |
+      The same early-exit shape, hunting for the first sold-out item:
+
+          for item in stock:
+              if item["left"] == 0:
+                  return item["name"]
+          return None
+
+      Yours compares a number against a limit instead of against zero, and returns the
+      value itself rather than a field of it.
+
+solution: |
+  def first_breach(readings, limit):
+      for reading in readings:
+          if reading < limit:
+              return reading
+      return None

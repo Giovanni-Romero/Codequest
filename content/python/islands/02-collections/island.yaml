@@ -1,0 +1,25 @@
+id: collections
+name: Collections
+track: python
+order: 2
+theme: Grouping data
+description: |
+  A ship does not carry one barrel. It carries a hold full of them, a ledger of who
+  owns what, and a manifest that has to stay correct as cargo moves. This island is
+  about holding many values at once, and reaching the right one without losing track
+  of the rest.
+
+concepts:
+  - lists
+  - indexing-and-slicing
+  - dictionaries
+  - sets
+  - tuples
+  - nested-structures
+  - list-comprehension
+  - when-not-to-comprehend
+
+unlock_requires:
+  missions_completed: 10
+
+completion_reward_xp: 150

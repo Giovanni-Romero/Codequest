@@ -1,0 +1,137 @@
+# Mission 12 of Collections. Closing mission. Introduces nothing.
+# Reinforces: lists, dictionaries, sets, tuples, nested-structures, list-comprehension,
+# when-not-to-comprehend.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-12
+title: Full cargo report
+track: python
+island: collections
+order: 12
+difficulty: simple
+tags: [dictionaries, sets, tuples, nested-structures]
+xp: 20
+
+concepts:
+  - lists
+  - dictionaries
+  - sets
+  - tuples
+  - nested-structures
+  - list-comprehension
+  - when-not-to-comprehend
+
+teaching:
+  analogy: |
+    The captain does not want six separate slips of paper before departure. She wants
+    one report: weight by deck, and how many decks are actually carrying anything at
+    all. Everything you have learned on this island exists to build exactly this kind
+    of answer - one structure, several facts, assembled from what you already know.
+
+  explanation: |
+    Nothing new here. This mission asks you to run several things you already know at
+    the same time: reading a list of crate dictionaries, accumulating totals in a
+    dictionary, deduplicating a list of names into a set, and packaging two results
+    together as a tuple.
+
+    Whether you build the deck-name list with a loop or a comprehension is your call to
+    make here - both are correct, pick whichever reads clearer to you for this one.
+
+  worked_example: |
+    # Summarizing orders by customer, not crates by deck
+    orders = [{"customer": "Ana", "total": 12}, {"customer": "Bo", "total": 5},
+              {"customer": "Ana", "total": 3}]
+
+    spent = {}
+    for order in orders:
+        name = order["customer"]
+        spent[name] = spent.get(name, 0) + order["total"]
+
+    names = [order["customer"] for order in orders]
+    customer_count = len(set(names))
+
+    print((spent, customer_count))   # ({'Ana': 15, 'Bo': 5}, 2)
+
+  key_points:
+    - A closing mission combines what you already know - nothing here needs a new construct.
+    - "dict.get(key, 0) plus reassignment is the accumulator pattern from Island 1, just keyed by name instead of a single running total."
+    - Deduplicating with set() answers "how many distinct", entirely separate from any totals you built.
+    - Returning a tuple of two results is just building a pair, the same as any other tuple.
+
+brief: |
+  Write a function called cargo_report that receives a list of crate dictionaries (each
+  with "name", "weight", and "deck"), and returns a pair: a dictionary mapping each deck
+  name to its total weight, and the count of distinct decks that appear in the list at
+  all.
+
+  Return both together as a single result: (totals, deck_count).
+
+signature:
+  entrypoint: cargo_report
+  stub: |
+    def cargo_report(crates):
+        # Build the totals dictionary. Separately, count the distinct decks.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{"name": "rope", "weight": 10, "deck": "upper"}, {"name": "salt", "weight": 20, "deck": "lower"}, {"name": "nails", "weight": 5, "deck": "upper"}]
+      expect: [{"upper": 15, "lower": 20}, 2]
+    - args:
+        - [{"name": "x", "weight": 7, "deck": "only"}]
+      expect: [{"only": 7}, 1]
+  hidden:
+    - args: [[]]
+      expect: [{}, 0]
+    - args:
+        - [{"name": "a", "weight": 1, "deck": "d"}, {"name": "b", "weight": 2, "deck": "d"}, {"name": "c", "weight": 3, "deck": "d"}]
+      expect: [{"d": 6}, 1]
+    - args:
+        - [{"name": "a", "weight": 5, "deck": "x"}, {"name": "b", "weight": 5, "deck": "y"}, {"name": "c", "weight": 5, "deck": "z"}]
+      expect: [{"x": 5, "y": 5, "z": 5}, 3]
+    - args:
+        - [{"name": "neg", "weight": -3, "deck": "d"}]
+      expect: [{"d": -3}, 1]
+
+hints:
+  - level: 1
+    text: |
+      This is two separate jobs, not one. What do you need to track for the totals, and
+      what do you need to track for the distinct count - are they even the same
+      question?
+  - level: 2
+    text: |
+      Build totals the way you built the ledger and the earlier report: loop over the
+      crates, and for each one do totals[deck] = totals.get(deck, 0) + weight. Then,
+      separately, collect every deck name into a list or a comprehension and wrap it in
+      set(...) to count distinct ones. Return both as a tuple.
+  - level: 3
+    text: |
+      The two parts, on a different report entirely:
+
+          spend = {}
+          for sale in sales:
+              spend[sale["region"]] = spend.get(sale["region"], 0) + sale["amount"]
+          regions = len(set(sale["region"] for sale in sales))
+          return (spend, regions)
+
+      Yours keys by deck and weight instead of region and amount.
+
+solution: |
+  def cargo_report(crates):
+      totals = {}
+      for crate in crates:
+          deck = crate["deck"]
+          weight = crate["weight"]
+          totals[deck] = totals.get(deck, 0) + weight
+
+      deck_names = [crate["deck"] for crate in crates]
+      decks_seen = set(deck_names)
+
+      return (totals, len(decks_seen))

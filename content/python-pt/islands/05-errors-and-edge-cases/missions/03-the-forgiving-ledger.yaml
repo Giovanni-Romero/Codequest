@@ -1,0 +1,120 @@
+# Missao 3 de Erros e Casos-Limite. Missao de alivio. Nao introduz nada.
+# Reforca: try-except, dictionaries.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-03
+title: O livro-razão tolerante
+track: python
+island: errors-and-edge-cases
+order: 3
+difficulty: elementary
+tags: [try-except, dictionaries]
+xp: 10
+
+concepts:
+  - try-except
+
+teaching:
+  analogy: |
+    Um livro-razão sem entrada para um tripulante não significa que ele deve uma dívida
+    infinita. Significa que ninguém anotou nada ainda, e a leitura sensata de uma linha
+    em branco é zero.
+
+  explanation: |
+    Nada novo. Isto é try / except aplicado a uma busca em dicionário em vez de uma
+    divisão.
+
+    Colchetes numa chave ausente levantam KeyError - você encontrou isso lá na ilha de
+    Coleções, onde .get() foi a resposta. Os dois estão certos aqui, e saber que são duas
+    soluções para o mesmo problema vale mais que qualquer uma delas sozinha.
+
+    Qual escolher é uma pergunta real com uma resposta real: quando a falta é esperada e
+    comum, .get() diz isso numa linha curta. try / except serve para quando a falha é
+    genuinamente excepcional, ou quando a coisa que pode falhar não é uma busca.
+
+    Esta missão quer a versão com try / except, para praticar a forma. A próxima ilha
+    ia querer a outra.
+
+  worked_example: |
+    # Uma busca de configuracao, nao um livro-razao
+    def tempo_limite(config, nome):
+        try:
+            return config[nome]
+        except KeyError:
+            return 30
+
+    print(tempo_limite({"api": 5}, "api"))    # 5
+    print(tempo_limite({"api": 5}, "db"))     # 30 - tratado
+
+    # A mesma coisa com .get, para comparar:
+    # return config.get(nome, 30)
+
+  key_points:
+    - "d[chave] levanta KeyError numa falta; .get(chave, padrão) retorna o padrão em vez disso."
+    - Os dois estão certos. Escolha .get para uma falta comum, try/except quando a falha for genuinamente incomum.
+    - O bloco except nomeia KeyError especificamente, para outro bug não ser engolido em silêncio.
+    - Retornar um padrão sensato é uma decisão sobre significado, não um jeito de esconder um problema.
+
+brief: |
+  Escreva uma função chamada coins_owed que recebe ledger (um dicionário mapeando nomes
+  de tripulantes para contagens de moedas) e name, e retorna as moedas dessa pessoa.
+
+  Um nome que não está no livro-razão não tem nada anotado contra ele, o que lê como 0.
+
+  Use try / except em volta da busca em vez de .get() - esta missão está praticando a
+  forma, e o painel de lição explica quando você escolheria a outra.
+
+signature:
+  entrypoint: coins_owed
+  stub: |
+    def coins_owed(ledger, name):
+        # Busque. Decida o que um nome ausente significa.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [{"Ana": 10, "Bo": 3}, "Ana"]
+      expect: 10
+    - args: [{"Ana": 10, "Bo": 3}, "Cid"]
+      expect: 0
+  hidden:
+    - args: [{}, "Anyone"]
+      expect: 0
+    - args: [{"Zed": 0}, "Zed"]
+      expect: 0
+    - args: [{"A": 1, "B": 2}, "B"]
+      expect: 2
+    - args: [{"Solo": -5}, "Solo"]
+      expect: -5
+
+hints:
+  - level: 1
+    text: |
+      Qual exceção um dicionário levanta quando a chave não está lá? Você a encontrou na
+      ilha de Coleções, quando .get() foi apresentado como a forma de contorná-la.
+  - level: 2
+    text: |
+      Ponha ledger[name] dentro de um try e retorne. Capture KeyError e retorne 0 do
+      tratador.
+  - level: 3
+    text: |
+      A mesma forma, numa busca diferente:
+
+          try:
+              return estoque[item]
+          except KeyError:
+              return 0
+
+      A sua usa os dois nomes de parâmetro que recebeu.
+
+solution: |
+  def coins_owed(ledger, name):
+      try:
+          return ledger[name]
+      except KeyError:
+          return 0

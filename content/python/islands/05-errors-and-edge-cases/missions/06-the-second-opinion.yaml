@@ -1,0 +1,132 @@
+# Mission 6 of Errors and Edge Cases. Relief mission. Introduces nothing.
+# Reinforces: eafp-vs-lbyl, try-except.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-06
+title: The second opinion
+track: python
+island: errors-and-edge-cases
+order: 6
+difficulty: elementary
+tags: [try-except, fallback, lists]
+xp: 10
+
+concepts:
+  - eafp-vs-lbyl
+  - try-except
+
+teaching:
+  analogy: |
+    Two instruments aboard measure the same thing. The good one is trusted; when it is
+    broken or stowed, the rough one is consulted instead. Nobody stops the ship over it -
+    the second opinion exists precisely so a missing first opinion is not a crisis.
+
+  explanation: |
+    Nothing new. This is one try / except protecting a lookup that may fail for more than
+    one reason, which is the ordinary shape of a fallback.
+
+    An index can fail two ways: the list is too short, which is IndexError, or the thing
+    at that position cannot be used as expected. You can name more than one exception in
+    a single handler with a tuple:
+
+        except (IndexError, TypeError):
+
+    That is still specific. It is not the same as a bare except, because you have named
+    exactly which two failures you have an answer for, and anything else still travels.
+
+  worked_example: |
+    # Reading a preferred column with a fallback, not an instrument
+    def field(row, preferred, backup):
+        try:
+            return row[preferred]
+        except (IndexError, TypeError):
+            return backup
+
+    print(field(["a", "b"], 1, "?"))      # b
+    print(field(["a", "b"], 5, "?"))      # ? - IndexError handled
+    print(field(["a", "b"], "x", "?"))    # ? - TypeError handled
+
+  key_points:
+    - "except (A, B): handles two named exceptions with one block, and is still specific."
+    - "IndexError is a position that does not exist; TypeError is an index of the wrong kind."
+    - A fallback value is a decision about meaning. It is not the same as hiding the failure.
+    - Anything you did not name still travels up, which is what keeps the handler honest.
+
+brief: |
+  Readings come in from two instruments, and either list may be shorter than expected or
+  empty.
+
+  Write a function called reading_at that takes primary (a list), backup (a list) and
+  position (a whole number), and returns:
+
+    - the value at that position in primary, if there is one
+    - otherwise the value at that position in backup, if there is one
+    - otherwise the number 0
+
+  reading_at([10, 20], [1, 2, 3], 2) returns 3, because primary has nothing at
+  position 2.
+
+signature:
+  entrypoint: reading_at
+  stub: |
+    def reading_at(primary, backup, position):
+        # Try the good instrument. Fall back to the rough one. Then give up gracefully.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20], [1, 2, 3], 1]
+      expect: 20
+    - args: [[10, 20], [1, 2, 3], 2]
+      expect: 3
+  hidden:
+    - args: [[], [], 0]
+      expect: 0
+    - args: [[], [5], 0]
+      expect: 5
+    - args: [[7], [], 0]
+      expect: 7
+    - args: [[1, 2], [3, 4], 9]
+      expect: 0
+    - args: [[0], [9], 0]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      There are three outcomes and only two lists. Which one needs no lookup at all, and
+      when do you reach it?
+  - level: 2
+    text: |
+      Try returning primary[position] inside a try. In the except IndexError block, try
+      backup[position] inside a second try, and return 0 from its handler. Nesting one
+      try inside another's except block is ordinary code.
+  - level: 3
+    text: |
+      The nested shape, on different sources:
+
+          try:
+              return live[key]
+          except KeyError:
+              try:
+                  return cached[key]
+              except KeyError:
+                  return None
+
+      Yours indexes lists rather than dictionaries, so the exception is a different one,
+      and its last resort is a number.
+
+solution: |
+  def reading_at(primary, backup, position):
+      try:
+          return primary[position]
+      except IndexError:
+          try:
+              return backup[position]
+          except IndexError:
+              return 0

@@ -1,0 +1,216 @@
+# Mission 12 of Functions. Closing mission. Introduces nothing.
+# Combines all eight concepts of the island.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-12
+title: The full watch
+track: python
+island: functions
+order: 12
+difficulty: simple
+tags: [dispatch-table, sentinel, defaults, kwargs]
+xp: 20
+
+concepts:
+  - parameters
+  - return-values
+  - default-arguments
+  - mutable-default-trap
+  - scope
+  - pure-vs-side-effects
+  - args-kwargs
+  - first-class-functions
+
+teaching:
+  analogy: |
+    End of watch. The officer writes one report, and what goes in it depends on who
+    asked: the captain wants a number, the navigator wants the worst reading, the
+    engineer wants the whole list. One function, three questions, one standing limit on
+    the wall that anybody may override for their own watch.
+
+  explanation: |
+    Nothing new. Every piece of this has its own mission behind it:
+
+      - a parameter with a default, so the usual call is short
+      - the None sentinel, so an optional value that could have been a list is safe and
+        can fall back to the constant on the wall
+      - a module-level constant, read but never reassigned
+      - a dictionary of names to functions instead of an if/elif chain
+      - **flags for the occasional adjustment
+      - and a report that never modifies the readings it was handed
+
+    The only real work is deciding the order things happen in. Work out the limit first,
+    then which readings breached it, then hand that to whichever reporter was asked for.
+
+  worked_example: |
+    # A shop's end-of-day report, same assembly, different subject
+    DEFAULT_FLOOR = 10
+
+    def how_many(rows):
+        return len(rows)
+
+    def lowest(rows):
+        if not rows:
+            return None
+        return min(rows)
+
+    REPORTS = {"count": how_many, "lowest": lowest}
+
+    def day_report(sales, mode="count", floor=None, **flags):
+        if floor is None:
+            floor = DEFAULT_FLOOR
+        if flags.get("include_equal"):
+            poor = [s for s in sales if s <= floor]
+        else:
+            poor = [s for s in sales if s < floor]
+        reporter = REPORTS.get(mode)
+        if reporter is None:
+            return None
+        return reporter(poor)
+
+    print(day_report([20, 5, 3]))                        # 2
+    print(day_report([20, 5, 3], "lowest"))              # 3
+    print(day_report([10, 20], "count", include_equal=True))   # 1
+
+  key_points:
+    - A closing mission asks you to assemble, not to learn. Every construct here already has a mission behind it.
+    - "Order of operations is the real design work: resolve the limit, then filter, then report."
+    - The None sentinel is the safe default for anything optional, and it reads clearly even when the value is a number.
+    - Filtering with a comprehension builds a new list, so the readings you were handed survive untouched.
+
+brief: |
+  The stub has one standing order on the wall: DEFAULT_LIMIT. Leave it there.
+
+  Write a function called watch_report that takes:
+
+    - readings: a list of depth numbers
+    - mode: which report to produce, defaulting to "count"
+    - limit: the shallow-water limit, defaulting to None, meaning "use DEFAULT_LIMIT"
+    - any number of keyword flags
+
+  A reading is a breach when it is strictly below the limit. When the flag include_equal
+  is True, a reading exactly equal to the limit counts as a breach too.
+
+  The reports, which you must dispatch through a dictionary rather than an if/elif chain:
+
+    - "count": how many breaches there were
+    - "worst": the lowest breaching reading, or None when there were none
+    - "list": the breaching readings, in the order they appeared, as a new list
+
+  If mode is not one of the three, return None.
+
+  Whatever you do, the readings list you were handed must come out unchanged.
+
+signature:
+  entrypoint: watch_report
+  stub: |
+    DEFAULT_LIMIT = 5
+
+
+    def count_of(breaches):
+        # your code here
+        pass
+
+
+    def worst_of(breaches):
+        # your code here
+        pass
+
+
+    def list_of(breaches):
+        # your code here
+        pass
+
+
+    def watch_report(readings, mode="count", limit=None, **flags):
+        # Resolve the limit, find the breaches, then hand them to the right reporter.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 3, 8, 2]]
+      expect: 2
+    - args: [[10, 3, 8, 2], "worst"]
+      expect: 2
+  hidden:
+    - args: [[10, 3, 8, 2], "list"]
+      expect: [3, 2]
+    - args: [[9, 9], "worst"]
+      expect: null
+    - args: [[9, 9], "count"]
+      expect: 0
+    - args: [[5, 5], "count", 5]
+      expect: 0
+    - args: [[5, 5], "count", 5]
+      kwargs: { include_equal: true }
+      expect: 2
+    - args: [[], "list"]
+      expect: []
+    - args: [[1, 2], "nonsense"]
+      expect: null
+    - args: [[1, 20, 2], "list", 10]
+      expect: [1, 2]
+    - args: [[7], "worst", 10]
+      expect: 7
+
+hints:
+  - level: 1
+    text: |
+      Three decisions have to happen before any report is produced, and one of them
+      changes what "breach" even means. Write them down in order before writing code.
+  - level: 2
+    text: |
+      Start by replacing limit with DEFAULT_LIMIT when it came in as None. Then build the
+      list of breaches with a comprehension, choosing < or <= based on
+      flags.get("include_equal"). Then look mode up in your dictionary of reporters,
+      return None if it is missing, and otherwise call it on the breaches.
+  - level: 3
+    text: |
+      The resolve-then-filter half, on a different report:
+
+          if threshold is None:
+              threshold = DEFAULT_THRESHOLD
+          if flags.get("inclusive"):
+              hits = [v for v in values if v <= threshold]
+          else:
+              hits = [v for v in values if v < threshold]
+
+      The dispatch half is exactly the order book's, with three reporters instead of
+      three drills.
+
+solution: |
+  DEFAULT_LIMIT = 5
+
+
+  def count_of(breaches):
+      return len(breaches)
+
+
+  def worst_of(breaches):
+      if not breaches:
+          return None
+      return min(breaches)
+
+
+  def list_of(breaches):
+      return list(breaches)
+
+
+  def watch_report(readings, mode="count", limit=None, **flags):
+      if limit is None:
+          limit = DEFAULT_LIMIT
+
+      if flags.get("include_equal"):
+          breaches = [reading for reading in readings if reading <= limit]
+      else:
+          breaches = [reading for reading in readings if reading < limit]
+
+      reporter = {"count": count_of, "worst": worst_of, "list": list_of}.get(mode)
+      if reporter is None:
+          return None
+      return reporter(breaches)

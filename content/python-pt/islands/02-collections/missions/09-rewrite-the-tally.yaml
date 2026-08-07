@@ -1,0 +1,101 @@
+# Missao 9 de Colecoes. Introduz: list-comprehension. Reforca: lists.
+# Callback deliberado a tarefa da missao 3, reescrita em uma linha.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-09
+title: Reescrevendo a contagem
+track: python
+island: collections
+order: 9
+difficulty: simple
+tags: [list-comprehension]
+xp: 20
+
+concepts:
+  - list-comprehension
+
+teaching:
+  analogy: |
+    Uma comprehension é a mesma ronda de inspeção de antes, só que escrita numa linha em
+    vez de narrada passo a passo - "pegue tudo do porão, mantenha só o que está acima do
+    limite" dito num único fôlego em vez de quatro frases.
+
+  explanation: |
+    Uma list comprehension constrói uma lista numa única expressão: [valor for item in
+    sequencia if condicao]. Ela faz exatamente o que a versão laço-e-append faz - para
+    cada item, checa a condição, e se for verdadeira, inclui o valor na nova lista.
+
+    A comprehension não é uma ferramenta diferente. É a mesma ideia de laço-com-append,
+    comprimida numa expressão que Python lê de uma vez.
+
+  worked_example: |
+    # Escolhendo palavras longas de uma frase, nao caixotes pesados
+    palavras = ["a", "viagem", "para", "lembrar"]
+    palavras_longas = [palavra for palavra in palavras if len(palavra) > 3]
+    print(palavras_longas)      # ['viagem', 'lembrar']
+
+  key_points:
+    - "[expr for item in sequencia if condicao] é o padrão laço-append, numa linha."
+    - A parte antes de "for" é o que vai para a nova lista - pode transformar o item, não só repassá-lo.
+    - "O if no final filtra. Sem ele, todo item é incluído."
+    - Uma comprehension sempre constrói uma nova lista - nunca muta a sequência que está lendo.
+
+brief: |
+  Você já resolveu isso uma vez, do jeito longo, numa missão anterior: filtrar os
+  caixotes acima de um limite de peso numa nova lista.
+
+  Escreva uma função chamada heavy_crates_fast que faz exatamente a mesma coisa -
+  recebe uma lista de pesos e um limite, retorna os pesos estritamente maiores que o
+  limite, na mesma ordem - mas construa o resultado com uma única list comprehension em
+  vez de um laço e .append().
+
+signature:
+  entrypoint: heavy_crates_fast
+  stub: |
+    def heavy_crates_fast(weights, limit):
+        # Uma linha: [expr for item in sequencia if condicao]
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 25, 5, 40], 20]
+      expect: [25, 40]
+    - args: [[1, 2, 3], 5]
+      expect: []
+  hidden:
+    - args: [[], 10]
+      expect: []
+    - args: [[50], 10]
+      expect: [50]
+    - args: [[10, 10, 10], 10]
+      expect: []
+    - args: [[-5, 0, 5], -1]
+      expect: [0, 5]
+    - args: [[100, 200, 300], 0]
+      expect: [100, 200, 300]
+
+hints:
+  - level: 1
+    text: |
+      Você já escreveu a versão em laço desta tarefa exata. O que essas três coisas o
+      laço faz, em ordem: o que ele checa, o que ele mantém, e o que nunca toca?
+  - level: 2
+    text: |
+      O padrão é [weight for weight in weights if weight > limit] - leia da direita para
+      a esquerda: para cada weight em weights, se está acima do limite, mantenha.
+  - level: 3
+    text: |
+      A mesma reescrita, em outro filtro:
+
+          sobreviventes = [nivel for nivel in niveis if nivel > 80]
+
+      A sua usa seus dois nomes de parâmetro em vez desses dois.
+
+solution: |
+  def heavy_crates_fast(weights, limit):
+      return [weight for weight in weights if weight > limit]

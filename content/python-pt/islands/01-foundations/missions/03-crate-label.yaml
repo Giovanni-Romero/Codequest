@@ -1,0 +1,124 @@
+# Mission 3 of Foundations. Relief mission. Reinforces: basic-types, variables.
+# Introduces nothing new: the curve needs a landing after the bool/int trap.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-03
+title: Etiquetando os caixotes
+track: python
+island: foundations
+order: 3
+difficulty: elementary
+tags: [types, conversion, strings]
+xp: 10
+
+concepts:
+  - basic-types
+  - variables
+
+teaching:
+  analogy: |
+    Um estivador escreve num caixote: "rope x 12".
+
+    A corda é carga. O 12 é uma contagem. Mas a etiqueta não é nenhuma dessas coisas, é
+    tinta na madeira. Para colocar um número numa etiqueta você tem que escrevê-lo como
+    caracteres.
+
+    Python é mais rígido que um estivador sobre isso. Ele não vai transformar um número
+    em texto silenciosamente para você, porque adivinhar o que você quis dizer é como
+    números viram texto sem avisar e somas viram junções sem avisar.
+
+  explanation: |
+    O sinal de mais significa duas coisas diferentes dependendo do que está em cada lado.
+    Entre dois números, soma. Entre dois textos, junta um atrás do outro.
+
+    Entre um texto e um número, não faz nenhuma das duas. Python levanta um TypeError,
+    porque "rope" + 12 não tem uma resposta sensata e inventar uma esconderia seu erro.
+
+    str(valor) transforma qualquer valor em texto. str(12) dá "12", que é texto feito
+    dos caracteres 1 e 2 e não é mais um número com o qual você pode fazer contas.
+
+    O caminho inverso também existe: int("12") devolve o número 12.
+
+  worked_example: |
+    # Montando uma linha para o diário de bordo, não uma etiqueta de caixote
+    porto = "Lisboa"
+    dias = 4
+
+    linha = porto + " alcancado em " + str(dias) + " dias"
+    print(linha)          # Lisboa alcancado em 4 dias
+
+    # Sem o str() a linha acima levanta TypeError, porque Python nao vai
+    # adivinhar que voce queria o numero escrito por extenso.
+
+  key_points:
+    - Mais soma números e junta textos. Ele se recusa a misturar os dois.
+    - str(valor) transforma qualquer coisa em texto. int("12") transforma texto de volta em número.
+    - "str(12) não é 12. São dois caracteres, e 'a' + str(12) funciona enquanto 'a' + 12 não."
+    - Monte a etiqueta numa variável se isso ajudar a ler. Expressões longas escondem erros.
+
+brief: |
+  Escreva uma função chamada crate_label que recebe o nome de um item de carga e quantos
+  existem, e retorna uma única linha de texto exatamente neste formato:
+
+      rope x 12
+
+  Ou seja: o nome, um espaço, um x minúsculo, um espaço, e então a contagem.
+
+  A contagem chega como número, então você vai ter que transformá-la em texto antes que
+  ela possa se juntar ao resto da etiqueta.
+
+signature:
+  entrypoint: crate_label
+  stub: |
+    def crate_label(name, count):
+        # A contagem e um numero. A etiqueta e texto. Algo precisa mudar.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", 12]
+      expect: "rope x 12"
+    - args: ["barrel", 3]
+      expect: "barrel x 3"
+  hidden:
+    - args: ["", 0]
+      expect: " x 0"
+    - args: ["net", -1]
+      expect: "net x -1"
+    - args: ["sail", 1000000]
+      expect: "sail x 1000000"
+    - args: ["lantern", 1]
+      expect: "lantern x 1"
+    - args: ["salt cod", 250]
+      expect: "salt cod x 250"
+    - args: ["x", 0]
+      expect: "x x 0"
+
+hints:
+  - level: 1
+    text: |
+      O que acontece se você escrever "rope" + 12 direto na linha do return? Tente de
+      cabeça, depois decida o que precisa acontecer com o 12 primeiro.
+  - level: 2
+    text: |
+      Você precisa de str() em volta da contagem. O resto é juntar quatro pedaços de
+      texto com mais: o nome, um espaço, o x com espaços ao redor, e a contagem convertida.
+  - level: 3
+    text: |
+      A mesma junção, montando uma linha de placar em vez de uma etiqueta de caixote:
+
+          jogador = "Ada"
+          pontos = 30
+          return jogador + " marcou " + str(pontos)
+
+      A sua tem um separador diferente entre as duas partes, mas a forma é idêntica.
+
+solution: |
+  def crate_label(name, count):
+      label = name + " x " + str(count)
+      return label

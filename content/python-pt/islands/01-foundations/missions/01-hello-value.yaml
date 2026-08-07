@@ -1,0 +1,118 @@
+# Mission 1 of Foundations. Introduces: variables.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-01
+title: Os suprimentos do navio
+track: python
+island: foundations
+order: 1
+difficulty: elementary
+tags: [variables, assignment]
+xp: 10
+
+concepts:
+  - variables
+
+teaching:
+  analogy: |
+    Uma variável é um caixote com etiqueta no porão de um navio.
+
+    Você escreve um nome no caixote, coloca algo dentro, e a partir daí pode pedir por
+    ele pelo nome em vez de lembrar onde o colocou.
+
+    A parte importante: você pode abrir o caixote depois, tirar o que está dentro, colocar
+    outra coisa, e a etiqueta continua a mesma. O caixote não é a coisa que ele guarda.
+
+  explanation: |
+    Em Python você cria uma variável escrevendo um nome, um sinal de igual e um valor.
+
+    O sinal de igual não significa "é igual a" como na matemática. Significa "coloque
+    este valor nesta caixa". Por isso total = total + 1 não é um absurdo: ele lê a caixa,
+    soma um, e coloca a resposta de volta na mesma caixa.
+
+    Uma variável guarda um valor por vez. Atribuir um novo valor substitui o antigo, e
+    o antigo desaparece.
+
+  worked_example: |
+    # Acompanhando a temperatura na cozinha do navio
+    temperatura = 20
+    temperatura = temperatura + 5     # lê 20, soma 5, guarda 25
+    temperatura = temperatura - 3     # lê 25, subtrai 3, guarda 22
+    print(temperatura)                # 22
+
+  key_points:
+    - O sinal de igual guarda um valor, não afirma um fato. Leia como "passa a ser".
+    - Um nome à esquerda, um valor à direita. Nunca o contrário.
+    - "x = x + 1 funciona porque o lado direito é calculado primeiro, depois guardado."
+    - Atribuir de novo substitui o que estava lá. O valor anterior não fica guardado em lugar nenhum.
+
+brief: |
+  Um navio sai do porto com uma certa quantidade de barris de água, usa alguns durante a
+  viagem, e recebe mais na ilha seguinte.
+
+  Escreva uma função chamada supplies_after_trip que recebe três números: quantos barris
+  o navio tinha no início, quantos foram usados, e quantos foram recebidos. Retorne
+  quantos barris o navio tem no final.
+
+  Use uma variável para guardar a contagem em andamento. Não escreva o cálculo inteiro
+  na linha do return.
+
+signature:
+  entrypoint: supplies_after_trip
+  stub: |
+    def supplies_after_trip(start, used, bought):
+        # Guarde a contagem inicial numa variável, depois atualize-a duas vezes.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 3, 5]
+      expect: 12
+    - args: [20, 20, 0]
+      expect: 0
+  hidden:
+    - args: [0, 0, 0]
+      expect: 0
+    - args: [5, 0, 0]
+      expect: 5
+    - args: [3, 10, 0]
+      expect: -7
+    - args: [0, 0, 7]
+      expect: 7
+    - args: [100, 40, 40]
+      expect: 100
+    - args: [1, 1, 1]
+      expect: 1
+
+hints:
+  - level: 1
+    text: |
+      Antes do navio usar qualquer coisa, quantos barris ele tem? Onde esse número
+      mora enquanto o resto da viagem acontece?
+  - level: 2
+    text: |
+      Crie uma variável guardando a contagem inicial. Depois atribua a ela de novo para
+      subtrair o que foi usado, e mais uma vez para somar o que foi recebido. Retorne
+      no final.
+  - level: 3
+    text: |
+      A mesma forma, contando moedas numa bolsa em vez de barris:
+
+          bolsa = 50
+          bolsa = bolsa - 12      # gasto
+          bolsa = bolsa + 30      # ganho
+          return bolsa
+
+      A sua começa a partir de um parâmetro em vez de um número fixo.
+
+solution: |
+  def supplies_after_trip(start, used, bought):
+      barrels = start
+      barrels = barrels - used
+      barrels = barrels + bought
+      return barrels

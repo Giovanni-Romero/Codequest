@@ -1,0 +1,129 @@
+# Mission 7 of Strings and Text. Introduces: split-and-parse.
+# Reinforces: lists, string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-07
+title: Reading the cargo line
+track: python
+island: strings-and-text
+order: 7
+difficulty: simple
+tags: [split, parsing, conversion]
+xp: 20
+
+concepts:
+  - split-and-parse
+  - string-methods
+
+teaching:
+  analogy: |
+    A telegraph arrives as one unbroken run of words with slashes where the pauses go.
+    The clerk's job is to cut it at the slashes and hand each piece to whoever needs it -
+    and the piece that says "12" still has to be understood as a number by the person who
+    is counting barrels, not left as two characters on a page.
+
+  explanation: |
+    text.split(sep) cuts a string wherever the separator appears and returns the pieces
+    as a list. It is the exact opposite of join, and the two are usually seen together.
+
+    Two things trip people, both worth knowing before you hit them:
+
+    Called with no argument, .split() splits on any run of whitespace and discards empty
+    pieces. Called with " ", it splits on each single space and keeps the empties. Those
+    are different behaviours, not the same one written two ways.
+
+    Every piece comes back as a **string**, always. "12" is not 12. If a number is what
+    you need, int() or float() is your next step, and .strip() usually belongs before it
+    because separators tend to have spaces sitting next to them.
+
+  worked_example: |
+    # Reading a date rather than a cargo line
+    line = " 2026 - 08 - 06 "
+
+    parts = line.split("-")
+    print(parts)                     # [' 2026 ', ' 08 ', ' 06 '] - note the spaces
+
+    year = int(parts[0].strip())     # strip, then convert
+    print(year + 1)                  # 2027 - it is a real number now
+
+    print("a b  c".split())          # ['a', 'b', 'c'] - runs of space collapse
+    print("a b  c".split(" "))       # ['a', 'b', '', 'c'] - and here they do not
+
+  key_points:
+    - split is join's opposite - one string into many pieces, cut at the separator.
+    - "Every piece is a string. int(piece) is a separate step, and it is not optional."
+    - ".split() with no argument collapses runs of whitespace; .split(' ') does not."
+    - Strip each piece before converting it, because separators usually have spaces beside them.
+
+brief: |
+  A cargo line arrives as one piece of text with three fields separated by semicolons:
+
+      salt cod ; 12 ; 4.5
+
+  That is the item name, the count, and the weight per unit. Any field may have stray
+  spaces around it.
+
+  Write a function called read_cargo_line that takes such a line and returns a list of
+  exactly three values, in order:
+
+    - the name, trimmed, as text
+    - the count, as a whole number
+    - the weight, as a decimal number
+
+  read_cargo_line("salt cod ; 12 ; 4.5") returns ["salt cod", 12, 4.5].
+
+  You may assume the line always has exactly three fields.
+
+signature:
+  entrypoint: read_cargo_line
+  stub: |
+    def read_cargo_line(line):
+        # Cut at the separator, tidy each piece, then convert the two that are numbers.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["salt cod ; 12 ; 4.5"]
+      expect: ["salt cod", 12, 4.5]
+    - args: ["rope;1;0.5"]
+      expect: ["rope", 1, 0.5]
+  hidden:
+    - args: ["  nails  ;  100  ;  0.01  "]
+      expect: ["nails", 100, 0.01]
+    - args: ["a;0;0"]
+      expect: ["a", 0, 0.0]
+    - args: ["two words ; 7 ; 3"]
+      expect: ["two words", 7, 3.0]
+    - args: ["x ; -5 ; -1.5"]
+      expect: ["x", -5, -1.5]
+
+hints:
+  - level: 1
+    text: |
+      After cutting the line into three pieces, what type is each one? Which of the three
+      is already the type the answer needs, and which two are not?
+  - level: 2
+    text: |
+      Split the line on ";" to get three pieces. Strip each piece. Return a list with the
+      first piece as it is, int() of the second, and float() of the third.
+  - level: 3
+    text: |
+      The same cut-strip-convert shape, on a different record:
+
+          parts = row.split(",")
+          return [parts[0].strip(), int(parts[1].strip())]
+
+      Yours has a third field that needs a different conversion.
+
+solution: |
+  def read_cargo_line(line):
+      parts = line.split(";")
+      name = parts[0].strip()
+      count = int(parts[1].strip())
+      weight = float(parts[2].strip())
+      return [name, count, weight]

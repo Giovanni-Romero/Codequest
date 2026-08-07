@@ -1,0 +1,113 @@
+# Mission 2 of Collections. Introduces: indexing-and-slicing. Reinforces: lists.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-02
+title: Find the crate
+track: python
+island: collections
+order: 2
+difficulty: elementary
+tags: [indexing, slicing]
+xp: 10
+
+concepts:
+  - indexing-and-slicing
+
+teaching:
+  analogy: |
+    A dockworker checking crates can point to "the third one from the front" or "the
+    second one from the back" - that is an index. Or they can say "give me everything
+    between the second and the second-to-last" - that is a slice, a whole stretch at
+    once. Asking for a single crate that does not exist gets you yelled at. Asking for a
+    stretch that runs past what is actually there just gets you a shorter stretch -
+    nobody complains, you just get what was really there.
+
+  explanation: |
+    You already know a list holds ordered values. Indexing pulls out exactly one, by
+    position: manifest[0] is the first, and manifest[-1] is the last - negative indices
+    count backward from the end, so you never have to know how long the list is to ask
+    for its last item.
+
+    Slicing pulls out a range at once: manifest[1:3] gives everything from index 1 up to
+    (not including) index 3. A slice never raises an error, even when its bounds run past
+    what actually exists - it just gives back however much of the list was really there,
+    including nothing at all.
+
+  worked_example: |
+    # Checking passengers boarding a lifeboat, not crates in a hold
+    passengers = ["Ana", "Bo", "Cid", "Dee", "Evan"]
+    print(passengers[0])       # Ana - the first one aboard
+    print(passengers[-1])      # Evan - the last one, counting from the end
+    print(passengers[1:4])     # ['Bo', 'Cid', 'Dee']
+    print(passengers[2:100])   # ['Cid', 'Dee', 'Evan'] - no error, just what exists
+
+  key_points:
+    - "thing[-1] is the last item. Negative indices count backward from the end, -1 first."
+    - "thing[a:b] returns items from index a up to (not including) b - the end bound is exclusive."
+    - A slice never raises an error for an out-of-range bound. A single index does, if it points past the end.
+    - "thing[1:-1] - everything except the first and last - is a slicing idiom worth recognizing on sight."
+
+brief: |
+  The crates easiest to reach without shifting anything are the ones in the middle of
+  the hold - everything except whatever was loaded first and whatever was loaded last.
+
+  Write a function called middle_crates that receives the full manifest as a list and
+  returns a new list of everything in it except the first and last item.
+
+  A manifest with two or fewer crates has no middle at all - return an empty list, and
+  do not let your code raise an error when that happens.
+
+signature:
+  entrypoint: middle_crates
+  stub: |
+    def middle_crates(manifest):
+        # One slice does this. Python handles the too-short case for you.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope", "salt", "lantern", "nails"]]
+      expect: ["salt", "lantern"]
+    - args: [["a", "b", "c"]]
+      expect: ["b"]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [["only"]]
+      expect: []
+    - args: [["a", "b"]]
+      expect: []
+    - args: [["a", "b", "c", "d", "e"]]
+      expect: ["b", "c", "d"]
+    - args: [[1, 2, 3, 4]]
+      expect: [2, 3]
+
+hints:
+  - level: 1
+    text: |
+      What happens in Python if a slice's bounds reach past the actual length of the
+      list? Think through [1, 2][1:-1] before writing anything - does it error, or does
+      it just give you less than you asked for?
+  - level: 2
+    text: |
+      One slice does this whole mission: start right after the first item, end right
+      before the last one. Python's slicing handles a list too short to have a "middle"
+      on its own.
+  - level: 3
+    text: |
+      Same idea, trimming the first and last stop from a bus route:
+
+          stops = ["depot", "market", "square", "depot"]
+          between = stops[1:-1]
+          return between
+
+      Yours works on whatever list it receives, not a fixed one.
+
+solution: |
+  def middle_crates(manifest):
+      return manifest[1:-1]

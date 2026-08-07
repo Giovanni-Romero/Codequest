@@ -1,0 +1,219 @@
+# Missao 12 de Funcoes. Missao de fechamento. Nao introduz nada.
+# Combina os oito conceitos da ilha.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-12
+title: O turno completo
+track: python
+island: functions
+order: 12
+difficulty: simple
+tags: [dispatch-table, sentinel, defaults, kwargs]
+xp: 20
+
+concepts:
+  - parameters
+  - return-values
+  - default-arguments
+  - mutable-default-trap
+  - scope
+  - pure-vs-side-effects
+  - args-kwargs
+  - first-class-functions
+
+teaching:
+  analogy: |
+    Fim de turno. O oficial escreve um relatório, e o que entra nele depende de quem
+    perguntou: o capitão quer um número, o navegador quer a pior leitura, o maquinista
+    quer a lista inteira. Uma função, três perguntas, um limite permanente na parede que
+    qualquer um pode sobrescrever no próprio turno.
+
+  explanation: |
+    Nada novo. Cada pedaço disto tem sua própria missão por trás:
+
+      - um parâmetro com padrão, para a chamada de sempre ser curta
+      - a sentinela None, para um valor opcional que poderia ter sido uma lista ser
+        seguro e poder cair na constante da parede
+      - uma constante de nível de módulo, lida mas nunca reatribuída
+      - um dicionário de nomes para funções em vez de uma cadeia if/elif
+      - **flags para o ajuste ocasional
+      - e um relatório que nunca modifica as leituras que recebeu
+
+    O único trabalho de verdade é decidir a ordem em que as coisas acontecem. Resolva o
+    limite primeiro, depois quais leituras o violaram, depois entregue isso a qualquer
+    relator que tenham pedido.
+
+  worked_example: |
+    # Um relatorio de fim de dia de loja, mesma montagem, assunto diferente
+    PISO_PADRAO = 10
+
+    def quantos(linhas):
+        return len(linhas)
+
+    def menor(linhas):
+        if not linhas:
+            return None
+        return min(linhas)
+
+    RELATORIOS = {"quantos": quantos, "menor": menor}
+
+    def relatorio_dia(vendas, modo="quantos", piso=None, **flags):
+        if piso is None:
+            piso = PISO_PADRAO
+        if flags.get("incluir_igual"):
+            fracas = [v for v in vendas if v <= piso]
+        else:
+            fracas = [v for v in vendas if v < piso]
+        relator = RELATORIOS.get(modo)
+        if relator is None:
+            return None
+        return relator(fracas)
+
+    print(relatorio_dia([20, 5, 3]))                          # 2
+    print(relatorio_dia([20, 5, 3], "menor"))                 # 3
+    print(relatorio_dia([10, 20], "quantos", incluir_igual=True))   # 1
+
+  key_points:
+    - Uma missão de fechamento pede montagem, não aprendizado. Toda construção aqui já tem uma missão por trás.
+    - "A ordem das operações é o trabalho de design de verdade: resolva o limite, depois filtre, depois relate."
+    - A sentinela None é o padrão seguro para qualquer coisa opcional, e lê com clareza mesmo quando o valor é um número.
+    - Filtrar com uma comprehension constrói uma lista nova, então as leituras que você recebeu sobrevivem intocadas.
+
+brief: |
+  O esqueleto tem uma ordem permanente na parede: DEFAULT_LIMIT. Deixe-a lá.
+
+  Escreva uma função chamada watch_report que recebe:
+
+    - readings: uma lista de números de profundidade
+    - mode: qual relatório produzir, com padrão "count"
+    - limit: o limite de água rasa, com padrão None, significando "use DEFAULT_LIMIT"
+    - qualquer quantidade de marcadores nomeados
+
+  Uma leitura é uma violação quando está estritamente abaixo do limite. Quando o marcador
+  include_equal é True, uma leitura exatamente igual ao limite também conta como violação.
+
+  Os relatórios, que você precisa despachar por um dicionário e não por uma cadeia
+  if/elif:
+
+    - "count": quantas violações houve
+    - "worst": a menor leitura violadora, ou None quando não houve nenhuma
+    - "list": as leituras violadoras, na ordem em que apareceram, como lista nova
+
+  Se mode não é um dos três, retorne None.
+
+  Aconteça o que acontecer, a lista readings que você recebeu precisa sair inalterada.
+
+signature:
+  entrypoint: watch_report
+  stub: |
+    DEFAULT_LIMIT = 5
+
+
+    def count_of(breaches):
+        # seu codigo aqui
+        pass
+
+
+    def worst_of(breaches):
+        # seu codigo aqui
+        pass
+
+
+    def list_of(breaches):
+        # seu codigo aqui
+        pass
+
+
+    def watch_report(readings, mode="count", limit=None, **flags):
+        # Resolva o limite, encontre as violacoes, entregue ao relator certo.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 3, 8, 2]]
+      expect: 2
+    - args: [[10, 3, 8, 2], "worst"]
+      expect: 2
+  hidden:
+    - args: [[10, 3, 8, 2], "list"]
+      expect: [3, 2]
+    - args: [[9, 9], "worst"]
+      expect: null
+    - args: [[9, 9], "count"]
+      expect: 0
+    - args: [[5, 5], "count", 5]
+      expect: 0
+    - args: [[5, 5], "count", 5]
+      kwargs: { include_equal: true }
+      expect: 2
+    - args: [[], "list"]
+      expect: []
+    - args: [[1, 2], "nonsense"]
+      expect: null
+    - args: [[1, 20, 2], "list", 10]
+      expect: [1, 2]
+    - args: [[7], "worst", 10]
+      expect: 7
+
+hints:
+  - level: 1
+    text: |
+      Três decisões precisam acontecer antes de qualquer relatório ser produzido, e uma
+      delas muda o que "violação" sequer significa. Escreva-as em ordem antes de escrever
+      código.
+  - level: 2
+    text: |
+      Comece substituindo limit por DEFAULT_LIMIT quando ele chegar como None. Depois
+      monte a lista de violações com uma comprehension, escolhendo < ou <= com base em
+      flags.get("include_equal"). Depois procure mode no seu dicionário de relatores,
+      retorne None se estiver ausente, e caso contrário chame-o nas violações.
+  - level: 3
+    text: |
+      A metade resolve-depois-filtra, num relatório diferente:
+
+          if limiar is None:
+              limiar = LIMIAR_PADRAO
+          if flags.get("inclusivo"):
+              achados = [v for v in valores if v <= limiar]
+          else:
+              achados = [v for v in valores if v < limiar]
+
+      A metade do despacho é exatamente a do livro de ordens, com três relatores em vez
+      de três manobras.
+
+solution: |
+  DEFAULT_LIMIT = 5
+
+
+  def count_of(breaches):
+      return len(breaches)
+
+
+  def worst_of(breaches):
+      if not breaches:
+          return None
+      return min(breaches)
+
+
+  def list_of(breaches):
+      return list(breaches)
+
+
+  def watch_report(readings, mode="count", limit=None, **flags):
+      if limit is None:
+          limit = DEFAULT_LIMIT
+
+      if flags.get("include_equal"):
+          breaches = [reading for reading in readings if reading <= limit]
+      else:
+          breaches = [reading for reading in readings if reading < limit]
+
+      reporter = {"count": count_of, "worst": worst_of, "list": list_of}.get(mode)
+      if reporter is None:
+          return None
+      return reporter(breaches)

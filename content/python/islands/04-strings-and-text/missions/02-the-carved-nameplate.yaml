@@ -1,0 +1,130 @@
+# Mission 2 of Strings and Text. Introduces: string-immutability.
+# Reinforces: string-methods, indexing-and-slicing (Island 2).
+# A player who reaches for text[0] = "X" gets TypeError from the sandbox, which is the
+# lesson arriving on its own rather than through a hint.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-02
+title: The carved nameplate
+track: python
+island: strings-and-text
+order: 2
+difficulty: simple
+tags: [immutability, slicing, string-methods]
+xp: 20
+
+concepts:
+  - string-immutability
+  - string-methods
+
+teaching:
+  analogy: |
+    A nameplate is carved, not written. Getting the first letter wrong does not mean
+    fetching an eraser - it means carving a new plate and throwing the old one away. The
+    wood cannot be edited in place, only replaced.
+
+    A list is a row of hooks: take one thing off a hook, hang another. A string is the
+    carved plate.
+
+  explanation: |
+    Strings are immutable. Once one exists, nothing can change it. text[0] = "X" is not a
+    typo you can fix by trying harder - it raises TypeError, always.
+
+    That is why every string method returns a new string instead of modifying yours. It
+    is not politeness, it is the only thing it can do.
+
+    Reading works exactly as it did for lists: text[0] is the first character,
+    text[-1] the last, text[1:] everything from index 1 onward. All the slicing rules
+    from the Collections island apply unchanged, including that a slice never raises for
+    an out-of-range bound.
+
+    So to "change" a string you build a new one out of pieces of the old.
+
+  worked_example: |
+    # Masking a card number, not carving a nameplate
+    card = "4111222233334444"
+
+    masked = "****" + card[-4:]        # keep the last four, replace the rest
+    print(masked)                      # ****4444
+    print(card)                        # 4111222233334444 - unchanged, as always
+
+    # card[0] = "9"                    # TypeError: 'str' object does not support
+    #                                  # item assignment
+
+  key_points:
+    - "text[0] = 'X' raises TypeError. A string cannot be edited, only rebuilt."
+    - Reading and slicing a string works exactly like a list - same rules, same edge cases.
+    - "To change one character, build a new string from the pieces you keep plus the piece you want."
+    - A method that returns a string has done nothing useful until you assign or return its result.
+
+brief: |
+  A nameplate arrives with the lettering in whatever case the carver felt like using.
+
+  Write a function called nameplate that takes a piece of text and returns it with the
+  first character in uppercase and everything after it in lowercase.
+
+  nameplate("aDA lOVELACE") returns "Ada lovelace".
+
+  An empty string returns an empty string, and your code must not raise when it gets one.
+
+  You may not use .capitalize() or .title() - building it yourself is the mission.
+
+signature:
+  entrypoint: nameplate
+  stub: |
+    def nameplate(text):
+        # You cannot edit a character in place. Build a new string from two pieces.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [capitalize, title]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["aDA lOVELACE"]
+      expect: "Ada lovelace"
+    - args: ["rope"]
+      expect: "Rope"
+  hidden:
+    - args: [""]
+      expect: ""
+    - args: ["a"]
+      expect: "A"
+    - args: ["A"]
+      expect: "A"
+    - args: ["SALT COD"]
+      expect: "Salt cod"
+    - args: ["  leading space"]
+      expect: "  leading space"
+    - args: ["9lives"]
+      expect: "9lives"
+
+hints:
+  - level: 1
+    text: |
+      Try writing text[0] = text[0].upper() in your head and ask what Python does with
+      it. If a string cannot be edited, what are you left with - and what two pieces does
+      the answer split into?
+  - level: 2
+    text: |
+      The first character is text[0] and the rest is text[1:]. Uppercase the first,
+      lowercase the rest, and join them with +. Handle the empty string before any of
+      that, because text[0] on an empty string does raise.
+  - level: 3
+    text: |
+      The same two-piece rebuild, on a product code:
+
+          if not code:
+              return code
+          return code[:3].upper() + code[3:]
+
+      Yours splits at a different point and treats the two halves differently.
+
+solution: |
+  def nameplate(text):
+      if not text:
+          return text
+      return text[0].upper() + text[1:].lower()

@@ -1,0 +1,125 @@
+# Mission 7 of Collections. Relief mission. Reinforces: dictionaries, sets, tuples, lists,
+# indexing-and-slicing. Introduces nothing new.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-07
+title: Safe harbor check
+track: python
+island: collections
+order: 7
+difficulty: elementary
+tags: [dictionaries, sets, tuples]
+xp: 10
+
+concepts:
+  - dictionaries
+  - sets
+  - tuples
+  - lists
+  - indexing-and-slicing
+
+teaching:
+  analogy: |
+    A harbor master with a clipboard walks a shortlist: deep enough to dock, not closed
+    for repairs. She checks each fact against a different kind of list she keeps -
+    depths in a ledger, closures on a chalkboard - and only writes down the harbors that
+    clear both checks, and stops once her shortlist is full.
+
+  explanation: |
+    Nothing here is new. You are combining a dictionary lookup, a membership check, and
+    a fixed pair of settings you unpack at the start - three tools from the last three
+    missions, used together instead of one at a time.
+
+    A closed list is worth turning into a set first when you will be checking membership
+    against it more than once - the check itself works the same either way, but building
+    the set once up front is a habit worth having.
+
+  worked_example: |
+    # Shortlisting warehouses by stock level and lockout status, not harbors by depth
+    stock = {"north": 40, "south": 5, "east": 60}
+    locked_out = {"south"}
+    min_stock, limit = (20, 1)
+
+    available = []
+    for name, count in stock.items():
+        if count >= min_stock and name not in locked_out:
+            available.append(name)
+    print(available[:limit])   # ['north']
+
+  key_points:
+    - Combining known tools is not a new tool - a dict lookup, a set membership check, and unpacking a pair, used together.
+    - "dict.items() gives you both the key and the value in one loop, in insertion order."
+    - Converting a list to a set before repeated membership checks is a natural habit, not a requirement.
+    - A slice with a limit larger than the list is safe - you just get everything there is.
+
+brief: |
+  Write a function called open_harbors that receives a dictionary mapping harbor names
+  to their depth, a list of harbor names closed for repairs, and a pair (min_depth,
+  limit).
+
+  Return a list of up to limit harbor names that are at least min_depth deep and not
+  closed, in the order they appear in the dictionary.
+
+signature:
+  entrypoint: open_harbors
+  stub: |
+    def open_harbors(depths, closed, thresholds):
+        # Unpack the pair. Filter the dictionary. Slice the result to the limit.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [{"north": 6, "south": 3, "east": 8, "west": 5}, ["south"], [5, 2]]
+      expect: ["north", "east"]
+    - args: [{"a": 10, "b": 10}, [], [5, 5]]
+      expect: ["a", "b"]
+  hidden:
+    - args: [{}, [], [1, 5]]
+      expect: []
+    - args: [{"x": 1}, ["x"], [0, 5]]
+      expect: []
+    - args: [{"p": 5, "q": 5}, [], [5, 1]]
+      expect: ["p"]
+    - args: [{"m": 9}, [], [10, 5]]
+      expect: []
+    - args: [{"a": 5, "b": 6, "c": 7}, ["b"], [5, 10]]
+      expect: ["a", "c"]
+
+hints:
+  - level: 1
+    text: |
+      Break this into three known steps: get the two numbers out of the pair, decide
+      which harbors qualify, then cap the list to the size you were asked for.
+  - level: 2
+    text: |
+      Unpack thresholds into min_depth and limit. Turn closed into a set. Loop over
+      depths.items(), keep names whose depth is at least min_depth and are not in the
+      closed set, then return the result sliced to [:limit].
+  - level: 3
+    text: |
+      Same shape, shortlisting employees by score and availability:
+
+          min_score, cap = requirements
+          blocked_set = set(unavailable)
+          picks = []
+          for name, score in scores.items():
+              if score >= min_score and name not in blocked_set:
+                  picks.append(name)
+          return picks[:cap]
+
+      Yours checks depth instead of score, and closed harbors instead of unavailable people.
+
+solution: |
+  def open_harbors(depths, closed, thresholds):
+      min_depth, limit = thresholds
+      closed_set = set(closed)
+      result = []
+      for name, depth in depths.items():
+          if depth >= min_depth and name not in closed_set:
+              result.append(name)
+      return result[:limit]

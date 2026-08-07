@@ -29,7 +29,7 @@ question. The game teaches perfectly well with it turned off.
 |---|---|
 | **Current version** | 0.1.0 (in development) |
 | **Playable** | **Yes** — `python -m codequest ui` |
-| **Content** | Island 1, Foundations: 10 missions, 110 XP |
+| **Content** | Islands 1-2, Foundations and Collections: 22 missions, in English and Portuguese |
 | **Languages available** | Python |
 | **Planned** | Java, TypeScript, plus Architecture, Security and AI Engineering tracks |
 
@@ -84,6 +84,61 @@ OLLAMA_MODEL=gemma4:cloud
 
 If Ollama is not running the mentor panel shows "offline" and everything else works
 normally.
+
+---
+
+## Portable build (play from a pendrive, nothing installed)
+
+For carrying the game between computers — home, work, travel — without Python or a
+clone of this repository on the destination machine.
+
+### Building it
+
+Requires the `build` extra (Windows only; this build target is not cross-platform):
+
+```powershell
+pip install -e ".[dev,build]"
+pyinstaller codequest.spec
+```
+
+This produces `dist/CodeQuest/` — a folder containing `CodeQuest.exe` and its support
+files. **That whole folder is the unit that runs standalone.** Copy it to the pendrive
+(or anywhere else); there is nothing else to install on the destination machine.
+
+```
+dist/CodeQuest/
+├── CodeQuest.exe      # double-click this
+├── _internal/         # bundled content, libraries, tree-sitter grammars
+└── saves/             # created on first run - your progress lives here
+```
+
+### Playing it
+
+Double-click `CodeQuest.exe`, or from a terminal:
+
+```
+CodeQuest.exe ui
+```
+
+Everything works exactly like the installed version — same missions, same keybindings,
+same XP rules. The AI mentor is off by default and stays off unless you set
+`CODEQUEST_MENTOR_ENABLED=true` in a `.env` file placed next to `CodeQuest.exe`; even
+then it needs Ollama installed on that specific computer, which defeats the point of a
+pendrive install for most people. Expect to play without it there, which the game
+already handles gracefully.
+
+### Updating to a new version
+
+Your save lives in `saves/`, **next to the exe, outside `_internal/`** — on purpose, so
+replacing the app never touches it. To update:
+
+1. Build the new version the same way (`pyinstaller codequest.spec`).
+2. Copy the new `CodeQuest.exe` and `_internal/` over the old ones on the pendrive.
+3. **Do not delete or replace the `saves/` folder.** If your file manager asks whether
+   to overwrite it, say no, or copy the other two items individually instead of the
+   whole `dist/CodeQuest/` folder.
+
+Your progress carries forward untouched.
 
 ---
 
@@ -163,10 +218,12 @@ concepts, the way a study partner would.
 | `F1` | Next hint |
 | `F2` | Toggle mentor chat |
 | `F3` | Toggle teaching panel |
-| `Ctrl+S` | Save progress |
-| `Ctrl+R` | Reset editor to the original stub |
+| `F4` | Reset editor to the original stub |
+| `F6` | Jump to the next mission (after solving this one) |
 | `Esc` | Back to the island map |
 | `Ctrl+Q` | Quit |
+
+Progress saves itself after every attempt — there is no separate save key.
 
 Everything is reachable from the keyboard. The mouse works, but you never need it.
 

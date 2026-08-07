@@ -1,0 +1,137 @@
+# Mission 8 of Foundations. Introduces: while-loop. Reinforces: conditionals.
+# range is forbidden on purpose: with range available this is a for-loop mission again.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-08
+title: Largando as amarras
+track: python
+island: foundations
+order: 8
+difficulty: elementary
+tags: [while-loop, termination, lists]
+xp: 10
+
+concepts:
+  - while-loop
+  - conditionals
+
+teaching:
+  analogy: |
+    Um laço for é um escriturário lendo uma lista que já existe. Ele sabe antes de
+    começar quantas linhas existem.
+
+    Um laço while é um vigia no cesto da gávea: "continue observando até avistar terra".
+    Ninguém sabe quanto tempo isso leva. Pode ser cinco minutos, pode ser uma semana, e
+    se o navio está ancorado pode ser para sempre.
+
+    Esse último caso é todo o risco. O vigia só desce quando algo muda. Se nada nunca
+    muda, ele fica lá em cima e a viagem nunca continua.
+
+  explanation: |
+    Um laço while repete enquanto sua condição continua verdadeira. Ele checa a
+    condição, executa o corpo, checa de novo, e para no momento em que a condição
+    é falsa.
+
+    Use for quando você já tem os itens. Use while quando você tem uma condição e
+    nenhuma lista para percorrer.
+
+    O erro que define este conceito: esquecer de mudar a coisa da qual a condição
+    depende. Se a condição nunca pode se tornar falsa, o laço nunca termina. O programa
+    não quebra, ele trava, o que é mais difícil de diagnosticar do que uma quebra.
+
+    A checagem acontece *antes* de cada passagem, incluindo a primeira. Se a condição
+    já começa falsa, o corpo nunca executa — o mesmo caso de "zero passagens" que você
+    encontrou com um for vazio.
+
+  worked_example: |
+    # Cortando uma tabua pela metade ate caber num compartimento, nao uma contagem regressiva
+    comprimento = 100
+    cortes = 0
+    while comprimento > 12:
+        comprimento = comprimento // 2      # esta linha e o que eventualmente termina o laco
+        cortes = cortes + 1
+    print(cortes)       # 3
+
+  key_points:
+    - Um laço while checa sua condição antes de cada passagem, incluindo a primeira.
+    - Algo dentro do corpo precisa mover a condição em direção a falso, ou o laço trava.
+    - Uma condição falsa no início significa zero passagens, não uma.
+    - Use for quando os itens já existem, while quando você só tem uma condição.
+
+brief: |
+  Escreva uma função chamada countdown que recebe um número inicial e retorna uma lista
+  contando regressivamente dele até 1.
+
+  countdown(3) retorna [3, 2, 1].
+
+  Se o número inicial é zero ou negativo não há nada para contar, então retorne uma
+  lista vazia.
+
+  Você não pode usar range, reversed ou sorted. Construa a lista você mesmo com um
+  laço while.
+
+signature:
+  entrypoint: countdown
+  stub: |
+    def countdown(start):
+        # Mantenha um valor que se move em direcao a condicao de parada a cada passagem.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [range, reversed, sorted]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [3]
+      expect: [3, 2, 1]
+    - args: [1]
+      expect: [1]
+  hidden:
+    - args: [0]
+      expect: []
+    - args: [-5]
+      expect: []
+    - args: [5]
+      expect: [5, 4, 3, 2, 1]
+    - args: [2]
+      expect: [2, 1]
+    - args: [-1]
+      expect: []
+    - args: [8]
+      expect: [8, 7, 6, 5, 4, 3, 2, 1]
+
+hints:
+  - level: 1
+    text: |
+      Escreva a condição do laço primeiro, antes de qualquer outra coisa. Agora olhe
+      para o corpo que você está prestes a escrever: existe uma linha nele que
+      eventualmente vai tornar essa condição falsa? Se não, o laço nunca termina.
+  - level: 2
+    text: |
+      Crie uma lista vazia e uma variável guardando o número inicial. Faça um laço
+      enquanto essa variável for maior que zero. Dentro, adicione-a à lista e depois
+      subtraia um dela. Retorne a lista.
+  - level: 3
+    text: |
+      A mesma forma, esvaziando um barril em vez de fazer uma contagem regressiva:
+
+          derramados = []
+          litros = 5
+          while litros > 0:
+              derramados.append(litros)
+              litros = litros - 1     # sem esta linha o laco nunca termina
+          return derramados
+
+      A sua começa a partir de um parâmetro em vez de um 5 fixo.
+
+solution: |
+  def countdown(start):
+      numbers = []
+      current = start
+      while current > 0:
+          numbers.append(current)
+          current = current - 1
+      return numbers

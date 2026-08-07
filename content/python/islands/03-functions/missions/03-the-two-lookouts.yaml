@@ -1,0 +1,154 @@
+# Mission 3 of Functions. Relief mission. Reinforces: parameters, return-values.
+# Introduces nothing new: the first mission where the player writes TWO functions,
+# which is the setup mission 5 and mission 8 both depend on structurally.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-03
+title: The two lookouts
+track: python
+island: functions
+order: 3
+difficulty: elementary
+tags: [helper-functions, composition]
+xp: 10
+
+concepts:
+  - parameters
+  - return-values
+
+teaching:
+  analogy: |
+    Two lookouts split the work. One watches and counts; the other takes that number and
+    writes the line in the log. Neither does the other's job, and neither needs to know
+    how the other does it - the count is the whole conversation between them.
+
+  explanation: |
+    Nothing new here. You already write functions and you already return values; this
+    mission just has you write two of them, where one calls the other.
+
+    A function calling another function is the ordinary case, not an advanced one. The
+    caller passes arguments, the helper returns a value, and the caller uses it. The
+    helper has no idea who called it.
+
+    Splitting work this way is worth the extra def line when each piece has a name you
+    can say out loud. "Count the breaches" and "write the line" are two sentences, so
+    they are comfortable as two functions.
+
+  worked_example: |
+    # Two functions for a shop receipt, not a watch log
+    def subtotal(prices):
+        total = 0
+        for price in prices:
+            total = total + price
+        return total
+
+    def receipt(prices):
+        amount = subtotal(prices)          # call the helper, use what it returns
+        return "total: " + str(amount)
+
+    print(receipt([3, 4, 5]))              # total: 12
+
+  key_points:
+    - A function may call any other function defined in the same file, in any order.
+    - The helper returns a value; the caller decides what to do with it. That return is the only channel between them.
+    - Two functions are worth it when each has a name you can say in a short sentence.
+    - Only the entrypoint's return value is checked. Helpers exist to make that answer easier to build.
+
+brief: |
+  At the end of a watch the log gets one line saying how many depth readings came in
+  below the safe limit.
+
+  Write a function called watch_line that takes readings (a list of numbers), limit (a
+  number), and returns a line of text in exactly this shape:
+
+      3 breaches
+
+  Count how many readings are strictly below the limit, then build the line.
+
+  When there is exactly one breach the line reads "1 breach" - singular, no "es". Zero
+  breaches reads "0 breaches".
+
+  Write a second function called count_breaches that does the counting, and have
+  watch_line call it. Keeping the two jobs apart is the point of this mission.
+
+signature:
+  entrypoint: watch_line
+  stub: |
+    def count_breaches(readings, limit):
+        # Count how many readings are strictly below the limit.
+        # your code here
+        pass
+
+
+    def watch_line(readings, limit):
+        # Call count_breaches, then build the line from what it gives back.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 3, 8, 2], 5]
+      expect: "2 breaches"
+    - args: [[10, 3], 5]
+      expect: "1 breach"
+  hidden:
+    - args: [[], 5]
+      expect: "0 breaches"
+    - args: [[9, 9, 9], 5]
+      expect: "0 breaches"
+    - args: [[1, 1, 1], 5]
+      expect: "3 breaches"
+    - args: [[5, 5], 5]
+      expect: "0 breaches"
+    - args: [[4], 5]
+      expect: "1 breach"
+
+hints:
+  - level: 1
+    text: |
+      You already know how to count things in a list with a loop. The only new question
+      is where that count lives once it is finished - how does watch_line get hold of it?
+  - level: 2
+    text: |
+      count_breaches loops and returns a number. watch_line calls it, stores the result
+      in a variable, and then uses an if on that number to pick between "breach" and
+      "breaches" before joining it all into one string.
+  - level: 3
+    text: |
+      The same two-function split, counting empty seats:
+
+          def empty_count(seats):
+              n = 0
+              for seat in seats:
+                  if seat is None:
+                      n = n + 1
+              return n
+
+          def seat_line(seats):
+              n = empty_count(seats)
+              word = "seats"
+              if n == 1:
+                  word = "seat"
+              return str(n) + " " + word
+
+      Yours counts against a limit instead of against None.
+
+solution: |
+  def count_breaches(readings, limit):
+      count = 0
+      for reading in readings:
+          if reading < limit:
+              count = count + 1
+      return count
+
+
+  def watch_line(readings, limit):
+      count = count_breaches(readings, limit)
+      word = "breaches"
+      if count == 1:
+          word = "breach"
+      return str(count) + " " + word

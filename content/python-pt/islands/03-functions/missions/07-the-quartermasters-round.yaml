@@ -1,0 +1,132 @@
+# Missao 7 de Funcoes. Missao de alivio. Nao introduz nada.
+# Reforca: default-arguments, scope, return-values.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-07
+title: A ronda do comissário
+track: python
+island: functions
+order: 7
+difficulty: elementary
+tags: [defaults, clamping]
+xp: 10
+
+concepts:
+  - default-arguments
+  - scope
+  - return-values
+
+teaching:
+  analogy: |
+    O comissário percorre o porão com uma prancheta. Para cada item: quantos temos,
+    quantos deveríamos ter, encomende a diferença. Se já temos mais do que deveríamos, a
+    resposta não é "encomende menos quatro" - é "não encomende nada".
+
+  explanation: |
+    Nada novo. Esta missão põe lado a lado três coisas que você já tem: um argumento
+    padrão, uma constante de nível de módulo lida de dentro de uma função, e uma variável
+    local que você ajusta antes de retornar.
+
+    O único julgamento é o piso. Uma subtração pode dar negativo, e uma encomenda
+    negativa não significa nada aqui, então a função limita: se o número sai abaixo de
+    zero, a resposta é zero.
+
+    Repare de onde vem o padrão. STANDARD_HOLD é lido quando a linha do def roda, não a
+    cada chamada - a mesma regra do "avaliado uma vez" da missão da ordem permanente, que
+    é inofensiva porque um número não pode ser mudado por baixo de você.
+
+  worked_example: |
+    # Recarregando o saldo de um cartao em vez do porao de um navio
+    MINIMO = 25
+
+    def recarga(saldo, piso=MINIMO):
+        valor = piso - saldo
+        if valor < 0:
+            valor = 0
+        return valor
+
+    print(recarga(10))         # 15
+    print(recarga(40))         # 0  - ja acima do piso, nao encomende nada
+    print(recarga(10, 100))    # 90 - quem chamou sobrescreveu o piso
+
+  key_points:
+    - Um padrão pode ser uma constante de nível de módulo, lida uma vez quando a função é definida.
+    - Limitar significa recusar retornar um valor que não faz sentido, mesmo que a aritmética o tenha produzido.
+    - O local que você ajusta é seu; a constante de onde ele veio fica intocada.
+    - Retornar cedo e limitar resolvem os dois "essa resposta está errada", em formas diferentes.
+
+brief: |
+  Escreva uma função chamada restock que diz quantas unidades encomendar.
+
+  Ela recebe current (quantas estão no porão agora) e target (quantas deveriam estar),
+  onde target tem como padrão a constante de módulo STANDARD_HOLD que já está no
+  esqueleto.
+
+  Retorne quantas unidades faltam para alcançar o alvo. Se o porão já tem o alvo ou mais,
+  retorne 0 em vez de um número negativo.
+
+signature:
+  entrypoint: restock
+  stub: |
+    STANDARD_HOLD = 100
+
+
+    def restock(current, target=STANDARD_HOLD):
+        # Calcule a diferenca, depois recuse retornar uma negativa.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [60]
+      expect: 40
+    - args: [120]
+      expect: 0
+  hidden:
+    - args: [0]
+      expect: 100
+    - args: [100]
+      expect: 0
+    - args: [99]
+      expect: 1
+    - args: [10, 30]
+      expect: 20
+    - args: [30, 10]
+      expect: 0
+    - args: [5]
+      kwargs: { target: 5 }
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Faça a subtração primeiro e olhe o que ela pode produzir. Qual desses resultados é
+      uma encomenda sensata, e qual precisa ser substituído antes de você retornar?
+  - level: 2
+    text: |
+      Guarde target menos current numa variável local. Use um if para pôr 0 nesse local
+      quando ele sair abaixo de zero. Retorne o local.
+  - level: 3
+    text: |
+      O mesmo limite, numa contagem regressiva que não pode passar de zero:
+
+          restante = prazo - decorrido
+          if restante < 0:
+              restante = 0
+          return restante
+
+      A sua subtrai duas quantidades diferentes mas limita exatamente no mesmo lugar.
+
+solution: |
+  STANDARD_HOLD = 100
+
+
+  def restock(current, target=STANDARD_HOLD):
+      needed = target - current
+      if needed < 0:
+          needed = 0
+      return needed

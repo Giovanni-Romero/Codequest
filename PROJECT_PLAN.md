@@ -366,6 +366,72 @@ Small, isolated, optional.
 
 ---
 
+### Phase 5.1 — Complete the Python curriculum, island by island
+
+Added 2026-08-05, after Foundations shipped and Giovanni played it. The track has 11
+islands now, not 10 — a **Debugging** island was inserted as island 6, right after
+Errors and Edge Cases, because reading a traceback usefully depends on already knowing
+what an exception is.
+
+**This phase is deliberately not designed all at once.** `docs/curriculum/
+python-syllabus.md` already states why: designing every remaining island's missions now
+would freeze decisions that playing the earlier islands should change. So the phase is
+one repeating cycle instead of one big task list:
+
+1. **Design** one island (`curriculum-designer`): concept graph, prerequisites,
+   misconceptions, an 8-to-12-mission map, sawtooth difficulty curve.
+2. **Author** that island's missions (`mission-author`) — in `content/python/` **and**
+   its `content/python-pt/` mirror, ids and tests identical, only text translated.
+3. **Validate**: `codequest check` on both language trees, `tests/content` covering the
+   new island.
+4. **Playtest**: Giovanni plays the whole island in the TUI and approves it before the
+   next island is designed.
+
+Order: Collections -> Functions -> Strings and Text -> Errors and Edge Cases ->
+**Debugging** -> Files and Data -> Objects -> Pythonic Patterns -> Algorithms -> Async
+and Concurrency.
+
+**Checkpoint:** each island, playable and bilingual, before the next one starts. The
+phase as a whole closes when Island 11 (Async) ships, at which point it gets its HTML
+lesson — curriculum design as iterative eval design, the strongest AI-Eng bridge in the
+project, plus `[AI-ENG:debugging-methodology]` from the Debugging island.
+
+*Learn: syllabus design under real feedback instead of upfront, translation as a content
+pipeline problem, what "one concept per mission" costs at scale.*
+
+---
+
+### Phase 5.2 — Portable build (pendrive, no install)
+
+Added 2026-08-05, independent of Phase 5.1's content work — this is packaging, not
+curriculum, and could ship with however much of the track exists at the time.
+
+- **PyInstaller, `--onedir` mode**, not `--onefile`. `--onefile` re-extracts to a fresh
+  temp folder on every launch, which would silently reset save progress every time the
+  game opens on a different machine. `--onedir` is a stable folder that can live on a
+  pendrive and keep its saves between sessions.
+- `src/codequest/config.py`'s `PROJECT_ROOT` has to become frozen-aware
+  (`getattr(sys, "frozen", False)` -> resolve from `Path(sys.executable).parent`
+  instead of `Path(__file__).resolve().parents[2]`), or `content/`/`saves/` resolve
+  into the wrong place once the game is no longer running from the source tree.
+- `pyinstaller` is a **build-only** dependency (a new `[project.optional-dependencies].
+  build` extra), never a runtime cost for someone who only plays.
+- The mentor is not bundled — Ollama plus its models is multiple gigabytes, out of
+  scope for a pendrive. The game already degrades to "mentor offline" without it
+  (Phase 5), so the portable build needs no new code for this, only a verification
+  pass that it actually behaves that way with no Ollama on the host.
+- Windows only, matching every machine in Giovanni's stated use case (his own,
+  the office, travel).
+
+**Checkpoint:** the built folder, copied to a location with no Python installed and no
+copy of the source repo, launches, plays a mission, and keeps that save open across two
+separate launches.
+
+*Learn: what "no dependencies" actually requires under the hood, why extraction
+strategy is a correctness question and not just a packaging preference.*
+
+---
+
 ### Phase 6 — Java track
 
 Add `engine/runners/java.py`. The rest of the engine should need zero changes.

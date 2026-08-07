@@ -1,0 +1,125 @@
+# Mission 3 of Strings and Text. Relief mission. Introduces nothing.
+# Reinforces: string-methods, lists.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-03
+title: The tidy roster
+track: python
+island: strings-and-text
+order: 3
+difficulty: elementary
+tags: [string-methods, lists, filtering]
+xp: 10
+
+concepts:
+  - string-methods
+
+teaching:
+  analogy: |
+    The crew roster was filled in by whoever was nearest the pen. Some lines have
+    trailing spaces, some are shouted in capitals, and a few are blank because someone
+    skipped a row by mistake.
+
+    The purser does not rewrite the roster in place. He copies out a clean one and blank
+    lines simply do not get copied.
+
+  explanation: |
+    Nothing new. This is the cleaning from mission 1 applied once per item in a list, with
+    a filter for the entries that turn out to be nothing at all.
+
+    The order matters and it is the only thing to get right: strip **first**, then decide
+    whether what is left is empty. An entry of three spaces is not blank until you have
+    trimmed it, and checking before trimming would keep it.
+
+    An empty string is falsy in Python, so `if cleaned:` is the idiomatic test for
+    "there is something here" - the same shape as `if not numbers:` from the Functions
+    island.
+
+  worked_example: |
+    # Tidying a shopping list rather than a crew roster
+    raw = ["  Milk ", "", "BREAD", "   "]
+
+    tidy = []
+    for line in raw:
+        cleaned = line.strip().lower()
+        if cleaned:
+            tidy.append(cleaned)
+
+    print(tidy)          # ['milk', 'bread']
+
+  key_points:
+    - Strip before testing for emptiness, or an entry of pure whitespace survives the filter.
+    - An empty string is falsy, so `if cleaned:` reads better than comparing against "".
+    - Methods chain left to right - line.strip().lower() trims first, then folds case.
+    - The original list is never modified. You build a clean one beside it.
+
+brief: |
+  Write a function called tidy_roster that takes a list of crew names as they were
+  written down and returns a new list of cleaned names.
+
+  A name is cleaned by trimming whitespace from both ends and folding it to lowercase.
+  Names that are empty once trimmed are left out of the result entirely.
+
+  The order of the surviving names is unchanged, and the list you were given must not be
+  modified.
+
+signature:
+  entrypoint: tidy_roster
+  stub: |
+    def tidy_roster(names):
+        # Clean each name, then decide whether anything is left of it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["  Ada ", "", "BO", "   "]]
+      expect: ["ada", "bo"]
+    - args: [["cid"]]
+      expect: ["cid"]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [["", "  ", "\t"]]
+      expect: []
+    - args: [["  MIXED  ", "case"]]
+      expect: ["mixed", "case"]
+    - args: [["a", "b", "c"]]
+      expect: ["a", "b", "c"]
+    - args: [["  Two Words  "]]
+      expect: ["two words"]
+
+hints:
+  - level: 1
+    text: |
+      One of these two orders is wrong: trim then check if it is empty, or check if it is
+      empty then trim. Work out what each does to an entry containing three spaces.
+  - level: 2
+    text: |
+      Loop over the names. For each one, strip and lowercase it into a variable. Append
+      that variable to your result list only when it is not empty. Return the result.
+  - level: 3
+    text: |
+      The same clean-then-keep shape, on a list of tags:
+
+          kept = []
+          for tag in tags:
+              t = tag.strip().upper()
+              if t:
+                  kept.append(t)
+          return kept
+
+      Yours folds the other way in case, and works on names.
+
+solution: |
+  def tidy_roster(names):
+      tidy = []
+      for name in names:
+          cleaned = name.strip().lower()
+          if cleaned:
+              tidy.append(cleaned)
+      return tidy

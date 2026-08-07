@@ -1,0 +1,25 @@
+id: collections
+name: Coleções
+track: python
+order: 2
+theme: Agrupando dados
+description: |
+  Um navio não carrega um barril só. Carrega um porão cheio deles, um livro-razão de
+  quem é dono do quê, e um manifesto que precisa continuar correto enquanto a carga se
+  move. Esta ilha é sobre guardar vários valores ao mesmo tempo, e alcançar o certo sem
+  perder o controle dos outros.
+
+concepts:
+  - lists
+  - indexing-and-slicing
+  - dictionaries
+  - sets
+  - tuples
+  - nested-structures
+  - list-comprehension
+  - when-not-to-comprehend
+
+unlock_requires:
+  missions_completed: 10
+
+completion_reward_xp: 150

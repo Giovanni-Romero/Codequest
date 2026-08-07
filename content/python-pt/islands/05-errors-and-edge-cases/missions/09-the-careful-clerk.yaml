@@ -1,0 +1,139 @@
+# Missao 9 de Erros e Casos-Limite. Missao de alivio. Nao introduz nada.
+# Reforca: try-except, input-validation, defensive-design.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-09
+title: O escriturário cuidadoso
+track: python
+island: errors-and-edge-cases
+order: 9
+difficulty: elementary
+tags: [try-except, validation, lists]
+xp: 10
+
+concepts:
+  - try-except
+  - input-validation
+  - defensive-design
+
+teaching:
+  analogy: |
+    Um escriturário copiando uma página danificada não para na primeira linha borrada e
+    abandona o livro, e também não inventa um número para preencher a lacuna. Ele copia o
+    que está legível e mantém uma contagem do que não estava, para o total no rodapé
+    poder ser confiado e as linhas faltantes serem perseguidas depois.
+
+  explanation: |
+    Nada novo. Este é um laço com um try / except dentro dele, uma forma que vale ver
+    sozinha porque ela muda o que "falhar" significa.
+
+    Até aqui uma falha encerrava a função inteira. Dentro de um laço, um tratador deixa
+    um item falhar sem levar os outros noventa e nove junto. Se isso está certo depende
+    inteiramente do trabalho: numa importação em lote, pular uma linha ruim é correto;
+    numa transferência bancária, sucesso parcial é muito pior que nenhum.
+
+    Contar os pulos é a parte que torna isso defensivo em vez de negligente. Uma função
+    que descarta entradas ruins em silêncio e não reporta nada é exatamente o engolir
+    contra o qual a missão anterior avisou. Reportar quantas foram descartadas transforma
+    isso em informação.
+
+  worked_example: |
+    # Totalizando uma coluna de numeros escaneados, nao um manifesto
+    def total_de(celulas):
+        total = 0
+        pulados = 0
+        for celula in celulas:
+            try:
+                total = total + int(celula)
+            except ValueError:
+                pulados = pulados + 1
+        return [total, pulados]
+
+    print(total_de(["10", "x", "5"]))    # [15, 1]
+    print(total_de([]))                  # [0, 0]
+
+  key_points:
+    - Um try/except dentro de um laço deixa um item falhar sem encerrar a execução inteira.
+    - Se pular está certo depende do trabalho. Sucesso parcial nem sempre é melhor que nenhum.
+    - Conte o que você pulou. Descartar entradas ruins em silêncio é o engolir a evitar.
+    - O contador mora fora do laço - o mesmo acumulador da ilha de Fundamentos.
+
+brief: |
+  Pesos chegam do scanner como texto, e algumas entradas estão ilegíveis.
+
+  Escreva uma função chamada tally_weights que recebe entries, uma lista de valores de
+  texto, e retorna uma lista com exatamente dois números inteiros:
+
+    - o total de toda entrada que pôde ser lida como número inteiro
+    - quantas entradas não puderam
+
+  tally_weights(["10", "x", "5"]) retorna [15, 1]. Uma lista vazia retorna [0, 0].
+
+signature:
+  entrypoint: tally_weights
+  stub: |
+    def tally_weights(entries):
+        # Uma entrada ruim nao pode encerrar a contagem. Registre quantas foram.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["10", "x", "5"]]
+      expect: [15, 1]
+    - args: [["1", "2", "3"]]
+      expect: [6, 0]
+  hidden:
+    - args: [[]]
+      expect: [0, 0]
+    - args: [["a", "b"]]
+      expect: [0, 2]
+    - args: [["-4", "4"]]
+      expect: [0, 0]
+    - args: [[""]]
+      expect: [0, 1]
+    - args: [["  7  "]]
+      expect: [7, 0]
+    - args: [["1.5"]]
+      expect: [0, 1]
+
+hints:
+  - level: 1
+    text: |
+      Dois números saem, então duas coisas estão sendo acompanhadas. Onde as duas precisam
+      ser criadas para a contagem sobreviver ao laço inteiro?
+  - level: 2
+    text: |
+      Crie um total e um contador de pulados antes do laço, os dois em 0. Dentro do laço,
+      ponha int(entry) num try e some ao total; no except ValueError, some um a pulados.
+      Retorne os dois numa lista depois do laço.
+  - level: 3
+    text: |
+      A mesma forma, contando códigos válidos:
+
+          bons = 0
+          ruins = 0
+          for codigo in codigos:
+              try:
+                  checar(codigo)
+                  bons = bons + 1
+              except ValueError:
+                  ruins = ruins + 1
+          return [bons, ruins]
+
+      A sua soma os valores em vez de contá-los, e a falha dela vem da própria conversão.
+
+solution: |
+  def tally_weights(entries):
+      total = 0
+      skipped = 0
+      for entry in entries:
+          try:
+              total = total + int(entry)
+          except ValueError:
+              skipped = skipped + 1
+      return [total, skipped]

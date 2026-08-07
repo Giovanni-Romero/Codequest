@@ -1,0 +1,155 @@
+# Missao 7 de Erros e Casos-Limite. Introduz: input-validation.
+# Reforca: raising, string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-07
+title: A inspeção do porto
+track: python
+island: errors-and-edge-cases
+order: 7
+difficulty: moderate
+tags: [validation, raising, string-methods]
+xp: 30
+
+concepts:
+  - input-validation
+  - raising
+
+teaching:
+  analogy: |
+    A inspeção acontece na prancha de embarque, não no porão. Qualquer coisa errada é
+    pega enquanto ainda é um caixote numa prancha, antes de ter sido estivado, registrado
+    e enterrado sob outros quarenta. O custo de recusar é um minuto; o custo de descobrir
+    três dias mar adentro é a carga inteira.
+
+  explanation: |
+    Validação pertence à fronteira - as primeiras linhas da função, antes de qualquer
+    trabalho acontecer. Uma vez que você transformou um valor, dividiu, converteu ou
+    guardou, um problema com ele fica bem mais difícil de rastrear até onde ele entrou.
+
+    Isso produz uma forma que vale reconhecer, e você já a escreveu como guard clause na
+    ilha de Funções: toda recusa primeiro, uma depois da outra, e então o trabalho de
+    verdade numa linha limpa embaixo. Sem aninhamento, sem else. Quando você chega no fim
+    das checagens, o resto da função pode assumir que suas entradas são sólidas - e essa
+    suposição é o que mantém o corpo legível.
+
+    Valide a forma, não só o tipo. "É um texto" raramente é a regra inteira; geralmente é
+    "um texto, não vazio depois de aparado, e um destes três valores".
+
+    Não confie num valor só porque ele veio de outra parte do seu próprio programa. A
+    maior parte da entrada ruim tem origem completamente inocente.
+
+  worked_example: |
+    # Registrando um passageiro, nao inspecionando carga
+    def registrar(nome, idade):
+        if not isinstance(nome, str):
+            raise TypeError(f"nome precisa ser texto, veio {type(nome).__name__}")
+        limpo = nome.strip()
+        if not limpo:
+            raise ValueError("nome nao pode estar em branco")
+        if idade < 0:
+            raise ValueError(f"idade nao pode ser negativa, veio {idade}")
+
+        # Abaixo desta linha, toda entrada e sabidamente boa.
+        return f"{limpo.title()} ({idade})"
+
+    print(registrar("  ada  ", 36))    # Ada (36)
+    # print(registrar("   ", 36))      # ValueError: nome nao pode estar em branco
+
+  key_points:
+    - Valide no topo, antes de qualquer trabalho. Um valor ruim já transformado é bem mais difícil de rastrear.
+    - Toda recusa primeiro, depois o trabalho de verdade numa linha limpa. Sem aninhamento, sem else.
+    - "Cheque a forma, não só o tipo: não vazio, dentro da faixa, um dos valores permitidos."
+    - Abaixo da última checagem, o resto da função pode assumir entradas sólidas. É isso que compra a legibilidade.
+
+brief: |
+  Todo caixote é inspecionado na prancha antes de ser escrito no manifesto.
+
+  Escreva uma função chamada inspect_crate que recebe name e weight, e retorna a entrada
+  limpa como texto no formato "salt cod:12" - o nome aparado e em minúsculas, dois
+  pontos, o peso.
+
+  Recuse no topo, nesta ordem:
+
+    - name não é texto de forma alguma: levante TypeError
+    - name fica vazio depois de aparado: levante ValueError
+    - weight não é um número inteiro: levante TypeError
+    - weight é zero ou menos: levante ValueError
+
+  Um caixote que passa nas quatro é escrito no manifesto.
+
+  Repare que True é um int em Python, como a ilha de Fundamentos mostrou - um peso True
+  precisa ser recusado como tipo errado, não aceito como 1.
+
+signature:
+  entrypoint: inspect_crate
+  stub: |
+    def inspect_crate(name, weight):
+        # Quatro recusas, em ordem, no topo. Depois uma linha limpa de trabalho de verdade.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  Salt Cod  ", 12]
+      expect: "salt cod:12"
+    - args: ["   ", 12]
+      raises: ValueError
+  hidden:
+    - args: ["rope", 1]
+      expect: "rope:1"
+    - args: [5, 12]
+      raises: TypeError
+    - args: ["rope", 0]
+      raises: ValueError
+    - args: ["rope", -3]
+      raises: ValueError
+    - args: ["rope", 1.5]
+      raises: TypeError
+    - args: ["rope", true]
+      raises: TypeError
+    - args: ["", 5]
+      raises: ValueError
+    - args: ["MIXED Case", 100]
+      expect: "mixed case:100"
+
+hints:
+  - level: 1
+    text: |
+      Uma dessas checagens precisa acontecer antes de outra ser sequer segura de tentar.
+      Qual checagem quebraria por conta própria se você a rodasse no tipo errado de valor?
+  - level: 2
+    text: |
+      Cheque isinstance(name, str) primeiro e levante TypeError, porque .strip() num
+      número quebraria. Depois apare e cheque que não ficou vazio. Para o peso, use
+      isinstance(weight, int) and not isinstance(weight, bool) para recusar True, depois
+      cheque que está acima de zero. Monte a resposta depois das quatro.
+  - level: 3
+    text: |
+      A guarda de tipo que exclui booleanos, da ilha de Fundamentos:
+
+          if not isinstance(valor, int) or isinstance(valor, bool):
+              raise TypeError(f"esperava um numero inteiro, veio {valor!r}")
+
+      A sua junta isso com uma checagem de texto e duas de faixa.
+
+solution: |
+  def inspect_crate(name, weight):
+      if not isinstance(name, str):
+          raise TypeError(f"name must be text, got {type(name).__name__}")
+
+      cleaned = name.strip().lower()
+      if not cleaned:
+          raise ValueError("name must not be blank")
+
+      if not isinstance(weight, int) or isinstance(weight, bool):
+          raise TypeError(f"weight must be a whole number, got {type(weight).__name__}")
+
+      if weight <= 0:
+          raise ValueError(f"weight must be above zero, got {weight}")
+
+      return f"{cleaned}:{weight}"

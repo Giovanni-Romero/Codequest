@@ -1,0 +1,99 @@
+# Mission 5 of Collections. Introduces: sets. Reinforces: lists.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-05
+title: The uniqueness of flags
+track: python
+island: collections
+order: 5
+difficulty: elementary
+tags: [sets, deduplication]
+xp: 10
+
+concepts:
+  - sets
+
+teaching:
+  analogy: |
+    Three lookouts might all shout "shark!" about the very same shark. A tally of shouts
+    counts three; a tally of distinct dangers spotted counts one. A set is the second
+    kind of counting - it only cares whether something was seen at all, not how many
+    times.
+
+  explanation: |
+    A set holds values with no duplicates and no guaranteed order. You build one from a
+    list with set(a_list), and Python throws away every repeat automatically. len(a_set)
+    then tells you how many distinct values survived.
+
+    A set is not a list with the repeats politely removed in place - it is a different
+    kind of container, and it forgets the order things arrived in.
+
+  worked_example: |
+    # Counting how many distinct ports a ship visited, not flags spotted
+    stops = ["Lisbon", "Porto", "Lisbon", "Cadiz", "Porto"]
+    distinct_ports = set(stops)
+    print(distinct_ports)          # {'Lisbon', 'Porto', 'Cadiz'} - order not guaranteed
+    print(len(distinct_ports))     # 3
+
+  key_points:
+    - set(a_list) builds a set from a list, dropping every duplicate.
+    - A set has no order - do not rely on which value comes first when you look at one.
+    - "len(a_set) counts distinct values - exactly the question 'how many different things', not 'how many times'."
+    - An empty list becomes an empty set - zero distinct values is a valid answer.
+
+brief: |
+  Lookouts radio in signal flags spotted throughout the day, and the same flag often
+  gets called in more than once.
+
+  Write a function called distinct_flags that receives a list of flag names (with
+  repeats) and returns how many different flags were actually seen - not how many times
+  they were called in.
+
+signature:
+  entrypoint: distinct_flags
+  stub: |
+    def distinct_flags(flags):
+        # Turn the list into a set, then count what is left.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["red", "blue", "red", "green"]]
+      expect: 3
+    - args: [["a", "a", "a"]]
+      expect: 1
+  hidden:
+    - args: [[]]
+      expect: 0
+    - args: [["solo"]]
+      expect: 1
+    - args: [["x", "y", "z"]]
+      expect: 3
+    - args: [["p", "p", "q", "q", "r"]]
+      expect: 3
+
+hints:
+  - level: 1
+    text: |
+      What Python container exists specifically to throw away duplicates for you,
+      without you writing a single loop?
+  - level: 2
+    text: |
+      Turn the list into a set with set(...), then ask for its length with len(...).
+  - level: 3
+    text: |
+      Same idea, counting distinct languages spoken by a crew:
+
+          spoken = ["en", "pt", "en", "es"]
+          return len(set(spoken))
+
+      Yours takes the list as a parameter instead of a fixed one.
+
+solution: |
+  def distinct_flags(flags):
+      return len(set(flags))

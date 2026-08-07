@@ -1,0 +1,127 @@
+# Missao 7 de Colecoes. Missao de alivio. Reforca: dictionaries, sets, tuples, lists,
+# indexing-and-slicing. Nao introduz nada novo.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-07
+title: Verificação de porto seguro
+track: python
+island: collections
+order: 7
+difficulty: elementary
+tags: [dictionaries, sets, tuples]
+xp: 10
+
+concepts:
+  - dictionaries
+  - sets
+  - tuples
+  - lists
+  - indexing-and-slicing
+
+teaching:
+  analogy: |
+    Uma capitã do porto com uma prancheta percorre uma lista curta: fundo o bastante
+    para atracar, não fechado para reparos. Ela confere cada fato contra um tipo
+    diferente de lista que mantém - profundidades num livro-razão, fechamentos num
+    quadro-negro - e só anota os portos que passam nas duas checagens, e para assim que
+    sua lista curta enche.
+
+  explanation: |
+    Nada aqui é novo. Você está combinando uma busca em dicionário, uma checagem de
+    pertencimento, e um par fixo de configurações que você desempacota no início - três
+    ferramentas das últimas três missões, usadas juntas em vez de uma de cada vez.
+
+    Vale transformar uma lista de fechados num set antes, quando você vai checar
+    pertencimento contra ela mais de uma vez - a checagem em si funciona do mesmo jeito
+    de qualquer forma, mas construir o set uma vez de antemão é um hábito que vale ter.
+
+  worked_example: |
+    # Pre-selecionando armazens por nivel de estoque e bloqueio, nao portos por profundidade
+    estoque = {"norte": 40, "sul": 5, "leste": 60}
+    bloqueados = {"sul"}
+    minimo, limite = (20, 1)
+
+    disponiveis = []
+    for nome, quantidade in estoque.items():
+        if quantidade >= minimo and nome not in bloqueados:
+            disponiveis.append(nome)
+    print(disponiveis[:limite])   # ['norte']
+
+  key_points:
+    - Combinar ferramentas conhecidas não é uma ferramenta nova - uma busca em dict, uma checagem de set, e desempacotar um par, usados juntos.
+    - "dict.items() te dá a chave e o valor num único laço, na ordem de inserção."
+    - Converter uma lista num set antes de checagens repetidas de pertencimento é um hábito natural, não uma exigência.
+    - Uma fatia com um limite maior que a lista é segura - você só recebe tudo que existe.
+
+brief: |
+  Escreva uma função chamada open_harbors que recebe um dicionário mapeando nomes de
+  portos para sua profundidade, uma lista de nomes de portos fechados para reparos, e um
+  par (min_depth, limit).
+
+  Retorne uma lista de até limit nomes de portos que têm pelo menos min_depth de
+  profundidade e não estão fechados, na ordem em que aparecem no dicionário.
+
+signature:
+  entrypoint: open_harbors
+  stub: |
+    def open_harbors(depths, closed, thresholds):
+        # Desempacote o par. Filtre o dicionario. Corte o resultado pelo limite.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [{"north": 6, "south": 3, "east": 8, "west": 5}, ["south"], [5, 2]]
+      expect: ["north", "east"]
+    - args: [{"a": 10, "b": 10}, [], [5, 5]]
+      expect: ["a", "b"]
+  hidden:
+    - args: [{}, [], [1, 5]]
+      expect: []
+    - args: [{"x": 1}, ["x"], [0, 5]]
+      expect: []
+    - args: [{"p": 5, "q": 5}, [], [5, 1]]
+      expect: ["p"]
+    - args: [{"m": 9}, [], [10, 5]]
+      expect: []
+    - args: [{"a": 5, "b": 6, "c": 7}, ["b"], [5, 10]]
+      expect: ["a", "c"]
+
+hints:
+  - level: 1
+    text: |
+      Divida isso em três passos conhecidos: tire os dois números do par, decida quais
+      portos se qualificam, depois limite a lista ao tamanho que foi pedido.
+  - level: 2
+    text: |
+      Desempacote thresholds em min_depth e limit. Transforme closed num set. Percorra
+      depths.items(), mantenha os nomes cuja profundidade é pelo menos min_depth e não
+      estão no set fechado, depois retorne o resultado cortado com [:limit].
+  - level: 3
+    text: |
+      Mesma forma, pré-selecionando funcionários por pontuação e disponibilidade:
+
+          pontuacao_min, teto = requisitos
+          bloqueados_set = set(indisponiveis)
+          escolhidos = []
+          for nome, pontuacao in pontuacoes.items():
+              if pontuacao >= pontuacao_min and nome not in bloqueados_set:
+                  escolhidos.append(nome)
+          return escolhidos[:teto]
+
+      A sua checa profundidade em vez de pontuação, e portos fechados em vez de pessoas
+      indisponíveis.
+
+solution: |
+  def open_harbors(depths, closed, thresholds):
+      min_depth, limit = thresholds
+      closed_set = set(closed)
+      result = []
+      for name, depth in depths.items():
+          if depth >= min_depth and name not in closed_set:
+              result.append(name)
+      return result[:limit]

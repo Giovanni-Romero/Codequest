@@ -1,0 +1,131 @@
+# Mission 9 of Foundations. Relief mission. Reinforces: while-loop, variables.
+# Deliberately gentler than mission 8: same loop, friendlier framing, no list to build.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-09
+title: Dobrando a vigia
+track: python
+island: foundations
+order: 9
+difficulty: elementary
+tags: [while-loop, doubling, termination]
+xp: 10
+
+concepts:
+  - while-loop
+  - variables
+
+teaching:
+  analogy: |
+    Um contramestre está comprando corda em rolos. Rolos só vêm em tamanhos que dobram:
+    1, 2, 4, 8, 16 metros e assim por diante. Ele precisa de o suficiente para um
+    trabalho, então continua subindo para o próximo tamanho até ter mais do que precisa,
+    e compra esse.
+
+    Ele não calcula qual rolo é o certo. Começa no menor e dobra até ser suficiente. O
+    ponto de parada é descoberto, não calculado com antecedência.
+
+  explanation: |
+    Este é o mesmo laço while da missão passada, numa forma mais amigável. Nada de novo
+    está sendo introduzido aqui — o objetivo é rodar o padrão de novo agora que ele
+    está menos estranho.
+
+    Comece com um valor. Continue mudando-o enquanto uma condição se mantém. Retorne-o
+    quando a condição finalmente falhar.
+
+    A coisa com que ter cuidado é o limite, e é o mesmo cuidado que você praticou com
+    condicionais. "Continue enquanto o valor for menor que o limite" para assim que o
+    valor alcança o limite. "Enquanto for menor ou igual" continua mais um passo. Essas
+    duas dão respostas diferentes quando o limite em si é uma potência de dois, e os
+    testes ocultos checam exatamente isso.
+
+  worked_example: |
+    # Encontrando o primeiro ano em que uma divida passa um limite, nao a primeira potencia de dois
+    saldo = 100
+    anos = 0
+    while saldo <= 500:
+        saldo = saldo * 2
+        anos = anos + 1
+    print(anos)      # 3, porque 100 -> 200 -> 400 -> 800
+
+  key_points:
+    - Mesmo padrão da contagem regressiva -- um valor, uma condição, e um corpo que move um em direção ao outro.
+    - Multiplicar se move mais rápido que somar, então esses laços terminam em poucas passagens.
+    - "Teste o limite: o que deveria acontecer quando o próprio limite é uma potência de dois?"
+    - Uma condição falsa no início significa zero passagens, e o valor inicial é a resposta.
+
+brief: |
+  Escreva uma função chamada first_power_over que recebe um limite e retorna a menor
+  potência de dois que é estritamente maior que esse limite.
+
+  As potências de dois são 1, 2, 4, 8, 16, 32 e assim por diante.
+
+  first_power_over(10) retorna 16, porque 8 não é maior que 10 mas 16 é.
+  first_power_over(16) retorna 32, porque 16 não é estritamente maior que 16.
+
+  Um limite zero ou negativo retorna 1, já que 1 já supera ele.
+
+  Você não pode usar pow.
+
+signature:
+  entrypoint: first_power_over
+  stub: |
+    def first_power_over(limit):
+        # Comece na menor potencia de dois e continue dobrando enquanto nao for suficiente.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [pow]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10]
+      expect: 16
+    - args: [1]
+      expect: 2
+  hidden:
+    - args: [0]
+      expect: 1
+    - args: [16]
+      expect: 32
+    - args: [-5]
+      expect: 1
+    - args: [100]
+      expect: 128
+    - args: [2]
+      expect: 4
+    - args: [1000]
+      expect: 1024
+    - args: [1023]
+      expect: 1024
+
+hints:
+  - level: 1
+    text: |
+      Qual é a menor potência de dois? Se o limite já é menor que ela, quantas vezes o
+      laço deveria rodar?
+  - level: 2
+    text: |
+      Comece uma variável em 1. Faça um laço enquanto essa variável ainda não for maior
+      que o limite, dobrando-a a cada passagem. Retorne-a depois do laço.
+  - level: 3
+    text: |
+      A mesma forma, esticando uma corda até cobrir um vão em vez de superar um limite:
+
+          comprimento = 1
+          while comprimento <= vao:
+              comprimento = comprimento * 2
+          return comprimento
+
+      Isso é quase a resposta inteira. O cuidado está na comparação: pense no que
+      acontece quando vao é exatamente 8.
+
+solution: |
+  def first_power_over(limit):
+      value = 1
+      while value <= limit:
+          value = value * 2
+      return value

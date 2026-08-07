@@ -1,0 +1,23 @@
+id: strings-and-text
+name: Strings and Text
+track: python
+order: 4
+theme: Text is data, and it does not change under you
+description: |
+  Almost everything a program receives from the outside world arrives as text: a name
+  typed by hand, a line read from a file, a number that is not a number yet. This island
+  is about cleaning it, reading it, building it back up - and about the one rule that
+  makes strings behave unlike every collection you have met so far.
+
+concepts:
+  - string-methods
+  - string-immutability
+  - f-strings
+  - join-vs-concat
+  - split-and-parse
+  - encoding-basics
+
+unlock_requires:
+  missions_completed: 34
+
+completion_reward_xp: 160

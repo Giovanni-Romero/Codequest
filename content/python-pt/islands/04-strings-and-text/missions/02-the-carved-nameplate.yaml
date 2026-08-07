@@ -1,0 +1,131 @@
+# Missao 2 de Strings e Texto. Introduz: string-immutability.
+# Reforca: string-methods, indexing-and-slicing (Ilha 2).
+# Quem apelar para texto[0] = "X" recebe TypeError do sandbox, que e a licao chegando
+# sozinha em vez de por uma dica.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-02
+title: A placa entalhada
+track: python
+island: strings-and-text
+order: 2
+difficulty: simple
+tags: [immutability, slicing, string-methods]
+xp: 20
+
+concepts:
+  - string-immutability
+  - string-methods
+
+teaching:
+  analogy: |
+    Uma placa de nome é entalhada, não escrita. Errar a primeira letra não significa
+    buscar uma borracha - significa entalhar uma placa nova e jogar a antiga fora. A
+    madeira não pode ser editada no lugar, só substituída.
+
+    Uma lista é uma fileira de ganchos: tire uma coisa de um gancho, pendure outra. Uma
+    string é a placa entalhada.
+
+  explanation: |
+    Strings são imutáveis. Uma vez que uma existe, nada pode mudá-la. texto[0] = "X" não
+    é um erro de digitação que você conserta tentando mais forte - isso levanta
+    TypeError, sempre.
+
+    É por isso que todo método de string retorna uma string nova em vez de modificar a
+    sua. Não é educação, é a única coisa que ele pode fazer.
+
+    Ler funciona exatamente como funcionava para listas: texto[0] é o primeiro caractere,
+    texto[-1] o último, texto[1:] tudo a partir do índice 1. Todas as regras de
+    fatiamento da ilha de Coleções valem sem mudança, inclusive a de que uma fatia nunca
+    levanta erro por um limite fora do alcance.
+
+    Então, para "mudar" uma string você constrói uma nova a partir de pedaços da antiga.
+
+  worked_example: |
+    # Mascarando um numero de cartao, nao entalhando uma placa
+    cartao = "4111222233334444"
+
+    mascarado = "****" + cartao[-4:]   # mantem os ultimos quatro, substitui o resto
+    print(mascarado)                   # ****4444
+    print(cartao)                      # 4111222233334444 - inalterado, como sempre
+
+    # cartao[0] = "9"                  # TypeError: 'str' object does not support
+    #                                  # item assignment
+
+  key_points:
+    - "texto[0] = 'X' levanta TypeError. Uma string não pode ser editada, só reconstruída."
+    - Ler e fatiar uma string funciona exatamente como numa lista - mesmas regras, mesmos casos-limite.
+    - "Para mudar um caractere, construa uma string nova com os pedaços que você mantém mais o pedaço que você quer."
+    - Um método que retorna uma string não fez nada de útil até você atribuir ou retornar o resultado dele.
+
+brief: |
+  Uma placa de nome chega com a gravação na caixa que o entalhador achou melhor usar.
+
+  Escreva uma função chamada nameplate que recebe um texto e o retorna com o primeiro
+  caractere em maiúscula e todo o resto em minúscula.
+
+  nameplate("aDA lOVELACE") retorna "Ada lovelace".
+
+  Texto vazio retorna texto vazio, e seu código não pode levantar erro quando receber um.
+
+  Você não pode usar .capitalize() nem .title() - construir você mesmo é a missão.
+
+signature:
+  entrypoint: nameplate
+  stub: |
+    def nameplate(text):
+        # Voce nao pode editar um caractere no lugar. Construa uma string nova de dois pedacos.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [capitalize, title]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["aDA lOVELACE"]
+      expect: "Ada lovelace"
+    - args: ["rope"]
+      expect: "Rope"
+  hidden:
+    - args: [""]
+      expect: ""
+    - args: ["a"]
+      expect: "A"
+    - args: ["A"]
+      expect: "A"
+    - args: ["SALT COD"]
+      expect: "Salt cod"
+    - args: ["  leading space"]
+      expect: "  leading space"
+    - args: ["9lives"]
+      expect: "9lives"
+
+hints:
+  - level: 1
+    text: |
+      Tente escrever texto[0] = texto[0].upper() de cabeça e pergunte o que Python faz com
+      isso. Se uma string não pode ser editada, o que te sobra - e em que dois pedaços a
+      resposta se divide?
+  - level: 2
+    text: |
+      O primeiro caractere é text[0] e o resto é text[1:]. Ponha o primeiro em maiúscula,
+      o resto em minúscula, e junte com +. Trate o texto vazio antes de tudo isso, porque
+      text[0] num texto vazio levanta erro de verdade.
+  - level: 3
+    text: |
+      A mesma reconstrução em dois pedaços, num código de produto:
+
+          if not codigo:
+              return codigo
+          return codigo[:3].upper() + codigo[3:]
+
+      A sua divide num ponto diferente e trata as duas metades de formas diferentes.
+
+solution: |
+  def nameplate(text):
+      if not text:
+          return text
+      return text[0].upper() + text[1:].lower()

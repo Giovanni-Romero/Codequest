@@ -1,0 +1,130 @@
+# Missao 1 de Strings e Texto. Introduz: string-methods.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-01
+title: O manifesto borrado
+track: python
+island: strings-and-text
+order: 1
+difficulty: simple
+tags: [string-methods, cleaning]
+xp: 20
+
+concepts:
+  - string-methods
+
+teaching:
+  analogy: |
+    Um manifesto chega a bordo molhado, escrito por seis mãos diferentes. Um escriturário
+    escreveu em maiúsculas, outro deixou um dedo de papel em branco antes de cada
+    entrada, um terceiro grafou o porto com o nome antigo que ninguém mais usa.
+
+    Nada disso muda o que a carga *é*. Antes de qualquer um comparar duas entradas, a
+    caligrafia precisa parar de importar.
+
+  explanation: |
+    Strings vêm com métodos que fazem essa limpeza por você. Um método é uma função que
+    pertence a um valor, chamada com um ponto: texto.strip().
+
+    Os quatro que valem o lugar desde cedo:
+
+      - .strip() remove espaços em branco da frente e do fim. Só das pontas, nunca do meio.
+      - .lower() e .upper() dobram a caixa, para "LISBOA" e "lisboa" poderem ser comparadas.
+      - .replace(velho, novo) troca toda ocorrência de um pedaço de texto por outro.
+      - .startswith(prefixo) responde True ou False.
+
+    Cada um deles te entrega uma string **nova**. Nenhum muda aquela em que você o
+    chamou - que é o assunto da próxima missão, e a razão pela qual você precisa atribuir
+    o resultado a algo.
+
+  worked_example: |
+    # Arrumando um nome de usuario, nao uma entrada de carga
+    bruto = "  Ada_Lovelace  "
+
+    aparado = bruto.strip()                 # "Ada_Lovelace"
+    minusculo = aparado.lower()             # "ada_lovelace"
+    espacado = minusculo.replace("_", " ")  # "ada lovelace"
+
+    print(espacado)                         # ada lovelace
+    print(bruto)                            # "  Ada_Lovelace  " - intocado
+    print(espacado.startswith("ada"))       # True
+
+  key_points:
+    - "Um método é chamado com um ponto no próprio valor: texto.strip(), não strip(texto)."
+    - .strip() apara só as pontas. Espaços no meio sobrevivem, de propósito.
+    - Dobrar a caixa com .lower() é como você compara texto escrito por duas pessoas diferentes.
+    - "Cada um deles retorna uma string nova. Atribua o resultado, ou nada do que você fez sobrevive."
+
+brief: |
+  Escreva uma função chamada tidy_entry que recebe uma entrada de manifesto como texto e
+  retorna a forma limpa dela.
+
+  Limpar significa, nesta ordem:
+
+    - remover espaços em branco da frente e do fim
+    - trocar cada sublinhado por um único espaço
+    - dobrar tudo para minúsculas
+
+  tidy_entry("  Salt_Cod  ") retorna "salt cod". Texto que já está limpo volta sem
+  mudança, e uma entrada vazia retorna texto vazio.
+
+signature:
+  entrypoint: tidy_entry
+  stub: |
+    def tidy_entry(entry):
+        # Tres passos de limpeza. Cada um te entrega uma string nova - segure-a.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  Salt_Cod  "]
+      expect: "salt cod"
+    - args: ["rope"]
+      expect: "rope"
+  hidden:
+    - args: [""]
+      expect: ""
+    - args: ["   "]
+      expect: ""
+    - args: ["A_B_C"]
+      expect: "a b c"
+    - args: ["  MIXED case  "]
+      expect: "mixed case"
+    - args: ["no_change_needed"]
+      expect: "no change needed"
+    - args: ["  _leading_  "]
+      expect: " leading "
+
+hints:
+  - level: 1
+    text: |
+      Cada passo de limpeza te devolve um texto novo em vez de mudar o que você tinha. O
+      que precisa acontecer com esse texto novo antes do próximo passo poder trabalhar
+      nele?
+  - level: 2
+    text: |
+      Chame .strip() na entrada e guarde o resultado numa variável. Chame
+      .replace("_", " ") nesse resultado. Chame .lower() nesse. Retorne o último. Você
+      também pode encadear os três numa expressão só, se achar mais claro.
+  - level: 3
+    text: |
+      A mesma cadeia, arrumando um nome de arquivo:
+
+          nome = bruto.strip()
+          nome = nome.replace("-", " ")
+          nome = nome.lower()
+          return nome
+
+      A sua troca um caractere diferente e trabalha numa entrada de manifesto.
+
+solution: |
+  def tidy_entry(entry):
+      cleaned = entry.strip()
+      cleaned = cleaned.replace("_", " ")
+      cleaned = cleaned.lower()
+      return cleaned

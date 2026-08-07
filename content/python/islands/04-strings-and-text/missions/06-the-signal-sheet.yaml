@@ -1,0 +1,122 @@
+# Mission 6 of Strings and Text. Relief mission. Introduces nothing.
+# Reinforces: f-strings, join-vs-concat.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-06
+title: The signal sheet
+track: python
+island: strings-and-text
+order: 6
+difficulty: elementary
+tags: [f-strings, join]
+xp: 10
+
+concepts:
+  - f-strings
+  - join-vs-concat
+
+teaching:
+  analogy: |
+    The signal sheet pinned by the wheel is one line: today's flags, in order, separated
+    by slashes, with the count in front so the officer of the watch knows at a glance
+    whether anything is missing.
+
+  explanation: |
+    Nothing new here. The last two missions gave you both halves of this: join builds the
+    middle from a list of unknown length, and an f-string drops that middle into a line
+    with the fixed text around it.
+
+    They compose in the obvious way. Build the joined part first, keep it in a variable
+    with a name, then place it. Nesting a join call inside the braces of an f-string is
+    legal and, past about that much, harder to read than the two lines it replaces - the
+    same judgment call the comprehension mission asked for on the Collections island.
+
+  worked_example: |
+    # A packing slip, not a signal sheet
+    items = ["tea", "jam", "rope"]
+
+    listed = ", ".join(items)
+    line = f"{len(items)} items: {listed}"
+
+    print(line)                 # 3 items: tea, jam, rope
+    print(f"0 items: {', '.join([])}")   # 0 items:  - joining nothing gives nothing
+
+  key_points:
+    - join builds the part whose length you do not know; an f-string frames it with the part you do.
+    - Naming the joined piece before placing it usually reads better than nesting the call in the braces.
+    - "len() on the list gives the count without counting anything by hand."
+    - An empty list still produces a valid line - the joined section is simply empty.
+
+brief: |
+  Write a function called signal_sheet that takes flags, a list of flag names, and
+  returns one line in exactly this shape:
+
+      3 flags: red/blue/green
+
+  That is: the number of flags, a space, the word "flags", a colon, a space, then the
+  flag names separated by a single forward slash with no spaces around it.
+
+  With exactly one flag the word is "flag", singular. With no flags at all the line is
+  "0 flags:" - the colon stays, and there is nothing after it, not even a space.
+
+signature:
+  entrypoint: signal_sheet
+  stub: |
+    def signal_sheet(flags):
+        # Join the names, pick the right word, then place both in one line.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["red", "blue", "green"]]
+      expect: "3 flags: red/blue/green"
+    - args: [["red"]]
+      expect: "1 flag: red"
+  hidden:
+    - args: [[]]
+      expect: "0 flags:"
+    - args: [["a", "b"]]
+      expect: "2 flags: a/b"
+    - args: [["x", "y", "z", "w"]]
+      expect: "4 flags: x/y/z/w"
+    - args: [["solo"]]
+      expect: "1 flag: solo"
+
+hints:
+  - level: 1
+    text: |
+      Write out by hand what the line looks like for zero flags, one flag and three
+      flags. Two things differ between them, not one.
+  - level: 2
+    text: |
+      Join the flags with "/" into a variable. Pick "flag" or "flags" with an if on
+      len(flags). Then return one f-string placing the count, the word and the joined
+      names. Check the empty case against your f-string - the space after the colon must
+      not appear.
+  - level: 3
+    text: |
+      The same assembly, on a different sheet:
+
+          listed = ", ".join(names)
+          word = "guests"
+          if len(names) == 1:
+              word = "guest"
+          return f"{len(names)} {word}: {listed}".rstrip()
+
+      The trailing .rstrip() there is one way to handle the empty case. There are others,
+      and yours only needs one of them.
+
+solution: |
+  def signal_sheet(flags):
+      listed = "/".join(flags)
+      word = "flags"
+      if len(flags) == 1:
+          word = "flag"
+      if not flags:
+          return f"{len(flags)} {word}:"
+      return f"{len(flags)} {word}: {listed}"

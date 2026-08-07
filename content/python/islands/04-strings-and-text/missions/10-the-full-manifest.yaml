@@ -1,0 +1,144 @@
+# Mission 10 of Strings and Text. Closing mission. Introduces nothing.
+# Combines all six concepts of the island.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-10
+title: The full manifest
+track: python
+island: strings-and-text
+order: 10
+difficulty: simple
+tags: [split, join, f-strings, encoding]
+xp: 20
+
+concepts:
+  - string-methods
+  - string-immutability
+  - f-strings
+  - join-vs-concat
+  - split-and-parse
+  - encoding-basics
+
+teaching:
+  analogy: |
+    End of loading. The purser has a stack of scrawled notes and needs one printed page:
+    every item on its own line, tidied, numbered, and a footer saying how much space the
+    whole page will take on the wire.
+
+  explanation: |
+    Nothing new. Every piece has its own mission behind it: split to read the notes apart,
+    the string methods to tidy them, f-strings to write each line, join to make one page
+    out of many lines, and the byte count for the footer.
+
+    The one decision is the order. Read and tidy everything first, build all the lines,
+    then join them once at the end. Building the page by adding to a string as you go
+    would work and is the habit worth breaking - it is the "+ in a loop" this island
+    argued against, and here the argument is not theoretical, because the page grows with
+    every note.
+
+    Note the footer measures the finished page, so it cannot be worked out until the join
+    has happened.
+
+  worked_example: |
+    # Assembling a printed receipt rather than a manifest
+    notes = [" tea : 2 ", "JAM:1"]
+
+    lines = []
+    for index, note in enumerate(notes, start=1):
+        left, right = note.split(":")
+        item = left.strip().lower()
+        qty = int(right.strip())
+        lines.append(f"{index}. {item} x{qty}")
+
+    page = "\n".join(lines)
+    print(page)
+    print(f"[{len(page.encode('utf-8'))} bytes]")
+
+  key_points:
+    - A closing mission assembles what you already have. Nothing here needs a new tool.
+    - "Build every line first, then join once. Growing a string inside the loop is the habit this island exists to break."
+    - "enumerate(items, start=1) gives you the position and the item together, numbered from one."
+    - The byte count measures the finished text, so it is the last thing you can compute.
+
+brief: |
+  Write a function called build_manifest that takes notes, a list of text entries, each
+  holding an item name and a count separated by a colon:
+
+      salt cod : 12
+
+  Return a list of exactly two values:
+
+    - the finished page as one piece of text, where each note becomes a line reading
+      "1. salt cod x12" - the position starting at 1, a full stop, a space, the name
+      trimmed and lowercased, a space, "x" joined to the count - with the lines separated
+      by a single newline character
+    - how many bytes that finished page takes when encoded as UTF-8
+
+  An empty list of notes returns ["", 0].
+
+  You may assume every note has exactly two fields.
+
+signature:
+  entrypoint: build_manifest
+  stub: |
+    def build_manifest(notes):
+        # Read and tidy each note into a line. Join once. Then measure the result.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["salt cod : 12", "ROPE:1"]]
+      expect: ["1. salt cod x12\n2. rope x1", 26]
+    - args: [["nails:100"]]
+      expect: ["1. nails x100", 13]
+  hidden:
+    - args: [[]]
+      expect: ["", 0]
+    - args: [["  a  :  0  "]]
+      expect: ["1. a x0", 7]
+    - args: [["café : 2"]]
+      expect: ["1. café x2", 11]
+    - args: [["x:1", "y:2", "z:3"]]
+      expect: ["1. x x1\n2. y x2\n3. z x3", 23]
+
+hints:
+  - level: 1
+    text: |
+      Three stages, and one of them can only happen after another has finished. Which
+      number in the answer depends on the whole page already existing?
+  - level: 2
+    text: |
+      Loop over the notes with enumerate(notes, start=1). Split each on ":", tidy the name
+      with .strip().lower(), convert the count with int(), and append an f-string line to
+      a list. After the loop, join that list with "\n" and measure the joined page with
+      .encode("utf-8").
+  - level: 3
+    text: |
+      The assembly, on a different page:
+
+          rows = []
+          for i, entry in enumerate(entries, start=1):
+              a, b = entry.split("=")
+              rows.append(f"{i}) {a.strip()} -> {b.strip()}")
+          page = "\n".join(rows)
+          return [page, len(page)]
+
+      Yours numbers differently, lowercases the name, converts the count, and measures in
+      bytes rather than characters.
+
+solution: |
+  def build_manifest(notes):
+      lines = []
+      for position, note in enumerate(notes, start=1):
+          raw_name, raw_count = note.split(":")
+          name = raw_name.strip().lower()
+          count = int(raw_count.strip())
+          lines.append(f"{position}. {name} x{count}")
+
+      page = "\n".join(lines)
+      return [page, len(page.encode("utf-8"))]

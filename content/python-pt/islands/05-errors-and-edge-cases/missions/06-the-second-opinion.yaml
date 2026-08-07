@@ -1,0 +1,132 @@
+# Missao 6 de Erros e Casos-Limite. Missao de alivio. Nao introduz nada.
+# Reforca: eafp-vs-lbyl, try-except.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-06
+title: A segunda opinião
+track: python
+island: errors-and-edge-cases
+order: 6
+difficulty: elementary
+tags: [try-except, fallback, lists]
+xp: 10
+
+concepts:
+  - eafp-vs-lbyl
+  - try-except
+
+teaching:
+  analogy: |
+    Dois instrumentos a bordo medem a mesma coisa. O bom é o de confiança; quando está
+    quebrado ou guardado, o rústico é consultado no lugar. Ninguém para o navio por isso -
+    a segunda opinião existe precisamente para uma primeira opinião ausente não ser uma
+    crise.
+
+  explanation: |
+    Nada novo. Este é um try / except protegendo uma busca que pode falhar por mais de um
+    motivo, que é a forma comum de um valor de reserva.
+
+    Um índice pode falhar de dois jeitos: a lista é curta demais, que é IndexError, ou a
+    coisa naquela posição não pode ser usada como esperado. Você pode nomear mais de uma
+    exceção num único tratador com uma tupla:
+
+        except (IndexError, TypeError):
+
+    Isso ainda é específico. Não é o mesmo que um except pelado, porque você nomeou
+    exatamente para quais duas falhas você tem resposta, e qualquer outra coisa ainda sobe.
+
+  worked_example: |
+    # Lendo uma coluna preferida com reserva, nao um instrumento
+    def campo(linha, preferida, reserva):
+        try:
+            return linha[preferida]
+        except (IndexError, TypeError):
+            return reserva
+
+    print(campo(["a", "b"], 1, "?"))      # b
+    print(campo(["a", "b"], 5, "?"))      # ? - IndexError tratado
+    print(campo(["a", "b"], "x", "?"))    # ? - TypeError tratado
+
+  key_points:
+    - "except (A, B): trata duas exceções nomeadas com um bloco só, e continua específico."
+    - "IndexError é uma posição que não existe; TypeError é um índice do tipo errado."
+    - Um valor de reserva é uma decisão sobre significado. Não é o mesmo que esconder a falha.
+    - Qualquer coisa que você não nomeou ainda sobe, e é isso que mantém o tratador honesto.
+
+brief: |
+  Leituras chegam de dois instrumentos, e qualquer uma das listas pode ser mais curta que
+  o esperado ou estar vazia.
+
+  Escreva uma função chamada reading_at que recebe primary (uma lista), backup (uma
+  lista) e position (um número inteiro), e retorna:
+
+    - o valor naquela posição em primary, se houver um
+    - caso contrário o valor naquela posição em backup, se houver um
+    - caso contrário o número 0
+
+  reading_at([10, 20], [1, 2, 3], 2) retorna 3, porque primary não tem nada na posição 2.
+
+signature:
+  entrypoint: reading_at
+  stub: |
+    def reading_at(primary, backup, position):
+        # Tente o instrumento bom. Caia no rustico. Depois desista com elegancia.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20], [1, 2, 3], 1]
+      expect: 20
+    - args: [[10, 20], [1, 2, 3], 2]
+      expect: 3
+  hidden:
+    - args: [[], [], 0]
+      expect: 0
+    - args: [[], [5], 0]
+      expect: 5
+    - args: [[7], [], 0]
+      expect: 7
+    - args: [[1, 2], [3, 4], 9]
+      expect: 0
+    - args: [[0], [9], 0]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Existem três resultados e só duas listas. Qual deles não precisa de busca nenhuma, e
+      quando você chega nele?
+  - level: 2
+    text: |
+      Tente retornar primary[position] dentro de um try. No bloco except IndexError,
+      tente backup[position] dentro de um segundo try, e retorne 0 do tratador dele.
+      Aninhar um try dentro do except de outro é código comum.
+  - level: 3
+    text: |
+      A forma aninhada, em fontes diferentes:
+
+          try:
+              return ativo[chave]
+          except KeyError:
+              try:
+                  return cache[chave]
+              except KeyError:
+                  return None
+
+      A sua indexa listas em vez de dicionários, então a exceção é outra, e o último
+      recurso dela é um número.
+
+solution: |
+  def reading_at(primary, backup, position):
+      try:
+          return primary[position]
+      except IndexError:
+          try:
+              return backup[position]
+          except IndexError:
+              return 0

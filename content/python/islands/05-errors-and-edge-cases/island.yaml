@@ -1,0 +1,23 @@
+id: errors-and-edge-cases
+name: Errors and Edge Cases
+track: python
+order: 5
+theme: What to do when the answer does not exist
+description: |
+  Every function you have written so far assumed it would be handed something sensible.
+  This island is about the day it is not: an empty list where a number was promised, a
+  division by zero, a name that was never in the ledger. Failing is not the opposite of
+  working - deciding how to fail is part of writing the thing.
+
+concepts:
+  - exceptions
+  - try-except
+  - raising
+  - eafp-vs-lbyl
+  - input-validation
+  - defensive-design
+
+unlock_requires:
+  missions_completed: 44
+
+completion_reward_xp: 200

@@ -1,0 +1,130 @@
+# Missao 5 de Strings e Texto. Introduz: join-vs-concat.
+# Reforca: string-immutability, lists.
+# A lista guarda NUMEROS de proposito: juntar sem converter antes e a concepcao errada
+# que esta missao existe para pegar, e ela falha alto com TypeError.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-05
+title: Uma corda de muitos fios
+track: python
+island: strings-and-text
+order: 5
+difficulty: simple
+tags: [join, concatenation, lists]
+xp: 20
+
+concepts:
+  - join-vs-concat
+  - string-immutability
+
+teaching:
+  analogy: |
+    Emendando uma corda longa a partir de fios curtos, você não dá um nó depois do último
+    fio para depois voltar e cortá-lo fora. Você estende os fios e põe uma emenda *entre*
+    cada par - o que significa que sempre há uma emenda a menos do que fios.
+
+    Colar um separador depois de cada pedaço e aparar o último é como você termina com
+    uma corda com um toco na ponta.
+
+  explanation: |
+    "sep".join(pedaços) constrói uma string a partir de muitas, pondo o separador entre
+    elas - nunca antes da primeira, nunca depois da última. Repare onde ele é chamado: no
+    **separador**, não na lista. Isso lê ao contrário nas primeiras vezes e depois para.
+
+    Ele só aceita strings. Uma lista de números levanta TypeError, porque Python não vai
+    adivinhar como você queria escrevê-los. Converta antes.
+
+    Por que não usar só + num laço? Funciona, e para três itens ninguém notaria. Mas
+    strings são imutáveis, então todo + constrói uma string inteiramente nova e joga a
+    anterior fora. Juntar mil pedaços assim copia o resultado inteiro mil vezes. join
+    percorre a lista uma vez.
+
+    Então: + serve para dois ou três pedaços fixos que você consegue ver. join serve para
+    uma coleção de tamanho desconhecido.
+
+  worked_example: |
+    # Montando uma linha CSV com valores mistos, nao uma corda
+    valores = [7, 3, 11]
+
+    como_texto = [str(v) for v in valores]  # ['7', '3', '11'] - converta primeiro
+    linha = ",".join(como_texto)
+    print(linha)                            # 7,3,11
+
+    print(" e ".join(["sal", "corda"]))     # sal e corda
+    print("-".join([]))                     # "" - nada entre o que por separador
+    print("-".join(["sozinho"]))            # sozinho - um pedaco, nenhum separador
+
+    # ",".join(valores)                     # TypeError: sequence item 0: expected str,
+    #                                       # int found
+
+  key_points:
+    - '"sep".join(pedaços) é chamado no separador, não na lista. O separador vai entre, nunca nas pontas.'
+    - join aceita só strings. Converta números com str() antes de juntá-los.
+    - Uma lista vazia junta para uma string vazia, e um item só junta para ele mesmo sem separador.
+    - "+ num laço reconstrói a string inteira a cada passagem, porque strings são imutáveis. join percorre a lista uma vez."
+
+brief: |
+  Uma corda emendada é registrada como os comprimentos dos fios que entraram nela,
+  escritos com sinais de mais entre eles.
+
+  Escreva uma função chamada rope_line que recebe strands, uma lista de números, e
+  retorna uma linha de texto com esses números separados por " + " - um espaço, um mais,
+  um espaço.
+
+  rope_line([12, 8, 5]) retorna "12 + 8 + 5".
+
+  Um fio só retorna apenas aquele número como texto. Uma lista vazia retorna texto vazio.
+  Não pode haver separador em nenhuma das pontas.
+
+signature:
+  entrypoint: rope_line
+  stub: |
+    def rope_line(strands):
+        # join poe o separador entre os pedacos. Ele precisa que todo pedaco seja texto.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[12, 8, 5]]
+      expect: "12 + 8 + 5"
+    - args: [[7]]
+      expect: "7"
+  hidden:
+    - args: [[]]
+      expect: ""
+    - args: [[0, 0]]
+      expect: "0 + 0"
+    - args: [[1, 2, 3, 4, 5]]
+      expect: "1 + 2 + 3 + 4 + 5"
+    - args: [[-3, 10]]
+      expect: "-3 + 10"
+    - args: [[2.5, 1]]
+      expect: "2.5 + 1"
+
+hints:
+  - level: 1
+    text: |
+      Tente " + ".join([12, 8, 5]) de cabeça. Python recusa, e o erro nomeia exatamente o
+      que está errado. O que precisa acontecer com a lista antes de join aceitá-la?
+  - level: 2
+    text: |
+      Construa uma lista onde todo número virou texto com str(), usando uma comprehension
+      ou um laço. Depois chame " + ".join(...) nessa lista e retorne o resultado.
+  - level: 3
+    text: |
+      Os mesmos dois passos, com um separador diferente:
+
+          pedacos = [str(v) for v in valores]
+          return " | ".join(pedacos)
+
+      A sua separa com um sinal de mais cercado de espaços.
+
+solution: |
+  def rope_line(strands):
+      pieces = [str(strand) for strand in strands]
+      return " + ".join(pieces)

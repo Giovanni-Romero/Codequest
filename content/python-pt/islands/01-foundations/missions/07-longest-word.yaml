@@ -1,0 +1,140 @@
+# Mission 7 of Foundations. Introduces nothing.
+# Reinforces: accumulator-pattern, conditionals, for-loop.
+# The accumulator carries a *choice* here, not a total. Same pattern, different payload.
+# Schema reference: docs/mission-schema.md
+
+id: py-foundations-07
+title: O nome mais longo da lista da tripulação
+track: python
+island: foundations
+order: 7
+difficulty: elementary
+tags: [accumulator, comparison, loops]
+xp: 10
+
+concepts:
+  - accumulator-pattern
+  - conditionals
+  - for-loop
+
+teaching:
+  analogy: |
+    Um carpinteiro de navio está procurando a tábua mais comprida numa pilha. Ele pega
+    uma, segura, e compara cada outra tábua com a que está nas mãos. Quando encontra uma
+    mais comprida, larga a antiga e carrega a nova no lugar.
+
+    No final, o que quer que ele esteja segurando é a resposta.
+
+    Repare no que ele carrega: não um total corrente, mas uma *melhor escolha* corrente.
+    Mesma disciplina de contar — comece com algo, atualize enquanto avança — mas a coisa
+    carregada é uma candidata, não uma soma.
+
+  explanation: |
+    O padrão acumulador não serve só para números. Qualquer coisa que você constrói ao
+    longo de um laço é um acumulador: um total, uma contagem, um pedaço de texto, ou o
+    melhor item visto até agora.
+
+    Num laço de "encontrar o melhor", o acumulador guarda o vencedor atual. A cada
+    passagem você compara o novo item com o vencedor e o substitui só quando o novo
+    é melhor.
+
+    Duas decisões moldam a resposta e ambas são suas para tomar deliberadamente:
+
+    Com o que você começa? Começar com algo que sempre perde é a jogada segura, porque
+    assim o primeiro item real tem garantia de substituí-lo.
+
+    E um empate? Usar "estritamente maior que" mantém o primeiro que você encontrou.
+    Usar "maior ou igual" mantém o último. Nenhum dos dois está errado, mas os testes
+    vão te dizer qual esta missão quer.
+
+  worked_example: |
+    # Encontrando a leitura mais fria de uma viagem, nao a palavra mais longa
+    leituras = [12, 4, 19, 4, -3]
+    mais_fria = leituras[0]
+    for leitura in leituras:
+        if leitura < mais_fria:
+            mais_fria = leitura
+    print(mais_fria)      # -3
+
+  key_points:
+    - Um acumulador pode carregar um vencedor, não só um total. O padrão é o mesmo.
+    - Comece com um valor que o primeiro item real tem garantia de superar.
+    - "> mantém o primeiro de um empate, >= mantém o último. Escolha de propósito, não por acidente."
+    - "Uma sequência vazia nunca entra no laço, então a resposta é o que quer que você tenha começado."
+
+brief: |
+  Escreva uma função chamada longest que recebe uma lista de palavras e retorna a mais
+  longa.
+
+  Se duas palavras empatarem em comprimento, retorne a que aparece primeiro. Se a lista
+  estiver vazia, retorne uma string vazia.
+
+  Você não pode usar max ou sorted. Percorra a lista e decida por conta própria.
+
+signature:
+  entrypoint: longest
+  stub: |
+    def longest(words):
+        # Carregue o vencedor atual. Substitua-o so quando encontrar algo mais longo.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [max, sorted]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["a", "bbb", "cc"]]
+      expect: "bbb"
+    - args: [["hi", "there"]]
+      expect: "there"
+  hidden:
+    - args: [[]]
+      expect: ""
+    - args: [["one"]]
+      expect: "one"
+    - args: [["ab", "cd"]]
+      expect: "ab"
+    - args: [["", "x"]]
+      expect: "x"
+    - args: [["aaa", "bbb"]]
+      expect: "aaa"
+    - args: [["short", "longest", "mid"]]
+      expect: "longest"
+    - args: [[""]]
+      expect: ""
+
+hints:
+  - level: 1
+    text: |
+      Antes de você ter olhado para qualquer palavra, qual é a palavra mais longa que
+      você viu? Que valor representa "nada ainda" de um jeito que qualquer palavra real
+      vai superar?
+  - level: 2
+    text: |
+      Crie uma variável guardando uma string vazia antes do laço. Para cada palavra,
+      compare o comprimento dela com o comprimento da que você está segurando, e
+      substitua a palavra guardada quando a nova for mais longa. Retorne o que você
+      está segurando depois do laço.
+  - level: 3
+    text: |
+      O mesmo padrão, encontrando o caixote mais pesado em vez da palavra mais longa:
+
+          mais_pesado = 0
+          for caixote in caixotes:
+              if caixote > mais_pesado:
+                  mais_pesado = caixote
+          return mais_pesado
+
+      A sua compara len(palavra) em vez do valor em si, e começa de "" em vez de 0.
+      Pense em qual comparação mantém o primeiro de um empate.
+
+solution: |
+  def longest(words):
+      best = ""
+      for word in words:
+          if len(word) > len(best):
+              best = word
+      return best

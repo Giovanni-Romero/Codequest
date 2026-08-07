@@ -1,0 +1,159 @@
+# Mission 9 of Functions. Introduces: args-kwargs.
+# Reinforces: parameters, default-arguments, dictionaries, lists.
+#
+# CURRICULUM NOTE: this mission returns a dict rather than a formatted string on
+# purpose. Building "rope, salt" from a tuple wants str.join, and join-vs-concat is an
+# Island 4 concept - requiring it here would introduce two new things at once. Returning
+# structured data keeps the lesson on *args/**kwargs, which is what the mission is for.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-09
+title: The ship's log
+track: python
+island: functions
+order: 9
+difficulty: simple
+tags: [args, kwargs, variadic]
+xp: 20
+
+concepts:
+  - args-kwargs
+  - parameters
+
+teaching:
+  analogy: |
+    The log book has one fixed column - what happened - and then as much room as the
+    officer needs. Some entries list three items, some list none. Some carry notes in
+    the margin: weather, who was on watch, whether it was urgent.
+
+    The form does not have a box for every possible note. It has a fixed part and an open
+    part, and the open part takes whatever you bring.
+
+  explanation: |
+    A parameter written with one star, *items, collects every extra positional argument
+    into a tuple. Call the function with three extras and items holds three; call it with
+    none and items is an empty tuple.
+
+    A parameter written with two stars, **flags, collects every extra keyword argument
+    into a dictionary, where the keys are the names the caller used.
+
+    Neither name is magic. args and kwargs are only a convention - *items and **flags
+    work exactly the same and read better. The stars do the work, not the names.
+
+    Order in the definition is fixed: ordinary parameters, then *args, then **kwargs.
+    Python has no way to make sense of any other arrangement.
+
+  worked_example: |
+    # An order slip, not a log entry
+    def slip(customer, *lines, **notes):
+        wanted = []
+        for note in sorted(notes):
+            if notes[note]:
+                wanted.append(note)
+        return {"who": customer, "count": len(lines), "notes": wanted}
+
+    print(slip("Ana"))                          # {'who': 'Ana', 'count': 0, 'notes': []}
+    print(slip("Ana", "tea", "jam"))            # count 2, notes []
+    print(slip("Ana", "tea", rush=True))        # count 1, notes ['rush']
+    print(slip("Ana", gift=True, rush=False))   # count 0, notes ['gift']
+
+  key_points:
+    - "*name gathers leftover positional arguments into a tuple - a tuple, not a list."
+    - "**name gathers leftover keyword arguments into a dict, keyed by the names the caller typed."
+    - "The definition order is fixed: normal parameters, then *args, then **kwargs."
+    - "list(a_tuple) turns a tuple into a list, the same way set(a_list) made a set back on Collections."
+    - '"args" and "kwargs" are just habits. The stars are the syntax; name them for what they hold.'
+
+brief: |
+  Write a function called log_entry that records one entry in the ship's log.
+
+  It takes:
+
+    - action: what happened, a string. Always required.
+    - any number of extra positional arguments: the items involved.
+    - any number of extra keyword arguments: flags about the entry.
+
+  Return a dictionary with exactly these three keys:
+
+    - "action": the action string, unchanged
+    - "items": the extra positional arguments, as a list, in the order given
+    - "flags": the names of the flags whose value is True, as a list, in alphabetical
+      order. Flags whose value is False are left out entirely.
+
+  With no extra items the "items" list is empty. With no true flags the "flags" list is
+  empty.
+
+      log_entry("sail")
+        -> {"action": "sail", "items": [], "flags": []}
+
+      log_entry("load", "rope", "salt", urgent=True, night=False)
+        -> {"action": "load", "items": ["rope", "salt"], "flags": ["urgent"]}
+
+signature:
+  entrypoint: log_entry
+  stub: |
+    def log_entry(action, *items, **flags):
+        # items arrives as a tuple. flags arrives as a dict. Build the answer from both.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["load", "rope", "salt"]
+      expect: { action: "load", items: ["rope", "salt"], flags: [] }
+    - args: ["sail"]
+      expect: { action: "sail", items: [], flags: [] }
+  hidden:
+    - args: ["load", "rope"]
+      kwargs: { urgent: true }
+      expect: { action: "load", items: ["rope"], flags: ["urgent"] }
+    - args: ["sail"]
+      kwargs: { night: true, urgent: false }
+      expect: { action: "sail", items: [], flags: ["night"] }
+    - args: ["dock", "a", "b", "c"]
+      kwargs: { urgent: true, night: true }
+      expect: { action: "dock", items: ["a", "b", "c"], flags: ["night", "urgent"] }
+    - args: ["rest"]
+      kwargs: { calm: false }
+      expect: { action: "rest", items: [], flags: [] }
+    - args: ["scan"]
+      kwargs: { zulu: true, alpha: true }
+      expect: { action: "scan", items: [], flags: ["alpha", "zulu"] }
+    - args: ["load", "one"]
+      expect: { action: "load", items: ["one"], flags: [] }
+
+hints:
+  - level: 1
+    text: |
+      Before writing anything, work out what type items is and what type flags is. One of
+      them needs converting before it can go in the answer; the other needs filtering and
+      ordering.
+  - level: 2
+    text: |
+      items is a tuple, so wrap it in list(...) to get the list the answer wants. For the
+      flags, loop over sorted(flags) and collect each name whose value is True into a new
+      list. Then return a dict with the three keys.
+  - level: 3
+    text: |
+      The filtering half, on a different set of options:
+
+          chosen = []
+          for name in sorted(options):
+              if options[name]:
+                  chosen.append(name)
+
+      sorted() on a dictionary walks its keys, already in order. Yours does this for the
+      flags and pairs it with the converted items.
+
+solution: |
+  def log_entry(action, *items, **flags):
+      chosen = []
+      for name in sorted(flags):
+          if flags[name]:
+              chosen.append(name)
+
+      return {"action": action, "items": list(items), "flags": chosen}

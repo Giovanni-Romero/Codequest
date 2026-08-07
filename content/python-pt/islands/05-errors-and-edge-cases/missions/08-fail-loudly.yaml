@@ -1,0 +1,157 @@
+# Missao 8 de Erros e Casos-Limite. Introduz: defensive-design.
+# Reforca: input-validation, raising, f-strings.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-08
+title: Falhe alto
+track: python
+island: errors-and-edge-cases
+order: 8
+difficulty: moderate
+tags: [defensive-design, messages, raising]
+xp: 30
+
+concepts:
+  - defensive-design
+  - input-validation
+
+teaching:
+  analogy: |
+    Uma via de água encontrada na linha d'água é um reparo. A mesma via de água
+    encontrada de madrugada, três dias mar adentro, porque a bomba vinha dando conta em
+    silêncio e ninguém olhou, é uma emergência. Nada na via de água mudou. Só quanto
+    tempo ela teve permissão de ficar calada.
+
+  explanation: |
+    Design defensivo não é capturar tudo e seguir em frente. Isso é o oposto - um
+    programa que engole problemas continua rodando enquanto está errado, que é o jeito
+    mais caro de falhar.
+
+    São dois hábitos.
+
+    **Falhe cedo.** Pare na primeira coisa que você sabe estar quebrada, no lugar onde
+    você ainda sabe por quê. Uma função que manca com um valor que ela sabe estar errado
+    empurra a falha para algum lugar onde ela não vai fazer sentido nenhum.
+
+    **Falhe de forma útil.** A mensagem é lida por uma pessoa, horas depois, sem memória
+    do código. Três coisas a tornam digna de leitura: o que era esperado, o que de fato
+    chegou, e onde. "Entrada inválida" não tem nenhuma delas.
+
+        raise ValueError("entrada invalida")
+        raise ValueError(f"profundidade deve ser 0-500 m, veio {p} no berco {b!r}")
+
+    A segunda custa oito segundos para escrever e economiza uma tarde.
+
+    O !r numa f-string mostra um valor do jeito que Python o escreveria, com as aspas num
+    texto. Isso importa aqui: é como você distingue um texto vazio de um texto de espaços
+    num log.
+
+  worked_example: |
+    # Um limite de reserva, nao a profundidade de um berco
+    MAX_CONVIDADOS = 8
+
+    def sentar(mesa, convidados):
+        if convidados > MAX_CONVIDADOS:
+            raise ValueError(
+                f"mesa {mesa!r} comporta no maximo {MAX_CONVIDADOS}, veio {convidados}"
+            )
+        return f"{mesa}:{convidados}"
+
+    print(sentar("janela", 4))     # janela:4
+    # print(sentar("janela", 12))  # ValueError: mesa 'janela' comporta no maximo 8,
+    #                              # veio 12 - esperado, real, e qual mesa: os tres
+
+  key_points:
+    - Defensivo não significa capturar tudo. Um programa que engole problemas segue rodando enquanto está errado.
+    - Falhe na primeira coisa que você sabe estar quebrada, onde você ainda sabe por quê.
+    - "Uma mensagem precisa de três coisas: o que era esperado, o que chegou, e onde."
+    - "!r numa f-string mostra o valor como Python o escreve, que é como você distingue '' de '  ' depois."
+
+brief: |
+  Berços têm uma profundidade máxima e não podem receber um navio que cala mais que ela.
+
+  Escreva uma função chamada assign_berth que recebe berth (texto), draught (um número) e
+  max_depth (um número), e retorna "berth:draught" usando o nome do berço aparado.
+
+  Ela precisa recusar, nesta ordem:
+
+    - berth fica vazio depois de aparado: levante ValueError
+    - draught é zero ou menos: levante ValueError
+    - draught é maior que max_depth: levante ValueError
+
+  Toda mensagem de recusa precisa conter o nome do berço e o número problemático, para
+  quem ler o log depois poder agir sem voltar ao código.
+
+  Os testes checam o comportamento, não a sua redação exata - mas as mensagens são o
+  ponto da missão, então escreva como se alguém fosse lê-las às três da manhã.
+
+signature:
+  entrypoint: assign_berth
+  stub: |
+    def assign_berth(berth, draught, max_depth):
+        # Recuse cedo, e diga o que era esperado, o que chegou, e onde.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  north  ", 4, 6]
+      expect: "north:4"
+    - args: ["north", 9, 6]
+      raises: ValueError
+  hidden:
+    - args: ["a", 6, 6]
+      expect: "a:6"
+    - args: ["", 4, 6]
+      raises: ValueError
+    - args: ["   ", 4, 6]
+      raises: ValueError
+    - args: ["north", 0, 6]
+      raises: ValueError
+    - args: ["north", -1, 6]
+      raises: ValueError
+    - args: ["south", 2.5, 3]
+      expect: "south:2.5"
+    - args: ["south", 3.1, 3]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Um calado exatamente igual a max_depth cabe - o brief diz que "maior que" é a
+      recusa. Confira o que sua comparação faz exatamente no limite antes de confiar nela.
+  - level: 2
+    text: |
+      Apare o nome do berço primeiro e recuse se não sobrar nada. Depois recuse um calado
+      de zero ou menos. Depois recuse um calado acima de max_depth. Monte cada mensagem
+      com uma f-string contendo o berço e o número. Retorne a resposta depois das três.
+  - level: 3
+    text: |
+      Uma recusa, escrita do jeito que a missão quer:
+
+          if peso > limite:
+              raise ValueError(
+                  f"caixote {nome!r} passa do limite de {limite} kg, veio {peso}"
+              )
+
+      A sua tem três dessas, cada uma nomeando uma regra diferente.
+
+solution: |
+  def assign_berth(berth, draught, max_depth):
+      name = berth.strip()
+      if not name:
+          raise ValueError(f"berth name must not be blank, got {berth!r}")
+
+      if draught <= 0:
+          raise ValueError(f"berth {name!r}: draught must be above zero, got {draught}")
+
+      if draught > max_depth:
+          raise ValueError(
+              f"berth {name!r} is {max_depth} m deep, but the ship draws {draught} m"
+          )
+
+      return f"{name}:{draught}"

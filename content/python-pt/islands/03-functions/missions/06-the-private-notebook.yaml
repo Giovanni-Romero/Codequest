@@ -1,0 +1,155 @@
+# Missao 6 de Funcoes. Introduz: scope. Reforca: parameters.
+# Limite honesto: um jogador que apele para `global` ainda passa, porque o motor chama a
+# funcao uma vez por processo. A missao ensina o conceito e testa o resultado correto;
+# ela nao consegue reprovar toda abordagem errada. Documentado no syllabus.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-06
+title: O caderno particular
+track: python
+island: functions
+order: 6
+difficulty: simple
+tags: [scope, locals, globals]
+xp: 20
+
+concepts:
+  - scope
+  - parameters
+
+teaching:
+  analogy: |
+    As ordens permanentes estão pregadas na parede da sala dos oficiais. Qualquer oficial
+    pode entrar e ler. Ninguém tem o direito de riscar uma linha com a própria caneta só
+    porque hoje é inconveniente - eles copiam o número para o próprio caderno e trabalham
+    com a cópia.
+
+    Quando o turno acaba, o caderno vai para a gaveta e tudo que foi rabiscado nele
+    some. A parede continua intacta. Isso é escopo.
+
+  explanation: |
+    Nomes criados dentro de uma função são locais a ela. Passam a existir quando a
+    chamada começa e desaparecem quando ela retorna. Duas funções podem cada uma ter uma
+    variável chamada total e nunca interferir - cada chamada ganha a sua.
+
+    Uma função pode *ler* um nome do módulo ao redor. É por isso que uma constante
+    definida no topo do arquivo é visível em tudo abaixo dela.
+
+    Atribuir é a parte que surpreende. No momento em que uma função atribui a um nome em
+    qualquer lugar do corpo dela, Python trata aquele nome como local pela função inteira
+    - inclusive nas linhas antes da atribuição. Então isto falha:
+
+        LIMITE = 5
+        def f():
+            LIMITE = LIMITE + 1     # UnboundLocalError: LIMITE usado antes de atribuir
+
+    Python não está lendo o LIMITE de fora e depois guardando localmente. Ele decidiu que
+    LIMITE era local, e então não encontrou nada nele ainda. A correção não é `global` - é
+    copiar o valor para um local com nome claro e trabalhar nele.
+
+  worked_example: |
+    # Um limite de velocidade na parede, e um ajuste local
+    VELOCIDADE_BASE = 20
+
+    def cruzeiro(carga):
+        velocidade = VELOCIDADE_BASE     # le o nome de fora, copia num local
+        if carga > 100:
+            velocidade = velocidade - 5  # muda o LOCAL, nao a parede
+        return velocidade
+
+    print(cruzeiro(50))                  # 20
+    print(cruzeiro(200))                 # 15
+    print(VELOCIDADE_BASE)               # 20 - nunca tocada
+
+  key_points:
+    - Variáveis criadas dentro de uma função somem quando ela retorna. Para manter um valor, retorne-o.
+    - Uma função pode ler um nome de nível de módulo, mas atribuir a esse nome em qualquer lugar o torna local pela função inteira.
+    - "Copie um valor de fora para um local com nome novo, depois mude a cópia. Isso é mais claro que `global` e mais seguro."
+    - Duas funções podem usar o mesmo nome de variável sem colidir. Cada chamada tem o seu.
+
+brief: |
+  O esqueleto já tem duas ordens permanentes pregadas na parede, como constantes de nível
+  de módulo: STANDARD_RATION e EMERGENCY_RESERVE. Deixe as duas exatamente como estão.
+
+  Escreva uma função chamada voyage_load que recebe crew e days, e retorna o total de
+  rações a carregar:
+
+    - a comida do dia a dia: crew vezes days vezes STANDARD_RATION
+    - mais uma reserva de emergência
+
+  A reserva normalmente é EMERGENCY_RESERVE. Numa viagem longa - estritamente mais de 30
+  dias - a reserva dobra.
+
+  Calcule a reserva numa variável local. Não reatribua EMERGENCY_RESERVE em si: a próxima
+  viagem lê a mesma parede.
+
+signature:
+  entrypoint: voyage_load
+  stub: |
+    STANDARD_RATION = 2
+    EMERGENCY_RESERVE = 10
+
+
+    def voyage_load(crew, days):
+        # Leia as constantes. Copie o que precisa mudar num local seu.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [5, 10]
+      expect: 110
+    - args: [5, 40]
+      expect: 420
+  hidden:
+    - args: [0, 0]
+      expect: 10
+    - args: [1, 1]
+      expect: 12
+    - args: [1, 30]
+      expect: 70
+    - args: [1, 31]
+      expect: 82
+    - args: [0, 100]
+      expect: 20
+    - args: [10, 2]
+      expect: 50
+
+hints:
+  - level: 1
+    text: |
+      A reserva muda dependendo da viagem, mas a constante na parede não pode mudar. Onde
+      mora o valor alterado, se não na constante?
+  - level: 2
+    text: |
+      Atribua EMERGENCY_RESERVE a uma variável local com nome próprio. Use um if em days
+      para dobrar esse local quando a viagem passar de 30 dias. Depois retorne o cálculo
+      da comida mais o local.
+  - level: 3
+    text: |
+      A mesma forma copia-depois-ajusta, para uma taxa de frete:
+
+          TAXA_BASE = 8
+
+          def taxa(peso):
+              valor = TAXA_BASE
+              if peso > 20:
+                  valor = valor * 2
+              return valor
+
+      A sua soma um cálculo em cima do local ajustado antes de retornar.
+
+solution: |
+  STANDARD_RATION = 2
+  EMERGENCY_RESERVE = 10
+
+
+  def voyage_load(crew, days):
+      reserve = EMERGENCY_RESERVE
+      if days > 30:
+          reserve = reserve * 2
+      return crew * days * STANDARD_RATION + reserve

@@ -1,0 +1,23 @@
+id: errors-and-edge-cases
+name: Erros e Casos-Limite
+track: python
+order: 5
+theme: O que fazer quando a resposta não existe
+description: |
+  Toda função que você escreveu até aqui assumiu que receberia algo sensato. Esta ilha é
+  sobre o dia em que não é: uma lista vazia onde um número foi prometido, uma divisão por
+  zero, um nome que nunca esteve no livro-razão. Falhar não é o oposto de funcionar -
+  decidir como falhar faz parte de escrever a coisa.
+
+concepts:
+  - exceptions
+  - try-except
+  - raising
+  - eafp-vs-lbyl
+  - input-validation
+  - defensive-design
+
+unlock_requires:
+  missions_completed: 44
+
+completion_reward_xp: 200

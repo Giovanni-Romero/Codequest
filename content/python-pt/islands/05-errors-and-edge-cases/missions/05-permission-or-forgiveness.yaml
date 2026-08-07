@@ -1,0 +1,187 @@
+# Missao 5 de Erros e Casos-Limite. Introduz: eafp-vs-lbyl.
+# Reforca: try-except, raising.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-05
+title: Permissão ou perdão
+track: python
+island: errors-and-edge-cases
+order: 5
+difficulty: simple
+tags: [eafp, lbyl, style]
+xp: 20
+
+concepts:
+  - eafp-vs-lbyl
+  - try-except
+
+teaching:
+  analogy: |
+    Duas formas de ocupar o último lugar do bote salva-vidas. Olhar primeiro, ver que
+    está livre, e então sentar - ou sentar e pedir desculpas se já tinha alguém ali.
+
+    Olhar primeiro parece obviamente mais seguro até você notar a brecha: entre a sua
+    olhada e o seu peso chegando, outra pessoa pode ocupar. A checagem te contou sobre o
+    passado, e você agiu no presente.
+
+  explanation: |
+    LBYL - Look Before You Leap, "olhe antes de pular" - checa primeiro:
+    `if chave in dados:` e então usa.
+
+    EAFP - Easier to Ask Forgiveness than Permission, "mais fácil pedir perdão que
+    permissão" - faz e trata a falha: `try:` usa `except KeyError:`. Este é o padrão mais
+    pythônico, e existe uma razão além do gosto.
+
+    Uma checagem e a ação depois dela são dois passos separados, e qualquer coisa que
+    possa mudar entre eles vai eventualmente mudar entre eles. Com um dicionário num
+    único programa essa brecha é teórica; com um arquivo, uma rede ou outra thread ela é
+    um bug real com nome - uma condição de corrida.
+
+    EAFP também faz uma busca em vez de duas, e lê melhor quando a falha é rara.
+
+    LBYL é a escolha melhor quando a checagem é barata e clara e não há nada contra o que
+    correr - `if not itens:` antes de dividir é mais fácil de ler que capturar
+    ZeroDivisionError, e ninguém vai discutir.
+
+    Os dois estão certos aqui. O ponto é escolher, não recitar.
+
+  worked_example: |
+    # A mesma busca escrita dos dois jeitos
+    estoque = {"corda": 4}
+
+    def conta_lbyl(nome):
+        if nome in estoque:          # olhe
+            return estoque[nome]     # depois pule
+        return 0
+
+    def conta_eafp(nome):
+        try:
+            return estoque[nome]     # pule
+        except KeyError:
+            return 0                 # peca desculpas
+
+    print(conta_lbyl("corda"), conta_eafp("corda"))    # 4 4
+    print(conta_lbyl("sal"), conta_eafp("sal"))        # 0 0
+
+  key_points:
+    - "LBYL checa primeiro; EAFP tenta primeiro e trata a falha. Os dois são código correto."
+    - Uma checagem e a ação depois dela são dois passos, e a brecha entre eles é onde moram as condições de corrida.
+    - EAFP é o padrão pythônico, especialmente quando a falha é rara e a checagem seria uma segunda busca.
+    - LBYL vence quando a checagem é barata, óbvia e nada pode mudar por baixo.
+
+brief: |
+  Uma leitura de profundidade chega como texto e precisa virar número.
+
+  Escreva duas funções que fazem exatamente o mesmo trabalho, uma em cada estilo. As duas
+  recebem um texto e retornam ele convertido em número inteiro, ou 0 quando não for um
+  número.
+
+    - parse_lbyl checa primeiro, sem try / except. O método de string que diz se um texto
+      é feito só de dígitos é .isdigit()
+    - parse_eafp converte primeiro e trata a falha com try / except
+
+  Depois escreva parse_depth, que o jogo chama, recebendo text e um style - "lbyl" ou
+  "eafp" - e retornando o resultado da função correspondente. Qualquer outro estilo
+  levanta ValueError.
+
+  Repare que .isdigit() é False para "-5", então parse_lbyl retorna 0 ali enquanto
+  parse_eafp retorna -5. Essa diferença é real e é o ponto: os dois estilos nem sempre
+  são idênticos, e a versão que checa é só tão boa quanto a checagem dela.
+
+signature:
+  entrypoint: parse_depth
+  stub: |
+    def parse_lbyl(text):
+        # Cheque que sao todos digitos, depois converta. Sem try/except.
+        # seu codigo aqui
+        pass
+
+
+    def parse_eafp(text):
+        # Converta, e trate a falha.
+        # seu codigo aqui
+        pass
+
+
+    def parse_depth(text, style):
+        # Despache para o estilo pedido. Recuse um estilo que voce nao tem.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["42", "lbyl"]
+      expect: 42
+    - args: ["oops", "eafp"]
+      expect: 0
+  hidden:
+    - args: ["42", "eafp"]
+      expect: 42
+    - args: ["oops", "lbyl"]
+      expect: 0
+    - args: ["", "lbyl"]
+      expect: 0
+    - args: ["", "eafp"]
+      expect: 0
+    - args: ["-5", "lbyl"]
+      expect: 0
+    - args: ["-5", "eafp"]
+      expect: -5
+    - args: ["7", "sideways"]
+      raises: ValueError
+    - args: ["0", "eafp"]
+      expect: 0
+
+hints:
+  - level: 1
+    text: |
+      Descubra o que cada versão faz com "-5" antes de escrever qualquer uma. Elas
+      discordam, e o brief te diz que isso é esperado - então não tente fazê-las
+      coincidir.
+  - level: 2
+    text: |
+      parse_lbyl retorna int(text) quando text.isdigit() é verdadeiro, e 0 caso
+      contrário. parse_eafp põe int(text) num try e retorna 0 de um except ValueError.
+      parse_depth checa o estilo, chama a função certa, e levanta ValueError para
+      qualquer outra coisa.
+  - level: 3
+    text: |
+      Os dois estilos, numa conversão diferente:
+
+          def como_float_lbyl(s):
+              if s.replace(".", "").isdigit():
+                  return float(s)
+              return 0.0
+
+          def como_float_eafp(s):
+              try:
+                  return float(s)
+              except ValueError:
+                  return 0.0
+
+      A sua converte para número inteiro e tem uma terceira função escolhendo entre elas.
+
+solution: |
+  def parse_lbyl(text):
+      if text.isdigit():
+          return int(text)
+      return 0
+
+
+  def parse_eafp(text):
+      try:
+          return int(text)
+      except ValueError:
+          return 0
+
+
+  def parse_depth(text, style):
+      if style == "lbyl":
+          return parse_lbyl(text)
+      if style == "eafp":
+          return parse_eafp(text)
+      raise ValueError(f"unknown style {style!r}")

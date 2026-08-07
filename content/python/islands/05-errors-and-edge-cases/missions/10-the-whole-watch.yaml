@@ -1,0 +1,177 @@
+# Mission 10 of Errors and Edge Cases. Closing mission. Introduces nothing.
+# Combines all six concepts of the island.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-10
+title: The whole watch
+track: python
+island: errors-and-edge-cases
+order: 10
+difficulty: moderate
+tags: [validation, try-except, raising, defensive-design]
+xp: 30
+
+concepts:
+  - exceptions
+  - try-except
+  - raising
+  - eafp-vs-lbyl
+  - input-validation
+  - defensive-design
+
+teaching:
+  analogy: |
+    End of watch, and the log has to balance. The officer refuses the whole page if the
+    heading is wrong - there is no point recording soundings against a berth that does not
+    exist. But a single smudged sounding does not void the page; it is skipped and
+    counted, and the page still goes in the book.
+
+    Two different failures, two different answers, and knowing which is which is the
+    entire skill this island taught.
+
+  explanation: |
+    Nothing new. What this mission asks is the judgment, not the syntax: for each way
+    things can go wrong, decide whether it ends the job or is absorbed.
+
+    The rule that has run through the island: **refuse what makes the work meaningless,
+    absorb what merely makes it incomplete.**
+
+    A missing berth name means there is nothing to attach the readings to, so nothing you
+    could do with the rest would be correct - that is a raise. One unreadable sounding out
+    of twenty leaves nineteen good ones, and a total over nineteen is still useful - that
+    is a catch, plus a count so nobody mistakes it for twenty.
+
+    Validate the page heading first, before touching a single sounding. Then loop.
+
+  worked_example: |
+    # Closing a till, not a watch
+    def close_till(operator, amounts):
+        if not operator.strip():
+            raise ValueError(f"operator must be named, got {operator!r}")
+
+        total = 0
+        rejected = 0
+        for amount in amounts:
+            try:
+                total = total + int(amount)
+            except ValueError:
+                rejected = rejected + 1
+
+        return {"operator": operator.strip().lower(), "total": total, "rejected": rejected}
+
+    print(close_till(" ANA ", ["10", "x"]))
+    # {'operator': 'ana', 'total': 10, 'rejected': 1}
+
+  key_points:
+    - A closing mission asks for judgment, not new syntax. Every construct here has its own mission behind it.
+    - "The rule of the island: refuse what makes the work meaningless, absorb what makes it merely incomplete."
+    - Validate the heading before processing the items, so a bad page fails before any work is wasted.
+    - Report what was skipped. A total that quietly ignored five entries is a total nobody can use.
+
+brief: |
+  Write a function called close_watch that takes berth (text) and soundings (a list of
+  text values), and returns a dictionary with exactly these four keys:
+
+    - "berth": the berth name, trimmed and lowercased
+    - "count": how many soundings could be read as whole numbers
+    - "deepest": the largest of those readings, or 0 when none could be read
+    - "skipped": how many could not be read
+
+  Refuse the whole watch, before reading any sounding:
+
+    - berth is not text: raise TypeError
+    - berth is empty once trimmed: raise ValueError
+
+  A sounding that cannot be read as a whole number is skipped and counted, never fatal.
+  An empty list of soundings is not an error - it is a watch where nothing was measured.
+
+signature:
+  entrypoint: close_watch
+  stub: |
+    def close_watch(berth, soundings):
+        # Refuse the page first. Then read what you can and count what you cannot.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  North  ", ["10", "20", "x"]]
+      expect: { berth: "north", count: 2, deepest: 20, skipped: 1 }
+    - args: ["", ["10"]]
+      raises: ValueError
+  hidden:
+    - args: ["a", []]
+      expect: { berth: "a", count: 0, deepest: 0, skipped: 0 }
+    - args: ["a", ["x", "y"]]
+      expect: { berth: "a", count: 0, deepest: 0, skipped: 2 }
+    - args: [5, ["10"]]
+      raises: TypeError
+    - args: ["   ", ["10"]]
+      raises: ValueError
+    - args: ["SOUTH", ["-5", "-1"]]
+      expect: { berth: "south", count: 2, deepest: -1, skipped: 0 }
+    - args: ["b", ["  7  ", "1.5", "3"]]
+      expect: { berth: "b", count: 2, deepest: 7, skipped: 1 }
+    - args: ["c", ["0"]]
+      expect: { berth: "c", count: 1, deepest: 0, skipped: 0 }
+
+hints:
+  - level: 1
+    text: |
+      Look at the "deepest" value for a watch of only negative readings. Starting that
+      accumulator at 0 gives the wrong answer - the same trap the Foundations island
+      closing mission had. What should it start as instead?
+  - level: 2
+    text: |
+      Validate the berth type and emptiness first and raise. Then loop with a try /
+      except ValueError around int(sounding), collecting the successful readings into a
+      list and counting the failures. After the loop, deepest is max() of that list when
+      it has anything in it, and 0 when it does not.
+  - level: 3
+    text: |
+      The two halves, on a different closing routine:
+
+          if not isinstance(label, str):
+              raise TypeError(f"label must be text, got {type(label).__name__}")
+
+          good = []
+          bad = 0
+          for raw in rows:
+              try:
+                  good.append(int(raw))
+              except ValueError:
+                  bad = bad + 1
+
+      Yours builds a dictionary from what those two halves produce.
+
+solution: |
+  def close_watch(berth, soundings):
+      if not isinstance(berth, str):
+          raise TypeError(f"berth must be text, got {type(berth).__name__}")
+
+      name = berth.strip().lower()
+      if not name:
+          raise ValueError(f"berth must not be blank, got {berth!r}")
+
+      readings = []
+      skipped = 0
+      for sounding in soundings:
+          try:
+              readings.append(int(sounding))
+          except ValueError:
+              skipped = skipped + 1
+
+      deepest = 0
+      if readings:
+          deepest = max(readings)
+
+      return {
+          "berth": name,
+          "count": len(readings),
+          "deepest": deepest,
+          "skipped": skipped,
+      }

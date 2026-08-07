@@ -1,0 +1,115 @@
+# Mission 11 of Collections. Relief mission, judgment call reversed from mission 10.
+# Reinforces: list-comprehension, indexing-and-slicing, nested-structures, when-not-to-comprehend.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-11
+title: The readable report
+track: python
+island: collections
+order: 11
+difficulty: simple
+tags: [list-comprehension, readability]
+xp: 20
+
+concepts:
+  - list-comprehension
+  - indexing-and-slicing
+  - nested-structures
+  - when-not-to-comprehend
+
+teaching:
+  analogy: |
+    Not every knot needs to be fancy. Sometimes the simplest hitch holds the line
+    perfectly well, and reaching for something elaborate would just be showing off.
+    This is one of those - a straight, flat swap of one thing for another, exactly
+    what a comprehension is built for.
+
+  explanation: |
+    The judgment call from the last mission cuts both ways. A comprehension that pulls
+    one value out of each item, with no nested loop and no buried condition, is usually
+    the more readable option, not the less readable one - that is the shape this mission
+    hands you.
+
+    The rule was never "avoid comprehensions". It was "read what you wrote and ask
+    whether it is still clear". Here, it is.
+
+  worked_example: |
+    # Pulling out just the emails from a contact list, not crate names
+    contacts = [{"name": "Ana", "email": "a@ship.io"}, {"name": "Bo", "email": "b@ship.io"}]
+    emails = [contact["email"] for contact in contacts]
+    print(emails)      # ['a@ship.io', 'b@ship.io']
+
+  key_points:
+    - A flat comprehension - one loop, one expression, nothing nested inside it - is usually the readable choice.
+    - The difference from the last mission is shape - one level of access here, two nested there.
+    - Pulling one field out of a list of dicts is one of the most common comprehension uses there is.
+    - A slice combines cleanly with a comprehension - slice first or filter the result, whichever reads clearer to you.
+
+brief: |
+  Write a function called crate_names that receives the full list of crate dictionaries
+  (each with a "name" and a "weight") and how many names to return, and returns just the
+  names of the first that many crates, in order, as a list.
+
+  This is a good fit for a single comprehension over a slice of the list - a flat
+  transform, no nested loops, no buried condition. There is no wrong tool here, just the
+  one that reads clearly - a loop would also be a perfectly fine choice.
+
+signature:
+  entrypoint: crate_names
+  stub: |
+    def crate_names(crates, count):
+        # Take the first "count" crates, then pull out just their names.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{"name": "rope", "weight": 1}, {"name": "salt", "weight": 2}, {"name": "nails", "weight": 3}]
+        - 2
+      expect: ["rope", "salt"]
+    - args:
+        - [{"name": "solo", "weight": 9}]
+        - 5
+      expect: ["solo"]
+  hidden:
+    - args: [[], 3]
+      expect: []
+    - args:
+        - [{"name": "a", "weight": 0}, {"name": "b", "weight": 0}]
+        - 0
+      expect: []
+    - args:
+        - [{"name": "x", "weight": 1}, {"name": "y", "weight": 1}, {"name": "z", "weight": 1}]
+        - 1
+      expect: ["x"]
+    - args:
+        - [{"name": "p", "weight": 1}, {"name": "q", "weight": 1}, {"name": "r", "weight": 1}, {"name": "s", "weight": 1}]
+        - 3
+      expect: ["p", "q", "r"]
+
+hints:
+  - level: 1
+    text: |
+      How many levels do you have to reach into each item to get what you need? Compare
+      that to the last mission. And how do you keep only the first several items of a
+      list - what tool from Island 2's second mission does that safely?
+  - level: 2
+    text: |
+      Slice the list to the first count items, then use a comprehension to pull out each
+      one's "name" field.
+  - level: 3
+    text: |
+      Same shape, pulling ages out of the first few passengers on a boarding list:
+
+          ages = [passenger["age"] for passenger in passengers[:limit]]
+
+      Yours pulls a different field, from crates instead of passengers.
+
+solution: |
+  def crate_names(crates, count):
+      return [crate["name"] for crate in crates[:count]]

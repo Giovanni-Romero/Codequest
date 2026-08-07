@@ -1,0 +1,178 @@
+# Missao 10 de Erros e Casos-Limite. Missao de fechamento. Nao introduz nada.
+# Combina os seis conceitos da ilha.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-10
+title: O turno inteiro
+track: python
+island: errors-and-edge-cases
+order: 10
+difficulty: moderate
+tags: [validation, try-except, raising, defensive-design]
+xp: 30
+
+concepts:
+  - exceptions
+  - try-except
+  - raising
+  - eafp-vs-lbyl
+  - input-validation
+  - defensive-design
+
+teaching:
+  analogy: |
+    Fim de turno, e o diário precisa fechar. O oficial recusa a página inteira se o
+    cabeçalho estiver errado - não adianta registrar sondagens contra um berço que não
+    existe. Mas uma única sondagem borrada não anula a página; ela é pulada e contada, e a
+    página vai para o livro do mesmo jeito.
+
+    Duas falhas diferentes, duas respostas diferentes, e saber qual é qual é a habilidade
+    inteira que esta ilha ensinou.
+
+  explanation: |
+    Nada novo. O que esta missão pede é o julgamento, não a sintaxe: para cada jeito das
+    coisas darem errado, decida se aquilo encerra o trabalho ou é absorvido.
+
+    A regra que atravessou a ilha: **recuse o que torna o trabalho sem sentido, absorva o
+    que só o torna incompleto.**
+
+    Um nome de berço ausente significa que não há nada a que anexar as leituras, então
+    nada que você fizesse com o resto estaria correto - isso é um raise. Uma sondagem
+    ilegível entre vinte deixa dezenove boas, e um total sobre dezenove ainda é útil -
+    isso é um catch, mais uma contagem para ninguém confundir com vinte.
+
+    Valide o cabeçalho da página primeiro, antes de tocar numa única sondagem. Depois faça
+    o laço.
+
+  worked_example: |
+    # Fechando um caixa, nao um turno
+    def fechar_caixa(operador, valores):
+        if not operador.strip():
+            raise ValueError(f"operador precisa ser nomeado, veio {operador!r}")
+
+        total = 0
+        recusados = 0
+        for valor in valores:
+            try:
+                total = total + int(valor)
+            except ValueError:
+                recusados = recusados + 1
+
+        return {"operador": operador.strip().lower(), "total": total, "recusados": recusados}
+
+    print(fechar_caixa(" ANA ", ["10", "x"]))
+    # {'operador': 'ana', 'total': 10, 'recusados': 1}
+
+  key_points:
+    - Uma missão de fechamento pede julgamento, não sintaxe nova. Toda construção aqui tem sua própria missão por trás.
+    - "A regra da ilha: recuse o que torna o trabalho sem sentido, absorva o que o torna apenas incompleto."
+    - Valide o cabeçalho antes de processar os itens, para uma página ruim falhar antes de qualquer trabalho ser desperdiçado.
+    - Reporte o que foi pulado. Um total que ignorou cinco entradas em silêncio é um total que ninguém pode usar.
+
+brief: |
+  Escreva uma função chamada close_watch que recebe berth (texto) e soundings (uma lista
+  de valores de texto), e retorna um dicionário com exatamente estas quatro chaves:
+
+    - "berth": o nome do berço, aparado e em minúsculas
+    - "count": quantas sondagens puderam ser lidas como números inteiros
+    - "deepest": a maior dessas leituras, ou 0 quando nenhuma pôde ser lida
+    - "skipped": quantas não puderam ser lidas
+
+  Recuse o turno inteiro, antes de ler qualquer sondagem:
+
+    - berth não é texto: levante TypeError
+    - berth fica vazio depois de aparado: levante ValueError
+
+  Uma sondagem que não pode ser lida como número inteiro é pulada e contada, nunca fatal.
+  Uma lista vazia de sondagens não é um erro - é um turno em que nada foi medido.
+
+signature:
+  entrypoint: close_watch
+  stub: |
+    def close_watch(berth, soundings):
+        # Recuse a pagina primeiro. Depois leia o que puder e conte o que nao puder.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["  North  ", ["10", "20", "x"]]
+      expect: { berth: "north", count: 2, deepest: 20, skipped: 1 }
+    - args: ["", ["10"]]
+      raises: ValueError
+  hidden:
+    - args: ["a", []]
+      expect: { berth: "a", count: 0, deepest: 0, skipped: 0 }
+    - args: ["a", ["x", "y"]]
+      expect: { berth: "a", count: 0, deepest: 0, skipped: 2 }
+    - args: [5, ["10"]]
+      raises: TypeError
+    - args: ["   ", ["10"]]
+      raises: ValueError
+    - args: ["SOUTH", ["-5", "-1"]]
+      expect: { berth: "south", count: 2, deepest: -1, skipped: 0 }
+    - args: ["b", ["  7  ", "1.5", "3"]]
+      expect: { berth: "b", count: 2, deepest: 7, skipped: 1 }
+    - args: ["c", ["0"]]
+      expect: { berth: "c", count: 1, deepest: 0, skipped: 0 }
+
+hints:
+  - level: 1
+    text: |
+      Olhe o valor de "deepest" para um turno só de leituras negativas. Começar esse
+      acumulador em 0 dá a resposta errada - a mesma armadilha da missão de fechamento da
+      ilha de Fundamentos. Como ele deveria começar?
+  - level: 2
+    text: |
+      Valide o tipo e o vazio do berço primeiro e levante. Depois faça o laço com um
+      try / except ValueError em volta de int(sounding), juntando as leituras bem
+      sucedidas numa lista e contando as falhas. Depois do laço, deepest é max() dessa
+      lista quando ela tem algo, e 0 quando não tem.
+  - level: 3
+    text: |
+      As duas metades, numa rotina de fechamento diferente:
+
+          if not isinstance(rotulo, str):
+              raise TypeError(f"rotulo precisa ser texto, veio {type(rotulo).__name__}")
+
+          bons = []
+          ruins = 0
+          for bruto in linhas:
+              try:
+                  bons.append(int(bruto))
+              except ValueError:
+                  ruins = ruins + 1
+
+      A sua monta um dicionário com o que essas duas metades produzem.
+
+solution: |
+  def close_watch(berth, soundings):
+      if not isinstance(berth, str):
+          raise TypeError(f"berth must be text, got {type(berth).__name__}")
+
+      name = berth.strip().lower()
+      if not name:
+          raise ValueError(f"berth must not be blank, got {berth!r}")
+
+      readings = []
+      skipped = 0
+      for sounding in soundings:
+          try:
+              readings.append(int(sounding))
+          except ValueError:
+              skipped = skipped + 1
+
+      deepest = 0
+      if readings:
+          deepest = max(readings)
+
+      return {
+          "berth": name,
+          "count": len(readings),
+          "deepest": deepest,
+          "skipped": skipped,
+      }

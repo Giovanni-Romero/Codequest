@@ -1,0 +1,159 @@
+# Missao 9 de Funcoes. Introduz: args-kwargs.
+# Reforca: parameters, default-arguments, dictionaries, lists.
+#
+# NOTA CURRICULAR: esta missao retorna um dict em vez de um texto formatado de proposito.
+# Montar "rope, salt" a partir de uma tupla pede str.join, e join-vs-concat e um conceito
+# da Ilha 4 - exigi-lo aqui introduziria duas coisas novas ao mesmo tempo. Retornar dado
+# estruturado mantem a licao em *args/**kwargs, que e para o que a missao existe.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-09
+title: O diário de bordo
+track: python
+island: functions
+order: 9
+difficulty: simple
+tags: [args, kwargs, variadic]
+xp: 20
+
+concepts:
+  - args-kwargs
+  - parameters
+
+teaching:
+  analogy: |
+    O diário de bordo tem uma coluna fixa - o que aconteceu - e depois todo o espaço de
+    que o oficial precisar. Algumas entradas listam três itens, outras nenhum. Algumas
+    carregam anotações na margem: tempo, quem estava de turno, se era urgente.
+
+    O formulário não tem uma caixinha para toda anotação possível. Ele tem uma parte fixa
+    e uma parte aberta, e a parte aberta aceita o que você trouxer.
+
+  explanation: |
+    Um parâmetro escrito com uma estrela, *items, coleta todo argumento posicional extra
+    numa tupla. Chame a função com três extras e items guarda três; chame sem nenhum e
+    items é uma tupla vazia.
+
+    Um parâmetro escrito com duas estrelas, **flags, coleta todo argumento nomeado extra
+    num dicionário, onde as chaves são os nomes que quem chamou usou.
+
+    Nenhum dos nomes é mágico. args e kwargs são só convenção - *items e **flags
+    funcionam exatamente igual e leem melhor. As estrelas fazem o trabalho, não os nomes.
+
+    A ordem na definição é fixa: parâmetros normais, depois *args, depois **kwargs.
+    Python não teria como dar sentido a nenhum outro arranjo.
+
+  worked_example: |
+    # Uma nota de pedido, nao uma entrada de diario
+    def pedido(cliente, *linhas, **notas):
+        marcadas = []
+        for nota in sorted(notas):
+            if notas[nota]:
+                marcadas.append(nota)
+        return {"quem": cliente, "quantas": len(linhas), "notas": marcadas}
+
+    print(pedido("Ana"))                          # {'quem': 'Ana', 'quantas': 0, 'notas': []}
+    print(pedido("Ana", "cha", "geleia"))         # quantas 2, notas []
+    print(pedido("Ana", "cha", pressa=True))      # quantas 1, notas ['pressa']
+    print(pedido("Ana", presente=True, pressa=False))  # quantas 0, notas ['presente']
+
+  key_points:
+    - "*nome junta os argumentos posicionais que sobraram numa tupla - uma tupla, não uma lista."
+    - "**nome junta os argumentos nomeados que sobraram num dict, indexado pelos nomes que quem chamou digitou."
+    - "A ordem na definição é fixa: parâmetros normais, depois *args, depois **kwargs."
+    - "list(uma_tupla) transforma uma tupla numa lista, do mesmo jeito que set(uma_lista) fez um set lá em Coleções."
+    - '"args" e "kwargs" são só hábito. As estrelas são a sintaxe; nomeie-os pelo que guardam.'
+
+brief: |
+  Escreva uma função chamada log_entry que registra uma entrada no diário de bordo.
+
+  Ela recebe:
+
+    - action: o que aconteceu, um texto. Sempre obrigatório.
+    - qualquer quantidade de argumentos posicionais extras: os itens envolvidos.
+    - qualquer quantidade de argumentos nomeados extras: marcadores sobre a entrada.
+
+  Retorne um dicionário com exatamente estas três chaves:
+
+    - "action": o texto da ação, sem mudança
+    - "items": os argumentos posicionais extras, como lista, na ordem em que vieram
+    - "flags": os nomes dos marcadores cujo valor é True, como lista, em ordem
+      alfabética. Marcadores com valor False ficam de fora completamente.
+
+  Sem itens extras, a lista "items" fica vazia. Sem marcadores verdadeiros, a lista
+  "flags" fica vazia.
+
+      log_entry("sail")
+        -> {"action": "sail", "items": [], "flags": []}
+
+      log_entry("load", "rope", "salt", urgent=True, night=False)
+        -> {"action": "load", "items": ["rope", "salt"], "flags": ["urgent"]}
+
+signature:
+  entrypoint: log_entry
+  stub: |
+    def log_entry(action, *items, **flags):
+        # items chega como tupla. flags chega como dict. Monte a resposta com os dois.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["load", "rope", "salt"]
+      expect: { action: "load", items: ["rope", "salt"], flags: [] }
+    - args: ["sail"]
+      expect: { action: "sail", items: [], flags: [] }
+  hidden:
+    - args: ["load", "rope"]
+      kwargs: { urgent: true }
+      expect: { action: "load", items: ["rope"], flags: ["urgent"] }
+    - args: ["sail"]
+      kwargs: { night: true, urgent: false }
+      expect: { action: "sail", items: [], flags: ["night"] }
+    - args: ["dock", "a", "b", "c"]
+      kwargs: { urgent: true, night: true }
+      expect: { action: "dock", items: ["a", "b", "c"], flags: ["night", "urgent"] }
+    - args: ["rest"]
+      kwargs: { calm: false }
+      expect: { action: "rest", items: [], flags: [] }
+    - args: ["scan"]
+      kwargs: { zulu: true, alpha: true }
+      expect: { action: "scan", items: [], flags: ["alpha", "zulu"] }
+    - args: ["load", "one"]
+      expect: { action: "load", items: ["one"], flags: [] }
+
+hints:
+  - level: 1
+    text: |
+      Antes de escrever qualquer coisa, descubra que tipo é items e que tipo é flags. Um
+      deles precisa ser convertido antes de entrar na resposta; o outro precisa ser
+      filtrado e ordenado.
+  - level: 2
+    text: |
+      items é uma tupla, então envolva com list(...) para obter a lista que a resposta
+      quer. Para os marcadores, percorra sorted(flags) e junte numa lista nova cada nome
+      cujo valor é True. Depois retorne um dict com as três chaves.
+  - level: 3
+    text: |
+      A metade da filtragem, num conjunto diferente de opções:
+
+          escolhidas = []
+          for nome in sorted(opcoes):
+              if opcoes[nome]:
+                  escolhidas.append(nome)
+
+      sorted() num dicionário percorre as chaves dele, já em ordem. A sua faz isso para
+      os marcadores e junta com os itens convertidos.
+
+solution: |
+  def log_entry(action, *items, **flags):
+      chosen = []
+      for name in sorted(flags):
+          if flags[name]:
+              chosen.append(name)
+
+      return {"action": action, "items": list(items), "flags": chosen}

@@ -1,0 +1,23 @@
+id: strings-and-text
+name: Strings e Texto
+track: python
+order: 4
+theme: Texto é dado, e ele não muda por baixo de você
+description: |
+  Quase tudo que um programa recebe do mundo externo chega como texto: um nome digitado
+  à mão, uma linha lida de um arquivo, um número que ainda não é um número. Esta ilha é
+  sobre limpar esse texto, lê-lo, montá-lo de volta - e sobre a única regra que faz
+  strings se comportarem diferente de toda coleção que você conheceu até aqui.
+
+concepts:
+  - string-methods
+  - string-immutability
+  - f-strings
+  - join-vs-concat
+  - split-and-parse
+  - encoding-basics
+
+unlock_requires:
+  missions_completed: 34
+
+completion_reward_xp: 160

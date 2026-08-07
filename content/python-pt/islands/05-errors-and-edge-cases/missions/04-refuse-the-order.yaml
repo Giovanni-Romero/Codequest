@@ -1,0 +1,142 @@
+# Missao 4 de Erros e Casos-Limite. Introduz: raising.
+# Reforca: exceptions, conditionals.
+# Usa o campo `raises:` de caso de teste. Uma submissao que retorna um valor em vez de
+# levantar falha no ramo do evaluator construido exatamente para isso.
+# Schema reference: docs/mission-schema.md
+
+id: py-errors-04
+title: Recuse a ordem
+track: python
+island: errors-and-edge-cases
+order: 4
+difficulty: simple
+tags: [raising, valueerror, validation]
+xp: 20
+
+concepts:
+  - raising
+  - exceptions
+
+teaching:
+  analogy: |
+    Um comissário que recebe uma requisição de menos quatro barris não entrega menos
+    quatro barris, e não entrega zero calado. Ele devolve o papel e diz o que está errado
+    com ele. A requisição não era uma ordem difícil de cumprir - não era uma ordem.
+
+    Retornar um 0 silencioso ali é pior que recusar, porque o navio zarpa acreditando ter
+    algo que não tem.
+
+  explanation: |
+    Você levanta uma exceção com `raise`, seguido do tipo e de uma mensagem:
+
+        raise ValueError("a quantidade não pode ser negativa")
+
+    Isso encerra a função imediatamente, exatamente como os erros que Python levanta por
+    você. A mensagem é para um humano lendo a falha depois, então ela deve dizer o que
+    estava errado, não apenas que algo estava.
+
+    Escolher o tipo faz parte do trabalho. ValueError significa que o tipo estava certo
+    mas o valor é impossível - uma contagem negativa, um nome vazio, uma data no século
+    errado. TypeError significa o tipo de coisa completamente errado.
+
+    A alternativa tentadora é retornar algo que sinalize a falha: -1, None, ou o texto
+    "erro". O problema é que quem chama pode ignorar um valor de retorno em silêncio e
+    seguir com um absurdo, enquanto uma exceção não pode ser ignorada por acidente.
+    Quando uma função não consegue fazer o trabalho dela, dizer isso é todo o trabalho
+    dela.
+
+  worked_example: |
+    # Cobrando um cartao, nao preenchendo uma requisicao
+    def cobrar(valor):
+        if valor <= 0:
+            raise ValueError(f"o valor precisa ser positivo, veio {valor}")
+        return valor * 100       # em centavos
+
+    print(cobrar(3))             # 300
+    # print(cobrar(0))           # ValueError: o valor precisa ser positivo, veio 0
+
+    # A versao a evitar:
+    # if valor <= 0:
+    #     return -1              # quem esquecer de checar agora cobra -1 centavos
+
+  key_points:
+    - "raise NomeDoTipo('mensagem') encerra a função na hora, do mesmo jeito que um erro embutido."
+    - Diga o que estava errado na mensagem. "Entrada inválida" não diz nada a quem ler depois.
+    - ValueError é o tipo certo quando o valor é impossível mas o tipo dele estava bom.
+    - "Retornar -1 ou None para sinalizar falha pode ser ignorado em silêncio. Uma exceção não pode."
+
+brief: |
+  Escreva uma função chamada issue_rations que recebe crew (quantas pessoas) e per_head
+  (quantas rações cada uma), e retorna o total de rações a distribuir.
+
+  Os dois números precisam fazer sentido antes de qualquer coisa ser distribuída:
+
+    - se crew é negativo, levante ValueError
+    - se per_head é negativo, levante ValueError
+
+  Zero é permitido para qualquer um dos dois - um navio sem tripulação não precisa de
+  rações, e essa é uma resposta de verdade, não um erro.
+
+  Todo o resto retorna crew multiplicado por per_head.
+
+signature:
+  entrypoint: issue_rations
+  stub: |
+    def issue_rations(crew, per_head):
+        # Recuse o que nao pode ser cumprido. Caso contrario faca a aritmetica.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 2]
+      expect: 20
+    - args: [-1, 2]
+      raises: ValueError
+  hidden:
+    - args: [0, 5]
+      expect: 0
+    - args: [5, 0]
+      expect: 0
+    - args: [0, 0]
+      expect: 0
+    - args: [3, -1]
+      raises: ValueError
+    - args: [-2, -2]
+      raises: ValueError
+    - args: [7, 3]
+      expect: 21
+
+hints:
+  - level: 1
+    text: |
+      Zero é permitido e negativo não, então a fronteira fica entre os dois. Que
+      comparação é essa - e retornar 0 para uma tripulação negativa seria uma recusa, ou
+      uma mentira silenciosa?
+  - level: 2
+    text: |
+      Antes da multiplicação, cheque cada número com um if e levante ValueError quando
+      ele estiver abaixo de zero. Ponha as duas checagens primeiro, depois retorne o
+      produto na linha seguinte a elas.
+  - level: 3
+    text: |
+      A mesma guarda, numa função diferente:
+
+          def reservar(noites):
+              if noites < 0:
+                  raise ValueError(f"noites nao pode ser negativo, veio {noites}")
+              return noites * 80
+
+      A sua checa dois parâmetros em vez de um.
+
+solution: |
+  def issue_rations(crew, per_head):
+      if crew < 0:
+          raise ValueError(f"crew cannot be negative, got {crew}")
+      if per_head < 0:
+          raise ValueError(f"per_head cannot be negative, got {per_head}")
+      return crew * per_head

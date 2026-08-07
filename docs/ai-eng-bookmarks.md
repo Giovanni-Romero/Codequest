@@ -11,10 +11,11 @@ validado, igual a structured output de LLM" e o ponto.
 Ao final de cada fase sai tambem uma aula em HTML em `D:\Projetos\2026\_AI_Eng_Aulas`
 cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
 
-**16 bookmarks.** Ordenados por arquivo.
+**17 bookmarks.** Ordenados por arquivo.
 
 | Slug | Onde | Conceito | A ponte com AI Engineering |
 |---|---|---|---|
+| `frozen-paths` | [src/codequest/__main__.py:247](src/codequest/__main__.py#L247) | Caminhos sob empacotamento | Um build PyInstaller nao tem `__file__` real nem um python.exe separado pra invocar — so `sys.executable`, que dentro do bundle e o proprio app. "De onde estou rodando" e "de onde fui importado" param de ser a mesma pergunta assim que o codigo sai do proprio repositorio, e um agente empacotado pra distribuicao bate na mesma parede. |
 | `blocklist-vs-allowlist` | [src/codequest/engine/guard.py:62](src/codequest/engine/guard.py#L62) | Blocklist x allowlist | Enumerar o proibido perde para quem escolhe de um conjunto infinito. Allowlist inverte a assimetria. Vale igual para prompt injection. |
 | `static-analysis` | [src/codequest/engine/guard.py:101](src/codequest/engine/guard.py#L101) | Analise estatica | Inspecionar a arvore antes de executar. E o que voce faz ao validar a tool call proposta pelo modelo antes de despachar. |
 | `resource-limits` | [src/codequest/engine/harness.py:39](src/codequest/engine/harness.py#L39) | Limites de recurso | Teto de CPU e memoria imposto pelo proprio executor. Equivale a orcamento de token e wall-clock de um agente: so vale o limite que o executor aplica em si mesmo. |
@@ -22,7 +23,7 @@ cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
 | `schema-validation` | [src/codequest/engine/loader.py:94](src/codequest/engine/loader.py#L94) | Validacao de schema | Dado declarativo externo parece o contrato e silenciosamente nao e. Mesma coisa que structured output de LLM. |
 | `protocol-abstraction` | [src/codequest/engine/runners/base.py:79](src/codequest/engine/runners/base.py#L79) | Abstracao por protocolo | Depender de uma forma e nao de uma classe. E a alavanca que evita soldar a aplicacao a um unico provider de LLM. |
 | `sandboxing` | [src/codequest/engine/runners/python.py:64](src/codequest/engine/runners/python.py#L64) | Sandbox de execucao | Executar codigo nao confiavel num processo matavel e o mesmo problema que isolar tool calls de um agente ou uma sessao de code interpreter. |
-| `channel-separation` | [src/codequest/engine/runners/python.py:222](src/codequest/engine/runners/python.py#L222) | Separacao de canal | O resultado viaja num canal que o codigo do jogador nao alcanca. Mesmo problema de extrair JSON de uma resposta que tambem tem prosa do modelo. |
+| `channel-separation` | [src/codequest/engine/runners/python.py:244](src/codequest/engine/runners/python.py#L244) | Separacao de canal | O resultado viaja num canal que o codigo do jogador nao alcanca. Mesmo problema de extrair JSON de uma resposta que tambem tem prosa do modelo. |
 | `graceful-degradation` | [src/codequest/mentor/client.py:3](src/codequest/mentor/client.py#L3) | Degradacao graciosa | Falha de LLM e ramo normal, nao excecao. Modelo fora do ar, lento ou ausente sao Terca-feira: decidir o que o usuario ve em cada estado faz parte de desenhar a feature. |
 | `guardrails` | [src/codequest/mentor/policy.py:12](src/codequest/mentor/policy.py#L12) | Guardrails em duas camadas | Prompt desloca probabilidade, filtro decide. O que voce precisa garantir exige codigo antes ou depois do modelo; so o que voce prefere pode viver no prompt. |
 | `context-assembly` | [src/codequest/mentor/prompts.py:6](src/codequest/mentor/prompts.py#L6) | Montagem de contexto | Mais contexto nao e melhor contexto. Cada campo precisa justificar o lugar, e o que fica de fora e decidido na montagem, nao filtrado depois. |

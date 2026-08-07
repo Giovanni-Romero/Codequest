@@ -1,0 +1,113 @@
+# Missao 2 de Colecoes. Introduz: indexing-and-slicing. Reforca: lists.
+# Schema reference: docs/mission-schema.md
+
+id: py-collections-02
+title: Encontre o caixote
+track: python
+island: collections
+order: 2
+difficulty: elementary
+tags: [indexing, slicing]
+xp: 10
+
+concepts:
+  - indexing-and-slicing
+
+teaching:
+  analogy: |
+    Um estivador conferindo caixotes pode apontar para "o terceiro a partir da frente"
+    ou "o segundo a partir de trás" - isso é um índice. Ou pode dizer "me dê tudo entre o
+    segundo e o penúltimo" - isso é uma fatia, um trecho inteiro de uma vez. Pedir um
+    único caixote que não existe te rende uma bronca. Pedir um trecho que passa do que
+    realmente existe só te dá um trecho mais curto - ninguém reclama, você só recebe o
+    que realmente estava lá.
+
+  explanation: |
+    Você já sabe que uma lista guarda valores em ordem. Indexar retira exatamente um,
+    por posição: manifesto[0] é o primeiro, e manifesto[-1] é o último - índices
+    negativos contam de trás para frente, então você nunca precisa saber o tamanho da
+    lista para pedir o último item.
+
+    Fatiar retira um intervalo de uma vez: manifesto[1:3] dá tudo do índice 1 até (sem
+    incluir) o índice 3. Uma fatia nunca levanta um erro, mesmo quando seus limites
+    passam do que realmente existe - ela só devolve o quanto da lista realmente havia,
+    incluindo nada.
+
+  worked_example: |
+    # Conferindo passageiros embarcando num bote salva-vidas, nao caixotes num porao
+    passageiros = ["Ana", "Bo", "Cid", "Dee", "Evan"]
+    print(passageiros[0])       # Ana - o primeiro a embarcar
+    print(passageiros[-1])      # Evan - o ultimo, contando do fim
+    print(passageiros[1:4])     # ['Bo', 'Cid', 'Dee']
+    print(passageiros[2:100])   # ['Cid', 'Dee', 'Evan'] - sem erro, so o que existe
+
+  key_points:
+    - "algo[-1] é o último item. Índices negativos contam de trás para frente, -1 primeiro."
+    - "algo[a:b] retorna itens do índice a até (sem incluir) b - o limite final é exclusivo."
+    - Uma fatia nunca levanta erro para um limite fora do alcance. Um único índice levanta, se aponta além do fim.
+    - "algo[1:-1] - tudo exceto o primeiro e o último - é um idioma de fatiamento que vale reconhecer de cara."
+
+brief: |
+  Os caixotes mais fáceis de alcançar sem mexer em nada são os do meio do porão - tudo
+  exceto o que foi carregado primeiro e o que foi carregado por último.
+
+  Escreva uma função chamada middle_crates que recebe o manifesto completo como uma
+  lista e retorna uma nova lista com tudo nela exceto o primeiro e o último item.
+
+  Um manifesto com dois caixotes ou menos não tem meio nenhum - retorne uma lista vazia,
+  e não deixe seu código levantar um erro quando isso acontecer.
+
+signature:
+  entrypoint: middle_crates
+  stub: |
+    def middle_crates(manifest):
+        # Uma fatia resolve isso. Python cuida do caso curto demais para voce.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope", "salt", "lantern", "nails"]]
+      expect: ["salt", "lantern"]
+    - args: [["a", "b", "c"]]
+      expect: ["b"]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [["only"]]
+      expect: []
+    - args: [["a", "b"]]
+      expect: []
+    - args: [["a", "b", "c", "d", "e"]]
+      expect: ["b", "c", "d"]
+    - args: [[1, 2, 3, 4]]
+      expect: [2, 3]
+
+hints:
+  - level: 1
+    text: |
+      O que acontece em Python se os limites de uma fatia passam do tamanho real da
+      lista? Pense em [1, 2][1:-1] antes de escrever qualquer coisa - dá erro, ou só te
+      dá menos do que você pediu?
+  - level: 2
+    text: |
+      Uma fatia resolve a missão inteira: comece logo depois do primeiro item, termine
+      logo antes do último. O fatiamento do Python já cuida de uma lista curta demais
+      para ter um "meio".
+  - level: 3
+    text: |
+      A mesma ideia, cortando a primeira e a última parada de uma rota de ônibus:
+
+          paradas = ["garagem", "mercado", "praca", "garagem"]
+          entre = paradas[1:-1]
+          return entre
+
+      A sua funciona com qualquer lista que receber, não uma fixa.
+
+solution: |
+  def middle_crates(manifest):
+      return manifest[1:-1]

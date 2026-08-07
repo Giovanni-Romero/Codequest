@@ -1,0 +1,155 @@
+# Mission 6 of Functions. Introduces: scope. Reinforces: parameters.
+# Honest limit: a player who reaches for `global` still passes, because the engine calls
+# the entrypoint once per process. The mission teaches the concept and tests the correct
+# result; it cannot fail every wrong approach. Documented in the syllabus.
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-06
+title: The private notebook
+track: python
+island: functions
+order: 6
+difficulty: simple
+tags: [scope, locals, globals]
+xp: 20
+
+concepts:
+  - scope
+  - parameters
+
+teaching:
+  analogy: |
+    The standing orders are nailed to the wall of the wardroom. Any officer can walk in
+    and read them. Nobody gets to cross a line out with their own pen just because it is
+    inconvenient today - they copy the figure into their own notebook and work from the
+    copy.
+
+    When the watch ends, the notebook goes in a drawer and everything scribbled in it is
+    gone. The wall is untouched. That is scope.
+
+  explanation: |
+    Names created inside a function are local to it. They come into existence when the
+    call starts and disappear when it returns. Two functions can each have a variable
+    called total and never interfere - each call gets its own.
+
+    A function can *read* a name from the module around it. That is why a constant
+    defined at the top of the file is visible everywhere below it.
+
+    Assigning is the part that surprises people. The moment a function assigns to a name
+    anywhere in its body, Python treats that name as local for the whole function - even
+    on lines before the assignment. So this fails:
+
+        LIMIT = 5
+        def f():
+            LIMIT = LIMIT + 1     # UnboundLocalError: LIMIT used before assignment
+
+    Python is not reading the outer LIMIT and then storing it locally. It decided LIMIT
+    was local, and then found nothing in it yet. The fix is not `global` - it is to copy
+    the value into a clearly named local and work on that.
+
+  worked_example: |
+    # A speed limit on the wall, and a local adjustment
+    BASE_SPEED = 20
+
+    def cruise(load):
+        speed = BASE_SPEED          # read the outer name, copy into a local
+        if load > 100:
+            speed = speed - 5       # change the LOCAL, not the wall
+        return speed
+
+    print(cruise(50))               # 20
+    print(cruise(200))              # 15
+    print(BASE_SPEED)               # 20 - never touched
+
+  key_points:
+    - Variables created inside a function vanish when it returns. To keep a value, return it.
+    - A function can read a module-level name, but assigning to that name anywhere makes it local for the whole function.
+    - "Copy an outer value into a local with a new name, then change the copy. That is clearer than `global` and safer."
+    - Two functions can use the same variable name without colliding. Each call has its own.
+
+brief: |
+  The stub already has two standing orders nailed to the wall, as module-level constants:
+  STANDARD_RATION and EMERGENCY_RESERVE. Leave both exactly as they are.
+
+  Write a function called voyage_load that takes crew and days, and returns the total
+  rations to load:
+
+    - the everyday food: crew times days times STANDARD_RATION
+    - plus an emergency reserve
+
+  The reserve is normally EMERGENCY_RESERVE. On a long voyage - strictly more than 30
+  days - the reserve is doubled.
+
+  Work out the reserve in a local variable. Do not reassign EMERGENCY_RESERVE itself:
+  the next voyage reads the same wall.
+
+signature:
+  entrypoint: voyage_load
+  stub: |
+    STANDARD_RATION = 2
+    EMERGENCY_RESERVE = 10
+
+
+    def voyage_load(crew, days):
+        # Read the constants. Copy what you need to change into a local of your own.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [5, 10]
+      expect: 110
+    - args: [5, 40]
+      expect: 420
+  hidden:
+    - args: [0, 0]
+      expect: 10
+    - args: [1, 1]
+      expect: 12
+    - args: [1, 30]
+      expect: 70
+    - args: [1, 31]
+      expect: 82
+    - args: [0, 100]
+      expect: 20
+    - args: [10, 2]
+      expect: 50
+
+hints:
+  - level: 1
+    text: |
+      The reserve changes depending on the voyage, but the constant on the wall must not.
+      Where does the changed value live, if not in the constant?
+  - level: 2
+    text: |
+      Assign EMERGENCY_RESERVE into a local variable with its own name. Use an if on days
+      to double that local when the voyage is longer than 30 days. Then return the food
+      calculation plus the local.
+  - level: 3
+    text: |
+      The same copy-then-adjust shape, for a shipping fee:
+
+          BASE_FEE = 8
+
+          def fee(weight):
+              charge = BASE_FEE
+              if weight > 20:
+                  charge = charge * 2
+              return charge
+
+      Yours adds a calculation on top of the adjusted local before returning.
+
+solution: |
+  STANDARD_RATION = 2
+  EMERGENCY_RESERVE = 10
+
+
+  def voyage_load(crew, days):
+      reserve = EMERGENCY_RESERVE
+      if days > 30:
+          reserve = reserve * 2
+      return crew * days * STANDARD_RATION + reserve

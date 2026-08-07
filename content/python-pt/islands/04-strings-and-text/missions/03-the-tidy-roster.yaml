@@ -1,0 +1,127 @@
+# Missao 3 de Strings e Texto. Missao de alivio. Nao introduz nada.
+# Reforca: string-methods, lists.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-03
+title: A lista de tripulação arrumada
+track: python
+island: strings-and-text
+order: 3
+difficulty: elementary
+tags: [string-methods, lists, filtering]
+xp: 10
+
+concepts:
+  - string-methods
+
+teaching:
+  analogy: |
+    A lista de tripulação foi preenchida por quem estava mais perto da caneta. Algumas
+    linhas têm espaços sobrando no fim, outras estão gritadas em maiúsculas, e umas
+    poucas estão em branco porque alguém pulou uma linha sem querer.
+
+    O comissário não reescreve a lista no lugar. Ele copia uma limpa, e as linhas em
+    branco simplesmente não são copiadas.
+
+  explanation: |
+    Nada novo. Esta é a limpeza da missão 1 aplicada uma vez por item de uma lista, com
+    um filtro para as entradas que acabam não sendo nada.
+
+    A ordem importa e é a única coisa a acertar: apare **primeiro**, depois decida se o
+    que sobrou está vazio. Uma entrada de três espaços não está em branco até você
+    apará-la, e checar antes de aparar a manteria.
+
+    Uma string vazia é falsa em Python, então `if limpo:` é o teste idiomático para "tem
+    alguma coisa aqui" - a mesma forma do `if not numbers:` da ilha de Funções.
+
+  worked_example: |
+    # Arrumando uma lista de compras em vez de uma tripulacao
+    bruto = ["  Leite ", "", "PAO", "   "]
+
+    arrumada = []
+    for linha in bruto:
+        limpo = linha.strip().lower()
+        if limpo:
+            arrumada.append(limpo)
+
+    print(arrumada)      # ['leite', 'pao']
+
+  key_points:
+    - Apare antes de testar se está vazio, ou uma entrada só de espaços sobrevive ao filtro.
+    - Uma string vazia é falsa, então `if limpo:` lê melhor que comparar com "".
+    - Métodos encadeiam da esquerda para a direita - linha.strip().lower() apara primeiro, depois dobra a caixa.
+    - A lista original nunca é modificada. Você constrói uma limpa ao lado dela.
+
+brief: |
+  Escreva uma função chamada tidy_roster que recebe uma lista de nomes de tripulantes
+  como foram anotados e retorna uma lista nova de nomes limpos.
+
+  Um nome é limpo aparando os espaços em branco das duas pontas e dobrando para
+  minúsculas. Nomes que ficam vazios depois de aparados são deixados de fora do resultado
+  completamente.
+
+  A ordem dos nomes sobreviventes não muda, e a lista que você recebeu não pode ser
+  modificada.
+
+signature:
+  entrypoint: tidy_roster
+  stub: |
+    def tidy_roster(names):
+        # Limpe cada nome, depois decida se sobrou alguma coisa dele.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["  Ada ", "", "BO", "   "]]
+      expect: ["ada", "bo"]
+    - args: [["cid"]]
+      expect: ["cid"]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [["", "  ", "\t"]]
+      expect: []
+    - args: [["  MIXED  ", "case"]]
+      expect: ["mixed", "case"]
+    - args: [["a", "b", "c"]]
+      expect: ["a", "b", "c"]
+    - args: [["  Two Words  "]]
+      expect: ["two words"]
+
+hints:
+  - level: 1
+    text: |
+      Uma destas duas ordens está errada: aparar e depois checar se está vazio, ou checar
+      se está vazio e depois aparar. Descubra o que cada uma faz com uma entrada de três
+      espaços.
+  - level: 2
+    text: |
+      Percorra os nomes. Para cada um, apare e ponha em minúscula numa variável. Adicione
+      essa variável à sua lista de resultado só quando ela não estiver vazia. Retorne o
+      resultado.
+  - level: 3
+    text: |
+      A mesma forma limpa-depois-mantém, numa lista de etiquetas:
+
+          mantidas = []
+          for etiqueta in etiquetas:
+              e = etiqueta.strip().upper()
+              if e:
+                  mantidas.append(e)
+          return mantidas
+
+      A sua dobra a caixa para o outro lado, e trabalha com nomes.
+
+solution: |
+  def tidy_roster(names):
+      tidy = []
+      for name in names:
+          cleaned = name.strip().lower()
+          if cleaned:
+              tidy.append(cleaned)
+      return tidy
