@@ -23,6 +23,7 @@ from codequest.services.progress_service import (
 )
 from codequest.tui.screens.dialogs import ConfirmDialog
 from codequest.tui.screens.island_map import IslandMapScreen
+from codequest.tui.strings import t
 from codequest.tui.symbols import AVAILABLE, CURRENT
 
 
@@ -38,10 +39,10 @@ class SaveSelectScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Middle(), Center(), Vertical(id="menu-frame"):
-            yield Static("Career saves", id="title")
+            yield Static(t("save_select.title"), id="title")
             yield Static("", id="tagline")
             yield ListView(id="save-list")
-            yield Input(placeholder="name for a new save", id="new-name")
+            yield Input(placeholder=t("save_select.name_placeholder"), id="new-name")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -63,11 +64,13 @@ class SaveSelectScreen(Screen):
         tagline = self.query_one("#tagline", Static)
         if remaining > 0:
             tagline.update(
-                f"[$parchment-dim]{remaining} of {MAX_PROFILES} slots free - N to create[/$parchment-dim]"
+                f"[$parchment-dim]"
+                f"{t('save_select.slots_free', remaining=remaining, max=MAX_PROFILES)}"
+                f"[/$parchment-dim]"
             )
         else:
             tagline.update(
-                f"[$becalmed]All {MAX_PROFILES} slots used - delete one to create another[/$becalmed]"
+                f"[$becalmed]{t('save_select.slots_full', max=MAX_PROFILES)}[/$becalmed]"
             )
 
         if profiles:
@@ -80,11 +83,14 @@ class SaveSelectScreen(Screen):
         completed = self.app.context.progress.progress.completed_count(profile.id)
         total = len(self.app.context.missions.missions)
         mark = CURRENT if completed else AVAILABLE
-        return (
-            f"{mark} {profile.name:<14} "
-            f"[$parchment-dim]level {profile.level}  {profile.total_xp:>4} XP  "
-            f"{completed}/{total} missions[/$parchment-dim]"
+        detail = t(
+            "save_select.level_xp_missions",
+            level=profile.level,
+            xp=profile.total_xp,
+            done=completed,
+            total=total,
         )
+        return f"{mark} {profile.name:<14} [$parchment-dim]{detail}[/$parchment-dim]"
 
     # ------------------------------------------------------------------ actions
 
@@ -136,10 +142,6 @@ class SaveSelectScreen(Screen):
                 self.refresh_saves()
 
         self.app.push_screen(
-            ConfirmDialog(
-                f"Delete '{profile.name}'?\n\n"
-                f"[$parchment-dim]{profile.total_xp} XP and every solution written on this "
-                f"save are removed. This cannot be undone.[/$parchment-dim]"
-            ),
+            ConfirmDialog(t("save_select.delete_confirm", name=profile.name, xp=profile.total_xp)),
             on_answer,
         )

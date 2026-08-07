@@ -12,7 +12,7 @@ the player's real progress.
 from __future__ import annotations
 
 import pytest
-from textual.widgets import Input, ListView
+from textual.widgets import Input, Label, ListView
 
 from codequest.services.bootstrap import create_context
 from codequest.tui.app import CodeQuestApp
@@ -176,6 +176,73 @@ async def test_running_a_correct_solution_awards_xp(app):
         assert profile.total_xp == 10
 
 
+async def test_the_map_shows_completion_after_returning_from_a_solved_mission(app):
+    """Regression: popping back from a mission never remounts the map screen, so it
+    only ever reflected progress from before the player solved anything unless the
+    map explicitly refreshes on resume."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = CORRECT_SUM_LIST
+        await pilot.press("f5")
+        await pilot.pause(delay=6)
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert isinstance(pilot.app.screen, IslandMapScreen)
+        heading = str(pilot.app.screen.query_one("#map-heading").render())
+        total_missions = len(pilot.app.context.missions.missions)
+        assert f"1/{total_missions}" in heading
+
+        row = pilot.app.screen.query_one("#mission-py-foundations-06")
+        assert "10 XP" in str(row.query_one(Label).render())
+
+
+async def test_f6_advances_to_the_next_mission(app):
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = CORRECT_SUM_LIST
+        await pilot.press("f5")
+        await pilot.pause(delay=6)
+
+        await pilot.press("f6")
+        await pilot.pause()
+
+        assert isinstance(pilot.app.screen, MissionScreen)
+        assert pilot.app.screen.mission.id == "py-foundations-07"
+
+
+async def test_f6_crosses_into_the_next_island(app):
+    """The last mission of an island leads into the first of the next one.
+
+    Regression: this used to jump to whichever island sorted first alphabetically,
+    skipping a whole island at every boundary.
+    """
+    async with app.run_test() as pilot:
+        await _open_mission(pilot, mission_id="py-foundations-10")
+
+        await pilot.press("f6")
+        await pilot.pause()
+
+        assert pilot.app.screen.mission.id == "py-collections-01"
+
+
+async def test_f6_does_nothing_after_the_last_mission_of_the_track(app):
+    async with app.run_test() as pilot:
+        # Whichever mission is genuinely last, rather than a hardcoded id that goes
+        # stale the moment another island ships.
+        last = pilot.app.context.missions.missions[-1]
+        await _open_mission(pilot, mission_id=last.id)
+
+        await pilot.press("f6")
+        await pilot.pause()
+
+        assert isinstance(pilot.app.screen, MissionScreen)
+        assert pilot.app.screen.mission.id == last.id
+
+
 async def test_running_a_wrong_solution_awards_nothing(app):
     async with app.run_test() as pilot:
         await _open_mission(pilot)
@@ -252,7 +319,7 @@ async def test_reset_asks_before_discarding_work(app):
         editor = pilot.app.screen.query_one("#editor", CodeEditor)
         editor.text = "my work in progress"
 
-        await pilot.press("ctrl+r")
+        await pilot.press("f4")
         await pilot.pause()
         await pilot.press("escape")  # cancel the dialog
         await pilot.pause()

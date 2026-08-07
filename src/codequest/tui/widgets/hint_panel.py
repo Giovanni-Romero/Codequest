@@ -16,13 +16,15 @@ from textual.containers import VerticalScroll
 from textual.widgets import Static
 
 from codequest.models.mission import Mission
+from codequest.tui.strings import t
 
 #: What each rung gives, from docs/mission-schema.md. Shown to the player before they
-#: spend anything, because an informed choice is the point of a graduated cost.
+#: spend anything, because an informed choice is the point of a graduated cost. Values
+#: are strings.py keys, translated at render time.
 RUNG_LABELS = {
-    1: "a question pointing at the missing idea",
-    2: "the name of the construct you need",
-    3: "the pattern as code, on a different problem",
+    1: "hints.rung_1",
+    2: "hints.rung_2",
+    3: "hints.rung_3",
 }
 
 
@@ -75,20 +77,17 @@ class HintPanel(VerticalScroll):
             if hint is None:
                 continue
             if level <= self.revealed:
-                lines.append(f"[$brass]Hint {level}[/$brass]")
+                lines.append(f"[$brass]{t('hints.hint_n', n=level)}[/$brass]")
                 lines.append(hint.text.rstrip())
             else:
-                label = RUNG_LABELS.get(level, "another nudge")
-                lines.append(f"[$becalmed]Hint {level} - locked: {label}[/$becalmed]")
+                label = t(RUNG_LABELS.get(level, "hints.rung_other"))
+                locked_hint = t("hints.locked_hint", n=level, label=label)
+                lines.append(f"[$becalmed]{locked_hint}[/$becalmed]")
             lines.append("")
 
         if self.revealed == 0:
-            lines.append(
-                "[$parchment-dim]F1 reveals the next hint. Each one costs XP.[/$parchment-dim]"
-            )
+            lines.append(f"[$parchment-dim]{t('hints.none_revealed')}[/$parchment-dim]")
         elif self.exhausted:
-            lines.append(
-                "[$parchment-dim]No hints left. Assembling it is still your job.[/$parchment-dim]"
-            )
+            lines.append(f"[$parchment-dim]{t('hints.exhausted')}[/$parchment-dim]")
 
         body.update("\n".join(lines))

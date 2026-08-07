@@ -283,3 +283,36 @@ def test_islands_know_which_missions_they_own():
 
     assert "py-foundations-06" in service.get_island("foundations").mission_ids
     assert service.missions_in("foundations")[0].island == "foundations"
+
+
+def test_missions_are_ordered_by_island_order_not_island_id():
+    """Regression: sorting by island *id* is alphabetical, not curricular.
+
+    "collections" sorts before "foundations", so the whole catalogue came out with
+    Island 2 ahead of Island 1 - which made ``next_mission_after`` skip an island at
+    every boundary. Invisible while only one island existed.
+    """
+    service = MissionService(CONTENT_ROOT, "python")
+
+    island_sequence = []
+    for mission in service.missions:
+        if mission.island not in island_sequence:
+            island_sequence.append(mission.island)
+
+    expected = [island.id for island in service.islands if service.missions_in(island.id)]
+    assert island_sequence == expected
+
+
+def test_next_mission_crosses_from_one_island_into_the_next():
+    service = MissionService(CONTENT_ROOT, "python")
+
+    last_of_first = service.missions_in(service.islands[0].id)[-1]
+    first_of_second = service.missions_in(service.islands[1].id)[0]
+
+    assert service.next_mission_after(last_of_first.id) == first_of_second
+
+
+def test_the_last_mission_of_the_track_has_no_successor():
+    service = MissionService(CONTENT_ROOT, "python")
+
+    assert service.next_mission_after(service.missions[-1].id) is None

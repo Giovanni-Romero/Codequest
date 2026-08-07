@@ -18,6 +18,7 @@ from textual.widgets import Input, RichLog, Static
 
 from codequest.models.mission import Mission
 from codequest.models.verdict import Verdict
+from codequest.tui.strings import t
 
 
 class MentorChat(Vertical):
@@ -33,15 +34,12 @@ class MentorChat(Vertical):
         self.busy = False
 
     def compose(self) -> ComposeResult:
-        yield Static("Mentor", classes="panel-title")
+        yield Static(t("mentor.title"), classes="panel-title")
         yield RichLog(id="mentor-log", wrap=True, markup=True)
-        yield Input(placeholder="ask the mentor...", id="mentor-input")
+        yield Input(placeholder=t("mentor.input_placeholder"), id="mentor-input")
 
     def on_mount(self) -> None:
-        self._say(
-            "[$parchment-dim]Ask a question. I will not hand you the answer - "
-            "that is what the hint panel is for.[/$parchment-dim]"
-        )
+        self._say(t("mentor.greeting"))
 
     # ------------------------------------------------------------------ context
 
@@ -61,9 +59,9 @@ class MentorChat(Vertical):
         if not question or self.mission is None or self.busy:
             return
 
-        self._say(f"[$beacon]you[/$beacon]  {question}")
+        self._say(f"[$beacon]{t('mentor.you_label')}[/$beacon]  {question}")
         self.busy = True
-        self._say("[$parchment-dim]thinking...[/$parchment-dim]")
+        self._say(f"[$parchment-dim]{t('mentor.thinking')}[/$parchment-dim]")
         self._ask(question)
 
     @work(thread=True, exclusive=True)
@@ -94,9 +92,9 @@ class MentorChat(Vertical):
 
         if reply.state is MentorState.READY:
             text, redacted = filter_reply(reply.text, self.mission.signature.entrypoint)
-            rendered = f"[$brass]mentor[/$brass]  {text}"
+            rendered = f"[$brass]{t('mentor.mentor_label')}[/$brass]  {text}"
             if redacted:
-                rendered += "\n[$becalmed](answer withheld by the anti-spoiler rule)[/$becalmed]"
+                rendered += f"\n[$becalmed]{t('mentor.redacted')}[/$becalmed]"
         else:
             rendered = f"[$becalmed]{reply.text}[/$becalmed]"
 

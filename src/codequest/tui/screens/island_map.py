@@ -19,6 +19,7 @@ from codequest.models.curriculum import Island
 from codequest.models.mission import Mission
 from codequest.models.profile import MissionStatus
 from codequest.tui.screens.mission import MissionScreen
+from codequest.tui.strings import t
 from codequest.tui.symbols import (
     ISLAND,
     ISLAND_CURRENT,
@@ -44,21 +45,33 @@ class IslandMapScreen(Screen):
             yield ListView(id="entries")
         yield Footer()
 
-    def on_mount(self) -> None:
-        self.action_reload()
+    async def on_screen_resume(self) -> None:
+        """Refresh whenever this screen becomes active - first push or a later resume.
 
-    def action_reload(self) -> None:
+        Textual posts ``ScreenResume`` both the first time a screen is pushed and every
+        time it becomes the top screen again, so this one hook covers both cases and
+        there is no separate ``on_mount``. That matters here specifically: popping back
+        from ``MissionScreen`` does not remount this screen, and without a resume hook
+        the map kept showing whatever it looked like *before* the player solved
+        anything.
+        """
+        await self.action_reload()
+
+    async def action_reload(self) -> None:
         """Rebuild from storage, so XP earned in a mission shows on the way back."""
         self.app.refresh_profile()
-        self._rebuild()
+        await self._rebuild()
 
     # ------------------------------------------------------------------ rendering
 
-    def _rebuild(self) -> None:
+    async def _rebuild(self) -> None:
         context = self.app.context
         profile = self.app.profile
         listing = self.query_one("#entries", ListView)
-        listing.clear()
+        # clear() only schedules the removal; awaiting it is what guarantees the old
+        # rows are actually gone before the loop below appends new ones with the same
+        # widget IDs. Skipping the await let a second reload collide with the first.
+        await listing.clear()
 
         if profile is None:
             return
@@ -66,8 +79,14 @@ class IslandMapScreen(Screen):
         completed_total = context.progress.progress.completed_count(profile.id)
         all_missions = len(context.missions.missions)
         self.query_one("#map-heading", Static).update(
-            f"{profile.name}  -  level {profile.level}  -  {profile.total_xp} XP  -  "
-            f"{completed_total}/{all_missions} missions"
+            t(
+                "island_map.heading",
+                name=profile.name,
+                level=profile.level,
+                xp=profile.total_xp,
+                done=completed_total,
+                total=all_missions,
+            )
         )
 
         statuses = context.progress.progress_for(profile)
@@ -130,7 +149,8 @@ class IslandMapScreen(Screen):
         if record is not None and record.is_completed:
             suffix = f"[$parchment-dim]{record.best_xp} XP[/$parchment-dim]"
             if record.hints_used:
-                suffix += f" [$becalmed]({record.hints_used} hints)[/$becalmed]"
+                hints = t("island_map.hints_used", n=record.hints_used)
+                suffix += f" [$becalmed]({hints})[/$becalmed]"
         else:
             suffix = f"[$parchment-dim]{mission.xp} XP[/$parchment-dim]"
 
@@ -141,12 +161,13 @@ class IslandMapScreen(Screen):
         rule = island.unlock_requires
         parts: list[str] = []
         if rule.missions_completed:
-            parts.append(f"complete {rule.missions_completed} missions")
+            parts.append(t("island_map.requirement_missions", n=rule.missions_completed))
         if rule.total_xp:
-            parts.append(f"reach {rule.total_xp} XP")
+            parts.append(t("island_map.requirement_xp", n=rule.total_xp))
         if rule.requires_island:
-            parts.append(f"unlock {rule.requires_island} first")
-        return "locked - " + ", ".join(parts) if parts else "locked"
+            parts.append(t("island_map.requirement_island", island=rule.requires_island))
+        locked = t("island_map.locked_prefix")
+        return f"{locked} - " + ", ".join(parts) if parts else locked
 
     # ------------------------------------------------------------------ actions
 

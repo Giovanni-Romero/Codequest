@@ -21,6 +21,7 @@ from codequest.services.game_session import GameSession
 from codequest.services.mission_service import MissionService
 from codequest.services.progress_service import ProgressService
 from codequest.storage.db import init_db
+from codequest.storage.repositories import PreferenceRepository
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +31,7 @@ class GameContext:
     settings: Settings
     missions: MissionService
     progress: ProgressService
+    preferences: PreferenceRepository
     session: GameSession
     connection: sqlite3.Connection
 
@@ -44,6 +46,7 @@ def create_context(
     *,
     database: str | Path | None = None,
     track: str = "python",
+    language: str | None = None,
 ) -> GameContext:
     """Open the database, load the catalogue, and wire the services together.
 
@@ -53,15 +56,20 @@ def create_context(
             ``--db``. Taking it as a parameter is what keeps this testable without
             touching the real save.
         track: Which language track to load.
+        language: UI/content language ("en" or "pt"). Defaults to the save's stored
+            preference, so the game reopens in whichever language it was last left in.
     """
     settings = settings or get_settings()
     connection = init_db(database or settings.database_path)
+    preferences = PreferenceRepository(connection)
+    language = language or preferences.get_language()
     progress = ProgressService(connection)
 
     return GameContext(
         settings=settings,
-        missions=MissionService(settings.content_dir, track),
+        missions=MissionService(settings.content_dir, track, language),
         progress=progress,
+        preferences=preferences,
         session=GameSession(progress=progress),
         connection=connection,
     )

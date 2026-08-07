@@ -20,7 +20,11 @@ from codequest.models.mission import XP_BY_DIFFICULTY
 from codequest.services.game_session import GameSession
 from conftest import CONTENT_ROOT
 
-TRACKS = ["python"]
+#: "python-pt" is a content *directory*, not a second track id - the Portuguese mirror
+#: of the Python track lives in its own tree (see mission-author SKILL.md) so it can be
+#: validated the same way as the English one without the engine ever learning about
+#: languages. Both must independently pass every check in this file.
+TRACKS = ["python", "python-pt"]
 MISSION_PATHS = [path for track in TRACKS for path in iter_mission_paths(CONTENT_ROOT, track)]
 
 
@@ -81,12 +85,31 @@ def test_the_solution_obeys_the_missions_own_constraints(path):
     assert report.ok, f"{path.name}: {report.violations}"
 
 
-def test_mission_ids_are_unique_across_the_repository():
-    """Duplicate ids would make progress rows collide between two different lessons."""
-    ids = [load_mission(path).id for path in MISSION_PATHS]
+@pytest.mark.parametrize("track", TRACKS)
+def test_mission_ids_are_unique_within_a_content_tree(track):
+    """Duplicate ids inside one tree would make progress rows collide between lessons.
+
+    Scoped per tree, not global: the same id appearing in both ``python/`` and
+    ``python-pt/`` is not a collision, it is the point - a language mirror is keyed
+    identically on purpose, so switching language mid-game keeps the same progress row.
+    """
+    ids = [load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, track)]
 
     duplicates = {mission_id for mission_id in ids if ids.count(mission_id) > 1}
-    assert not duplicates, f"duplicate mission ids: {duplicates}"
+    assert not duplicates, f"duplicate mission ids in {track}: {duplicates}"
+
+
+def test_language_mirrors_declare_the_same_mission_ids():
+    """The whole point of a mirror: identical id set, so a language switch never orphans
+    or duplicates a save's progress."""
+    by_track = {
+        track: {load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, track)}
+        for track in TRACKS
+    }
+    reference = by_track[TRACKS[0]]
+
+    for track, ids in by_track.items():
+        assert ids == reference, f"{track} declares a different id set than {TRACKS[0]}"
 
 
 @pytest.mark.parametrize("track_id", TRACKS)

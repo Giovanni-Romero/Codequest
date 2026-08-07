@@ -18,6 +18,7 @@ from textual.binding import Binding, BindingType
 
 from codequest.models.profile import Profile
 from codequest.services.bootstrap import GameContext, create_context
+from codequest.tui import strings
 from codequest.tui.screens.main_menu import MainMenuScreen
 
 
@@ -27,6 +28,10 @@ class CodeQuestApp(App):
     CSS_PATH = "styles.tcss"
     TITLE = "CodeQuest"
     SUB_TITLE = "learn to program by sailing"
+
+    # Textual's own command palette (ctrl+p) is a framework feature CodeQuest never
+    # wired up - left on, it shows a dead "^p palette" hint in every screen's footer.
+    ENABLE_COMMAND_PALETTE = False
 
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding("ctrl+q", "quit", "Quit", priority=True),
@@ -52,9 +57,27 @@ class CodeQuestApp(App):
         self._owns_context = context is None
         self.context = context or create_context(database=database, track=track)
         self.profile: Profile | None = None
+        # The module-level language state has to match this context's before a single
+        # widget composes, or the first screen renders in whatever language the last
+        # app instance (the previous test, usually) left behind.
+        strings.set_language(self.context.missions.language)
 
     def on_mount(self) -> None:
         self.push_screen(MainMenuScreen())
+
+    def set_language(self, language: str) -> None:
+        """Switch the game's language everywhere it is read from: chrome, content, DB.
+
+        Only ``SettingsScreen`` - the one screen open when this can be called - refreshes
+        itself in place afterward. A screen composed before the switch keeps its old
+        text until the player navigates back to it, which is the one corner this method
+        does not chase: rebuilding the whole stack for a settings toggle would be a lot
+        of machinery for a case nobody hits (nobody keeps two screens open across a
+        language change).
+        """
+        self.context.preferences.set_language(language)
+        self.context.missions.set_language(language)
+        strings.set_language(language)
 
     def on_unmount(self) -> None:
         """Close the database, but only the one this app opened.

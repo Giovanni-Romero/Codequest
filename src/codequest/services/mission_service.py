@@ -15,21 +15,48 @@ from codequest.models.mission import Mission
 
 
 class MissionService:
-    """The loaded catalogue for one track: its islands and their missions."""
+    """The loaded catalogue for one track: its islands and their missions.
 
-    def __init__(self, content_dir: str | Path, track_id: str = "python") -> None:
+    ``language`` picks which content tree to read - ``content/<track_id>/`` for
+    English, ``content/<track_id>-pt/`` for Portuguese. It is a directory suffix, not a
+    property of the track: mission and island ids stay identical between the two
+    trees, which is what lets a save's progress (keyed by those ids in SQLite) survive
+    a language switch mid-game.
+    """
+
+    def __init__(
+        self, content_dir: str | Path, track_id: str = "python", language: str = "en"
+    ) -> None:
         self.content_dir = Path(content_dir)
         self.track_id = track_id
-        self.track: Track = load_track(self.content_dir / track_id / "track.yaml")
+        self.language = language
+        self.track: Track
         self._islands: dict[str, Island] = {}
         self._missions: dict[str, Mission] = {}
         self._load()
 
-    def _load(self) -> None:
-        """Read every island and mission of the track into memory."""
-        islands_root = self.content_dir / self.track_id / "islands"
+    @property
+    def _content_folder(self) -> str:
+        return f"{self.track_id}-pt" if self.language == "pt" else self.track_id
 
-        missions = discover_missions(self.content_dir, self.track_id)
+    def set_language(self, language: str) -> None:
+        """Switch which content tree is loaded, and reload the catalogue from it."""
+        self.language = language
+        self._load()
+
+    def _load(self) -> None:
+        """Read every island and mission of the track into memory.
+
+        Reassigns both dicts wholesale rather than mutating them in place - this runs
+        again on every ``set_language`` call, and a stale entry left over from the
+        previous language is a bug a reload should never be able to reintroduce.
+        """
+        folder = self._content_folder
+        self.track = load_track(self.content_dir / folder / "track.yaml")
+        islands_root = self.content_dir / folder / "islands"
+        self._islands = {}
+
+        missions = discover_missions(self.content_dir, folder)
         self._missions = {mission.id: mission for mission in missions}
 
         by_island: dict[str, list[Mission]] = {}
@@ -61,8 +88,23 @@ class MissionService:
 
     @property
     def missions(self) -> tuple[Mission, ...]:
-        """Every mission of this track, ordered by island then position."""
-        return tuple(sorted(self._missions.values(), key=lambda m: (m.island, m.order)))
+        """Every mission of this track, in the order a player actually meets them.
+
+        Sorted by the island's ``order``, not by its id. Those are not the same
+        sequence and sorting by id was a real bug: island ids are words, so
+        "collections" sorted before "foundations", which put Island 2 ahead of Island 1
+        and made ``next_mission_after`` skip an entire island at every boundary. It was
+        invisible while only one island existed.
+        """
+
+        def position(mission: Mission) -> tuple[int, int, str]:
+            island = self._islands.get(mission.island)
+            # An unknown island means content that failed to load. Sort it last rather
+            # than crashing, and keep it deterministic with the id as a final tiebreak.
+            island_order = island.order if island is not None else len(self._islands) + 1
+            return (island_order, mission.order, mission.id)
+
+        return tuple(sorted(self._missions.values(), key=position))
 
     def get_mission(self, mission_id: str) -> Mission | None:
         return self._missions.get(mission_id)

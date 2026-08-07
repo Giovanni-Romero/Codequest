@@ -66,6 +66,15 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE INDEX idx_attempt_profile_mission ON attempt(profile_id, mission_id);
         """,
     ),
+    (
+        2,
+        """
+        CREATE TABLE preference (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+        """,
+    ),
 )
 
 

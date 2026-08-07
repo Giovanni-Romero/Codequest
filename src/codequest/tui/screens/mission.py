@@ -28,6 +28,7 @@ from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 from codequest.models.mission import Mission
 from codequest.services.game_session import AttemptOutcome
 from codequest.tui.screens.dialogs import ConfirmDialog
+from codequest.tui.strings import t
 from codequest.tui.widgets.code_editor import CodeEditor
 from codequest.tui.widgets.hint_panel import HintPanel
 from codequest.tui.widgets.test_results import TestResults
@@ -49,7 +50,8 @@ class MissionScreen(Screen):
         Binding("f1", "hint", "Hint", priority=True),
         Binding("f2", "toggle_mentor", "Mentor", priority=True),
         Binding("f3", "toggle_teaching", "Teaching", priority=True),
-        Binding("ctrl+r", "reset_editor", "Reset", priority=True),
+        Binding("f4", "reset_editor", "Reset", priority=True),
+        Binding("f6", "next_mission", "Next", priority=True),
         Binding("escape", "app.pop_screen", "Map", priority=True),
     ]
 
@@ -66,20 +68,20 @@ class MissionScreen(Screen):
         with Horizontal(id="mission-body"):
             with Vertical(id="left-column"):
                 with Vertical(id="teaching", classes="panel"):
-                    yield Static("Teaching", classes="panel-title")
+                    yield Static(t("mission.teaching_title"), classes="panel-title")
                     yield Static(self._teaching_text(), id="teaching-body")
                 with Vertical(id="brief", classes="panel"):
-                    yield Static("Brief", classes="panel-title")
+                    yield Static(t("mission.brief_title"), classes="panel-title")
                     yield Static(self.mission.brief.rstrip(), id="brief-body")
             with Vertical(id="right-column"):
                 with Vertical(id="editor-panel", classes="panel"):
-                    yield Static("Your code", classes="panel-title")
+                    yield Static(t("mission.your_code"), classes="panel-title")
                     yield CodeEditor(self.mission.signature.stub, id="editor")
                 yield Static("", id="run-status")
                 with TabbedContent(id="right-tabs"):
-                    with TabPane("Results", id="tab-results"):
+                    with TabPane(t("mission.tab_results"), id="tab-results"):
                         yield TestResults(id="results")
-                    with TabPane("Hints", id="tab-hints"):
+                    with TabPane(t("mission.tab_hints"), id="tab-hints"):
                         yield HintPanel(id="hints")
                 yield from self._compose_mentor()
         yield Footer()
@@ -102,7 +104,7 @@ class MissionScreen(Screen):
         yield MentorChat(id="mentor-panel", classes="panel")
 
     def on_mount(self) -> None:
-        self.sub_title = f"{self.mission.title}  -  {self.mission.xp} XP"
+        self.sub_title = t("mission.subtitle", title=self.mission.title, xp=self.mission.xp)
         self.query_one("#hints", HintPanel).load(self.mission, self._hints_already_used())
         self.query_one("#editor", CodeEditor).focus()
         self._apply_band(self.size.width)
@@ -116,22 +118,22 @@ class MissionScreen(Screen):
         self.set_class(width < NARROW_MIN_COLUMNS, "tiny")
 
         if width < NARROW_MIN_COLUMNS:
-            self.query_one("#reduced-notice", Static).update(
-                "  Narrow terminal: teaching and brief are in the tabs. Widen to see all panels."
-            )
+            self.query_one("#reduced-notice", Static).update(t("mission.reduced_notice"))
 
     def _teaching_text(self) -> str:
         teaching = self.mission.teaching
+        worked_example = t("mission.worked_example")
         parts = [
             teaching.analogy.rstrip(),
             "",
             teaching.explanation.rstrip(),
             "",
-            "[$brass]Worked example[/$brass]",
+            f"[$brass]{worked_example}[/$brass]",
             teaching.worked_example.rstrip(),
         ]
         if teaching.key_points:
-            parts += ["", "[$brass]Key points[/$brass]"]
+            key_points = t("mission.key_points")
+            parts += ["", f"[$brass]{key_points}[/$brass]"]
             parts += [f"  - {point}" for point in teaching.key_points]
         return "\n".join(parts)
 
@@ -150,7 +152,7 @@ class MissionScreen(Screen):
             return
         self.running = True
         self.query_one("#right-tabs", TabbedContent).active = "tab-results"
-        self.query_one("#run-status", Static).update("[$beacon]running...[/$beacon]")
+        self.query_one("#run-status", Static).update(f"[$beacon]{t('mission.running')}[/$beacon]")
         self._run_attempt(self.query_one("#editor", CodeEditor).submission)
 
     @work(thread=True, exclusive=True)
@@ -178,7 +180,8 @@ class MissionScreen(Screen):
 
     def _show_progress(self, done: int, total: int) -> None:
         self.query_one("#results", TestResults).show_waiting(done, total)
-        self.query_one("#run-status", Static).update(f"[$beacon]case {done} of {total}[/$beacon]")
+        progress = t("mission.case_progress", done=done, total=total)
+        self.query_one("#run-status", Static).update(f"[$beacon]{progress}[/$beacon]")
 
     def _show_outcome(self, outcome: AttemptOutcome) -> None:
         self.running = False
@@ -192,13 +195,24 @@ class MissionScreen(Screen):
             mentors.first().set_verdict(outcome.verdict)
 
         status = self.query_one("#run-status", Static)
+        if not outcome.passed:
+            status.update("")
+            return
+
+        # Passing always earns the congratulations, whatever else happened. Unlock and
+        # level-up are extra headlines layered on top, not alternatives to it - a
+        # replay that unlocks nothing is still a mission solved.
+        parts = [t("mission.congrats")]
         if outcome.award and outcome.award.newly_unlocked:
             unlocked = ", ".join(outcome.award.newly_unlocked)
-            status.update(f"[$brass]Unlocked: {unlocked}[/$brass]")
+            parts.append(t("mission.unlocked", islands=unlocked))
         elif outcome.award and outcome.award.leveled_up:
-            status.update(f"[$brass]Level {outcome.award.profile.level}![/$brass]")
-        else:
-            status.update("")
+            parts.append(t("mission.level_up", level=outcome.award.profile.level))
+
+        if self.app.context.missions.next_mission_after(self.mission.id) is not None:
+            parts.append(t("mission.next_hint"))
+
+        status.update(f"[$brass]{'  -  '.join(parts)}[/$brass]")
 
     # ------------------------------------------------------------------ hints
 
@@ -240,9 +254,19 @@ class MissionScreen(Screen):
 
         self.app.push_screen(
             ConfirmDialog(
-                "Reset the editor to the original stub?\n\n"
-                "[$parchment-dim]Everything you have typed is discarded.[/$parchment-dim]",
-                confirm_label="Reset",
+                t("mission.reset_confirm"),
+                confirm_label=t("mission.reset_label"),
             ),
             on_answer,
         )
+
+    def action_next_mission(self) -> None:
+        """Jump straight to the next mission in the island. A no-op past the last one.
+
+        Silent rather than an error message: F6 is always listed in the footer, and
+        pressing it on the final mission of a track is not a mistake worth interrupting
+        the player for.
+        """
+        next_mission = self.app.context.missions.next_mission_after(self.mission.id)
+        if next_mission is not None:
+            self.app.switch_screen(MissionScreen(next_mission))

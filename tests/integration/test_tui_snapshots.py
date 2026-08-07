@@ -29,6 +29,11 @@ from codequest.tui.screens.mission import MissionScreen
 WIDE = (110, 34)
 NARROW = (90, 30)
 TINY = (70, 26)
+#: A short-but-wide terminal, matching a VS Code integrated terminal panel. Rows are
+#: the scarce resource here, not columns - this is what exposed the editor being
+#: squeezed to nothing by an unsized #right-tabs (TabbedContent has no height rule
+#: of its own, so it grows to fit its content instead of sharing the column's fr).
+SHORT = (110, 22)
 
 
 @pytest.fixture
@@ -81,6 +86,27 @@ def test_settings(snap_compare, context):
         await pilot.press("s")
 
     assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)
+
+
+def test_editor_stays_visible_with_many_failing_cases(snap_compare, context):
+    """A results pane full of failures must not starve the editor's row budget.
+
+    Regression test for the bug where #right-tabs had no height rule: a long list of
+    failing cases grew it to fit its own content, and #editor-panel's 2fr lost the fr
+    split down to a sliver on a short terminal.
+    """
+
+    async def run(pilot):
+        await _open_mission(pilot)
+        from codequest.tui.widgets.code_editor import CodeEditor
+
+        pilot.app.screen.query_one(
+            "#editor", CodeEditor
+        ).text = "def sum_list(numbers):\n    return 6\n"
+        await pilot.press("f5")
+        await pilot.pause(delay=8)
+
+    assert snap_compare(CodeQuestApp(context=context), terminal_size=SHORT, run_before=run)
 
 
 # ------------------------------------------------------- the three layout bands

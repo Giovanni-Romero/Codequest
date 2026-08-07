@@ -15,6 +15,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from codequest.tui.strings import t
+
 
 class ConfirmDialog(ModalScreen[bool]):
     """Asks a yes/no question and returns the answer.
@@ -25,16 +27,16 @@ class ConfirmDialog(ModalScreen[bool]):
 
     BINDINGS: ClassVar[list[BindingType]] = [("escape", "dismiss_false", "Cancel")]
 
-    def __init__(self, question: str, confirm_label: str = "Delete") -> None:
+    def __init__(self, question: str, confirm_label: str | None = None) -> None:
         super().__init__()
         self.question = question
-        self.confirm_label = confirm_label
+        self.confirm_label = confirm_label if confirm_label is not None else t("dialog.delete")
 
     def compose(self) -> ComposeResult:
         with Vertical(id="dialog-frame"):
             yield Static(self.question, id="dialog-question")
             with Horizontal(id="dialog-buttons"):
-                yield Button("Cancel", id="cancel")
+                yield Button(t("dialog.cancel"), id="cancel")
                 yield Button(self.confirm_label, id="confirm", variant="error")
 
     def on_mount(self) -> None:

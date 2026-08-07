@@ -244,6 +244,38 @@ class AttemptRepository:
         ).fetchone()["n"]
 
 
+class PreferenceRepository:
+    """Reads and writes app-wide settings that belong to the player, not a save.
+
+    Deliberately not scoped to a profile: the game's language has to be readable from
+    the main menu, before any save is chosen, so it cannot live on the ``profile`` row.
+    A generic key/value table keeps this repository from needing a schema change the
+    next time a preference like this shows up.
+    """
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def get(self, key: str, default: str | None = None) -> str | None:
+        row = self.connection.execute(
+            "SELECT value FROM preference WHERE key = ?", (key,)
+        ).fetchone()
+        return row["value"] if row else default
+
+    def set(self, key: str, value: str) -> None:
+        self.connection.execute(
+            "INSERT INTO preference (key, value) VALUES (?, ?)"
+            " ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+
+    def get_language(self) -> str:
+        return self.get("language", "en") or "en"
+
+    def set_language(self, language: str) -> None:
+        self.set("language", language)
+
+
 class IslandRepository:
     """Which islands a profile has unlocked."""
 

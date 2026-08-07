@@ -16,13 +16,15 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Label, ListItem, ListView, Static
 
 from codequest.tui.screens.save_select import SaveSelectScreen
+from codequest.tui.strings import t
 from codequest.tui.symbols import LOCKED, ROUTE
 
 #: Tracks the game knows about. Only those with content and a runner are playable.
+#: The note is a strings.py key, not text - translated at render time, not at import.
 TRACKS = [
-    ("python", "Python", True, "foundations to async, ten islands"),
-    ("java", "Java", False, "planned for v1.1"),
-    ("typescript", "TypeScript", False, "planned for v1.2"),
+    ("python", "Python", True, "track.python.note"),
+    ("java", "Java", False, "track.java.note"),
+    ("typescript", "TypeScript", False, "track.typescript.note"),
 ]
 
 
@@ -37,14 +39,15 @@ class MainMenuScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header()
         with Middle(), Center(), Vertical(id="menu-frame"):
-            yield Static("C O D E Q U E S T", id="title")
-            yield Static(f"{ROUTE * 3} chart a course {ROUTE * 3}", id="tagline")
+            yield Static(t("main_menu.title"), id="title")
+            yield Static(f"{ROUTE * 3} {t('main_menu.tagline')} {ROUTE * 3}", id="tagline")
             yield ListView(*self._track_items(), id="track-list")
         yield Footer()
 
     def _track_items(self) -> list[ListItem]:
         items: list[ListItem] = []
-        for track_id, name, playable, note in TRACKS:
+        for track_id, name, playable, note_key in TRACKS:
+            note = t(note_key)
             if playable:
                 label = f"  {name:<12} [$parchment-dim]{note}[/$parchment-dim]"
                 items.append(ListItem(Label(label), id=f"track-{track_id}"))

@@ -141,13 +141,20 @@ ListView > ListItem.--highlight {
 
 CodeEditor {
     background: $ink;
-    border: none;
+    border: round $brass-dim;
     height: 1fr;
 }
 
 #run-status {
     height: 1;
     color: $parchment-dim;
+}
+
+/* Without an explicit height, TabbedContent sizes to its active pane's content
+   instead of sharing the column's fr budget - a Results pane full of failing
+   cases would then starve #editor-panel's 2fr down to almost nothing. */
+#right-tabs {
+    height: 2fr;
 }
 
 /* Narrow and tiny bands. Set by MissionScreen.on_resize; the rule lives in
