@@ -841,8 +841,169 @@ calls. Same muscle, smaller stakes, and the human version comes first.
 
 ## Island 7 — Files and Data
 
+**Theme:** data that outlives the program
 **Band:** moderate
-Concepts: `open-and-read`, `context-managers`, `writing-files`, `json`, `csv`, `paths`
+**Missions:** 10
+
+Everything the player has written so far received its data as arguments and gave it back
+as a return value. Nothing survived the call. This island is where a program first leaves
+a mark that is still there tomorrow — and where the failures stop being about logic and
+start being about the world: the file is missing, the handle was never closed, the path
+works on your machine and nowhere else.
+
+**Concepts (6):** `open-and-read`, `context-managers`, `writing-files`, `json`, `csv`,
+`paths`
+
+### This island cannot be authored yet, and that is the main finding
+
+Islands 3 and 4 designed *around* their engine limits. Island 5 could not, and the
+`raises:` field was built before its first mission was written. **Island 7 is a Island 5
+case, not an Island 3 case.** The gap and the proposed contract are in "Engine work this
+island requires" below; the mission map assumes that work is done.
+
+Designing it first is still the right order. The shape of the field falls out of what the
+missions need — a fixture mechanism designed before the island would have guessed.
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---|---|---|---|---|
+| 1 | `the-logbook-page` | `open-and-read` | `split-and-parse`, `exceptions` | Read a file the mission planted. A missing file raises, and that is the lesson's second half |
+| 2 | `close-it-yourself` | `context-managers` | `open-and-read`, `try-except` | `with` — and why mission 1's shape was a leak waiting for an exception |
+| 3 | `the-quiet-count` | — | `open-and-read`, `context-managers`, `accumulator-pattern` | **Relief.** Count matching lines in a file, nothing new |
+| 4 | `write-it-down` | `writing-files` | `context-managers`, `join-vs-concat` | Write, then read back in the same call. `"w"` truncates and `"a"` does not |
+| 5 | `the-structured-manifest` | `json` | `writing-files`, `nested-structures` | A dict survives a round trip through text. Tuples do not come back as tuples |
+| 6 | `the-round-trip` | — | `json`, `context-managers` | **Relief.** |
+| 7 | `the-column-ledger` | `csv` | `split-and-parse`, `lists` | The quoted comma that `.split(",")` gets wrong. Island 4's tool meeting its limit |
+| 8 | `the-portable-path` | `paths` | `string-methods` | `pathlib`, and why `folder + "\\" + name` is a bug the author's machine hides |
+| 9 | `the-tidy-report` | — | `paths`, `writing-files`, `csv`, `f-strings` | **Relief.** |
+| 10 | `the-full-ledger` | — | all six | Closing mission. Combine, do not learn |
+
+Relief at 3, 6 and 9, matching Islands 4, 5 and 6.
+
+Mission 1 introducing `open-and-read` **before** `context-managers` is deliberate, and it
+is the same move Island 5 made by teaching `exceptions` before `try-except`. A player has
+to hold a file open, and see that nothing forces them to close it, before `with` reads as
+a solution rather than as syntax someone insists on. Mission 2 then breaks mission 1's
+shape on purpose: an exception between `open()` and `close()` skips the close.
+
+Reinforcement count:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `open-and-read` | 1 | 2, 3, 4, 10 |
+| `context-managers` | 2 | 3, 4, 6, 10 |
+| `writing-files` | 4 | 5, 9, 10 |
+| `json` | 5 | 6, 10 |
+| `csv` | 7 | 9, 10 |
+| `paths` | 8 | 9, 10 |
+
+Every concept is reused at least twice. No orphans, and no exception to argue this time.
+
+### Engine work this island requires
+
+Verified against the code before the map above was written, not assumed.
+
+**1. There is no way to plant a file. This is the blocker.**
+`PythonRunner.prepare` (`engine/runners/python.py:116`) writes exactly two files into the
+sandbox — `submission.py`, and `harness.py` outside a frozen build. `docs/mission-schema.md`
+has no field that says "this mission needs `cargo.csv` to exist". Missions 1, 3, 7 and 10
+have nothing to open.
+
+Proposed contract, to be built before authoring — the same order `raises:` was built in:
+
+```yaml
+files:
+  cargo.csv: |
+    port,weight
+    lisbon,10
+```
+
+A mapping of relative filename to text content, written into the workdir during `prepare`.
+Text only, names validated to a single path segment: a mission that could write
+`../../anything` would turn content — the one part of the repo a non-coder is invited to
+edit — into an arbitrary file-write primitive. `content/` is data, and this is exactly
+where data stops being harmless.
+
+**2. The workdir is shared by every test case of one attempt.**
+`GameSession` calls `prepare` once and `execute` per case (`services/game_session.py:91,142`).
+A file written by case 1 is still there for case 2. This is the mirror image of the
+one-process-per-case rule that shaped Island 3: there, state did not survive; here, it
+survives too well. A `writing-files` mission whose cases each append to the same name will
+pass alone and fail in sequence. Either `prepare` re-plants the declared files before every
+case, or mission 4 and mission 9 must be written so each case names its own file. **The
+first is better** — a mission author should not have to know this.
+
+**3. The workdir is not empty and its contents differ between builds.**
+It holds `submission.py`, `request.json` and `result.json`, plus `harness.py` only outside a
+frozen build (`python.py:132`). So no mission may list the directory or count its files:
+the answer includes engine plumbing, and it is a *different* answer in the pendrive build
+than in a source checkout. Nothing in the map above does this, deliberately.
+
+**4. A file handle does not cross the JSON boundary.**
+Same wall functions hit in Island 3 and `bytes` in Island 4 — `engine/harness.py` falls back
+to `repr` for anything `json.dumps` cannot carry. No mission can accept or return an open
+file. Every mission here is framed around what the solution *builds* from the file, which is
+the honest framing anyway.
+
+**5. `open` and the imports are already controllable.** The guard's `forbidden_builtins`
+and `forbidden_imports` (`engine/guard.py`) cover `open`, `json` and `csv` by name, so
+mission 7 can forbid `split` where it wants the `csv` module, and mission 5 can forbid
+hand-rolled parsing. No new mechanism needed for this part.
+
+### open-and-read
+- **prereqs:** split-and-parse, exceptions
+- **objective:** read a file's contents into text your program can work on, and know what
+  happens when it is not there
+- **misconceptions:** believing `open()` returns the contents rather than a handle;
+  believing a missing file returns something empty instead of raising `FileNotFoundError`;
+  reading a file twice from the same handle and being surprised the second read is empty
+- **mastery:** reads a file into lines and says what the call does when the path is wrong
+
+### context-managers
+- **prereqs:** open-and-read, try-except
+- **objective:** hold a resource only as long as it is needed, and release it even when
+  something fails
+- **misconceptions:** believing `with` is a shorter `open` rather than a guarantee about
+  the close; believing a `return` inside the block skips the cleanup (it does not);
+  believing the file is still readable after the block ends
+- **mastery:** explains what happens to the handle when a line inside the block raises,
+  in both the `with` version and the `open`/`close` version
+
+### writing-files
+- **prereqs:** context-managers
+- **objective:** put a program's result somewhere it will still be after the program ends
+- **misconceptions:** believing `"w"` appends (it truncates the file to nothing first);
+  believing the text is on disk the instant `.write()` returns; forgetting that `.write()`
+  adds no newline of its own
+- **mastery:** predicts the file's contents after the same function runs twice, for both
+  `"w"` and `"a"`
+
+### json
+- **prereqs:** writing-files, nested-structures
+- **objective:** save a structure and load it back as the same structure
+- **misconceptions:** confusing `dumps`/`loads` (text) with `dump`/`load` (a file);
+  believing every Python value is serialisable; expecting a tuple or a set to survive the
+  round trip as itself; believing dict keys keep their type (they all come back as strings)
+- **mastery:** round-trips a nested dict and names one value that does not come back as the
+  type it went in as
+
+### csv
+- **prereqs:** split-and-parse, lists, open-and-read
+- **objective:** read tabular text correctly, including the rows that `.split(",")` ruins
+- **misconceptions:** believing `.split(",")` is equivalent (a quoted field containing a
+  comma proves it is not); forgetting every field arrives as a string; treating the header
+  row as data
+- **mastery:** parses a file where one field legitimately contains a comma, and gets the
+  same column count on every row
+
+### paths
+- **prereqs:** string-methods
+- **objective:** build a path that works on someone else's operating system
+- **misconceptions:** joining with `"/"` or `"\\"` by hand; believing a path that works
+  where it was written works everywhere; confusing the file's name with its whole path
+- **mastery:** builds a path from parts without typing a separator, and takes a file's
+  extension off a full path without slicing by index
 
 ---
 
@@ -889,7 +1050,7 @@ Knowing when not to reach for a tool is the harder half of the skill.
 
 ## Coverage checklist
 
-Checked for **Islands 1 to 6**. Islands 7 to 11 are sketched, not designed — they get
+Checked for **Islands 1 to 7**. Islands 8 to 11 are sketched, not designed — they get
 their own pass before their missions are written.
 
 - [x] Every concept has an explicit prereq list
@@ -897,12 +1058,12 @@ their own pass before their missions are written.
 - [x] Every concept is reused in at least two later missions — see the reinforcement tables. One named exception: `encoding-basics` in Island 4, argued there
 - [x] Objectives are verbs, never "understand"
 - [x] Misconceptions are written, so hints can target them
-- [x] The curve has relief missions after hard ones — Island 1: 3 and 9. Islands 2 and 3: 3, 7, 11. Islands 4 and 5: 3, 6, 9
-- [x] No mission introduces two new concepts
+- [x] The curve has relief missions after hard ones — Island 1: 3 and 9. Islands 2 and 3: 3, 7, 11. Islands 4 to 7: 3, 6, 9
+- [x] No mission introduces two new concepts — Island 6 mission 3 is the single exception, argued there: `print-debugging` and `interactive-debugger` share a mission because neither is verifiable and one is a hazard to run
 
 ### What this document does not yet cover
 
-Islands 6 to 11 list concepts but have no mission map, no prereq graph and no
+Islands 8 to 11 list concepts but have no mission map, no prereq graph and no
 misconceptions. That is deliberate: designing all of them now would freeze decisions
 that building the earlier islands is going to change. Each island gets a pass like the
 one above immediately before its content is written.
@@ -917,11 +1078,23 @@ Each was verified against the code, not assumed:
   dispatch-table framing of `first-class-functions` and the byte-count framing of
   `encoding-basics`.
 - **Nothing can assert on printed output** — `stdout` is captured but never compared.
-  **Island 6 (Debugging) runs into this head-on**, since it wants to teach
-  print-debugging. It needs either a new engine capability or a different framing, and
-  that decision belongs at the start of designing Island 6, not halfway through it.
+  Island 6 hit this head-on and **chose the framing over the capability**: mission 3
+  teaches print-debugging in its panel and is graded on the fix. Any rule strict enough to
+  grade a print would be grading formatting, and would fail a player who reached for a
+  debugger instead. Argued in full in Island 6.
 - **Exceptions could not be tested at all** (Island 5) — fixed rather than designed
   around, by adding the `raises:` test-case field before Island 5's content was written.
   Cross-island scope corrections came out of the same pass: `slicing` was dropped from
   Island 4 (Island 2 already taught it) and `custom-exceptions` moved from Island 5 to
   Island 8 (it needs `class`).
+- **No mission can plant a file, and the sandbox directory is shared across a run's test
+  cases** (Island 7) — the second Island-5 case. `open-and-read` has nothing to open until
+  a `files:` field exists, so that field is a prerequisite of the island's first mission
+  rather than something to design around. Contract proposed in Island 7.
+
+The pattern across four islands is worth naming, because it is the one transferable
+lesson of this document: **design the island first, then find out what the engine cannot
+do.** Twice the answer was to reshape the missions (Islands 3 and 4), twice it was to
+build the missing capability (Islands 5 and 7), and once it was to accept that a concept
+is genuinely unassessable and say so (Island 6). Deciding which of the three *before*
+looking at the missions would have got it wrong.
