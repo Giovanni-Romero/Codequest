@@ -1,0 +1,246 @@
+# Missao 10 de Depuracao. Missao de FECHAMENTO. Nao introduz nada - combine, nao aprenda.
+# Reforca os seis conceitos da ilha: reading-tracebacks, logic-vs-data, print-debugging,
+# interactive-debugger, bisection, assert-as-diagnosis.
+#
+# Formato conserto, e a unica em que o bug precisa ser LOCALIZADO antes: quatro funcoes,
+# uma errada, e o sintoma aparece em algumas entradas e nao em outras. Bisseccao e o
+# metodo - teste cada auxiliar com um caso cuja resposta voce ja conhece.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-10
+title: A investigação completa
+track: python
+island: debugging
+order: 10
+difficulty: moderate
+tags: [bug-fix, closing, methodology]
+xp: 30
+
+concepts:
+  - reading-tracebacks
+  - logic-vs-data
+  - print-debugging
+  - bisection
+  - assert-as-diagnosis
+
+teaching:
+  analogy: |
+    Um relatório de carga sai errado. Quatro pessoas encostaram nele: quem leu os
+    manifestos, quem contou os portos, quem somou os pesos, e quem nomeou a maior carga.
+
+    Você não entrevista as quatro. Você pega uma viagem cujos números já sabe de cor,
+    entrega para cada uma separadamente, e vê qual resposta discorda da sua. Três são
+    liberadas num minuto e você tem um nome.
+
+    É esse o método inteiro. Não "leia tudo até algo parecer errado" - divida os suspeitos
+    e confira uma metade por vez.
+
+  explanation: |
+    Isto é a ilha montada num procedimento só. Nada de novo.
+
+    **1. Reproduza pequeno.** Ache a menor entrada que mostra o bug. Se o relatório sai
+    errado com quarenta linhas, tente fazer sair errado com duas. Todo passo daqui em diante
+    é mais rápido com duas do que com quarenta.
+
+    **2. Pergunte qual porta.** Código errado, ou dados errados? Rode uma entrada cuja
+    resposta certa você já conhece. Se ela sai errada, o código está errado e você pode
+    parar de desconfiar da entrada.
+
+    **3. Corte os suspeitos ao meio.** Com quatro funções, você não lê quatro funções. Você
+    chama cada uma diretamente com valores conhecidos e compara. Duas chamadas e metade
+    delas está inocente. Isso é bissecção aplicada a código em vez de a uma lista.
+
+    **4. Olhe dentro da sobrevivente.** Imprima o estado dela com rótulos, ou copie para o
+    seu editor e ande passo a passo. A essa altura você está olhando dez linhas, não
+    quarenta.
+
+    **5. Registre o que aprendeu.** Quando a promessa que uma função deveria cumprir pode
+    ser escrita como condição, um `assert` transforma isso numa conferência que dispara da
+    próxima vez que alguém quebrar. Nem todo bug termina com um, mas os bons consertos
+    frequentemente terminam.
+
+    O hábito mais valioso aqui é o passo 1. Um bug que você reproduz em duas linhas está
+    quase consertado; um bug que só acontece às vezes, em produção, é um projeto de pesquisa.
+
+  worked_example: |
+    # Passo 3 na pratica: interrogando as auxiliares de um relatorio qualquer
+    def contar_palavras(texto):
+        return len(texto.split())
+
+    def maior_palavra(texto):
+        melhor = ""
+        for palavra in texto.split():
+            if len(palavra) > len(melhor):
+                melhor = palavra
+        return melhor
+
+    amostra = "um dois tres"                              # sei toda resposta disso de cor
+    print("contar_palavras:", contar_palavras(amostra))   # 3    - confere
+    print("maior_palavra:", maior_palavra(amostra))       # dois - confere
+
+    # Duas chamadas, nenhuma leitura, e as duas auxiliares estao liberadas. O que estiver
+    # errado esta em quem chama elas.
+
+  key_points:
+    - "Reproduza pequeno primeiro. Todo passo depois disso fica mais barato, e uma reprodução de duas linhas já é quase o conserto."
+    - Chame cada auxiliar com valores cuja resposta você já sabe. Isso corta os suspeitos ao meio sem ler uma linha.
+    - "Código errado ou dados errados: responda isso antes de editar qualquer coisa, ou você vai consertar a função inocente."
+    - Um bug que aparece em algumas entradas e não em outras está apontando para uma fronteira ou um empate, não para a função inteira.
+    - "Quando o conserto restaura uma promessa que dá para escrever como condição, um assert mantém isso à prova da próxima vez."
+
+brief: |
+  voyage_report(entries) recebe uma lista de linhas "porto: peso" e retorna um dicionário
+  com três chaves:
+
+    - "ports" - quantos portos **distintos** aparecem
+    - "total" - a soma de todos os pesos
+    - "heaviest" - o porto da maior carga individual. **Em caso de empate, vence o primeiro
+      da lista.**
+
+  Para ["lisbon: 10", "porto: 25", "faro: 5"] a resposta é:
+
+      {"ports": 3, "total": 40, "heaviest": "porto"}
+
+  Uma lista vazia retorna {"ports": 0, "total": 0, "heaviest": None}.
+
+  O código abaixo está pronto e uma das suas quatro funções está errada. Ele dá a resposta
+  certa para a maioria das entradas, e é isso que faz valer a pena investigar em vez de ler.
+
+  Encontre, conserte, e não mude mais nada.
+
+signature:
+  entrypoint: voyage_report
+  stub: |
+    def parse_entry(entry):
+        port, weight = entry.split(":")
+        return [port.strip(), int(weight)]
+
+
+    def count_ports(rows):
+        seen = set()
+        for row in rows:
+            seen.add(row[0])
+        return len(seen)
+
+
+    def total_weight(rows):
+        total = 0
+        for row in rows:
+            total = total + row[1]
+        return total
+
+
+    def heaviest_port(rows):
+        best = rows[0]
+        for row in rows:
+            if row[1] >= best[1]:
+                best = row
+        return best[0]
+
+
+    def voyage_report(entries):
+        if not entries:
+            return {"ports": 0, "total": 0, "heaviest": None}
+
+        rows = []
+        for entry in entries:
+            rows.append(parse_entry(entry))
+
+        return {
+            "ports": count_ports(rows),
+            "total": total_weight(rows),
+            "heaviest": heaviest_port(rows),
+        }
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["lisbon: 10", "porto: 25", "faro: 5"]]
+      expect: {ports: 3, total: 40, heaviest: "porto"}
+    - args: [["lisbon: 10", "porto: 10"]]
+      expect: {ports: 2, total: 20, heaviest: "lisbon"}
+  hidden:
+    - args: [[]]
+      expect: {ports: 0, total: 0, heaviest: null}
+    - args: [["solo: 7"]]
+      expect: {ports: 1, total: 7, heaviest: "solo"}
+    - args: [["a: 5", "b: 5", "c: 5"]]
+      expect: {ports: 3, total: 15, heaviest: "a"}
+    - args: [["a: 3", "a: 9", "b: 9"]]
+      expect: {ports: 2, total: 21, heaviest: "a"}
+    - args: [["a: -5", "b: -5"]]
+      expect: {ports: 2, total: -10, heaviest: "a"}
+    - args: [["a: 0", "b: 1"]]
+      expect: {ports: 2, total: 1, heaviest: "b"}
+    - args: [["north: 4", "north: 4", "south: 2"]]
+      expect: {ports: 2, total: 10, heaviest: "north"}
+
+hints:
+  - level: 1
+    text: |
+      Não leia as quatro funções. Pegue ["lisbon: 10", "porto: 10"] - você sabe toda
+      resposta dele de cor - e chame parse_entry, count_ports, total_weight e
+      heaviest_port você mesmo, imprimindo cada resultado. Três vão concordar com você.
+  - level: 2
+    text: |
+      As contagens e o total estão certos. heaviest_port é quem discorda, e só quando duas
+      cargas pesam igual. Leia a comparação dela e pergunte o que ela faz quando a linha
+      nova é exatamente igual à melhor até agora, depois confira isso contra o que o
+      enunciado diz sobre empate.
+  - level: 3
+    text: |
+      A mesma questão de empate, em outra busca:
+
+          # mantem a PRIMEIRA palavra mais curta: uma palavra posterior precisa ser
+          # estritamente menor para vencer
+          for palavra in palavras:
+              if len(palavra) < len(mais_curta):
+                  mais_curta = palavra
+
+      A sua procura a maior, e um caractere na comparação está deixando empates posteriores
+      sobrescreverem o vencedor anterior.
+
+solution: |
+  def parse_entry(entry):
+      port, weight = entry.split(":")
+      return [port.strip(), int(weight)]
+
+
+  def count_ports(rows):
+      seen = set()
+      for row in rows:
+          seen.add(row[0])
+      return len(seen)
+
+
+  def total_weight(rows):
+      total = 0
+      for row in rows:
+          total = total + row[1]
+      return total
+
+
+  def heaviest_port(rows):
+      best = rows[0]
+      for row in rows:
+          if row[1] > best[1]:
+              best = row
+      return best[0]
+
+
+  def voyage_report(entries):
+      if not entries:
+          return {"ports": 0, "total": 0, "heaviest": None}
+
+      rows = []
+      for entry in entries:
+          rows.append(parse_entry(entry))
+
+      return {
+          "ports": count_ports(rows),
+          "total": total_weight(rows),
+          "heaviest": heaviest_port(rows),
+      }

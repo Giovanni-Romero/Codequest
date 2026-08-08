@@ -1,0 +1,180 @@
+# Mission 4 of Debugging. Introduces: bisection. Reinforces: print-debugging.
+#
+# Skeleton-shaped, not a bug fix: bisection is an algorithm you write, not a symptom you
+# spot. The forbidden list (range, enumerate, index) removes the comfortable ways to
+# scan, but a determined linear walk with a counter still passes - the guard protects the
+# lesson, not the grade. Said out loud here rather than pretending the coverage is tight.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-04
+title: Halve the search
+track: python
+island: debugging
+order: 4
+difficulty: moderate
+tags: [bisection, search, methodology]
+xp: 30
+
+concepts:
+  - bisection
+  - print-debugging
+
+teaching:
+  analogy: |
+    A string of two hundred harbour lamps runs from the dock to the lighthouse. Somewhere
+    along it a lamp burned out, and from that lamp onward the whole string is dark.
+
+    You could walk the line testing lamps one at a time. Two hundred checks, worst case.
+
+    Or you walk to the middle and look. Still lit? The fault is in the half ahead of you.
+    Dark? The fault is behind you. Either way you just eliminated a hundred lamps with one
+    look. Do it again on whichever half is left. Eight checks and you are standing in
+    front of it.
+
+    Nothing about the lamps changed. What changed is that each check now buys you half the
+    remaining line instead of one lamp.
+
+  explanation: |
+    Bisection is halving the suspect range with every check.
+
+    It needs one property and one only: **everything after the first bad thing is also
+    bad.** That is what lets a single check rule out an entire half. The list does not
+    have to be sorted by value - it has to be sorted by good-then-bad, which is a much
+    weaker promise.
+
+    You keep two boundaries, `low` and `high`, marking the range that might still hold the
+    answer. Look at the middle. If the middle is bad, the first bad one is at the middle or
+    before it, so pull `high` back. If the middle is good, the first bad one is after it,
+    so push `low` forward. Stop when the boundaries cross.
+
+    A scan of a thousand items takes a thousand checks. Bisection takes ten. That gap is
+    why `git bisect` exists: it plays exactly this game over your commits, and it finds the
+    commit that broke the build in a handful of steps instead of by reading them all.
+
+    The same move is what makes print-debugging fast. A print at the halfway point of a
+    suspect stretch of code tells you which half the value went wrong in. A print at the
+    end tells you only what you already knew.
+
+    This is also, in miniature, the method behind systematic debugging anywhere: form a
+    question that cuts the possibilities in half, answer it with evidence, repeat. It
+    scales from a broken loop to a broken deployment.
+
+  worked_example: |
+    # Guessing a number between 1 and 100 - same halving, different problem
+    low, high = 1, 100
+    secret = 73
+    guesses = 0
+
+    while low <= high:
+        middle = (low + high) // 2
+        guesses = guesses + 1
+        if middle < secret:
+            low = middle + 1        # too low: the answer is above the middle
+        else:
+            high = middle - 1       # the answer is the middle or below it
+
+    print(guesses)                  # 7 - not 73, and not 100
+
+  key_points:
+    - Bisection needs "everything after the first bad one is bad", not a sorted list. The property is weaker than sorting and that is why it applies so often.
+    - Each check must eliminate half the range. If a check rules out one item, you are scanning with extra steps.
+    - "Keep a remembered answer: when the middle is bad it is the best candidate so far, but there may be an earlier one."
+    - A range with nothing bad in it has no answer. Decide what you return for that case before you write the loop.
+    - "Same move, bigger stage: git bisect finds the breaking commit this way, and a well-placed print halves a suspect stretch of code."
+
+brief: |
+  A sensor drifts. Once a reading goes above the safe limit it never comes back down, so
+  the readings are always good for a while and then bad for the rest.
+
+  Write first_bad(readings, limit) that returns the **position** of the first reading
+  above the limit. A reading exactly equal to the limit is still safe.
+
+  Return -1 when no reading is above the limit, including for an empty list.
+
+  For first_bad([1, 2, 9, 9], 5) the answer is 2.
+
+  Do not walk the list from the start. Halve it. The forbidden list below removes range,
+  enumerate and .index so that the shape you reach for is a while loop with two
+  boundaries.
+
+signature:
+  entrypoint: first_bad
+  stub: |
+    def first_bad(readings, limit):
+        low = 0
+        high = len(readings) - 1
+        answer = -1
+
+        # while the range is not empty: look at the middle, then shrink one boundary
+        # your code here
+
+        return answer
+
+constraints:
+  forbidden_builtins: [range, enumerate, index, filter, map, next]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 9, 9], 5]
+      expect: 2
+    - args: [[1, 2, 3], 5]
+      expect: -1
+  hidden:
+    - args: [[], 5]
+      expect: -1
+    - args: [[9], 5]
+      expect: 0
+    - args: [[5, 5, 5], 5]
+      expect: -1
+    - args: [[5, 6], 5]
+      expect: 1
+    - args: [[6, 6, 6, 6], 5]
+      expect: 0
+    - args: [[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], 0]
+      expect: 7
+    - args: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9], 5]
+      expect: 15
+
+hints:
+  - level: 1
+    text: |
+      You are holding a range that might contain the answer, and the range shrinks. What
+      two numbers describe that range, and which one moves when the middle reading turns
+      out to be safe?
+  - level: 2
+    text: |
+      Compute the middle as (low + high) // 2. If readings[middle] is above the limit,
+      that middle is the best answer you have found so far - remember it, then search the
+      part before it by setting high = middle - 1. If it is safe, nothing at or before the
+      middle can be the answer, so low = middle + 1. Loop while low <= high.
+  - level: 3
+    text: |
+      The same halving, looking for the last safe value instead of the first bad one:
+
+          while low <= high:
+              middle = (low + high) // 2
+              if values[middle] <= ceiling:
+                  found = middle            # candidate, keep looking to the right
+                  low = middle + 1
+              else:
+                  high = middle - 1
+
+      Yours moves the other boundary, because you want the earliest match, not the latest.
+
+solution: |
+  def first_bad(readings, limit):
+      low = 0
+      high = len(readings) - 1
+      answer = -1
+
+      while low <= high:
+          middle = (low + high) // 2
+          if readings[middle] > limit:
+              answer = middle
+              high = middle - 1
+          else:
+              low = middle + 1
+
+      return answer

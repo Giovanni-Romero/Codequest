@@ -1,0 +1,171 @@
+# Missao 7 de Depuracao. Nao introduz nada. Reforca: reading-tracebacks (pela ausencia -
+# este bug nao produz traceback nenhum), logic-vs-data, print-debugging.
+#
+# Formato conserto. O bug plantado e a concepcao errada de pure-vs-side-effects da Ilha 3
+# vista do outro lado: uma auxiliar que apelida a lista de quem chamou em vez de copiar. O
+# entrypoint chama essa auxiliar DUAS vezes numa unica invocacao, que e o unico jeito de a
+# mutacao compartilhada ser observavel dentro de um processo - ver a nota de motor no syllabus.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-07
+title: A auxiliar que vaza
+track: python
+island: debugging
+order: 7
+difficulty: moderate
+tags: [bug-fix, aliasing, side-effects]
+xp: 30
+
+concepts:
+  - logic-vs-data
+  - reading-tracebacks
+  - print-debugging
+
+teaching:
+  analogy: |
+    Você empresta sua lista de compras para um colega copiar os itens de que ele precisa.
+
+    Ele volta e devolve. A lista agora tem quatro itens riscados - justamente os de que ele
+    não precisava. Não foi maldade; ele achou que riscar era o que "copiar o que eu preciso"
+    queria dizer.
+
+    Nada foi anunciado. Sem alarme, sem bilhete. A próxima pessoa que ler aquela lista
+    simplesmente recebe uma lista mais curta e não faz ideia de que falta coisa.
+
+    Uma função que altera uma lista recebida faz exatamente isso, e é silenciosa
+    exatamente do mesmo jeito.
+
+  explanation: |
+    Em Python, `keep = readings` não copia nada. Os dois nomes agora apontam para **uma**
+    lista. Adicione em `keep` e `readings` cresce junto, porque existe uma lista só e dois
+    rótulos nela.
+
+    Isso não é defeito, é como nomes funcionam - mas significa que uma auxiliar que "filtra"
+    uma lista removendo itens dela não está filtrando, está destruindo. Os dados de quem
+    chamou se foram e ninguém foi avisado.
+
+    Essa classe de bug tem uma assinatura que vale decorar: **a primeira chamada está certa
+    e a segunda está errada.** A função não está quebrada. Ela funciona perfeitamente com os
+    dados que recebeu na primeira vez. O que quebra são os dados, depois que a primeira
+    chamada comeu parte deles.
+
+    É também por isso que não há traceback aqui. Nada levanta. Você recebe um número
+    plausível que por acaso está errado, que é o tipo mais difícil de bug e exatamente por
+    isso a técnica da missão 2 importa: rode um caso cuja resposta você já sabe, depois
+    imprima o estado entre as duas chamadas e veja a entrada encolher.
+
+    O conserto é uma palavra: tire uma cópia. `list(readings)` constrói uma lista nova com
+    os mesmos itens, e tudo depois disso mexe na sua, não na dos outros.
+
+  worked_example: |
+    # Uma lista, dois rotulos
+    original = ["a", "b", "c"]
+    emprestada = original           # NAO e uma copia
+    emprestada.remove("b")
+    print(original)                 # ['a', 'c'] - a lista de quem chamou mudou
+
+    segura = list(original)         # uma copia de verdade
+    segura.remove("a")
+    print(original)                 # ['a', 'c'] - intacta
+    print(segura)                   # ['c']
+
+    # As duas linhas parecem quase iguais. So uma delas protege quem chamou.
+
+  key_points:
+    - "`outra = minha_lista` cria um segundo nome para uma lista, não uma segunda lista. Alterar por qualquer um dos nomes muda as duas."
+    - "A assinatura do bug: a primeira chamada está certa, a segunda está errada. A função está boa; os dados foram comidos."
+    - Nada levanta, então não há traceback. Imprima a entrada entre as duas chamadas e veja ela encolher.
+    - Uma função que filtra deve construir uma lista nova. Remover itens da lista de quem chamou é um efeito colateral que ninguém pediu.
+    - "`list(items)` é a cópia. Custa uma palavra e é o conserto inteiro."
+
+brief: |
+  watch_report(readings) deveria retornar duas contagens:
+
+    - quantas leituras estão abaixo de 5
+    - quantas leituras estão abaixo de 9
+
+  Para [1, 4, 7, 9] a resposta é [2, 3] - duas leituras abaixo de 5, três abaixo de 9.
+
+  A função está pronta, e está errada: retorna [2, 2]. A primeira contagem está certa e a
+  segunda vem pequena demais.
+
+  A auxiliar é onde olhar. Descubra o que ela faz com a lista que recebe, e conserte. Não
+  mexa em watch_report - as duas chamadas dela estão corretas.
+
+signature:
+  entrypoint: watch_report
+  stub: |
+    def readings_below(readings, limit):
+        keep = readings
+        for reading in list(keep):
+            if reading >= limit:
+                keep.remove(reading)
+        return keep
+
+
+    def watch_report(readings):
+        quiet = readings_below(readings, 5)
+        loud = readings_below(readings, 9)
+        return [len(quiet), len(loud)]
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 4, 7, 9]]
+      expect: [2, 3]
+    - args: [[9, 9]]
+      expect: [0, 0]
+  hidden:
+    - args: [[]]
+      expect: [0, 0]
+    - args: [[1]]
+      expect: [1, 1]
+    - args: [[5]]
+      expect: [0, 1]
+    - args: [[8, 8, 8]]
+      expect: [0, 3]
+    - args: [[4, 5, 8, 9, 2]]
+      expect: [2, 4]
+    - args: [[0, 4, 5, 8]]
+      expect: [2, 4]
+
+hints:
+  - level: 1
+    text: |
+      Coloque um print no topo de readings_below mostrando o limite e as leituras que ela
+      recebeu, e rode com [1, 4, 7, 9]. Compare a lista que a primeira chamada recebeu com
+      a lista que a segunda recebeu.
+  - level: 2
+    text: |
+      A segunda chamada recebe uma lista mais curta que a primeira, porque a primeira
+      removeu itens dela. keep = readings não copia - dá um segundo nome à mesma lista, e o
+      .remove() passa a trabalhar na lista de quem chamou. Faça de keep uma cópia de verdade.
+  - level: 3
+    text: |
+      O mesmo conserto, em outra auxiliar:
+
+          def sem_vazios(nomes):
+              limpos = list(nomes)          # uma copia, quem chamou fica com a lista dele
+              for nome in list(limpos):
+                  if nome.strip() == "":
+                      limpos.remove(nome)
+              return limpos
+
+      Uma palavra em uma linha. O resto da sua auxiliar já faz a coisa certa.
+
+solution: |
+  def readings_below(readings, limit):
+      keep = list(readings)
+      for reading in list(keep):
+          if reading >= limit:
+              keep.remove(reading)
+      return keep
+
+
+  def watch_report(readings):
+      quiet = readings_below(readings, 5)
+      loud = readings_below(readings, 9)
+      return [len(quiet), len(loud)]

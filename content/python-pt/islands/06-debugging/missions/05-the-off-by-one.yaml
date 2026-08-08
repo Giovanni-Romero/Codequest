@@ -1,0 +1,151 @@
+# Missao 5 de Depuracao. Nao introduz nada. Missao de ALIVIO - simple/20, abaixo da faixa
+# moderate da ilha, exatamente como o alivio funciona nas Ilhas 2 a 5.
+# Reforca: logic-vs-data, reading-tracebacks.
+#
+# Formato conserto. Um caractere esta errado e a falha e um traceback, entao os dois
+# habitos das missoes 1 e 2 bastam sozinhos. A ilha inteira em miniatura.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-05
+title: O erro de um
+track: python
+island: debugging
+order: 5
+difficulty: simple
+tags: [bug-fix, off-by-one, boundaries]
+xp: 20
+
+concepts:
+  - logic-vs-data
+  - reading-tracebacks
+
+teaching:
+  analogy: |
+    Uma cerca com dez mourões tem nove vãos entre eles. Conte os mourões quando queria
+    contar os vãos e você encomenda uma tábua a mais - toda vez, para sempre, em toda
+    cerca que você construir.
+
+    Ninguém erra isso por descuido. Erra porque "quantos mourões" e "quantos vãos" são
+    duas perguntas diferentes que soam como uma só.
+
+  explanation: |
+    Um erro de um é uma fronteira deslocada em um passo: `<` onde cabia `<=`, um laço que
+    para um item cedo demais, um índice que passa um do fim.
+
+    São o bug mais comum da programação e têm uma assinatura que vale aprender: **o miolo
+    da entrada funciona e uma das pontas não.** O primeiro item, o último item, ou o caso
+    vazio falha enquanto tudo entre eles vai bem. Um bug errado em todo lugar geralmente é
+    uma ideia errada; um bug errado só na ponta geralmente é uma fronteira errada.
+
+    O jeito confiável de achar um não é encarar o código. É pegar a menor entrada possível
+    - um item, depois nenhum - e percorrer à mão, anotando o que cada variável guarda em
+    cada passagem. O passo em que suas anotações discordam do programa é o passo errado.
+
+    Em Python a fronteira é quase sempre esta: as posições válidas de uma lista vão de 0
+    até `len(items) - 1`. Não existe item em `len(items)`. Pedir por ele levanta IndexError,
+    e o traceback nomeia a linha que fez isso.
+
+  worked_example: |
+    # Dois lacos, uma fronteira de distancia
+    letras = ["a", "b", "c"]
+
+    posicao = 0
+    while posicao <= len(letras):        # len e 3, e nao existe letras[3]
+        print(letras[posicao])
+        posicao = posicao + 1
+    # a
+    # b
+    # c
+    # IndexError: list index out of range
+
+    # O conserto e um caractere - a ultima posicao valida e len(letras) - 1,
+    # entao o laco tem que parar *antes* de len(letras):
+    #     while posicao < len(letras):
+
+  key_points:
+    - "O erro de um tem assinatura: o miolo funciona e uma ponta falha. Isso reduz a busca às fronteiras."
+    - "As posições válidas vão de 0 a len(items) - 1. Não existe item em len(items), e pedir por ele levanta IndexError."
+    - Percorra a menor entrada à mão anotando cada variável por passagem. A linha onde suas anotações e o programa discordam é o bug.
+    - Teste a entrada vazia de propósito. Um erro de um que sobrevive a uma lista de cinco morre numa lista de nenhum.
+
+brief: |
+  A função abaixo deveria rotular uma lista de itens, numerando a partir de 1:
+
+      numbered_labels(["oak", "pine"])  ->  ["1: oak", "2: pine"]
+
+  Ela está pronta, e está errada. Toda chamada levanta IndexError, inclusive uma chamada
+  com lista vazia - que deveria retornar lista vazia.
+
+  Leia o traceback, ache a fronteira que está deslocada em um passo, e conserte. Um
+  caractere basta. Não reescreva a função.
+
+signature:
+  entrypoint: numbered_labels
+  stub: |
+    def numbered_labels(items):
+        labels = []
+        position = 0
+
+        while position <= len(items):
+            labels.append(str(position + 1) + ": " + items[position])
+            position = position + 1
+
+        return labels
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["oak", "pine"]]
+      expect: ["1: oak", "2: pine"]
+    - args: [[]]
+      expect: []
+  hidden:
+    # A lista vazia tambem e visivel - o enunciado cita ela como sintoma, entao o jogador
+    # precisa ver. Repetida aqui porque o conjunto oculto e o que prova que uma ponta e
+    # avaliada mesmo para quem parou de ler nos casos visiveis.
+    - args: [[]]
+      expect: []
+    - args: [["solo"]]
+      expect: ["1: solo"]
+    - args: [["a", "b", "c", "d"]]
+      expect: ["1: a", "2: b", "3: c", "4: d"]
+    - args: [[""]]
+      expect: ["1: "]
+    - args: [["x", "x"]]
+      expect: ["1: x", "2: x"]
+
+hints:
+  - level: 1
+    text: |
+      A função funciona para os primeiros itens e depois falha. Qual posição ela tenta ler
+      por último, e essa posição existe na lista?
+  - level: 2
+    text: |
+      Com dois itens, as posições válidas são 0 e 1. Anote o que position guarda em cada
+      passagem do while e onde a condição finalmente para. Ela para uma passagem tarde
+      demais, e o operador de comparação é o motivo.
+  - level: 3
+    text: |
+      A mesma fronteira, em outro laço:
+
+          # percorre uma string caractere a caractere e para certo
+          i = 0
+          while i < len(palavra):
+              print(palavra[i])
+              i = i + 1
+
+      Compare essa condição com a sua, caractere por caractere.
+
+solution: |
+  def numbered_labels(items):
+      labels = []
+      position = 0
+
+      while position < len(items):
+          labels.append(str(position + 1) + ": " + items[position])
+          position = position + 1
+
+      return labels

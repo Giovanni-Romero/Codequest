@@ -1,0 +1,170 @@
+# Mission 7 of Debugging. Introduces nothing. Reinforces: reading-tracebacks (as its
+# absence - this bug produces no traceback at all), logic-vs-data, print-debugging.
+#
+# Fix-shaped. The planted bug is Island 3's pure-vs-side-effects misconception met from
+# the other side: a helper that aliases its caller's list instead of copying it. The
+# entrypoint calls that helper TWICE in one invocation, which is the only way the shared
+# mutation is observable inside a single process - see the engine note in the syllabus.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-07
+title: The leaking helper
+track: python
+island: debugging
+order: 7
+difficulty: moderate
+tags: [bug-fix, aliasing, side-effects]
+xp: 30
+
+concepts:
+  - logic-vs-data
+  - reading-tracebacks
+  - print-debugging
+
+teaching:
+  analogy: |
+    You lend a colleague your shopping list so they can copy the items they need.
+
+    They come back and hand it over. The list now has four items crossed off - the ones
+    they did not need. They were not being malicious; they thought crossing things off was
+    what "take a copy of what I need" meant.
+
+    Nothing was announced. No alarm, no note. The next person to read that list simply
+    gets a shorter one and has no idea anything is missing.
+
+    A function that mutates a list it was given does exactly this, and it is quiet in
+    exactly the same way.
+
+  explanation: |
+    In Python, `keep = readings` does not copy anything. Both names now point at **one**
+    list. Append to `keep` and `readings` grows too, because there is only ever one list
+    and two labels on it.
+
+    That is not a flaw, it is how names work - but it means a helper that "filters" a list
+    by removing items from it is not filtering, it is destroying. The caller's data is gone
+    and nobody was told.
+
+    This class of bug has a signature worth memorising: **the first call is right and the
+    second is wrong.** The function is not broken. It works perfectly on the data it was
+    given the first time. What breaks is the data, once the first call has eaten part of it.
+
+    That is also why there is no traceback here. Nothing raises. You get a plausible number
+    that happens to be wrong, which is the harder kind of bug and exactly why the technique
+    from mission 2 matters: run a case whose answer you already know, then print the state
+    between the two calls and watch the input shrink.
+
+    The fix is one word: take a copy. `list(readings)` builds a new list holding the same
+    items, and everything after that touches yours instead of theirs.
+
+  worked_example: |
+    # One list, two labels
+    original = ["a", "b", "c"]
+    borrowed = original             # NOT a copy
+    borrowed.remove("b")
+    print(original)                 # ['a', 'c'] - the caller's list changed
+
+    safe = list(original)           # a real copy
+    safe.remove("a")
+    print(original)                 # ['a', 'c'] - untouched
+    print(safe)                     # ['c']
+
+    # The two lines look almost identical. Only one of them protects the caller.
+
+  key_points:
+    - "`other = my_list` makes a second name for one list, not a second list. Mutating through either name changes both."
+    - "The signature of this bug: the first call is right, the second is wrong. The function is fine; the data was eaten."
+    - Nothing raises, so there is no traceback. Print the input between the two calls and watch it shrink.
+    - A function that filters should build a new list. Removing items from the caller's list is a side effect nobody asked for.
+    - "`list(items)` is the copy. It costs one word and it is the whole fix."
+
+brief: |
+  watch_report(readings) is meant to return two counts:
+
+    - how many readings are below 5
+    - how many readings are below 9
+
+  For [1, 4, 7, 9] the answer is [2, 3] - two readings under 5, three under 9.
+
+  It is finished, and it is wrong: it returns [2, 2]. The first count is right and the
+  second is too small.
+
+  The helper is where to look. Find what it does to the list it is handed, and fix it.
+  Do not change watch_report itself - both of its calls are correct.
+
+signature:
+  entrypoint: watch_report
+  stub: |
+    def readings_below(readings, limit):
+        keep = readings
+        for reading in list(keep):
+            if reading >= limit:
+                keep.remove(reading)
+        return keep
+
+
+    def watch_report(readings):
+        quiet = readings_below(readings, 5)
+        loud = readings_below(readings, 9)
+        return [len(quiet), len(loud)]
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 4, 7, 9]]
+      expect: [2, 3]
+    - args: [[9, 9]]
+      expect: [0, 0]
+  hidden:
+    - args: [[]]
+      expect: [0, 0]
+    - args: [[1]]
+      expect: [1, 1]
+    - args: [[5]]
+      expect: [0, 1]
+    - args: [[8, 8, 8]]
+      expect: [0, 3]
+    - args: [[4, 5, 8, 9, 2]]
+      expect: [2, 4]
+    - args: [[0, 4, 5, 8]]
+      expect: [2, 4]
+
+hints:
+  - level: 1
+    text: |
+      Add a print at the top of readings_below showing the limit and the readings it
+      received, then run it with [1, 4, 7, 9]. Compare the list the first call was given
+      with the list the second call was given.
+  - level: 2
+    text: |
+      The second call receives a shorter list than the first, because the first one
+      removed items from it. keep = readings does not copy - it gives the same list a
+      second name, and .remove() then works on the caller's list. Make keep a real copy.
+  - level: 3
+    text: |
+      The same fix, in a different helper:
+
+          def without_blanks(names):
+              cleaned = list(names)          # a copy, so the caller keeps their list
+              for name in list(cleaned):
+                  if name.strip() == "":
+                      cleaned.remove(name)
+              return cleaned
+
+      One word on one line. The rest of your helper already does the right thing.
+
+solution: |
+  def readings_below(readings, limit):
+      keep = list(readings)
+      for reading in list(keep):
+          if reading >= limit:
+              keep.remove(reading)
+      return keep
+
+
+  def watch_report(readings):
+      quiet = readings_below(readings, 5)
+      loud = readings_below(readings, 9)
+      return [len(quiet), len(loud)]

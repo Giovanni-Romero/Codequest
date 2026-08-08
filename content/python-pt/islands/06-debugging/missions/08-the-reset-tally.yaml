@@ -1,0 +1,155 @@
+# Missao 8 de Depuracao. Nao introduz nada. Reforca: logic-vs-data, print-debugging.
+#
+# Formato conserto. O bug plantado e a concepcao errada de acumulador da Ilha 1 - o
+# acumulador criado DENTRO do laco em vez de antes dele - vista como sintoma. Escolhido de
+# proposito para que uma lista de um elemento ainda passe: o caso facil esconde o bug, e e
+# justamente esse o ponto.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-08
+title: A conta que zera
+track: python
+island: debugging
+order: 8
+difficulty: moderate
+tags: [bug-fix, accumulator, loops]
+xp: 30
+
+concepts:
+  - logic-vs-data
+  - print-debugging
+
+teaching:
+  analogy: |
+    A contagem é anotada numa lousa ao fim de cada turno.
+
+    Feito certo, o escriturário soma as caixas de hoje ao que a lousa já diz. Feito errado,
+    ele apaga a lousa antes de escrever - então cada anotação mostra exatamente as caixas de
+    um dia e o total corrido nunca corre.
+
+    Apagar não é um erro grande. É uma linha, no lugar errado por um nível de indentação. E
+    numa viagem de um dia só é invisível, porque apagar uma lousa vazia não muda nada.
+
+  explanation: |
+    Um acumulador é uma variável que carrega um resultado através das passagens de um laço.
+    Ele tem exatamente uma regra, e todo bug de acumulador é uma violação dela: **crie antes
+    do laço, atualize dentro.**
+
+    Crie dentro e ele renasce a cada passagem. O laço ainda roda, ainda visita todo item, e
+    ainda produz um número - o número do último item, usando o nome do total. Nada levanta.
+    Não há traceback. Você recebe uma resposta plausível.
+
+    A indentação é o que posiciona a linha, e por isso esse bug tem a largura de uma tecla e
+    é difícil de ver lendo. Seu olho lê a linha, concorda que a linha está correta, e passa
+    por cima de onde ela está.
+
+    A técnica de conserto é a da missão 3: imprima o acumulador em toda passagem, com
+    rótulo. Um total que zera não parece um total que cresce, e uma rodada diz qual dos dois
+    você tem.
+
+    O sinal para lembrar: **a versão errada e a versão certa concordam numa entrada de um
+    elemento.** Então um bug assim sobrevive a todo teste rápido que você digita à mão, e só
+    aparece no terceiro item.
+
+  worked_example: |
+    # O mesmo deslocamento, num construtor de string
+    def iniciais(nomes):
+        for nome in nomes:
+            letras = ""                   # criada dentro: apagada a cada passagem
+            letras = letras + nome[0]
+        return letras
+
+    print(iniciais(["Ana", "Bruno", "Caio"]))    # C - nao 'ABC'
+    print(iniciais(["Ana"]))                     # A - correto, por acidente
+
+    # Mova `letras = ""` para cima do `for` e as duas chamadas acertam. Um nivel de indentacao.
+
+  key_points:
+    - "Uma regra: crie o acumulador antes do laço, atualize dentro. Todo bug de acumulador quebra essa regra."
+    - Criado dentro, o acumulador renasce a cada passagem e acaba guardando só a contribuição do último item.
+    - Nada levanta, então não há traceback. Um print com rótulo em cada passagem mostra um total que zera em vez de crescer.
+    - "Uma entrada de um elemento dá a mesma resposta dos dois jeitos. Teste com três, ou o bug se esconde."
+    - Indentação é posicionamento. Leia onde a linha está, não só o que ela diz.
+
+brief: |
+  running_totals(days) recebe uma lista de contagens diárias de caixas e retorna o total
+  acumulado depois de cada dia.
+
+      running_totals([2, 3, 4])  ->  [2, 5, 9]
+
+  Está pronta, e está errada: retorna [2, 3, 4], que é a própria entrada de volta.
+
+  Encontre o bug e conserte. É uma linha no lugar errado - mova em vez de reescrever a
+  função.
+
+  Uma lista vazia de dias retorna uma lista vazia.
+
+signature:
+  entrypoint: running_totals
+  stub: |
+    def running_totals(days):
+        totals = []
+
+        for day in days:
+            total = 0
+            total = total + day
+            totals.append(total)
+
+        return totals
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[2, 3, 4]]
+      expect: [2, 5, 9]
+    - args: [[10, 0, 5]]
+      expect: [10, 10, 15]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [[7]]
+      expect: [7]
+    - args: [[0, 0, 0]]
+      expect: [0, 0, 0]
+    - args: [[-1, 1, -1]]
+      expect: [-1, 0, -1]
+    - args: [[1, 1, 1, 1, 1]]
+      expect: [1, 2, 3, 4, 5]
+    - args: [[5, -5, 5]]
+      expect: [5, 0, 5]
+
+hints:
+  - level: 1
+    text: |
+      Imprima total no fim de cada passagem, com rótulo. Rode com [2, 3, 4]. Um total
+      acumulado deveria ser maior a cada vez. O seu é? O que teria que ser verdade para ele
+      recomeçar a cada passagem?
+  - level: 2
+    text: |
+      total é criado dentro do laço, então cada passagem joga fora os dias anteriores e
+      começa do zero. A linha está correta - a posição dela não. Ela tem que acontecer uma
+      vez, antes de o primeiro dia ser lido.
+  - level: 3
+    text: |
+      O formato de um acumulador corrido:
+
+          visto = 0                 # antes do laco: acontece uma vez
+          for palavra in palavras:
+              visto = visto + len(palavra)
+              tamanhos.append(visto)
+
+      Compare essa indentação com a sua.
+
+solution: |
+  def running_totals(days):
+      totals = []
+      total = 0
+
+      for day in days:
+          total = total + day
+          totals.append(total)
+
+      return totals

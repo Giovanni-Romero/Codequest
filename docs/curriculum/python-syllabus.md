@@ -758,12 +758,19 @@ Reinforcement:
 
 | Concept | Introduced | Reinforced in |
 |---|---:|---|
-| `reading-tracebacks` | 1 | 2, 7, 10 |
-| `logic-vs-data` | 2 | 5, 8, 10 |
-| `print-debugging` | 3 | 8, 10 |
+| `reading-tracebacks` | 1 | 2, 5, 7, 10 |
+| `logic-vs-data` | 2 | 3, 5, 6, 7, 8, 9, 10 |
+| `print-debugging` | 3 | 4, 7, 8, 9, 10 |
 | `interactive-debugger` | 3 | — |
 | `bisection` | 4 | 10 |
 | `assert-as-diagnosis` | 6 | 10 |
+
+This table was rewritten after the island shipped, to describe the missions that exist
+rather than the ones that were sketched. Every change is a concept picked up in *more*
+places than planned — nothing planned was dropped. `logic-vs-data` and `print-debugging`
+spread the furthest because they are methods rather than syntax: once taught, they are
+what the player uses to attack every later bug, so a fix-shaped mission reinforces them
+whether or not the map said so.
 
 `interactive-debugger` is introduced once and never reinforced, breaking the two-reuse
 rule. That is deliberate and is the honest consequence of the hazard above: no mission may

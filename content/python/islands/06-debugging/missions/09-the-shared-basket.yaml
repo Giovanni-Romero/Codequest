@@ -1,0 +1,160 @@
+# Mission 9 of Debugging. Introduces nothing. RELIEF mission - simple/20, below the
+# island's moderate band. Reinforces: logic-vs-data, print-debugging.
+#
+# Fix-shaped. The planted bug is Island 3's mutable-default trap met as a symptom. The
+# entrypoint calls the helper TWICE within one invocation, which is the only way the
+# shared default is observable: the runner spawns a fresh process per test case, so the
+# default object is rebuilt between cases. See the syllabus, Island 3 engine limits.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-09
+title: The shared basket
+track: python
+island: debugging
+order: 9
+difficulty: simple
+tags: [bug-fix, default-arguments, mutable-default]
+xp: 20
+
+concepts:
+  - logic-vs-data
+  - print-debugging
+
+teaching:
+  analogy: |
+    A market stall keeps a basket by the door for customers to fill.
+
+    Not a stack of baskets. **One** basket, put there when the stall was built.
+
+    The first customer fills it and walks off with their shopping. The second customer
+    picks up the same basket, adds two apples, and goes home with two apples and the first
+    customer's entire order.
+
+    Neither customer did anything wrong. The stall was built with one basket and a sign
+    saying "take a basket".
+
+  explanation: |
+    A default value is created **once**, when the `def` line runs - not on each call. For a
+    number or a string that makes no difference, because you cannot change them anyway.
+
+    For a list it changes everything:
+
+        def pack(items, crate=[]):
+
+    That `[]` is one list, built when the function was defined, and every call that does
+    not supply its own `crate` gets that same list. Append to it and the next call starts
+    with your leftovers.
+
+    The tell is the same as the leaking helper's: **the first call is right and the second
+    is wrong**, and nothing raises. The difference is where the shared state lives. There,
+    it was the caller's list; here, it is baked into the function itself and outlives every
+    call.
+
+    The fix is a fixed phrase, and it is worth memorising as one unit rather than deriving
+    it each time:
+
+        def pack(items, crate=None):
+            if crate is None:
+                crate = []
+
+    `None` is immutable, so sharing it costs nothing, and the `if` builds a genuinely new
+    list on every call that needs one.
+
+  worked_example: |
+    # One default, shared by every call
+    def add_note(note, notebook=[]):
+        notebook.append(note)
+        return notebook
+
+    print(add_note("first"))      # ['first']
+    print(add_note("second"))     # ['first', 'second']   <- the first call is still in there
+    print(add_note("third"))      # ['first', 'second', 'third']
+
+    # Same function with `notebook=None` plus `if notebook is None: notebook = []`
+    # prints ['first'], ['second'], ['third'].
+
+  key_points:
+    - A default is built once, at definition. Every call that omits the argument shares that one object.
+    - "Numbers, strings and None are safe defaults because they cannot be changed. Lists, dicts and sets are not."
+    - "The signature: the first call is right, the second carries the first one's data. Nothing raises."
+    - "The fix is a fixed phrase: default to None, then build the real value inside with `if x is None`."
+    - The bug is in the def line, not in the caller. The caller did nothing wrong.
+
+brief: |
+  pack_two_crates(first_items, second_items) is meant to pack two separate crates and
+  return both:
+
+      pack_two_crates(["rope"], ["salt"])  ->  [["rope"], ["salt"]]
+
+  It is finished, and it is wrong: it returns [["rope", "salt"], ["rope", "salt"]]. Both
+  crates come back holding everything.
+
+  Find the bug and fix it. It is in the helper's definition line, not in the calls.
+
+signature:
+  entrypoint: pack_two_crates
+  stub: |
+    def pack(items, crate=[]):
+        for item in items:
+            crate.append(item)
+        return crate
+
+
+    def pack_two_crates(first_items, second_items):
+        return [pack(first_items), pack(second_items)]
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope"], ["salt"]]
+      expect: [["rope"], ["salt"]]
+    - args: [[], []]
+      expect: [[], []]
+  hidden:
+    - args: [["a", "b"], []]
+      expect: [["a", "b"], []]
+    - args: [[], ["z"]]
+      expect: [[], ["z"]]
+    - args: [["x"], ["x"]]
+      expect: [["x"], ["x"]]
+    - args: [["a", "b", "c"], ["d"]]
+      expect: [["a", "b", "c"], ["d"]]
+    - args: [["only"], []]
+      expect: [["only"], []]
+
+hints:
+  - level: 1
+    text: |
+      Print crate at the very top of pack, before the loop touches it. Run it once. The
+      second call is supposed to start empty - does it?
+  - level: 2
+    text: |
+      The default crate=[] is one list, created when the def line ran, and both calls got
+      it. Default it to None instead, and build the empty list inside the function when
+      the caller did not pass one.
+  - level: 3
+    text: |
+      The fixed phrase, on a different function:
+
+          def collect(row, seen=None):
+              if seen is None:
+                  seen = []
+              seen.append(row)
+              return seen
+
+      Two lines in place of one. Nothing else in your helper changes.
+
+solution: |
+  def pack(items, crate=None):
+      if crate is None:
+          crate = []
+      for item in items:
+          crate.append(item)
+      return crate
+
+
+  def pack_two_crates(first_items, second_items):
+      return [pack(first_items), pack(second_items)]

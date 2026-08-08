@@ -1,0 +1,179 @@
+# Missao 4 de Depuracao. Introduz: bisection. Reforca: print-debugging.
+#
+# Formato esqueleto, nao conserto de bug: bisseccao e um algoritmo que voce escreve, nao
+# um sintoma que voce localiza. A lista proibida (range, enumerate, index) remove os
+# jeitos confortaveis de varrer, mas uma varredura linear teimosa com contador ainda
+# passa - a guarda protege a licao, nao a nota. Dito em voz alta em vez de fingir cobertura.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-04
+title: Corte a busca ao meio
+track: python
+island: debugging
+order: 4
+difficulty: moderate
+tags: [bisection, search, methodology]
+xp: 30
+
+concepts:
+  - bisection
+  - print-debugging
+
+teaching:
+  analogy: |
+    Um fio com duzentas lâmpadas vai do cais até o farol. Em algum ponto uma lâmpada
+    queimou, e dali em diante o fio inteiro está apagado.
+
+    Você podia caminhar testando lâmpada por lâmpada. Duzentas conferidas, no pior caso.
+
+    Ou você anda até o meio e olha. Ainda acesa? O defeito está na metade à frente.
+    Apagada? Está atrás de você. De um jeito ou de outro, você acabou de eliminar cem
+    lâmpadas com um olhar. Repita na metade que sobrou. Oito conferidas e você está
+    parado na frente dela.
+
+    Nada mudou nas lâmpadas. O que mudou é que cada conferida agora compra metade do fio
+    que resta, em vez de uma lâmpada.
+
+  explanation: |
+    Bissecção é cortar ao meio o intervalo suspeito a cada conferida.
+
+    Ela precisa de uma propriedade e só de uma: **tudo depois do primeiro ruim também é
+    ruim.** É isso que permite descartar uma metade inteira com uma única conferida. A
+    lista não precisa estar ordenada por valor - precisa estar ordenada em bom-depois-ruim,
+    que é uma promessa bem mais fraca.
+
+    Você guarda duas fronteiras, `low` e `high`, marcando o intervalo que ainda pode conter
+    a resposta. Olhe o meio. Se o meio é ruim, o primeiro ruim é o meio ou está antes dele,
+    então puxe `high` para trás. Se o meio é bom, o primeiro ruim está depois, então empurre
+    `low` para frente. Pare quando as fronteiras se cruzarem.
+
+    Varrer mil itens custa mil conferidas. Bissecção custa dez. Essa diferença é a razão de
+    o `git bisect` existir: ele joga exatamente esse jogo com os seus commits e acha o que
+    quebrou o build em um punhado de passos, em vez de ler todos.
+
+    O mesmo movimento é o que torna a depuração por print rápida. Um print no meio de um
+    trecho suspeito diz em qual metade o valor ficou errado. Um print no fim só diz o que
+    você já sabia.
+
+    Isso é também, em miniatura, o método por trás de depuração sistemática em qualquer
+    lugar: formule uma pergunta que corte as possibilidades ao meio, responda com
+    evidência, repita. Vale de um laço quebrado a um deploy quebrado.
+
+  worked_example: |
+    # Adivinhando um numero entre 1 e 100 - mesma divisao, outro problema
+    low, high = 1, 100
+    segredo = 73
+    tentativas = 0
+
+    while low <= high:
+        meio = (low + high) // 2
+        tentativas = tentativas + 1
+        if meio < segredo:
+            low = meio + 1        # baixo demais: a resposta esta acima do meio
+        else:
+            high = meio - 1       # a resposta e o meio ou esta abaixo dele
+
+    print(tentativas)             # 7 - nao 73, e nao 100
+
+  key_points:
+    - Bissecção precisa de "tudo depois do primeiro ruim é ruim", não de uma lista ordenada. A propriedade é mais fraca que ordenação, e por isso se aplica tanto.
+    - Cada conferida tem que eliminar metade do intervalo. Se uma conferida elimina um item, você está varrendo com passos extras.
+    - "Guarde uma resposta lembrada: quando o meio é ruim ele é o melhor candidato até agora, mas pode haver um anterior."
+    - Um intervalo sem nada de ruim não tem resposta. Decida o que retornar nesse caso antes de escrever o laço.
+    - "Mesmo movimento, palco maior: o git bisect acha o commit que quebrou assim, e um print bem colocado corta ao meio um trecho suspeito de código."
+
+brief: |
+  Um sensor descalibra. Depois que uma leitura passa do limite seguro ela nunca mais volta,
+  então as leituras são sempre boas por um tempo e ruins pelo resto.
+
+  Escreva first_bad(readings, limit) que retorna a **posição** da primeira leitura acima do
+  limite. Uma leitura exatamente igual ao limite ainda é segura.
+
+  Retorne -1 quando nenhuma leitura está acima do limite, inclusive para lista vazia.
+
+  Para first_bad([1, 2, 9, 9], 5) a resposta é 2.
+
+  Não percorra a lista do começo. Corte ao meio. A lista de proibidos abaixo remove range,
+  enumerate e .index para que o formato que você procure seja um while com duas fronteiras.
+
+signature:
+  entrypoint: first_bad
+  stub: |
+    def first_bad(readings, limit):
+        low = 0
+        high = len(readings) - 1
+        answer = -1
+
+        # enquanto o intervalo nao estiver vazio: olhe o meio, depois encolha uma fronteira
+        # seu codigo aqui
+
+        return answer
+
+constraints:
+  forbidden_builtins: [range, enumerate, index, filter, map, next]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 9, 9], 5]
+      expect: 2
+    - args: [[1, 2, 3], 5]
+      expect: -1
+  hidden:
+    - args: [[], 5]
+      expect: -1
+    - args: [[9], 5]
+      expect: 0
+    - args: [[5, 5, 5], 5]
+      expect: -1
+    - args: [[5, 6], 5]
+      expect: 1
+    - args: [[6, 6, 6, 6], 5]
+      expect: 0
+    - args: [[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], 0]
+      expect: 7
+    - args: [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9], 5]
+      expect: 15
+
+hints:
+  - level: 1
+    text: |
+      Você está segurando um intervalo que pode conter a resposta, e o intervalo encolhe.
+      Quais dois números descrevem esse intervalo, e qual deles se move quando a leitura do
+      meio acaba sendo segura?
+  - level: 2
+    text: |
+      Calcule o meio como (low + high) // 2. Se readings[middle] está acima do limite, esse
+      meio é a melhor resposta encontrada até agora - guarde, e depois busque na parte antes
+      dele com high = middle - 1. Se é segura, nada no meio ou antes dele pode ser a
+      resposta, então low = middle + 1. Repita enquanto low <= high.
+  - level: 3
+    text: |
+      A mesma divisão, procurando o último valor seguro em vez do primeiro ruim:
+
+          while low <= high:
+              meio = (low + high) // 2
+              if valores[meio] <= teto:
+                  achado = meio             # candidato, continue procurando a direita
+                  low = meio + 1
+              else:
+                  high = meio - 1
+
+      O seu move a outra fronteira, porque você quer o primeiro caso, não o último.
+
+solution: |
+  def first_bad(readings, limit):
+      low = 0
+      high = len(readings) - 1
+      answer = -1
+
+      while low <= high:
+          middle = (low + high) // 2
+          if readings[middle] > limit:
+              answer = middle
+              high = middle - 1
+          else:
+              low = middle + 1
+
+      return answer

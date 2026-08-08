@@ -1,0 +1,154 @@
+# Mission 8 of Debugging. Introduces nothing. Reinforces: logic-vs-data, print-debugging.
+#
+# Fix-shaped. The planted bug is Island 1's accumulator misconception - the accumulator
+# created INSIDE the loop instead of before it - met as a symptom. Deliberately chosen so
+# that a one-element list still passes: the easy case hides it, which is the point.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-08
+title: The reset tally
+track: python
+island: debugging
+order: 8
+difficulty: moderate
+tags: [bug-fix, accumulator, loops]
+xp: 30
+
+concepts:
+  - logic-vs-data
+  - print-debugging
+
+teaching:
+  analogy: |
+    A tally is kept on a slate at the end of each shift.
+
+    Done right, the clerk adds today's crates to what the slate already says. Done wrong,
+    the clerk wipes the slate before writing - so every entry reads exactly one day's
+    crates and the running total never runs.
+
+    The wipe is not a big mistake. It is one line, in the wrong place by one indent level.
+    And on a one-day voyage it is invisible, because wiping an empty slate changes nothing.
+
+  explanation: |
+    An accumulator is a variable that carries a result across the passes of a loop. It has
+    exactly one rule, and every accumulator bug is a violation of it: **create it before
+    the loop, update it inside.**
+
+    Create it inside and it is reborn on every pass. The loop still runs, still touches
+    every item, and still produces a number - the last item's number, wearing the total's
+    name. Nothing raises. There is no traceback. You get a plausible answer.
+
+    Indentation is what places it, which is why this bug is one keystroke wide and hard to
+    see by reading. Your eye reads the line, agrees the line is correct, and skips over
+    where it sits.
+
+    The fix technique is the one from mission 3: print the accumulator on every pass with
+    a label. A total that resets does not look like a total that grows, and one run tells
+    you which one you have.
+
+    The tell to remember: **the wrong version and the right version agree on a
+    one-element input.** So a bug like this survives every quick test you type by hand,
+    and only shows up on the third item.
+
+  worked_example: |
+    # The same misplacement, on a string builder
+    def initials(names):
+        for name in names:
+            letters = ""                  # created inside: wiped every pass
+            letters = letters + name[0]
+        return letters
+
+    print(initials(["Ana", "Bruno", "Caio"]))    # C - not 'ABC'
+    print(initials(["Ana"]))                     # A - correct, by accident
+
+    # Move `letters = ""` above the `for` and both calls are right. One indent level.
+
+  key_points:
+    - "One rule: create the accumulator before the loop, update it inside. Every accumulator bug breaks it."
+    - Created inside, the accumulator is reborn each pass and ends up holding only the last item's contribution.
+    - Nothing raises, so there is no traceback. A labelled print on every pass shows a total that resets instead of growing.
+    - "A one-element input gives the same answer either way. Test with three, or the bug hides."
+    - Indentation is placement. Read where a line sits, not only what it says.
+
+brief: |
+  running_totals(days) takes a list of daily crate counts and returns the running total
+  after each day.
+
+      running_totals([2, 3, 4])  ->  [2, 5, 9]
+
+  It is finished, and it is wrong: it returns [2, 3, 4], which is just the input again.
+
+  Find the bug and fix it. It is one line in the wrong place - move it rather than
+  rewriting the function.
+
+  An empty list of days returns an empty list.
+
+signature:
+  entrypoint: running_totals
+  stub: |
+    def running_totals(days):
+        totals = []
+
+        for day in days:
+            total = 0
+            total = total + day
+            totals.append(total)
+
+        return totals
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[2, 3, 4]]
+      expect: [2, 5, 9]
+    - args: [[10, 0, 5]]
+      expect: [10, 10, 15]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [[7]]
+      expect: [7]
+    - args: [[0, 0, 0]]
+      expect: [0, 0, 0]
+    - args: [[-1, 1, -1]]
+      expect: [-1, 0, -1]
+    - args: [[1, 1, 1, 1, 1]]
+      expect: [1, 2, 3, 4, 5]
+    - args: [[5, -5, 5]]
+      expect: [5, 0, 5]
+
+hints:
+  - level: 1
+    text: |
+      Print total at the end of every pass, labelled. Run it with [2, 3, 4]. A running
+      total should be bigger each time. Is yours? What would have to be true for it to
+      start over each pass?
+  - level: 2
+    text: |
+      total is created inside the loop, so every pass throws away the previous days and
+      starts from zero. The line is correct - its position is not. It has to happen once,
+      before the first day is read.
+  - level: 3
+    text: |
+      The shape a running accumulator has:
+
+          seen = 0                  # before the loop: happens once
+          for word in words:
+              seen = seen + len(word)
+              lengths.append(seen)
+
+      Compare that indentation with yours.
+
+solution: |
+  def running_totals(days):
+      totals = []
+      total = 0
+
+      for day in days:
+          total = total + day
+          totals.append(total)
+
+      return totals

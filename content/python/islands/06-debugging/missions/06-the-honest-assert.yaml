@@ -1,0 +1,182 @@
+# Mission 6 of Debugging. Introduces: assert-as-diagnosis. Reinforces: raising,
+# logic-vs-data.
+#
+# Skeleton-shaped, and the only mission on the island that uses `raises:` twice with two
+# different types. That pairing is the lesson: the SAME function refuses bad outside
+# input with `raise` and states an internal promise with `assert`, and the hidden set
+# proves the player put each one in the right place.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-06
+title: The honest assert
+track: python
+island: debugging
+order: 6
+difficulty: moderate
+tags: [assertions, invariants, contracts]
+xp: 30
+
+concepts:
+  - assert-as-diagnosis
+  - logic-vs-data
+
+teaching:
+  analogy: |
+    A harbour has two kinds of check.
+
+    At the gate, an inspector checks every cargo that arrives from outside. Ships lie on
+    their manifests, so the gate must always be staffed. Remove that inspector and bad
+    cargo gets in.
+
+    Inside the warehouse, a foreman glances at a stack and says "these were meant to be
+    sorted heaviest first". Nobody outside touched that stack - his own crew built it. If
+    it is out of order, the crew has a problem, not the ship. He is not guarding against
+    liars; he is checking that his own people did what they said.
+
+    `raise` is the inspector at the gate. `assert` is the foreman inside.
+
+  explanation: |
+    An `assert` states something you believe is already true, and it complains loudly the
+    moment it is not:
+
+        assert shares_total == total, f"shares add to {shares_total}, expected {total}"
+
+    If the condition is true, nothing happens. If it is false, Python raises
+    `AssertionError` with your message attached. It is a claim about your own program's
+    consistency, checked by the program itself.
+
+    The rule for choosing between the two is not style, it is survival: **`python -O`
+    deletes every assert in the file.** Run a program in optimised mode and the asserts
+    are simply not there. So:
+
+      - a check that must still work in production is a `raise` - always
+      - a check that documents an assumption between parts of your own code is an
+        `assert`
+
+    Put user input validation in an assert and you have written a security hole that
+    disappears under a command-line flag. Put an internal invariant in a raise and you
+    have promised the caller a behaviour you never meant to guarantee.
+
+    The diagnostic value is the point. Without the assert, a broken assumption travels
+    quietly through three more functions and surfaces as a wrong number somewhere else
+    entirely. With it, the program stops at the exact line where the belief stopped being
+    true - which turns a debugging session into a traceback you can read.
+
+    Always give it a message. `AssertionError` with no message tells you a belief was
+    wrong but not which belief.
+
+  worked_example: |
+    # A helper that trusts its neighbour, and says so
+    def middle_letter(word):
+        assert len(word) % 2 == 1, f"expected an odd-length word, got {word!r}"
+        return word[len(word) // 2]
+
+    print(middle_letter("cat"))       # a
+    # print(middle_letter("dogs"))    # AssertionError: expected an odd-length word, got 'dogs'
+
+    # The caller is another function in the same program that already filtered for odd
+    # lengths. If it ever stops doing that, this line names the problem immediately
+    # instead of silently returning the wrong letter.
+
+  key_points:
+    - "`python -O` removes every assert. A check that must survive in production is a raise, and there is no debate about it."
+    - Assert what your own code promised itself. Raise for anything that arrives from outside.
+    - "Always attach a message. An AssertionError with no message says a belief broke, but not which one."
+    - An assert stops the program at the line where the assumption failed, instead of three functions later where the damage shows.
+    - Do not assert something the line above already made true. That costs a line and proves nothing.
+
+brief: |
+  Write median_reading(readings) that returns the middle value of a list of readings.
+
+  For an odd count, that is the single middle value. For an even count, it is the average
+  of the two middle values, so median_reading([1, 2, 3, 4]) is 2.5.
+
+  Two failures, and each one gets a different tool:
+
+    - **Empty list.** The crew can genuinely take zero readings on a quiet watch, so this
+      is real input, not a broken assumption. Raise ValueError.
+    - **Unsorted list.** This function is called only by collect_readings() inside your
+      own program, which always hands over the readings sorted ascending. That is a
+      promise between two pieces of your code, so state it with an assert - with a
+      message.
+
+  Both checks belong at the top, before any work happens. Get them the wrong way round and
+  the hidden tests will say so.
+
+signature:
+  entrypoint: median_reading
+  stub: |
+    def median_reading(readings):
+        # An empty list is real input from outside: raise.
+        # "Already sorted" is a promise from your own caller: assert, with a message.
+        # your code here
+
+        middle = len(readings) // 2
+        # odd count -> one middle value. even count -> the average of two.
+        pass
+
+constraints:
+  forbidden_imports: [statistics]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3]]
+      expect: 2
+    - args: [[1, 2, 3, 4]]
+      expect: 2.5
+  hidden:
+    - args: [[]]
+      raises: ValueError
+    - args: [[3, 1, 2]]
+      raises: AssertionError
+    - args: [[9, 1]]
+      raises: AssertionError
+    - args: [[5]]
+      expect: 5
+    - args: [[-5, -1]]
+      expect: -3.0
+    - args: [[1, 1, 1, 1]]
+      expect: 1.0
+    - args: [[0, 10]]
+      expect: 5.0
+    - args: [[2, 4, 4, 6, 8]]
+      expect: 4
+
+hints:
+  - level: 1
+    text: |
+      Two guards, two different statements, both above the calculation. Which of the two
+      failures would still need to be caught if someone ran this program with python -O?
+  - level: 2
+    text: |
+      The empty case is raise ValueError with a message. The sorted case is an assert
+      comparing the list against a sorted copy of itself - sorted(readings) gives you that
+      copy without touching the original. Then: middle = len(readings) // 2. For an odd
+      length return readings[middle]; for an even one average readings[middle - 1] and
+      readings[middle].
+  - level: 3
+    text: |
+      The two guards, in a different function:
+
+          def busiest_hour(counts):
+              if not counts:
+                  raise ValueError("no counts recorded")
+              assert len(counts) == 24, f"expected 24 hourly counts, got {len(counts)}"
+
+      Yours asserts a different promise, and the middle-value arithmetic is still yours to
+      write.
+
+solution: |
+  def median_reading(readings):
+      if not readings:
+          raise ValueError("no readings to take a median of")
+
+      assert readings == sorted(readings), f"readings must arrive sorted, got {readings}"
+
+      middle = len(readings) // 2
+      if len(readings) % 2 == 1:
+          return readings[middle]
+
+      return (readings[middle - 1] + readings[middle]) / 2

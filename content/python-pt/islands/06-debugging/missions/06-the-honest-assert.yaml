@@ -1,0 +1,180 @@
+# Missao 6 de Depuracao. Introduz: assert-as-diagnosis. Reforca: raising, logic-vs-data.
+#
+# Formato esqueleto, e a unica missao da ilha que usa `raises:` duas vezes com dois tipos
+# diferentes. Esse par e a licao: a MESMA funcao recusa entrada externa ruim com `raise` e
+# declara uma promessa interna com `assert`, e o conjunto oculto prova que o jogador poe
+# cada um no lugar certo.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-06
+title: O assert honesto
+track: python
+island: debugging
+order: 6
+difficulty: moderate
+tags: [assertions, invariants, contracts]
+xp: 30
+
+concepts:
+  - assert-as-diagnosis
+  - logic-vs-data
+
+teaching:
+  analogy: |
+    Um porto tem dois tipos de conferência.
+
+    No portão, um fiscal confere toda carga que chega de fora. Navios mentem nos manifestos,
+    então o portão precisa estar sempre guarnecido. Tire esse fiscal e carga ruim entra.
+
+    Dentro do armazém, um encarregado olha uma pilha e diz "essas deviam estar do mais
+    pesado para o mais leve". Ninguém de fora encostou nessa pilha - a equipe dele mesmo
+    montou. Se está fora de ordem, o problema é da equipe, não do navio. Ele não está se
+    defendendo de mentirosos; está conferindo se o pessoal dele fez o que disse.
+
+    `raise` é o fiscal do portão. `assert` é o encarregado lá dentro.
+
+  explanation: |
+    Um `assert` declara algo que você acredita já ser verdade, e reclama alto no momento em
+    que deixa de ser:
+
+        assert soma_das_partes == total, f"partes somam {soma_das_partes}, esperado {total}"
+
+    Se a condição é verdadeira, nada acontece. Se é falsa, o Python levanta `AssertionError`
+    com a sua mensagem junto. É uma afirmação sobre a consistência do seu próprio programa,
+    conferida pelo próprio programa.
+
+    A regra para escolher entre os dois não é estilo, é sobrevivência: **`python -O` apaga
+    todo assert do arquivo.** Rode um programa em modo otimizado e os asserts simplesmente
+    não estão lá. Então:
+
+      - uma conferência que precisa continuar funcionando em produção é `raise` - sempre
+      - uma conferência que documenta uma suposição entre partes do seu próprio código é
+        `assert`
+
+    Coloque validação de entrada do usuário num assert e você escreveu um buraco de
+    segurança que some com uma flag de linha de comando. Coloque uma invariante interna num
+    raise e você prometeu ao chamador um comportamento que nunca quis garantir.
+
+    O valor diagnóstico é o ponto. Sem o assert, uma suposição quebrada viaja em silêncio
+    por mais três funções e aparece como um número errado em outro lugar. Com ele, o
+    programa para exatamente na linha onde a crença deixou de ser verdade - o que transforma
+    uma sessão de depuração num traceback que você lê.
+
+    Sempre dê uma mensagem. `AssertionError` sem mensagem diz que uma crença estava errada,
+    mas não qual.
+
+  worked_example: |
+    # Uma auxiliar que confia na vizinha, e diz isso
+    def letra_do_meio(palavra):
+        assert len(palavra) % 2 == 1, f"esperava palavra de tamanho impar, veio {palavra!r}"
+        return palavra[len(palavra) // 2]
+
+    print(letra_do_meio("sol"))       # o
+    # print(letra_do_meio("mesa"))    # AssertionError: esperava palavra de tamanho impar
+
+    # Quem chama e outra funcao do mesmo programa que ja filtrou por tamanho impar. Se ela
+    # um dia parar de filtrar, esta linha nomeia o problema na hora em vez de devolver a
+    # letra errada em silencio.
+
+  key_points:
+    - "`python -O` remove todo assert. Uma conferência que precisa sobreviver em produção é raise, e não há discussão."
+    - Faça assert do que seu próprio código prometeu a si mesmo. Use raise para tudo que chega de fora.
+    - "Sempre anexe uma mensagem. Um AssertionError sem mensagem diz que uma crença quebrou, mas não qual."
+    - Um assert para o programa na linha onde a suposição falhou, em vez de três funções depois, onde o estrago aparece.
+    - Não faça assert de algo que a linha acima acabou de tornar verdade. Custa uma linha e não prova nada.
+
+brief: |
+  Escreva median_reading(readings) que retorna o valor do meio de uma lista de leituras.
+
+  Para uma quantidade ímpar, é o único valor do meio. Para uma quantidade par, é a média
+  dos dois valores do meio, então median_reading([1, 2, 3, 4]) é 2.5.
+
+  Duas falhas, e cada uma pede uma ferramenta diferente:
+
+    - **Lista vazia.** A tripulação pode genuinamente não tomar nenhuma leitura num turno
+      calmo, então isso é entrada real, não suposição quebrada. Levante ValueError.
+    - **Lista fora de ordem.** Esta função só é chamada por collect_readings() dentro do
+      seu próprio programa, que sempre entrega as leituras ordenadas de forma crescente.
+      Isso é uma promessa entre duas partes do seu código, então declare com um assert -
+      com mensagem.
+
+  As duas conferências ficam no topo, antes de qualquer trabalho. Troque uma pela outra e
+  os testes ocultos vão avisar.
+
+signature:
+  entrypoint: median_reading
+  stub: |
+    def median_reading(readings):
+        # Lista vazia e entrada real vinda de fora: raise.
+        # "Ja vem ordenada" e promessa de quem chama, dentro do seu codigo: assert, com
+        # mensagem.
+        # seu codigo aqui
+
+        middle = len(readings) // 2
+        # quantidade impar -> um valor do meio. quantidade par -> a media de dois.
+        pass
+
+constraints:
+  forbidden_imports: [statistics]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3]]
+      expect: 2
+    - args: [[1, 2, 3, 4]]
+      expect: 2.5
+  hidden:
+    - args: [[]]
+      raises: ValueError
+    - args: [[3, 1, 2]]
+      raises: AssertionError
+    - args: [[9, 1]]
+      raises: AssertionError
+    - args: [[5]]
+      expect: 5
+    - args: [[-5, -1]]
+      expect: -3.0
+    - args: [[1, 1, 1, 1]]
+      expect: 1.0
+    - args: [[0, 10]]
+      expect: 5.0
+    - args: [[2, 4, 4, 6, 8]]
+      expect: 4
+
+hints:
+  - level: 1
+    text: |
+      Duas guardas, duas instruções diferentes, ambas acima do cálculo. Qual das duas falhas
+      ainda precisaria ser pega se alguém rodasse este programa com python -O?
+  - level: 2
+    text: |
+      O caso vazio é raise ValueError com uma mensagem. O caso da ordenação é um assert
+      comparando a lista com uma cópia ordenada dela - sorted(readings) devolve essa cópia
+      sem mexer na original. Depois: middle = len(readings) // 2. Para tamanho ímpar
+      retorne readings[middle]; para par, faça a média de readings[middle - 1] e
+      readings[middle].
+  - level: 3
+    text: |
+      As duas guardas, em outra função:
+
+          def hora_mais_cheia(contagens):
+              if not contagens:
+                  raise ValueError("nenhuma contagem registrada")
+              assert len(contagens) == 24, f"esperava 24 contagens, veio {len(contagens)}"
+
+      O seu declara outra promessa, e a aritmética do valor do meio continua sendo sua.
+
+solution: |
+  def median_reading(readings):
+      if not readings:
+          raise ValueError("no readings to take a median of")
+
+      assert readings == sorted(readings), f"readings must arrive sorted, got {readings}"
+
+      middle = len(readings) // 2
+      if len(readings) % 2 == 1:
+          return readings[middle]
+
+      return (readings[middle - 1] + readings[middle]) / 2

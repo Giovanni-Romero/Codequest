@@ -1,0 +1,158 @@
+# Missao 9 de Depuracao. Nao introduz nada. Missao de ALIVIO - simple/20, abaixo da faixa
+# moderate da ilha. Reforca: logic-vs-data, print-debugging.
+#
+# Formato conserto. O bug plantado e a armadilha do default mutavel da Ilha 3 vista como
+# sintoma. O entrypoint chama a auxiliar DUAS vezes numa unica invocacao, que e o unico
+# jeito de o default compartilhado ser observavel: o runner cria um processo novo por caso
+# de teste, entao o objeto default e reconstruido entre casos. Ver o syllabus, Ilha 3.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-09
+title: O cesto compartilhado
+track: python
+island: debugging
+order: 9
+difficulty: simple
+tags: [bug-fix, default-arguments, mutable-default]
+xp: 20
+
+concepts:
+  - logic-vs-data
+  - print-debugging
+
+teaching:
+  analogy: |
+    Uma banca de feira deixa um cesto na entrada para os fregueses encherem.
+
+    Não uma pilha de cestos. **Um** cesto, colocado ali quando a banca foi montada.
+
+    O primeiro freguês enche e vai embora com as compras. O segundo pega o mesmo cesto,
+    põe duas maçãs, e vai para casa com duas maçãs e o pedido inteiro do primeiro.
+
+    Nenhum dos dois fez nada errado. A banca foi montada com um cesto só e uma placa
+    dizendo "pegue um cesto".
+
+  explanation: |
+    Um valor padrão é criado **uma vez**, quando a linha do `def` roda - não a cada chamada.
+    Para um número ou uma string isso não faz diferença, porque você não consegue alterá-los
+    de qualquer jeito.
+
+    Para uma lista muda tudo:
+
+        def pack(items, crate=[]):
+
+    Aquele `[]` é uma lista só, construída quando a função foi definida, e toda chamada que
+    não fornece o próprio `crate` recebe essa mesma lista. Adicione nela e a próxima chamada
+    começa com as suas sobras.
+
+    O sinal é o mesmo da auxiliar que vaza: **a primeira chamada está certa e a segunda está
+    errada**, e nada levanta. A diferença é onde mora o estado compartilhado. Lá era a lista
+    de quem chamou; aqui está assado na própria função e sobrevive a toda chamada.
+
+    O conserto é uma frase fixa, e vale decorar como uma unidade em vez de deduzir toda vez:
+
+        def pack(items, crate=None):
+            if crate is None:
+                crate = []
+
+    `None` é imutável, então compartilhar ele não custa nada, e o `if` constrói uma lista
+    genuinamente nova em toda chamada que precisar.
+
+  worked_example: |
+    # Um default, compartilhado por toda chamada
+    def anotar(nota, caderno=[]):
+        caderno.append(nota)
+        return caderno
+
+    print(anotar("primeira"))     # ['primeira']
+    print(anotar("segunda"))      # ['primeira', 'segunda']   <- a primeira chamada ainda esta la
+    print(anotar("terceira"))     # ['primeira', 'segunda', 'terceira']
+
+    # A mesma funcao com `caderno=None` mais `if caderno is None: caderno = []`
+    # imprime ['primeira'], ['segunda'], ['terceira'].
+
+  key_points:
+    - Um default é construído uma vez, na definição. Toda chamada que omite o argumento compartilha aquele mesmo objeto.
+    - "Números, strings e None são defaults seguros porque não podem ser alterados. Listas, dicionários e conjuntos não são."
+    - "A assinatura: a primeira chamada está certa, a segunda carrega os dados da primeira. Nada levanta."
+    - "O conserto é uma frase fixa: default None, e construa o valor real dentro com `if x is None`."
+    - O bug está na linha do def, não em quem chama. Quem chamou não fez nada errado.
+
+brief: |
+  pack_two_crates(first_items, second_items) deveria encaixotar duas caixas separadas e
+  retornar as duas:
+
+      pack_two_crates(["rope"], ["salt"])  ->  [["rope"], ["salt"]]
+
+  Está pronta, e está errada: retorna [["rope", "salt"], ["rope", "salt"]]. As duas caixas
+  voltam com tudo dentro.
+
+  Encontre o bug e conserte. Ele está na linha de definição da auxiliar, não nas chamadas.
+
+signature:
+  entrypoint: pack_two_crates
+  stub: |
+    def pack(items, crate=[]):
+        for item in items:
+            crate.append(item)
+        return crate
+
+
+    def pack_two_crates(first_items, second_items):
+        return [pack(first_items), pack(second_items)]
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope"], ["salt"]]
+      expect: [["rope"], ["salt"]]
+    - args: [[], []]
+      expect: [[], []]
+  hidden:
+    - args: [["a", "b"], []]
+      expect: [["a", "b"], []]
+    - args: [[], ["z"]]
+      expect: [[], ["z"]]
+    - args: [["x"], ["x"]]
+      expect: [["x"], ["x"]]
+    - args: [["a", "b", "c"], ["d"]]
+      expect: [["a", "b", "c"], ["d"]]
+    - args: [["only"], []]
+      expect: [["only"], []]
+
+hints:
+  - level: 1
+    text: |
+      Imprima crate logo no topo de pack, antes de o laço encostar nela. Rode uma vez. A
+      segunda chamada deveria começar vazia - ela começa?
+  - level: 2
+    text: |
+      O default crate=[] é uma lista só, criada quando a linha do def rodou, e as duas
+      chamadas pegaram ela. Coloque None como default e construa a lista vazia dentro da
+      função quando quem chamou não passar nenhuma.
+  - level: 3
+    text: |
+      A frase fixa, em outra função:
+
+          def coletar(linha, vistos=None):
+              if vistos is None:
+                  vistos = []
+              vistos.append(linha)
+              return vistos
+
+      Duas linhas no lugar de uma. Nada mais na sua auxiliar muda.
+
+solution: |
+  def pack(items, crate=None):
+      if crate is None:
+          crate = []
+      for item in items:
+          crate.append(item)
+      return crate
+
+
+  def pack_two_crates(first_items, second_items):
+      return [pack(first_items), pack(second_items)]

@@ -1,0 +1,244 @@
+# Mission 10 of Debugging. CLOSING mission. Introduces nothing - combine, do not learn.
+# Reinforces all six island concepts: reading-tracebacks, logic-vs-data, print-debugging,
+# interactive-debugger, bisection, assert-as-diagnosis.
+#
+# Fix-shaped, and the only one where the bug must be LOCATED first: four functions, one
+# wrong, and the symptom appears on some inputs and not others. Bisection is the method -
+# test each helper against a case whose answer you already know.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-10
+title: The whole investigation
+track: python
+island: debugging
+order: 10
+difficulty: moderate
+tags: [bug-fix, closing, methodology]
+xp: 30
+
+concepts:
+  - reading-tracebacks
+  - logic-vs-data
+  - print-debugging
+  - bisection
+  - assert-as-diagnosis
+
+teaching:
+  analogy: |
+    A cargo report comes out wrong. Four people touched it: the clerk who read the
+    manifests, the one who counted the ports, the one who added the weights, and the one
+    who named the heaviest load.
+
+    You do not interview all four. You take one voyage whose numbers you already know by
+    heart, hand it to each of them separately, and see whose answer disagrees with yours.
+    Three of them are cleared in a minute and you have a name.
+
+    That is the whole method. Not "read everything until something looks wrong" - split
+    the suspects and check a half at a time.
+
+  explanation: |
+    This is the island assembled into one procedure. Nothing new.
+
+    **1. Reproduce it, small.** Find the shortest input that shows the bug. If the report
+    is wrong for forty entries, try to make it wrong for two. Everything after this step is
+    faster on two entries than on forty.
+
+    **2. Ask which door.** Wrong code, or wrong data? Run an input whose right answer you
+    already know. If that comes out wrong, the code is wrong and you can stop wondering
+    about the input.
+
+    **3. Halve the suspects.** With four functions, you do not read four functions. You
+    call each one directly with known values and compare. Two calls and half of them are
+    innocent. That is bisection applied to code instead of to a list.
+
+    **4. Look inside the survivor.** Print its state with labels, or copy it into your own
+    editor and step through it. By now you are looking at ten lines, not forty.
+
+    **5. State what you learned.** When the promise a function is supposed to keep can be
+    written as a condition, an `assert` turns it into a check that fires the next time
+    someone breaks it. Not every bug ends with one, but the good fixes often do.
+
+    The most valuable habit here is step 1. A bug you can reproduce in two lines is nearly
+    fixed; a bug you can only reproduce sometimes, in production, is a research project.
+
+  worked_example: |
+    # Step 3, in practice: interrogating the helpers of an unrelated report
+    def word_count(text):
+        return len(text.split())
+
+    def longest_word(text):
+        best = ""
+        for word in text.split():
+            if len(word) > len(best):
+                best = word
+        return best
+
+    sample = "one two three"                      # I know every answer for this by heart
+    print("word_count:", word_count(sample))      # 3     - agrees
+    print("longest_word:", longest_word(sample))  # three - agrees
+
+    # Two calls, no reading, and both helpers are cleared. Whatever is wrong is in
+    # whatever calls them.
+
+  key_points:
+    - "Reproduce it small first. Everything after that step is cheaper, and a two-line reproduction is nearly a fix."
+    - Call each helper with values whose answer you already know. That halves the suspects without reading a line.
+    - "Wrong code or wrong data: answer that before editing anything, or you will fix the innocent function."
+    - A bug that appears on some inputs and not others is pointing at a boundary or a tie, not at the whole function.
+    - "When the fix restores a promise you can write as a condition, an assert keeps it broken-proof next time."
+
+brief: |
+  voyage_report(entries) takes a list of "port: weight" lines and returns a dictionary
+  with three keys:
+
+    - "ports" - how many **distinct** ports appear
+    - "total" - the sum of every weight
+    - "heaviest" - the port of the single largest load. **On a tie, the first one listed
+      wins.**
+
+  For ["lisbon: 10", "porto: 25", "faro: 5"] the answer is:
+
+      {"ports": 3, "total": 40, "heaviest": "porto"}
+
+  An empty list returns {"ports": 0, "total": 0, "heaviest": None}.
+
+  The code below is finished and one of its four functions is wrong. It gives the right
+  answer for most inputs, which is what makes it worth investigating rather than reading.
+
+  Find it, fix it, and change nothing else.
+
+signature:
+  entrypoint: voyage_report
+  stub: |
+    def parse_entry(entry):
+        port, weight = entry.split(":")
+        return [port.strip(), int(weight)]
+
+
+    def count_ports(rows):
+        seen = set()
+        for row in rows:
+            seen.add(row[0])
+        return len(seen)
+
+
+    def total_weight(rows):
+        total = 0
+        for row in rows:
+            total = total + row[1]
+        return total
+
+
+    def heaviest_port(rows):
+        best = rows[0]
+        for row in rows:
+            if row[1] >= best[1]:
+                best = row
+        return best[0]
+
+
+    def voyage_report(entries):
+        if not entries:
+            return {"ports": 0, "total": 0, "heaviest": None}
+
+        rows = []
+        for entry in entries:
+            rows.append(parse_entry(entry))
+
+        return {
+            "ports": count_ports(rows),
+            "total": total_weight(rows),
+            "heaviest": heaviest_port(rows),
+        }
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["lisbon: 10", "porto: 25", "faro: 5"]]
+      expect: {ports: 3, total: 40, heaviest: "porto"}
+    - args: [["lisbon: 10", "porto: 10"]]
+      expect: {ports: 2, total: 20, heaviest: "lisbon"}
+  hidden:
+    - args: [[]]
+      expect: {ports: 0, total: 0, heaviest: null}
+    - args: [["solo: 7"]]
+      expect: {ports: 1, total: 7, heaviest: "solo"}
+    - args: [["a: 5", "b: 5", "c: 5"]]
+      expect: {ports: 3, total: 15, heaviest: "a"}
+    - args: [["a: 3", "a: 9", "b: 9"]]
+      expect: {ports: 2, total: 21, heaviest: "a"}
+    - args: [["a: -5", "b: -5"]]
+      expect: {ports: 2, total: -10, heaviest: "a"}
+    - args: [["a: 0", "b: 1"]]
+      expect: {ports: 2, total: 1, heaviest: "b"}
+    - args: [["north: 4", "north: 4", "south: 2"]]
+      expect: {ports: 2, total: 10, heaviest: "north"}
+
+hints:
+  - level: 1
+    text: |
+      Do not read all four functions. Take ["lisbon: 10", "porto: 10"] - you know every
+      answer for it by heart - and call parse_entry, count_ports, total_weight and
+      heaviest_port yourself, printing each result. Three will agree with you.
+  - level: 2
+    text: |
+      The counts and the total are right. heaviest_port is the one that disagrees, and only
+      when two loads weigh the same. Read its comparison and ask what it does when the new
+      row is exactly equal to the best one so far, then check that against what the brief
+      says a tie means.
+  - level: 3
+    text: |
+      The same tie question, on a different search:
+
+          # keeps the FIRST shortest word: a later word must be strictly shorter to win
+          for word in words:
+              if len(word) < len(shortest):
+                  shortest = word
+
+      Yours looks for the largest, and one character in the comparison is letting later
+      ties overwrite the earlier winner.
+
+solution: |
+  def parse_entry(entry):
+      port, weight = entry.split(":")
+      return [port.strip(), int(weight)]
+
+
+  def count_ports(rows):
+      seen = set()
+      for row in rows:
+          seen.add(row[0])
+      return len(seen)
+
+
+  def total_weight(rows):
+      total = 0
+      for row in rows:
+          total = total + row[1]
+      return total
+
+
+  def heaviest_port(rows):
+      best = rows[0]
+      for row in rows:
+          if row[1] > best[1]:
+              best = row
+      return best[0]
+
+
+  def voyage_report(entries):
+      if not entries:
+          return {"ports": 0, "total": 0, "heaviest": None}
+
+      rows = []
+      for entry in entries:
+          rows.append(parse_entry(entry))
+
+      return {
+          "ports": count_ports(rows),
+          "total": total_weight(rows),
+          "heaviest": heaviest_port(rows),
+      }

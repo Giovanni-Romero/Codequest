@@ -1,0 +1,153 @@
+# Mission 5 of Debugging. Introduces nothing. RELIEF mission - simple/20, below the
+# island's moderate band, exactly as relief works in Islands 2 to 5.
+# Reinforces: logic-vs-data, reading-tracebacks.
+#
+# Fix-shaped. One character is wrong and the failure is a traceback, so the two habits
+# from missions 1 and 2 are enough on their own. The whole island in miniature.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-05
+title: The off-by-one
+track: python
+island: debugging
+order: 5
+difficulty: simple
+tags: [bug-fix, off-by-one, boundaries]
+xp: 20
+
+concepts:
+  - logic-vs-data
+  - reading-tracebacks
+
+teaching:
+  analogy: |
+    A fence with ten posts has nine gaps between them. Count the posts when you meant to
+    count the gaps and you order one panel too many - every time, forever, in every
+    fence you ever build.
+
+    Nobody makes that mistake because they are careless. They make it because "how many
+    posts" and "how many gaps" are two different questions that sound like one.
+
+  explanation: |
+    An off-by-one is a boundary that is one step wrong: `<` where `<=` belonged, a loop
+    that stops one item early, an index that runs one past the end.
+
+    They are the most common bug in programming and they have a signature worth learning:
+    **the middle of the input works and one edge does not.** The first item, the last item,
+    or the empty case fails while everything between them is fine. A bug that is wrong
+    everywhere is usually a wrong idea; a bug that is wrong only at an edge is usually a
+    wrong boundary.
+
+    The reliable way to find one is not to stare at the code. It is to take the smallest
+    input you can - one item, then none - and walk it by hand, writing down what each
+    variable holds on each pass. The step where your notes disagree with the program is
+    the step that is wrong.
+
+    In Python the boundary is almost always this: valid positions in a list run from 0 to
+    `len(items) - 1`. There is no item at `len(items)`. Reaching for it raises IndexError,
+    and the traceback names the line that did it.
+
+  worked_example: |
+    # Two loops, one boundary apart
+    letters = ["a", "b", "c"]
+
+    position = 0
+    while position <= len(letters):      # len is 3, and there is no letters[3]
+        print(letters[position])
+        position = position + 1
+    # a
+    # b
+    # c
+    # IndexError: list index out of range
+
+    # The fix is one character - the last valid position is len(letters) - 1,
+    # so the loop must stop *before* len(letters):
+    #     while position < len(letters):
+
+  key_points:
+    - "Off-by-one has a signature: the middle works and an edge fails. That narrows the search to boundaries."
+    - "Valid positions are 0 to len(items) - 1. There is no item at len(items), and asking for it raises IndexError."
+    - Walk the smallest input by hand and write down each variable per pass. The line where your notes and the program disagree is the bug.
+    - Test the empty input on purpose. An off-by-one that survives a list of five often dies on a list of none.
+
+brief: |
+  The function below is meant to label a list of items, numbering them from 1:
+
+      numbered_labels(["oak", "pine"])  ->  ["1: oak", "2: pine"]
+
+  It is finished, and it is wrong. Every call raises IndexError, including a call with an
+  empty list - which should return an empty list.
+
+  Read the traceback, find the boundary that is one step off, and fix it. One character
+  is enough. Do not rewrite the function.
+
+signature:
+  entrypoint: numbered_labels
+  stub: |
+    def numbered_labels(items):
+        labels = []
+        position = 0
+
+        while position <= len(items):
+            labels.append(str(position + 1) + ": " + items[position])
+            position = position + 1
+
+        return labels
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["oak", "pine"]]
+      expect: ["1: oak", "2: pine"]
+    - args: [[]]
+      expect: []
+  hidden:
+    # The empty list is visible as well - the brief names it as a symptom, so the player
+    # must see it. Repeated here because the hidden set is what proves an edge is graded
+    # even when someone stops reading after the visible cases.
+    - args: [[]]
+      expect: []
+    - args: [["solo"]]
+      expect: ["1: solo"]
+    - args: [["a", "b", "c", "d"]]
+      expect: ["1: a", "2: b", "3: c", "4: d"]
+    - args: [[""]]
+      expect: ["1: "]
+    - args: [["x", "x"]]
+      expect: ["1: x", "2: x"]
+
+hints:
+  - level: 1
+    text: |
+      The function works for the first items and then fails. Which position does it try
+      to read last, and does that position exist in the list?
+  - level: 2
+    text: |
+      With two items, the valid positions are 0 and 1. Write down what position holds on
+      each pass of the while loop and where the condition finally stops it. It stops one
+      pass too late, and the comparison operator is why.
+  - level: 3
+    text: |
+      The same boundary, in a different loop:
+
+          # walks a string one character at a time and stops correctly
+          i = 0
+          while i < len(word):
+              print(word[i])
+              i = i + 1
+
+      Compare that condition with yours, character by character.
+
+solution: |
+  def numbered_labels(items):
+      labels = []
+      position = 0
+
+      while position < len(items):
+          labels.append(str(position + 1) + ": " + items[position])
+          position = position + 1
+
+      return labels
