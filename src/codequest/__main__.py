@@ -128,6 +128,63 @@ def cmd_new_save(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_unlock(args: argparse.Namespace) -> int:
+    """Open one island, or all of them, on a save so its content can be playtested.
+
+    This exists because PROJECT_PLAN.md Phase 5.1 gates each island on Giovanni playing
+    it before the next is designed, and that gate was unreachable: the Debugging island
+    asks for 54 completed missions, so nobody could see the missions they had just
+    written. A content author who cannot play their own content reviews it by reading,
+    which is exactly the review that misses a squeezed panel or an unreadable hint.
+
+    It writes progression *data*, not progression *rules*. ``ProgressService`` already
+    treats a row in ``unlocked_island`` as sufficient, so this needs no flag threaded
+    through the app and nothing here can drift away from how the game really unlocks.
+    Deleting the row puts the save back.
+    """
+    settings = get_settings()
+    progress = _open_service(args)
+    missions = MissionService(args.content or settings.content_dir, args.track)
+
+    profile = progress.profiles.get_by_name(args.save)
+    if profile is None:
+        print(f"No save called '{args.save}'. Try: codequest saves", file=sys.stderr)
+        return 1
+
+    known = {island.id: island for island in missions.islands}
+
+    if not args.all and not args.island:
+        print(
+            "Say which island. Try: codequest unlock "
+            f"{args.save} --island {next(iter(known), 'foundations')}   (or --all)",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.all:
+        wanted = list(known)
+    else:
+        unknown = [island_id for island_id in args.island if island_id not in known]
+        if unknown:
+            print(
+                f"No island called '{unknown[0]}' on the {args.track} track. "
+                f"Known: {', '.join(known)}",
+                file=sys.stderr,
+            )
+            return 1
+        wanted = list(args.island)
+
+    for island_id in wanted:
+        # unlock() returns False when the row is already there, so repeating the command
+        # is safe and says so instead of pretending it did something.
+        opened = progress.islands.unlock(profile.id, island_id)
+        state = "unlocked" if opened else "already unlocked"
+        print(f"  {known[island_id].name:<24} [{island_id}]  {state}")
+
+    print(f"\nSave '{profile.name}': {len(wanted)} island(s) processed.")
+    return 0
+
+
 def cmd_play(args: argparse.Namespace) -> int:
     """Attempt a mission as a saved profile, persisting the result."""
     settings = get_settings()
@@ -217,6 +274,20 @@ def build_parser() -> argparse.ArgumentParser:
     new_save.add_argument("--track", default="python")
     new_save.add_argument("--db", default=None, help="database path override")
     new_save.set_defaults(func=cmd_new_save)
+
+    unlock = subcommands.add_parser("unlock", help="open an island on a save, to playtest it")
+    unlock.add_argument("save", help="name of the career save")
+    unlock.add_argument(
+        "--island",
+        action="append",
+        default=[],
+        metavar="ID",
+        help="island id to open; repeat for several",
+    )
+    unlock.add_argument("--all", action="store_true", help="open every island on the track")
+    add_content_options(unlock)
+    unlock.add_argument("--db", default=None, help="database path override")
+    unlock.set_defaults(func=cmd_unlock)
 
     play = subcommands.add_parser("play", help="attempt a mission as a saved profile")
     play.add_argument("save", help="name of the career save")

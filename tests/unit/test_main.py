@@ -94,7 +94,9 @@ def test_none_argv_still_rejects_unknown_arguments(monkeypatch):
     assert exc_info.value.code == 2
 
 
-@pytest.mark.parametrize("command", ["run", "check", "missions", "saves", "new-save", "play"])
+@pytest.mark.parametrize(
+    "command", ["run", "check", "missions", "saves", "new-save", "unlock", "play"]
+)
 def test_every_subcommand_is_bound_to_a_function(command):
     """A subparser declared but never given a func would print help and look broken."""
     parser = build_parser()
@@ -227,3 +229,98 @@ def test_check_verifies_every_shipped_solution(capsys):
 
     assert exit_code == 0
     assert "self-consistent" in capsys.readouterr().out
+
+
+# ------------------------------------------------------------------------- unlock
+#
+# ``unlock`` is the playtest tool for Phase 5.1: without it, an island gated behind 54
+# completed missions cannot be opened by the person who just wrote its content. These
+# tests assert on ``is_island_unlocked`` rather than on the printed text, because what
+# the command has to change is what the *game* believes, not what the terminal says.
+
+
+def _unlocked(db: str, save: str, island_id: str) -> bool:
+    """Ask the real service whether the island is open, the way the TUI does."""
+    from codequest.config import get_settings
+    from codequest.services.mission_service import MissionService
+    from codequest.services.progress_service import ProgressService
+    from codequest.storage.db import init_db
+
+    progress = ProgressService(init_db(db))
+    islands = MissionService(get_settings().content_dir, "python").islands
+    profile = progress.profiles.get_by_name(save)
+    island = next(one for one in islands if one.id == island_id)
+
+    return progress.is_island_unlocked(profile, island)
+
+
+def test_unlock_opens_a_named_island(capsys, tmp_path):
+    """The gate the command exists for: debugging needs 54 missions, the save has none."""
+    db = str(tmp_path / "save.db")
+    main(["new-save", "giovanni", "--db", db])
+    assert not _unlocked(db, "giovanni", "debugging")
+
+    exit_code = main(["unlock", "giovanni", "--island", "debugging", "--db", db])
+
+    assert exit_code == 0
+    assert "unlocked" in capsys.readouterr().out
+    assert _unlocked(db, "giovanni", "debugging")
+
+
+def test_unlock_all_opens_every_island(tmp_path):
+    db = str(tmp_path / "save.db")
+    main(["new-save", "giovanni", "--db", db])
+
+    assert main(["unlock", "giovanni", "--all", "--db", db]) == 0
+
+    for island_id in ("collections", "functions", "debugging"):
+        assert _unlocked(db, "giovanni", island_id)
+
+
+def test_unlock_is_idempotent(capsys, tmp_path):
+    """Running it twice must be safe and must say so, not silently claim a fresh unlock."""
+    db = str(tmp_path / "save.db")
+    main(["new-save", "giovanni", "--db", db])
+    main(["unlock", "giovanni", "--island", "debugging", "--db", db])
+    capsys.readouterr()
+
+    exit_code = main(["unlock", "giovanni", "--island", "debugging", "--db", db])
+
+    assert exit_code == 0
+    assert "already unlocked" in capsys.readouterr().out
+    assert _unlocked(db, "giovanni", "debugging")
+
+
+def test_unlock_with_an_unknown_save_is_a_readable_error(capsys, tmp_path):
+    db = str(tmp_path / "save.db")
+
+    exit_code = main(["unlock", "ghost", "--island", "debugging", "--db", db])
+
+    assert exit_code == 1
+    assert "No save called" in capsys.readouterr().err
+
+
+def test_unlock_with_an_unknown_island_lists_the_real_ones(capsys, tmp_path):
+    """A typo'd island id must not create a row nobody can ever match against."""
+    db = str(tmp_path / "save.db")
+    main(["new-save", "giovanni", "--db", db])
+
+    exit_code = main(["unlock", "giovanni", "--island", "debuging", "--db", db])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "No island called 'debuging'" in captured.err
+    assert "debugging" in captured.err
+    assert not _unlocked(db, "giovanni", "debugging")
+
+
+def test_unlock_without_an_island_refuses_instead_of_doing_nothing(capsys, tmp_path):
+    """Silence would read as success. An empty selection is a usage mistake."""
+    db = str(tmp_path / "save.db")
+    main(["new-save", "giovanni", "--db", db])
+    capsys.readouterr()
+
+    exit_code = main(["unlock", "giovanni", "--db", db])
+
+    assert exit_code == 1
+    assert "Say which island" in capsys.readouterr().err
