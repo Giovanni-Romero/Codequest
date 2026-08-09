@@ -1,0 +1,172 @@
+# Mission 6 of Files and Data. Introduces nothing. RELIEF mission - simple/20, below the
+# island's moderate band.
+# Reinforces: json, context-managers.
+#
+# The relief is real - grouping by length is Island 2 work and the file handling is
+# missions 4 and 5 unchanged. What the mission adds is one observation the player cannot
+# argue with: the keys go in as int and come back as str. No fixture is planted, because
+# the function creates the file it needs.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-06
+title: The round trip
+track: python
+island: files-and-data
+order: 6
+difficulty: simple
+tags: [json, round-trip, types]
+xp: 20
+
+concepts:
+  - json
+  - context-managers
+
+teaching:
+  analogy: |
+    Say a phone number out loud and have someone write it on a slip of paper. Read the
+    slip back and the number is intact - nothing was lost.
+
+    Now do it with a room number that starts with a zero. You said "oh four", the slip says
+    "04", and whether that is a number or a label is a question the slip cannot answer. The
+    trip was faithful about the characters and careless about what they were.
+
+  explanation: |
+    A **round trip** is writing a structure out and reading it back. When the thing that
+    returns equals the thing that left, the trip is faithful.
+
+    JSON is faithful for dicts, lists, strings, floats, ints, booleans and None. It is not
+    faithful for everything, and dict keys are where you meet that first:
+
+        json.loads(json.dumps({3: ["oak"]}))    ->  {'3': ['oak']}
+
+    Nothing went wrong there. JSON keys are strings by definition, so `json.dump` converts
+    yours on the way out and has no way to convert them back on the way in. The list of
+    words inside is untouched - the loss is only at the key.
+
+    This is not a flaw to route around. It is a fact to know, because it decides whether
+    JSON is the right place to keep a particular structure.
+
+  worked_example: |
+    # Saving a scoreboard, which is not what this mission asks for
+    import json
+
+    def save_scores(path, scores):
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(scores, handle)
+
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    # print(save_scores("s.json", {1: "gold", 2: "silver"}))
+    # {'1': 'gold', '2': 'silver'}      the values kept their type, the keys did not
+
+  key_points:
+    - "A round trip is dump then load. When what comes back equals what left, the format was faithful to that data."
+    - "Integer keys come back as strings. {3: [...]} returns as {\"3\": [...]}, and there is no option to turn that off."
+    - Values keep their types. The loss is at the key, not inside it.
+    - "Writing uses mode \"w\". Appending JSON onto JSON gives you a file that nothing can load."
+    - Read the file back rather than returning what you wrote. That is the only way you find out what actually survived.
+
+brief: |
+  Write a function called group_by_length that takes a filename and a list of words:
+
+    - group the words by their length, in a dict whose keys are the lengths as integers
+      and whose values are lists of the words with that length
+    - words stay in the order they arrived
+    - save that dict to the file as JSON
+    - load it back from the file and return what you loaded
+
+  The file does not exist yet. Your function creates it.
+
+  Read the returned keys carefully before you decide the mission is broken. They are not
+  what you saved, and that is the lesson.
+
+signature:
+  entrypoint: group_by_length
+  stub: |
+    import json
+
+
+    def group_by_length(filename, words):
+        # Group them, save them, load them back.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["notes.json", ["oak", "pine", "elm"]]
+      expect:
+        "3": [oak, elm]
+        "4": [pine]
+    - args: ["notes.json", []]
+      expect: {}
+  hidden:
+    - args: ["notes.json", ["a"]]
+      expect:
+        "1": [a]
+    # The empty string has length zero and is still a word.
+    - args: ["notes.json", ["", "x"]]
+      expect:
+        "0": [""]
+        "1": [x]
+    # Duplicates are kept, not collapsed.
+    - args: ["notes.json", ["ash", "ash"]]
+      expect:
+        "3": [ash, ash]
+    # Order within a group is the order the words arrived in.
+    - args: ["notes.json", ["pine", "oak", "elm", "teak"]]
+      expect:
+        "4": [pine, teak]
+        "3": [oak, elm]
+    # Writing to the same file twice must not leave the first call's words behind.
+    - args: ["notes.json", ["yew"]]
+      expect:
+        "3": [yew]
+
+hints:
+  - level: 1
+    text: |
+      Build the whole dict first, then think about the file. What do you do the first time
+      a length shows up, that you must not do the second time?
+  - level: 2
+    text: |
+      Start with an empty dict. For each word, check whether its length is already a key -
+      if not, put an empty list there - then append the word to that list.
+
+      Then one with block in mode "w" with json.dump, and a second with block to
+      json.load it back.
+  - level: 3
+    text: |
+      The same grouping, on a different question:
+
+          groups = {}
+          for name in names:
+              initial = name[0]
+              if initial not in groups:
+                  groups[initial] = []
+              groups[initial].append(name)
+
+      Yours groups by len(word) instead of by the first letter, and then makes the round
+      trip through the file.
+
+solution: |
+  import json
+
+
+  def group_by_length(filename, words):
+      grouped = {}
+      for word in words:
+          size = len(word)
+          if size not in grouped:
+              grouped[size] = []
+          grouped[size].append(word)
+
+      with open(filename, "w", encoding="utf-8") as handle:
+          json.dump(grouped, handle)
+
+      with open(filename, encoding="utf-8") as handle:
+          return json.load(handle)

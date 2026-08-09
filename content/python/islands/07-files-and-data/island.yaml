@@ -1,0 +1,25 @@
+id: files-and-data
+name: Files and Data
+track: python
+order: 7
+theme: Data that outlives the program
+description: |
+  Everything you have written so far took its data as arguments and gave it back as a
+  return value. Nothing survived the call.
+
+  Here a program leaves a mark that is still there tomorrow - and the failures stop
+  being about logic. The file is missing. The handle was never closed. The path works
+  on your machine and nowhere else.
+
+concepts:
+  - open-and-read
+  - context-managers
+  - writing-files
+  - json
+  - csv
+  - paths
+
+unlock_requires:
+  missions_completed: 64
+
+completion_reward_xp: 240

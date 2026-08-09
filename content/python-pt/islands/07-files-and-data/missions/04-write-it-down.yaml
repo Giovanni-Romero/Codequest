@@ -1,0 +1,173 @@
+# Missao 4 de Arquivos e Dados. Introduz: writing-files.
+# Reforca: context-managers, join-vs-concat.
+#
+# O entrypoint escreve e depois le de volta na mesma chamada, porque um handle nao
+# atravessa a fronteira JSON (docs/mission-schema.md) e um caso de teste chama o
+# entrypoint exatamente uma vez. Ler de volta e o unico jeito de um teste enxergar o que
+# foi escrito. Dois casos com os mesmos argumentos provam a regra de replantio: `"a"` duas
+# vezes seguidas daria um arquivo maior na segunda se a fixture nao fosse restaurada.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-04
+title: Anote isso
+track: python
+island: files-and-data
+order: 4
+difficulty: moderate
+tags: [files, writing, modes]
+xp: 30
+
+concepts:
+  - writing-files
+  - context-managers
+
+teaching:
+  analogy: |
+    Existem dois jeitos de colocar algo num caderno, e eles não são parecidos. Um é virar
+    para a próxima página em branco e escrever. O outro é arrancar tudo que estava no
+    caderno e então escrever na página um.
+
+    Os dois são "anotar". Só um deles tem volta se você pegou o caderno errado.
+
+  explanation: |
+    `open` aceita um segundo argumento, o **modo**, e o padrão é `"r"` - somente leitura.
+    Escrever exige que você diga qual tipo de escrita você quer:
+
+    - `"w"` esvazia o arquivo no instante em que abre, e só então escreve. O que estava lá
+      já se foi antes do seu primeiro `.write()` rodar.
+    - `"a"` acrescenta. A posição começa no fim, então o conteúdo existente fica intacto.
+
+    Os dois criam o arquivo quando ele não existe. Nenhum levanta `FileNotFoundError` -
+    isso é problema de leitura.
+
+        with open("ledger.txt", "a", encoding="utf-8") as handle:
+            handle.write("primeira venda\n")
+
+    Duas coisas sobre `.write()` pegam todo mundo. Ele **não adiciona quebra de linha**
+    nenhuma, então duas escritas sem `"\n"` produzem uma linha emendada. E o texto não está
+    no disco quando `.write()` retorna - fica num buffer até o arquivo fechar, que é mais
+    um motivo para o bloco `with` importar.
+
+    Ler um arquivo que você acabou de escrever, na mesma função, não é truque. Feche o
+    bloco de escrita e abra de novo para leitura. O segundo `with` começa do topo.
+
+  worked_example: |
+    # Carimbando um recibo, que nao e o que esta missao pede
+    def carimbar(caminho, nome):
+        with open(caminho, "w", encoding="utf-8") as handle:    # apaga tudo primeiro
+            handle.write("RECIBO\n")
+            handle.write(nome + "\n")
+
+        with open(caminho, encoding="utf-8") as handle:         # outro bloco, le de volta
+            return handle.read()
+
+    # print(carimbar("r.txt", "ada"))
+    # RECIBO
+    # ada
+
+    # Sem o "\n" voce tem uma linha, nao duas:
+    #     handle.write("RECIBO")
+    #     handle.write("ada")        ->  RECIBOada
+
+  key_points:
+    - "\"w\" esvazia o arquivo no momento em que ele é aberto, antes de qualquer escrita. \"a\" começa no fim e mantém o que está lá."
+    - Os dois modos criam o arquivo se ele não existir. Só a leitura de um arquivo inexistente levanta erro.
+    - ".write() não adiciona quebra de linha. Se você quer linhas, o \"\\n\" é você quem escreve."
+    - Escrever e ler precisam de blocos with separados. Feche o primeiro antes de abrir o segundo.
+    - "O texto chega ao disco quando o arquivo fecha, não quando .write() retorna. Mais um serviço que o bloco with faz por você."
+
+brief: |
+  O livro-caixa é um arquivo de texto puro, uma entrada por linha.
+
+  Escreva uma função chamada record que recebe um nome de arquivo, uma entrada, e uma flag
+  chamada replace:
+
+    - quando replace é False, a entrada vai para o fim e tudo que já estava no arquivo fica
+    - quando replace é True, o arquivo é esvaziado primeiro e a entrada vira sua única
+      linha
+    - de um jeito ou de outro, a entrada termina numa linha só dela
+
+  Depois leia o arquivo inteiro de volta e devolva suas linhas como lista de strings, sem
+  as quebras de linha.
+
+  Se o nome do arquivo ainda não existir, os dois casos simplesmente o criam.
+
+  ledger.txt já existe no seu diretório de trabalho e tem uma linha dentro.
+
+files:
+  ledger.txt: |
+    opening balance
+
+signature:
+  entrypoint: record
+  stub: |
+    def record(filename, entry, replace):
+        # Escolha o modo, escreva a linha, depois leia o arquivo de volta.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["ledger.txt", "first sale", false]
+      expect: ["opening balance", "first sale"]
+    - args: ["ledger.txt", "fresh start", true]
+      expect: ["fresh start"]
+  hidden:
+    # Igualzinho ao primeiro caso visivel. A fixture e replantada antes de cada caso,
+    # entao acrescentar duas vezes nao pode produzir tres linhas aqui.
+    - args: ["ledger.txt", "first sale", false]
+      expect: ["opening balance", "first sale"]
+    # Arquivos que nao existem. Os dois modos precisam cria-los em vez de levantar erro.
+    # Nomes diferentes de proposito: eles nao estao declarados em `files:`, entao ao
+    # contrario das fixtures *nao* sao restaurados entre casos e vazariam.
+    - args: ["new-append.txt", "only entry", false]
+      expect: ["only entry"]
+    - args: ["new-replace.txt", "only entry", true]
+      expect: ["only entry"]
+    # Uma entrada vazia ainda e uma linha. Uma solucao que pula a escrita quando a entrada
+    # e falsy perde essa linha.
+    - args: ["ledger.txt", "", false]
+      expect: ["opening balance", ""]
+    - args: ["ledger.txt", "", true]
+      expect: [""]
+    # Uma entrada com varias palavras, para pegar uma solucao que escreve sem a quebra de
+    # linha e a funde com a linha de cima.
+    - args: ["ledger.txt", "sold twelve barrels of tar", false]
+      expect: ["opening balance", "sold twelve barrels of tar"]
+
+hints:
+  - level: 1
+    text: |
+      A flag decide uma coisa só: qual string de modo o open() recebe. Quais são os dois
+      modos, e qual deles destrói o que já está no arquivo?
+  - level: 2
+    text: |
+      Escolha "w" ou "a" a partir da flag antes de abrir qualquer coisa. Escreva a entrada
+      seguida de "\n" dentro de um bloco with, depois abra o arquivo de novo num segundo
+      bloco with e use splitlines() no que você leu.
+  - level: 3
+    text: |
+      Os mesmos dois blocos, mantendo outro tipo de registro:
+
+          def anotar(caminho, mensagem):
+              with open(caminho, "a", encoding="utf-8") as handle:
+                  handle.write(mensagem + "\n")
+
+              with open(caminho, encoding="utf-8") as handle:
+                  return handle.read().splitlines()
+
+      A sua escolhe o modo em vez de sempre acrescentar.
+
+solution: |
+  def record(filename, entry, replace):
+      mode = "w" if replace else "a"
+
+      with open(filename, mode, encoding="utf-8") as handle:
+          handle.write(entry + "\n")
+
+      with open(filename, encoding="utf-8") as handle:
+          return handle.read().splitlines()

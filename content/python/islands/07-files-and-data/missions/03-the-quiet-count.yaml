@@ -1,0 +1,163 @@
+# Mission 3 of Files and Data. Introduces nothing. RELIEF mission - simple/20, below the
+# island's moderate band, exactly as relief works in Islands 2 to 6.
+# Reinforces: open-and-read, context-managers, and the accumulator pattern from Island 2.
+#
+# Nothing here is new. The file is opened the way mission 2 established and counted the
+# way Island 2 established, so the only thing being practised is holding both at once.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-03
+title: The quiet count
+track: python
+island: files-and-data
+order: 3
+difficulty: simple
+tags: [files, counting, accumulator]
+xp: 20
+
+concepts:
+  - open-and-read
+  - context-managers
+
+teaching:
+  analogy: |
+    Going through a year of shift reports to find out how many nights mentioned fog is not
+    a clever job. It is one pass, one finger down the page, one tally mark at a time.
+
+    The only way to get it wrong is to lose count halfway - which is why the tally lives on
+    the desk beside you, not in your head.
+
+  explanation: |
+    You have both halves of this already. Mission 2 gave you the file:
+
+        with open(filename, encoding="utf-8") as handle:
+            text = handle.read()
+
+    and Island 2 gave you the tally: start a counter at zero before the loop, add one
+    inside it, return it after.
+
+    The counter has to be created **before** the loop. Created inside, it resets on every
+    line and the answer is always 0 or 1.
+
+    For the matching itself, `in` asks whether one string appears anywhere inside another,
+    and `.lower()` on both sides makes the question case-blind:
+
+        if "storm" in line.lower():
+
+    Lowering only one side is a bug that hides well, because it works for every line that
+    was already lowercase.
+
+  worked_example: |
+    # Tallying how many lines are long, which is not what this mission asks for
+    def long_lines(path):
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+
+        tally = 0                       # before the loop, or it resets every time
+        for line in text.splitlines():
+            if len(line) > 40:
+                tally = tally + 1
+
+        return tally
+
+  key_points:
+    - The counter starts before the loop. Started inside it, every line overwrites the last one's work.
+    - "`\"fog\" in line` asks whether the word appears anywhere in the line, not whether the line equals it."
+    - "Lower both sides before comparing. Lowering one side works for every line that happened to be lowercase already, so the bug survives your testing."
+    - A line matches once no matter how many times the word appears in it. Count lines, not occurrences.
+
+brief: |
+  Write a function called count_matching that takes a filename and a word, and returns how
+  many lines of that file contain the word.
+
+    - the search ignores case, so "Storm" and "storm" both match "storm"
+    - a line that contains the word twice still counts once
+    - a file with no lines, or no matches, returns 0
+
+  These files already exist in your working directory: watch.log, single.log and
+  empty.log.
+
+files:
+  watch.log: |
+    storm sighted north
+    calm water all watch
+    storm passing to the east
+    Storm gone by dawn
+    quiet
+    storm on storm, a bad night
+  single.log: |
+    storm alone
+  empty.log: ""
+
+signature:
+  entrypoint: count_matching
+  stub: |
+    def count_matching(filename, word):
+        # One pass down the file, one tally.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["watch.log", "storm"]
+      expect: 4
+    - args: ["watch.log", "calm"]
+      expect: 1
+  hidden:
+    - args: ["empty.log", "storm"]
+      expect: 0
+    - args: ["single.log", "storm"]
+      expect: 1
+    - args: ["watch.log", "kraken"]
+      expect: 0
+    # Given in capitals this time. A solution that lowers only the line and not the word
+    # returns 0 here.
+    - args: ["watch.log", "STORM"]
+      expect: 4
+    # Appears twice on one line, which is still one line.
+    - args: ["watch.log", "on"]
+      expect: 2
+
+hints:
+  - level: 1
+    text: |
+      Where does the tally have to be created so that it survives from one line to the
+      next - inside the loop, or before it?
+  - level: 2
+    text: |
+      Read the file inside a `with` block, then loop over splitlines(). For each line, ask
+      whether the lowered word appears in the lowered line, and add one to the counter when
+      it does.
+  - level: 3
+    text: |
+      The same tally, asking a different question of each line:
+
+          def blank_lines(path):
+              with open(path, encoding="utf-8") as handle:
+                  text = handle.read()
+
+              found = 0
+              for line in text.splitlines():
+                  if not line.strip():
+                      found = found + 1
+
+              return found
+
+      Yours asks whether the word is in the line, with both sides lowered.
+
+solution: |
+  def count_matching(filename, word):
+      with open(filename, encoding="utf-8") as handle:
+          text = handle.read()
+
+      wanted = word.lower()
+      found = 0
+      for line in text.splitlines():
+          if wanted in line.lower():
+              found = found + 1
+
+      return found

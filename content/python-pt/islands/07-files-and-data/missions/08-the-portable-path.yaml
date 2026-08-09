@@ -1,0 +1,198 @@
+# Missao 8 de Arquivos e Dados. Introduz: paths.
+# Reforca: string-methods.
+#
+# O entrypoint deliberadamente nunca devolve um caminho montado. A suite de conteudo roda
+# esta solucao de verdade, no Linux do CI e no Windows da maquina do autor, e um caminho
+# montado se escreve diferente em cada um - o teste ficaria verde num lugar e vermelho no
+# outro. Entao a missao avalia as *consequencias* de montar caminhos direito, e o bloco de
+# ensino carrega a regra "nunca digite um separador".
+# split e rsplit sao proibidos porque a versao com string e justamente o habito que esta
+# missao existe para substituir.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-08
+title: O caminho portátil
+track: python
+island: files-and-data
+order: 8
+difficulty: moderate
+tags: [paths, pathlib, portability]
+xp: 30
+
+concepts:
+  - paths
+
+teaching:
+  analogy: |
+    Endereços escritos não combinam entre países. Uns põem o número antes da rua, outros
+    depois; uns põem o CEP antes da cidade. Escreva um envelope na ordem do seu país e
+    poste no exterior, e não é exatamente errado - é ilegível para quem tem que entregar.
+
+    Um endereço não fica portátil por ser escrito com mais capricho. Fica portátil quando é
+    entregue em partes, deixando cada correio imprimir na ordem que ele usa.
+
+  explanation: |
+    Windows separa segmentos de caminho com `\`, todo o resto com `/`. Monte um caminho na
+    mão e você escolheu um dos dois:
+
+        completo = pasta + "/" + nome     # um bug que se esconde na maquina onde foi escrito
+
+    `pathlib` é a saída. `Path` recebe um caminho e devolve um objeto que sabe quais são as
+    partes, em qualquer sistema que esteja rodando:
+
+        from pathlib import Path
+
+        local = Path("logs/2026/watch.log")
+        local.name        # 'watch.log'   o ultimo segmento, com extensao
+        local.stem        # 'watch'       o nome sem a ultima extensao
+        local.suffix      # '.log'        a ultima extensao, com o ponto
+        local.parts       # ('logs', '2026', 'watch.log')
+
+    E juntar usa `/` como operador, não como caractere que você digita:
+
+        Path("logs") / "2026" / "watch.log"
+
+    Isso se lê como um caminho e imprime certo nos dois sistemas, porque o separador é
+    escolhido quando o caminho vira texto - não quando você escreveu o código.
+
+    Uma coisa para observar: `stem` e `suffix` só tiram a **última** extensão.
+    `report.tar.gz` tem stem `report.tar` e suffix `.gz`.
+
+  worked_example: |
+    # Renomeando um backup, que nao e o que esta missao pede
+    from pathlib import Path
+
+    def nome_de_backup(caminho):
+        original = Path(caminho)
+        return original.stem + "-old" + original.suffix
+
+    # nome_de_backup("archive/notes.txt")  ->  'notes-old.txt'
+
+    # Juntando sem digitar separador:
+    #     destino = Path("archive") / "2026" / nome_de_backup("notes.txt")
+    #     print(destino)      'archive\\2026\\notes-old.txt'  no Windows
+    #                         'archive/2026/notes-old.txt'    em todo o resto
+
+  key_points:
+    - "Digitar \"/\" ou \"\\\\\" dentro de um caminho é o bug. Funciona na máquina onde você escreveu, que é exatamente por que ele sobrevive aos seus testes."
+    - "Path(a) / b junta dois segmentos e deixa o sistema operacional decidir o separador."
+    - "name é o último segmento. stem é ele sem a última extensão. suffix é essa extensão, com o ponto."
+    - "Só a última extensão sai. report.tar.gz dá stem 'report.tar' e suffix '.gz'."
+    - "Um arquivo sem extensão tem suffix vazio e stem igual ao name. Nada levanta erro - simplesmente não há o que remover."
+
+brief: |
+  Escreva uma função chamada describe que recebe um caminho como string, usando "/" entre
+  os segmentos, e devolve um dict com quatro chaves:
+
+    - "name" - o último segmento, com extensão
+    - "stem" - esse segmento sem a última extensão
+    - "suffix" - essa última extensão, com o ponto, ou "" quando não houver nenhuma
+    - "parts" - todos os segmentos do caminho, em ordem, como lista de strings
+
+  Todo caminho que você recebe é relativo - nenhum começa na raiz de um disco.
+
+  Você não pode usar split nem rsplit. Desmontar um caminho com cirurgia de string é o
+  hábito que esta missão existe para substituir, e é o que quebra no computador dos outros.
+
+signature:
+  entrypoint: describe
+  stub: |
+    from pathlib import Path
+
+
+    def describe(path):
+        # Deixe o pathlib desmontar. Voce nao deve precisar de nenhum separador.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [split, rsplit]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["logs/2026/watch.log"]
+      expect:
+        name: watch.log
+        stem: watch
+        suffix: .log
+        parts: [logs, "2026", watch.log]
+    - args: ["notes.txt"]
+      expect:
+        name: notes.txt
+        stem: notes
+        suffix: .txt
+        parts: [notes.txt]
+  hidden:
+    # Duas extensoes. So a ultima sai.
+    - args: ["archive/report.tar.gz"]
+      expect:
+        name: report.tar.gz
+        stem: report.tar
+        suffix: .gz
+        parts: [archive, report.tar.gz]
+    # Sem extensao nenhuma: suffix vazio, e o stem e o nome inteiro.
+    - args: ["data/README"]
+      expect:
+        name: README
+        stem: README
+        suffix: ""
+        parts: [data, README]
+    # Um ponto no comeco nao e extensao. O nome todo e o stem.
+    - args: [".gitignore"]
+      expect:
+        name: .gitignore
+        stem: .gitignore
+        suffix: ""
+        parts: [.gitignore]
+    - args: ["a/b/c/d/manifest.json"]
+      expect:
+        name: manifest.json
+        stem: manifest
+        suffix: .json
+        parts: [a, b, c, d, manifest.json]
+    # Um ponto dentro do nome de uma pasta nao e a extensao do arquivo.
+    - args: ["v1.2/notes.md"]
+      expect:
+        name: notes.md
+        stem: notes
+        suffix: .md
+        parts: [v1.2, notes.md]
+
+hints:
+  - level: 1
+    text: |
+      Três das quatro respostas falam só do último segmento, e uma fala de todos eles. Qual
+      atributo do pathlib te dá a sequência inteira?
+  - level: 2
+    text: |
+      Monte um único Path a partir da string e leia quatro atributos dele: name, stem,
+      suffix e parts. Coloque num dict.
+
+      parts é uma tupla, e a missão pede uma lista.
+  - level: 3
+    text: |
+      Os mesmos atributos, respondendo outra pergunta:
+
+          from pathlib import Path
+
+          def eh_um_log(caminho):
+              local = Path(caminho)
+              return local.suffix == ".log" and len(local.parts) > 1
+
+      A sua relata os atributos em vez de julgá-los.
+
+solution: |
+  from pathlib import Path
+
+
+  def describe(path):
+      location = Path(path)
+
+      return {
+          "name": location.name,
+          "stem": location.stem,
+          "suffix": location.suffix,
+          "parts": list(location.parts),
+      }

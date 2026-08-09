@@ -1,0 +1,226 @@
+# Missao 5 de Arquivos e Dados. Introduz: json.
+# Reforca: writing-files, nested-structures.
+#
+# forbidden_builtins bloqueia eval, split e replace, que sao as tres rotas para fazer o
+# parsing do manifesto na mao. Sem isso a missao e resolvivel como exercicio de string e o
+# json nunca e tocado.
+# O entrypoint carrega, altera, salva e carrega de novo numa chamada so - a segunda carga
+# e o que prova que a escrita chegou ao disco, ja que um handle nao volta para o jogo.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-05
+title: O manifesto estruturado
+track: python
+island: files-and-data
+order: 5
+difficulty: moderate
+tags: [files, json, nested]
+xp: 30
+
+concepts:
+  - json
+  - writing-files
+
+teaching:
+  analogy: |
+    Um contêiner pode guardar outros contêineres, e esses podem guardar caixas. Para
+    atravessar o mar, tudo isso vira algo plano: uma lista de carga, escrita, uma linha
+    depois da outra. Do outro lado alguém lê a lista e remonta o aninhamento.
+
+    Quase tudo sobrevive a essa viagem. Não tudo. Um contêiner que era "o terceiro da
+    esquerda" chega como contêiner rotulado "3", porque a lista só tem espaço para palavras
+    e números.
+
+  explanation: |
+    JSON é texto que descreve dados aninhados. O módulo `json` do Python leva suas
+    estruturas para dentro e para fora dele, e tem quatro funções cujos nomes diferem por
+    uma letra:
+
+    - `json.load(handle)` lê de um arquivo aberto, `json.loads(texto)` lê de uma string
+    - `json.dump(dados, handle)` escreve num arquivo aberto, `json.dumps(dados)` devolve
+      uma string
+
+    O `s` é de **string**. O par sem ele trabalha com arquivos, que é o que esta missão
+    precisa:
+
+        with open(caminho, encoding="utf-8") as handle:
+            manifesto = json.load(handle)
+
+        with open(caminho, "w", encoding="utf-8") as handle:
+            json.dump(manifesto, handle)
+
+    O que volta é uma estrutura Python comum - dicts, listas, strings, números, True, False,
+    None - e você a altera exatamente como altera qualquer dict.
+
+    O que não sobrevive vale saber antes de doer. Uma tupla sai como lista e volta lista. Um
+    set não vai de jeito nenhum e levanta `TypeError`. E toda chave de dict chega como
+    string, inclusive as que partiram como inteiros, porque JSON não tem outro tipo de
+    chave.
+
+  worked_example: |
+    # Incrementando um contador de execucoes, que nao e o que esta missao pede
+    import json
+
+    def tocou(caminho, musica):
+        with open(caminho, encoding="utf-8") as handle:
+            contagens = json.load(handle)
+
+        contagens[musica] = contagens.get(musica, 0) + 1
+
+        with open(caminho, "w", encoding="utf-8") as handle:
+            json.dump(contagens, handle)
+
+        return contagens
+
+    # A ida e volta que nao e ida e volta:
+    #     json.loads(json.dumps({1: "um"}))     ->  {'1': 'um'}
+    #     json.loads(json.dumps(("a", "b")))    ->  ['a', 'b']
+
+  key_points:
+    - "dump e load trabalham com um arquivo aberto. dumps e loads trabalham com uma string. O s é de string, e trocá-los é o erro mais comum desse módulo."
+    - "O que load te dá é um dict ou uma lista comum. Altere com as ferramentas que você já tem, e depois dump de volta."
+    - "Escrever exige o modo \"w\". json.dump não esvazia o arquivo por você - o modo esvazia, e acrescentar JSON em cima de JSON produz um texto que nada consegue ler."
+    - "Uma tupla volta como lista e um set não pode nem ser escrito. Se um tipo importa para você, JSON não é onde guardá-lo."
+    - "Toda chave de dict volta como string. {1: \"um\"} faz a ida e volta como {\"1\": \"um\"}."
+
+brief: |
+  O manifesto de um navio é um arquivo JSON com este formato:
+
+      {"ship": "Aurora", "crates": [{"name": "rope", "weight": 12}], "total_weight": 12}
+
+  Escreva uma função chamada add_crate que recebe um nome de arquivo, o nome de um caixote
+  e um peso:
+
+    - carregue o manifesto
+    - acrescente um caixote, como {"name": name, "weight": weight}, no fim da lista crates
+    - some o peso a total_weight
+    - salve o manifesto de volta no mesmo arquivo
+    - carregue de novo e devolva o que você carregou
+
+  Você não pode usar eval, split nem replace. Fazer o parsing do arquivo na mão é
+  exatamente o trabalho que esta missão existe para entregar ao módulo json.
+
+  Estes arquivos já existem no seu diretório de trabalho: manifest.json e empty.json.
+
+files:
+  manifest.json: |
+    {"ship": "Aurora", "crates": [{"name": "rope", "weight": 12}], "total_weight": 12}
+  empty.json: |
+    {"ship": "Petrel", "crates": [], "total_weight": 0}
+
+signature:
+  entrypoint: add_crate
+  stub: |
+    import json
+
+
+    def add_crate(filename, name, weight):
+        # Carregue, altere, salve, carregue de novo.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [eval, split, replace]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["manifest.json", "sail", 30]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: sail, weight: 30}
+        total_weight: 42
+    - args: ["empty.json", "anchor", 45]
+      expect:
+        ship: Petrel
+        crates:
+          - {name: anchor, weight: 45}
+        total_weight: 45
+  hidden:
+    # Identico ao primeiro caso visivel. A fixture e restaurada entre casos, entao uma
+    # segunda chamada nao pode encontrar sail ja la.
+    - args: ["manifest.json", "sail", 30]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: sail, weight: 30}
+        total_weight: 42
+    # Peso zero: o caixote e registrado do mesmo jeito, o total nao se move.
+    - args: ["manifest.json", "letters", 0]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: letters, weight: 0}
+        total_weight: 12
+    # O caixote novo vai para o fim, nao para o comeco.
+    - args: ["manifest.json", "ballast", 100]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: ballast, weight: 100}
+        total_weight: 112
+    # Um nome vazio e um nome. Nada aqui justifica descarta-lo.
+    - args: ["empty.json", "", 5]
+      expect:
+        ship: Petrel
+        crates:
+          - {name: "", weight: 5}
+        total_weight: 5
+    - args: ["nowhere.json", "sail", 30]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Depois que o manifesto está carregado, que tipo de objeto Python é manifest["crates"]?
+      Você já sabe colocar algo no fim de um desses.
+  - level: 2
+    text: |
+      Dois blocos with e um miolo entre eles. O primeiro abre o arquivo para leitura e
+      chama json.load. Depois você acrescenta o dict novo e atualiza total_weight. O
+      segundo abre o mesmo arquivo com modo "w" e chama json.dump.
+
+      E então abra uma terceira vez para ler de volta o que você devolve.
+  - level: 3
+    text: |
+      Os mesmos três passos em outro arquivo:
+
+          import json
+
+          def add_leitor(caminho, nome):
+              with open(caminho, encoding="utf-8") as handle:
+                  biblioteca = json.load(handle)
+
+              biblioteca["members"].append({"name": nome})
+              biblioteca["count"] = biblioteca["count"] + 1
+
+              with open(caminho, "w", encoding="utf-8") as handle:
+                  json.dump(biblioteca, handle)
+
+              with open(caminho, encoding="utf-8") as handle:
+                  return json.load(handle)
+
+      A sua leva um peso junto com o nome.
+
+solution: |
+  import json
+
+
+  def add_crate(filename, name, weight):
+      with open(filename, encoding="utf-8") as handle:
+          manifest = json.load(handle)
+
+      manifest["crates"].append({"name": name, "weight": weight})
+      manifest["total_weight"] = manifest["total_weight"] + weight
+
+      with open(filename, "w", encoding="utf-8") as handle:
+          json.dump(manifest, handle)
+
+      with open(filename, encoding="utf-8") as handle:
+          return json.load(handle)

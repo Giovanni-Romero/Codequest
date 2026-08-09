@@ -1,0 +1,192 @@
+# Mission 9 of Files and Data. Introduces nothing. RELIEF mission - simple/20, below the
+# island's moderate band.
+# Reinforces: paths, writing-files, csv, and join-vs-concat from Island 4.
+#
+# Three tools the player already has, used together for the first time. The title line of
+# the report comes from Path(source).stem, which is the only place `paths` appears - and
+# it is a value, not a joined path, so the expectation reads the same on every platform.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-09
+title: The tidy report
+track: python
+island: files-and-data
+order: 9
+difficulty: simple
+tags: [files, csv, paths, writing]
+xp: 20
+
+concepts:
+  - paths
+  - writing-files
+  - csv
+
+teaching:
+  analogy: |
+    A day's takings become a note for the owner: the name of the till at the top, one line
+    per sale, the total at the bottom. Nobody invents anything to write it. The work is
+    reading one thing carefully and laying another thing out clearly.
+
+    The name at the top is not typed from memory either. It is copied off the till.
+
+  explanation: |
+    Nothing new here. You are putting three things you have together:
+
+    - `csv.DictReader` to read the rows, with `newline=""` and `int()` on the numbers
+    - `Path(source).stem` to take the title off the source file's own name
+    - a `with` block in mode `"w"` to write the result
+
+    The one thing worth being careful about is building the text. Growing a string in a
+    loop with `+` re-copies everything you have so far on every pass, which is Island 4's
+    lesson. Collect the lines in a list and join them once at the end:
+
+        text = "\n".join(lines) + "\n"
+
+    The trailing `"\n"` is yours to add. `"\n".join` puts separators *between* items, so
+    the last line has nothing after it unless you say so.
+
+  worked_example: |
+    # Writing a guest list, which is not what this mission asks for
+    from pathlib import Path
+
+    def guest_list(source, target, names):
+        lines = [Path(source).stem]
+        for name in names:
+            lines.append("- " + name)
+        lines.append("count: " + str(len(names)))
+
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+
+        with open(target, encoding="utf-8") as handle:
+            return handle.read().splitlines()
+
+    # guest_list("events/spring.csv", "out.txt", ["ada", "bo"])
+    # ['spring', '- ada', '- bo', 'count: 2']
+
+  key_points:
+    - "Path(source).stem gives the file's name without its extension, so a title can be taken from a filename instead of typed."
+    - Collect lines in a list and join once. Building a string with + inside a loop copies the whole thing every pass.
+    - "\"\\n\".join puts separators between items. The final newline is one you add yourself."
+    - "Mode \"w\" empties the target first, so running the report twice gives the same file, not a doubled one."
+    - Read the file back rather than returning the list you built. What is on disk is the thing you were asked to produce.
+
+brief: |
+  Write a function called write_report that takes a source CSV filename and a target
+  filename. The CSV has two columns, port and weight.
+
+  Build a report and write it to the target, one line each:
+
+    - first line: the source file's name without its extension
+    - then one line per row, as "port: weight"
+    - last line: "total: N", where N is every weight added together
+
+  Every line ends with a newline, including the last one. Then read the target back and
+  return its lines as a list of strings.
+
+  You may not use split - the rows come from the csv module.
+
+  These files already exist in your working directory: cargo.csv, one.csv, empty.csv and
+  cargo.backup.csv.
+
+files:
+  cargo.csv: |
+    port,weight
+    Lisbon,12
+    Porto,30
+  one.csv: |
+    port,weight
+    Faro,5
+  empty.csv: |
+    port,weight
+  cargo.backup.csv: |
+    port,weight
+    Vigo,9
+
+signature:
+  entrypoint: write_report
+  stub: |
+    import csv
+    from pathlib import Path
+
+
+    def write_report(source, target):
+        # Read the rows, build the lines, write them out, read them back.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [split]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cargo.csv", "report.txt"]
+      expect: [cargo, "Lisbon: 12", "Porto: 30", "total: 42"]
+    - args: ["one.csv", "report.txt"]
+      expect: [one, "Faro: 5", "total: 5"]
+  hidden:
+    # A header and no rows. The title and the total are still written.
+    - args: ["empty.csv", "report.txt"]
+      expect: [empty, "total: 0"]
+    # Two dots in the source name. Only the last extension comes off the title.
+    - args: ["cargo.backup.csv", "report.txt"]
+      expect: [cargo.backup, "Vigo: 9", "total: 9"]
+    # Same source, different target. The title comes from the source, never the target.
+    - args: ["cargo.csv", "summary.md"]
+      expect: [cargo, "Lisbon: 12", "Porto: 30", "total: 42"]
+    # Written twice to the same target. Mode "w" must empty it first, so this is not
+    # eight lines.
+    - args: ["cargo.csv", "report.txt"]
+      expect: [cargo, "Lisbon: 12", "Porto: 30", "total: 42"]
+    - args: ["nowhere.csv", "report.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      The report has a first line, a middle that depends on the rows, and a last line.
+      Which of those three can you only write once the loop has finished?
+  - level: 2
+    text: |
+      Start a list holding just the title from Path(source).stem, and a total at 0. Loop
+      the DictReader rows, adding to both. After the loop, append the total line.
+
+      Then one with block in mode "w" writing "\n".join(lines) + "\n", and a second one to
+      read it back.
+  - level: 3
+    text: |
+      The same three parts, reporting on something else:
+
+          lines = ["header"]
+          seen = 0
+          for row in rows:
+              seen = seen + 1
+              lines.append(row["name"])
+          lines.append("count: " + str(seen))
+
+      Yours adds weights instead of counting, and takes the header from the filename.
+
+solution: |
+  import csv
+  from pathlib import Path
+
+
+  def write_report(source, target):
+      lines = [Path(source).stem]
+      total = 0
+
+      with open(source, newline="", encoding="utf-8") as handle:
+          for row in csv.DictReader(handle):
+              weight = int(row["weight"])
+              total = total + weight
+              lines.append(row["port"] + ": " + str(weight))
+
+      lines.append("total: " + str(total))
+
+      with open(target, "w", encoding="utf-8") as handle:
+          handle.write("\n".join(lines) + "\n")
+
+      with open(target, encoding="utf-8") as handle:
+          return handle.read().splitlines()

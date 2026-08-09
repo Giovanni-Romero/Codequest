@@ -1,0 +1,223 @@
+# Mission 5 of Files and Data. Introduces: json.
+# Reinforces: writing-files, nested-structures.
+#
+# forbidden_builtins blocks eval, split and replace, which are the three routes to
+# parsing the manifest by hand. Without that the mission is solvable as a string
+# exercise and json is never touched.
+# The entrypoint loads, changes, saves, and loads again in one call - the second load is
+# what proves the write reached the disk, since a handle cannot cross back to the game.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-05
+title: The structured manifest
+track: python
+island: files-and-data
+order: 5
+difficulty: moderate
+tags: [files, json, nested]
+xp: 30
+
+concepts:
+  - json
+  - writing-files
+
+teaching:
+  analogy: |
+    A shipping crate can hold other crates, and those can hold boxes. To send it across
+    the water it all has to become flat: a packing list, written out, one line after
+    another. At the far end someone reads the list and builds the nesting back up.
+
+    Almost everything survives that trip. Not quite everything. A crate that was "the
+    third one on the left" arrives as a crate labelled "3", because the list only has room
+    for words and numbers.
+
+  explanation: |
+    JSON is text that describes nested data. Python's `json` module moves your structures
+    in and out of it, and it has four functions whose names are one letter apart:
+
+    - `json.load(handle)` reads from an open file, `json.loads(text)` reads from a string
+    - `json.dump(data, handle)` writes to an open file, `json.dumps(data)` returns a string
+
+    The `s` is for **string**. The pair without it works on files, which is what this
+    mission needs:
+
+        with open(path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle)
+
+    What comes back is a plain Python structure - dicts, lists, strings, numbers, True,
+    False, None - and you change it exactly the way you change any dict.
+
+    What does not survive is worth knowing before it bites. A tuple goes out as a list and
+    comes back a list. A set cannot go at all and raises `TypeError`. And every dict key
+    arrives as a string, even the ones that left as integers, because JSON has no other
+    kind of key.
+
+  worked_example: |
+    # Bumping a play counter, which is not what this mission asks for
+    import json
+
+    def played(path, song):
+        with open(path, encoding="utf-8") as handle:
+            counts = json.load(handle)
+
+        counts[song] = counts.get(song, 0) + 1
+
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(counts, handle)
+
+        return counts
+
+    # The round trip that is not a round trip:
+    #     json.loads(json.dumps({1: "one"}))   ->  {'1': 'one'}
+    #     json.loads(json.dumps(("a", "b")))   ->  ['a', 'b']
+
+  key_points:
+    - "dump and load work on an open file. dumps and loads work on a string. The s is for string, and mixing them up is the most common error in this module."
+    - "What load gives you is an ordinary dict or list. Change it with the tools you already have, then dump it back."
+    - "Writing needs mode \"w\". json.dump does not empty the file for you - the mode does, and appending JSON to JSON produces text nothing can read."
+    - "A tuple comes back as a list and a set cannot be written at all. If a type matters to you, JSON is not where you keep it."
+    - "Every dict key comes back as a string. {1: \"one\"} makes the round trip as {\"1\": \"one\"}."
+
+brief: |
+  A ship's manifest is a JSON file shaped like this:
+
+      {"ship": "Aurora", "crates": [{"name": "rope", "weight": 12}], "total_weight": 12}
+
+  Write a function called add_crate that takes a filename, a crate name and a weight:
+
+    - load the manifest
+    - append a crate, as {"name": name, "weight": weight}, to the end of the crates list
+    - add the weight to total_weight
+    - save the manifest back to the same file
+    - load it again and return what you loaded
+
+  You may not use eval, split or replace. Parsing the file by hand is exactly the work
+  this mission is here to hand over to the json module.
+
+  These files already exist in your working directory: manifest.json and empty.json.
+
+files:
+  manifest.json: |
+    {"ship": "Aurora", "crates": [{"name": "rope", "weight": 12}], "total_weight": 12}
+  empty.json: |
+    {"ship": "Petrel", "crates": [], "total_weight": 0}
+
+signature:
+  entrypoint: add_crate
+  stub: |
+    import json
+
+
+    def add_crate(filename, name, weight):
+        # Load it, change it, save it, load it again.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [eval, split, replace]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["manifest.json", "sail", 30]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: sail, weight: 30}
+        total_weight: 42
+    - args: ["empty.json", "anchor", 45]
+      expect:
+        ship: Petrel
+        crates:
+          - {name: anchor, weight: 45}
+        total_weight: 45
+  hidden:
+    # Identical to the first visible case. The fixture is restored between cases, so a
+    # second call must not find sail already there.
+    - args: ["manifest.json", "sail", 30]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: sail, weight: 30}
+        total_weight: 42
+    # Weight zero: the crate is still recorded, the total does not move.
+    - args: ["manifest.json", "letters", 0]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: letters, weight: 0}
+        total_weight: 12
+    # The new crate goes on the end, not the front.
+    - args: ["manifest.json", "ballast", 100]
+      expect:
+        ship: Aurora
+        crates:
+          - {name: rope, weight: 12}
+          - {name: ballast, weight: 100}
+        total_weight: 112
+    # An empty name is a name. Nothing here justifies dropping it.
+    - args: ["empty.json", "", 5]
+      expect:
+        ship: Petrel
+        crates:
+          - {name: "", weight: 5}
+        total_weight: 5
+    - args: ["nowhere.json", "sail", 30]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Once the manifest is loaded, what kind of Python object is manifest["crates"]? You
+      already know how to put something on the end of one of those.
+  - level: 2
+    text: |
+      Two with blocks and one in between. The first opens the file for reading and calls
+      json.load. Then you append the new dict and update total_weight. The second opens
+      the same file with mode "w" and calls json.dump.
+
+      Then open it a third time to read back what you return.
+  - level: 3
+    text: |
+      The same three steps on a different file:
+
+          import json
+
+          def add_reader(path, name):
+              with open(path, encoding="utf-8") as handle:
+                  library = json.load(handle)
+
+              library["members"].append({"name": name})
+              library["count"] = library["count"] + 1
+
+              with open(path, "w", encoding="utf-8") as handle:
+                  json.dump(library, handle)
+
+              with open(path, encoding="utf-8") as handle:
+                  return json.load(handle)
+
+      Yours carries a weight along with the name.
+
+solution: |
+  import json
+
+
+  def add_crate(filename, name, weight):
+      with open(filename, encoding="utf-8") as handle:
+          manifest = json.load(handle)
+
+      manifest["crates"].append({"name": name, "weight": weight})
+      manifest["total_weight"] = manifest["total_weight"] + weight
+
+      with open(filename, "w", encoding="utf-8") as handle:
+          json.dump(manifest, handle)
+
+      with open(filename, encoding="utf-8") as handle:
+          return json.load(handle)

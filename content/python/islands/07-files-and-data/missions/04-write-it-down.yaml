@@ -1,0 +1,174 @@
+# Mission 4 of Files and Data. Introduces: writing-files.
+# Reinforces: context-managers, join-vs-concat.
+#
+# The entrypoint writes and then reads back in the same call, because a file handle
+# cannot cross the JSON boundary (docs/mission-schema.md) and a test case calls the
+# entrypoint exactly once. Reading back is the only way a test can see what was written.
+# Two cases with identical arguments prove the re-planting rule: `"a"` twice in a row
+# would give a longer file the second time if the fixture were not restored.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-04
+title: Write it down
+track: python
+island: files-and-data
+order: 4
+difficulty: moderate
+tags: [files, writing, modes]
+xp: 30
+
+concepts:
+  - writing-files
+  - context-managers
+
+teaching:
+  analogy: |
+    There are two ways to put something in a notebook, and they are not near each other.
+    One is to turn to the next blank page and write. The other is to tear out everything
+    that was in the book and then write on page one.
+
+    Both of them are "writing it down". Only one of them is recoverable if you picked the
+    wrong notebook.
+
+  explanation: |
+    `open` takes a second argument, the **mode**, and the default is `"r"` - read only.
+    Writing needs you to say which kind of writing you mean:
+
+    - `"w"` truncates the file to nothing the instant it opens, then writes. Anything
+      that was in there is gone before your first `.write()` runs.
+    - `"a"` appends. The position starts at the end, so existing content is untouched.
+
+    Both create the file when it does not exist. Neither raises `FileNotFoundError` -
+    that is a reading problem.
+
+        with open("ledger.txt", "a", encoding="utf-8") as handle:
+            handle.write("first sale\n")
+
+    Two things about `.write()` catch everyone. It adds **no newline** of its own, so
+    two writes without `"\n"` produce one run-on line. And the text is not on disk when
+    `.write()` returns - it sits in a buffer until the file is closed, which is one more
+    reason the `with` block matters.
+
+    Reading a file you just wrote in the same function is not a trick. Close the writing
+    block, then open it again for reading. The second `with` starts from the top.
+
+  worked_example: |
+    # Stamping a receipt, which is not what this mission asks for
+    def stamp(path, name):
+        with open(path, "w", encoding="utf-8") as handle:    # wipes it first
+            handle.write("RECEIPT\n")
+            handle.write(name + "\n")
+
+        with open(path, encoding="utf-8") as handle:         # separate block, reads back
+            return handle.read()
+
+    # print(stamp("r.txt", "ada"))
+    # RECEIPT
+    # ada
+
+    # Without the "\n" you get one line, not two:
+    #     handle.write("RECEIPT")
+    #     handle.write("ada")        ->  RECEIPTada
+
+  key_points:
+    - "\"w\" empties the file the moment it is opened, before anything is written. \"a\" starts at the end and keeps what is there."
+    - Both modes create the file if it is missing. Only reading a missing file raises.
+    - ".write() adds no newline. If you want lines, you write the \"\\n\" yourself."
+    - Writing and reading need separate with blocks. Close the first before opening the second.
+    - "The text reaches the disk when the file closes, not when .write() returns. One more job the with block does for you."
+
+brief: |
+  The ledger is a plain text file, one entry per line.
+
+  Write a function called record that takes a filename, an entry, and a flag called
+  replace:
+
+    - when replace is False, the entry goes on the end and everything already in the file
+      stays
+    - when replace is True, the file is emptied first and the entry becomes its only line
+    - either way the entry ends up on a line of its own
+
+  Then read the whole file back and return its lines as a list of strings, without the
+  line endings.
+
+  If the filename does not exist yet, both cases simply create it.
+
+  ledger.txt already exists in your working directory and has one line in it.
+
+files:
+  ledger.txt: |
+    opening balance
+
+signature:
+  entrypoint: record
+  stub: |
+    def record(filename, entry, replace):
+        # Choose the mode, write the line, then read the file back.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["ledger.txt", "first sale", false]
+      expect: ["opening balance", "first sale"]
+    - args: ["ledger.txt", "fresh start", true]
+      expect: ["fresh start"]
+  hidden:
+    # Byte for byte the first visible case. The fixture is re-planted before every case,
+    # so appending twice must not produce three lines here.
+    - args: ["ledger.txt", "first sale", false]
+      expect: ["opening balance", "first sale"]
+    # Files that do not exist. Both modes must create them rather than raise. Two
+    # different names on purpose: these are not declared in `files:`, so unlike the
+    # fixtures they are *not* restored between cases and would otherwise leak.
+    - args: ["new-append.txt", "only entry", false]
+      expect: ["only entry"]
+    - args: ["new-replace.txt", "only entry", true]
+      expect: ["only entry"]
+    # An empty entry is still a line. A solution that skips writing when the entry is
+    # falsy loses it.
+    - args: ["ledger.txt", "", false]
+      expect: ["opening balance", ""]
+    - args: ["ledger.txt", "", true]
+      expect: [""]
+    # A multi-word entry, to catch a solution that writes the entry without its newline
+    # and merges it into the line above.
+    - args: ["ledger.txt", "sold twelve barrels of tar", false]
+      expect: ["opening balance", "sold twelve barrels of tar"]
+
+hints:
+  - level: 1
+    text: |
+      The flag decides one thing only: which mode string open() receives. What are the two
+      modes, and which of them destroys what is already in the file?
+  - level: 2
+    text: |
+      Pick "w" or "a" from the flag before you open anything. Write the entry followed by
+      "\n" inside a with block, then open the file again in a second with block and use
+      splitlines() on what you read.
+  - level: 3
+    text: |
+      The same two blocks, keeping a different kind of log:
+
+          def note(path, message):
+              with open(path, "a", encoding="utf-8") as handle:
+                  handle.write(message + "\n")
+
+              with open(path, encoding="utf-8") as handle:
+                  return handle.read().splitlines()
+
+      Yours chooses the mode instead of always appending.
+
+solution: |
+  def record(filename, entry, replace):
+      mode = "w" if replace else "a"
+
+      with open(filename, mode, encoding="utf-8") as handle:
+          handle.write(entry + "\n")
+
+      with open(filename, encoding="utf-8") as handle:
+          return handle.read().splitlines()

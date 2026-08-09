@@ -1,0 +1,193 @@
+# Missao 9 de Arquivos e Dados. Nao introduz nada. Missao de ALIVIO - simple/20, abaixo da
+# faixa moderate da ilha.
+# Reforca: paths, writing-files, csv, e join-vs-concat da Ilha 4.
+#
+# Tres ferramentas que o jogador ja tem, usadas juntas pela primeira vez. A linha de titulo
+# do relatorio vem de Path(source).stem, que e o unico lugar onde `paths` aparece - e e um
+# valor, nao um caminho montado, entao a expectativa se le igual em qualquer plataforma.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-09
+title: O relatório caprichado
+track: python
+island: files-and-data
+order: 9
+difficulty: simple
+tags: [files, csv, paths, writing]
+xp: 20
+
+concepts:
+  - paths
+  - writing-files
+  - csv
+
+teaching:
+  analogy: |
+    O caixa do dia vira um bilhete para o dono: o nome do caixa no topo, uma linha por
+    venda, o total embaixo. Ninguém inventa nada para escrever isso. O trabalho é ler uma
+    coisa com atenção e dispor outra com clareza.
+
+    E o nome no topo também não é digitado de memória. É copiado do próprio caixa.
+
+  explanation: |
+    Nada de novo aqui. Você está juntando três coisas que já tem:
+
+    - `csv.DictReader` para ler as linhas, com `newline=""` e `int()` nos números
+    - `Path(source).stem` para tirar o título do próprio nome do arquivo de origem
+    - um bloco `with` em modo `"w"` para escrever o resultado
+
+    A única coisa que merece cuidado é montar o texto. Crescer uma string dentro de um laço
+    com `+` recopia tudo que você já tem a cada passagem, que é a lição da Ilha 4. Junte as
+    linhas numa lista e faça um join só no fim:
+
+        texto = "\n".join(linhas) + "\n"
+
+    O `"\n"` final é por sua conta. `"\n".join` põe separadores *entre* os itens, então a
+    última linha não tem nada depois dela a menos que você diga.
+
+  worked_example: |
+    # Escrevendo uma lista de convidados, que nao e o que esta missao pede
+    from pathlib import Path
+
+    def lista_convidados(origem, destino, nomes):
+        linhas = [Path(origem).stem]
+        for nome in nomes:
+            linhas.append("- " + nome)
+        linhas.append("count: " + str(len(nomes)))
+
+        with open(destino, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(linhas) + "\n")
+
+        with open(destino, encoding="utf-8") as handle:
+            return handle.read().splitlines()
+
+    # lista_convidados("events/spring.csv", "out.txt", ["ada", "bo"])
+    # ['spring', '- ada', '- bo', 'count: 2']
+
+  key_points:
+    - "Path(source).stem dá o nome do arquivo sem a extensão, então um título pode sair de um nome de arquivo em vez de ser digitado."
+    - Junte as linhas numa lista e faça um join só. Montar string com + dentro de um laço copia tudo a cada passagem.
+    - "\"\\n\".join põe separadores entre os itens. A quebra de linha final é você quem acrescenta."
+    - "O modo \"w\" esvazia o destino primeiro, então rodar o relatório duas vezes dá o mesmo arquivo, não um arquivo dobrado."
+    - Leia o arquivo de volta em vez de devolver a lista que você montou. O que está no disco é a coisa que pediram.
+
+brief: |
+  Escreva uma função chamada write_report que recebe o nome de um CSV de origem e o nome de
+  um arquivo de destino. O CSV tem duas colunas, port e weight.
+
+  Monte um relatório e escreva no destino, uma linha cada:
+
+    - primeira linha: o nome do arquivo de origem sem a extensão
+    - depois uma linha por linha da tabela, no formato "port: weight"
+    - última linha: "total: N", onde N é a soma de todos os pesos
+
+  Toda linha termina com quebra de linha, inclusive a última. Depois leia o destino de
+  volta e devolva suas linhas como lista de strings.
+
+  Você não pode usar split - as linhas vêm do módulo csv.
+
+  Estes arquivos já existem no seu diretório de trabalho: cargo.csv, one.csv, empty.csv e
+  cargo.backup.csv.
+
+files:
+  cargo.csv: |
+    port,weight
+    Lisbon,12
+    Porto,30
+  one.csv: |
+    port,weight
+    Faro,5
+  empty.csv: |
+    port,weight
+  cargo.backup.csv: |
+    port,weight
+    Vigo,9
+
+signature:
+  entrypoint: write_report
+  stub: |
+    import csv
+    from pathlib import Path
+
+
+    def write_report(source, target):
+        # Leia as linhas, monte o texto, escreva, leia de volta.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [split]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cargo.csv", "report.txt"]
+      expect: [cargo, "Lisbon: 12", "Porto: 30", "total: 42"]
+    - args: ["one.csv", "report.txt"]
+      expect: [one, "Faro: 5", "total: 5"]
+  hidden:
+    # Um cabecalho e nenhuma linha. O titulo e o total continuam sendo escritos.
+    - args: ["empty.csv", "report.txt"]
+      expect: [empty, "total: 0"]
+    # Dois pontos no nome da origem. So a ultima extensao sai do titulo.
+    - args: ["cargo.backup.csv", "report.txt"]
+      expect: [cargo.backup, "Vigo: 9", "total: 9"]
+    # Mesma origem, destino diferente. O titulo vem da origem, nunca do destino.
+    - args: ["cargo.csv", "summary.md"]
+      expect: [cargo, "Lisbon: 12", "Porto: 30", "total: 42"]
+    # Escrito duas vezes no mesmo destino. O modo "w" tem que esvaziar antes, entao isso
+    # nao sao oito linhas.
+    - args: ["cargo.csv", "report.txt"]
+      expect: [cargo, "Lisbon: 12", "Porto: 30", "total: 42"]
+    - args: ["nowhere.csv", "report.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      O relatório tem uma primeira linha, um miolo que depende das linhas da tabela, e uma
+      última linha. Qual dessas três você só consegue escrever depois que o laço terminou?
+  - level: 2
+    text: |
+      Comece uma lista contendo só o título vindo de Path(source).stem, e um total em 0.
+      Percorra as linhas do DictReader somando nos dois. Depois do laço, acrescente a linha
+      do total.
+
+      Aí um bloco with em modo "w" escrevendo "\n".join(linhas) + "\n", e um segundo para
+      ler de volta.
+  - level: 3
+    text: |
+      As mesmas três partes, relatando outra coisa:
+
+          linhas = ["header"]
+          vistos = 0
+          for linha in linhas_da_tabela:
+              vistos = vistos + 1
+              linhas.append(linha["name"])
+          linhas.append("count: " + str(vistos))
+
+      A sua soma pesos em vez de contar, e tira o cabeçalho do nome do arquivo.
+
+solution: |
+  import csv
+  from pathlib import Path
+
+
+  def write_report(source, target):
+      lines = [Path(source).stem]
+      total = 0
+
+      with open(source, newline="", encoding="utf-8") as handle:
+          for row in csv.DictReader(handle):
+              weight = int(row["weight"])
+              total = total + weight
+              lines.append(row["port"] + ": " + str(weight))
+
+      lines.append("total: " + str(total))
+
+      with open(target, "w", encoding="utf-8") as handle:
+          handle.write("\n".join(lines) + "\n")
+
+      with open(target, encoding="utf-8") as handle:
+          return handle.read().splitlines()

@@ -1,0 +1,184 @@
+# Mission 1 of Files and Data. Introduces: open-and-read.
+# Reinforces: split-and-parse, exceptions.
+#
+# First mission on the island, so it uses the plain open/close shape on purpose. Mission 2
+# breaks that shape deliberately - a player has to hold a file open, and see that nothing
+# forces them to close it, before `with` reads as a solution rather than as syntax.
+# The missing file is not an edge case here, it is the second half of the lesson.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-01
+title: The logbook page
+track: python
+island: files-and-data
+order: 1
+difficulty: moderate
+tags: [files, reading, exceptions]
+xp: 30
+
+concepts:
+  - open-and-read
+
+teaching:
+  analogy: |
+    Asking the harbour office for the logbook does not get you the logbook's contents. It
+    gets you the book, on the counter, open. You still have to read it, and when you walk
+    away someone has to shut it and put it back.
+
+    Two things follow from that, and they are the whole lesson. Reading it a second time
+    from where you stopped gets you nothing - you are already at the last page. And if the
+    book was never there, the clerk does not hand you an empty one. He tells you, out loud,
+    that there is no such book.
+
+  explanation: |
+    `open(path)` does not give you the text. It gives you a **file handle**: an open
+    connection to the file, positioned at the start.
+
+        handle = open("logbook.txt", encoding="utf-8")
+        contents = handle.read()
+        handle.close()
+
+    `.read()` pulls the whole file in as one string and leaves the handle at the end, so a
+    second `.read()` on the same handle returns `""`. That is not a bug, it is a position.
+
+    `encoding="utf-8"` is worth typing every time. Left out, Python picks a default that
+    differs between machines, and a file with an accent in it reads correctly for you and
+    raises for someone else.
+
+    When the path does not exist, `open` raises `FileNotFoundError`. It does not return
+    `None` and it does not return empty text. You already know what to do with an exception
+    from the Errors island - the point here is that this one is normal, not exotic. Files
+    go missing. That is what the world is like.
+
+  worked_example: |
+    # Counting the characters in a note, which is not what this mission asks for
+    handle = open("note.txt", encoding="utf-8")
+    text = handle.read()
+    handle.close()
+
+    print(len(text))            # 42
+    print(text.splitlines())    # ['first line', 'second line']
+
+    # The handle is spent, not the file:
+    handle = open("note.txt", encoding="utf-8")
+    print(len(handle.read()))   # 42
+    print(len(handle.read()))   # 0  - the position is already at the end
+    handle.close()
+
+  key_points:
+    - "open() returns a handle, not the text. The text comes from calling .read() on it."
+    - "A handle has a position. Read it twice and the second read gives you \"\", because the first one consumed the file."
+    - "Pass encoding=\"utf-8\" every time. The default varies by machine, so leaving it out is a bug that only appears on someone else's computer."
+    - "A missing path raises FileNotFoundError. It never returns empty text, so a caller cannot ignore the problem by accident."
+    - "splitlines() cuts text into lines and drops the line endings. Unlike split(\"\\n\"), it does not leave an empty last item when the file ends in a newline."
+
+brief: |
+  The harbour keeps its watch notes in plain text files, one entry per line. Some lines are
+  blank and some have stray spaces around them, because they were written by hand.
+
+  Write a function called read_entries that takes a filename and returns the entries as a
+  list of strings:
+
+    - each entry stripped of leading and trailing whitespace
+    - blank lines left out entirely
+    - a file with nothing in it gives back an empty list
+
+  Do not guard against a missing file. If the filename does not exist, let
+  FileNotFoundError travel out of your function - a caller who asked for a book that is not
+  there deserves to hear so.
+
+  These files already exist in your working directory: logbook.txt, single.txt, gappy.txt,
+  padded.txt and empty.txt. Open them by name, with no path in front.
+
+files:
+  logbook.txt: |
+    dawn watch clear
+    midday squall from the west
+    night calm
+  single.txt: |
+    only line
+  gappy.txt: |
+    first entry
+
+    second entry
+
+  # A double-quoted scalar rather than a block, because the leading whitespace is the
+  # point of this fixture and a block scalar would swallow it into its own indentation.
+  padded.txt: "   spaced out   \n\ttabbed in\n"
+  empty.txt: ""
+
+signature:
+  entrypoint: read_entries
+  stub: |
+    def read_entries(filename):
+        # Open the file, read it, close it. Then clean up the lines.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["logbook.txt"]
+      expect: ["dawn watch clear", "midday squall from the west", "night calm"]
+    - args: ["nowhere.txt"]
+      raises: FileNotFoundError
+  hidden:
+    # The empty file is the degenerate case: a solution that returns [""] for it is
+    # dropping blank lines by accident rather than on purpose.
+    - args: ["empty.txt"]
+      expect: []
+    - args: ["single.txt"]
+      expect: ["only line"]
+    - args: ["gappy.txt"]
+      expect: ["first entry", "second entry"]
+    - args: ["padded.txt"]
+      expect: ["spaced out", "tabbed in"]
+    # Repeated on purpose. The files are re-planted before every case, so a solution that
+    # somehow damaged the file in the first case would fail here.
+    - args: ["logbook.txt"]
+      expect: ["dawn watch clear", "midday squall from the west", "night calm"]
+    - args: ["missing-too.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      You need three separate things from the file: get a handle on it, pull its text out,
+      and let it go. Which of those three does open() actually do?
+  - level: 2
+    text: |
+      Read the whole file into one string, close the handle, then work on the string.
+      splitlines() turns it into lines. For each line, strip() it and keep it only if what
+      is left is not empty.
+  - level: 3
+    text: |
+      The same shape, collecting something else entirely:
+
+          handle = open("prices.txt", encoding="utf-8")
+          text = handle.read()
+          handle.close()
+
+          totals = []
+          for line in text.splitlines():
+              trimmed = line.strip()
+              if trimmed:
+                  totals.append(float(trimmed))
+
+      Yours keeps the text instead of turning it into a number.
+
+solution: |
+  def read_entries(filename):
+      handle = open(filename, encoding="utf-8")
+      text = handle.read()
+      handle.close()
+
+      entries = []
+      for line in text.splitlines():
+          trimmed = line.strip()
+          if trimmed:
+              entries.append(trimmed)
+
+      return entries

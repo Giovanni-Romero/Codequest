@@ -1,0 +1,195 @@
+# Mission 2 of Files and Data. Introduces: context-managers.
+# Reinforces: open-and-read, try-except.
+#
+# Mission 1's open/close shape is broken here on purpose: a line between open() and
+# close() that raises skips the close entirely. `close` is in forbidden_builtins, which
+# is what makes `with` the only route rather than the recommended one - the guard blocks
+# the attribute by name, so handle.close() will not compile past it.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-02
+title: Close it yourself
+track: python
+island: files-and-data
+order: 2
+difficulty: moderate
+tags: [files, context-manager, with]
+xp: 30
+
+concepts:
+  - context-managers
+  - open-and-read
+
+teaching:
+  analogy: |
+    A borrowed key has to go back on the hook. Nobody argues with that. The trouble is the
+    fire drill: you are halfway down the corridor with the key in your pocket, and the
+    rule "put it back when you are done" quietly does not apply, because you never got to
+    "done".
+
+    What a building needs is not a better rule. It is a door that locks itself behind you.
+
+  explanation: |
+    Mission 1 asked you to write this, and it has a hole in it:
+
+        handle = open(path, encoding="utf-8")
+        value = int(handle.read())    # if this raises, the next line never runs
+        handle.close()
+
+    An exception in the middle jumps straight out of the function. `close()` is skipped.
+    The handle stays open until the interpreter happens to clean it up, and on a program
+    that opens thousands of files, "happens to" runs out.
+
+    A **context manager** moves the guarantee off you and into the language:
+
+        with open(path, encoding="utf-8") as handle:
+            value = int(handle.read())
+
+    When the block ends the file is closed. Every way out counts as the end: falling off
+    the bottom, a `return` in the middle, or an exception tearing through. The exception
+    still travels on to your caller - `with` closes the file, it does not swallow the
+    error. That is the right division of labour, because a caller usually needs to know
+    something failed, and never needs to know a file was open.
+
+    After the block, `handle` still exists as a name but the file behind it is closed.
+    Reading from it there raises `ValueError`.
+
+  worked_example: |
+    # Reading a config value, which is not what this mission asks for
+    def port_number(path):
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        return int(text.strip())      # the file is already closed on this line
+
+    # Two ways out, one guarantee:
+    def first_line(path):
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                return line.strip()   # returning from inside still closes the file
+        return ""
+
+  key_points:
+    - "`with` is not shorter syntax for open. It is a promise that the file closes even when the block ends badly."
+    - A return inside the block does not skip the close. Neither does an exception.
+    - The exception still reaches your caller. A context manager cleans up, it does not handle the error.
+    - Do your reading inside the block and your calculating outside it. Hold the file for as little time as you can.
+    - "After the block the file is closed. The name still works, reading through it raises ValueError."
+
+brief: |
+  Each station files its readings as a text file, one number per line, blank lines
+  allowed. Some of those files have a hand-written note in them where a number should be,
+  and that is not something to paper over.
+
+  Write a function called average_reading that takes a filename and returns the mean of
+  the numbers in it, rounded to two decimal places:
+
+    - blank lines are skipped
+    - a file with no numbers in it returns 0.0
+    - a line that is not a number lets ValueError travel out of your function
+
+  You may not call .close() on anything - the guard will refuse the submission. Use the
+  construct that closes the file for you, and notice that it is also the only shape that
+  survives the bad line.
+
+  These files already exist in your working directory: readings.txt, one.txt, blanks.txt,
+  negatives.txt, bad.txt and empty.txt.
+
+files:
+  readings.txt: |
+    4
+    8
+    6
+  one.txt: |
+    5
+  blanks.txt: |
+    4
+
+    8
+
+  negatives.txt: |
+    -4
+    4
+  bad.txt: |
+    4
+    north by north-east
+    6
+  empty.txt: ""
+
+signature:
+  entrypoint: average_reading
+  stub: |
+    def average_reading(filename):
+        # Hold the file only while you are reading it.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [close]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["readings.txt"]
+      expect: 6.0
+    - args: ["bad.txt"]
+      raises: ValueError
+  hidden:
+    - args: ["empty.txt"]
+      expect: 0.0
+    - args: ["one.txt"]
+      expect: 5.0
+    - args: ["blanks.txt"]
+      expect: 6.0
+    # Sums to zero without being empty. A solution that tests the total instead of the
+    # count returns 0.0 here by luck and 0.0 for the empty file by accident.
+    - args: ["negatives.txt"]
+      expect: 0.0
+    - args: ["readings.txt"]
+      expect: 6.0
+    - args: ["nowhere.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Write the mission-1 shape on paper and draw an arrow from the line that raises to
+      where the program goes next. Which line does that arrow skip over, and who closes
+      the file then?
+  - level: 2
+    text: |
+      Use `with open(...) as handle:` and read the whole file inside the block. Do the
+      splitting, the float() conversion and the arithmetic after the block has ended - the
+      text is already in your hands by then.
+
+      Check the count of numbers you collected before dividing, not their total.
+  - level: 3
+    text: |
+      The same block, gathering something else:
+
+          def longest_word(path):
+              with open(path, encoding="utf-8") as handle:
+                  text = handle.read()
+
+              words = text.split()
+              if not words:
+                  return ""
+              return max(words, key=len)
+
+      Yours converts each line with float() and averages what it collected.
+
+solution: |
+  def average_reading(filename):
+      with open(filename, encoding="utf-8") as handle:
+          text = handle.read()
+
+      readings = []
+      for line in text.splitlines():
+          trimmed = line.strip()
+          if trimmed:
+              readings.append(float(trimmed))
+
+      if not readings:
+          return 0.0
+
+      return round(sum(readings) / len(readings), 2)

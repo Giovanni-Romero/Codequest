@@ -1,0 +1,25 @@
+id: files-and-data
+name: Arquivos e Dados
+track: python
+order: 7
+theme: Dados que sobrevivem ao programa
+description: |
+  Tudo que você escreveu até aqui recebeu seus dados como argumentos e devolveu como
+  valor de retorno. Nada sobreviveu à chamada.
+
+  Aqui um programa deixa uma marca que continua lá amanhã - e as falhas deixam de ser
+  sobre lógica. O arquivo não existe. O recurso nunca foi fechado. O caminho funciona
+  na sua máquina e em nenhuma outra.
+
+concepts:
+  - open-and-read
+  - context-managers
+  - writing-files
+  - json
+  - csv
+  - paths
+
+unlock_requires:
+  missions_completed: 64
+
+completion_reward_xp: 240

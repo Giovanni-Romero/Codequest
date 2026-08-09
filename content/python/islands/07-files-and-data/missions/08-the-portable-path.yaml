@@ -1,0 +1,201 @@
+# Mission 8 of Files and Data. Introduces: paths.
+# Reinforces: string-methods.
+#
+# The entrypoint deliberately never returns a joined path. The content suite runs this
+# solution for real, on Linux in CI and on Windows on the author's machine, and a joined
+# path is spelled differently on each - the test would be green in one place and red in
+# the other. So the mission grades the *consequences* of building paths properly, and the
+# teaching block carries the "never type a separator" rule.
+# split and rsplit are forbidden because the string version is the wrong habit this
+# mission exists to replace.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-08
+title: The portable path
+track: python
+island: files-and-data
+order: 8
+difficulty: moderate
+tags: [paths, pathlib, portability]
+xp: 30
+
+concepts:
+  - paths
+
+teaching:
+  analogy: |
+    Written addresses do not agree across countries. Some put the number before the street,
+    some after; some put the postcode before the city. Write an envelope in your own
+    country's order and post it abroad, and it is not wrong exactly - it is unreadable by
+    the people who have to deliver it.
+
+    An address does not become portable by being written more carefully. It becomes
+    portable by being handed over as its parts, and letting each postal service print it
+    in the order it uses.
+
+  explanation: |
+    Windows separates path segments with `\`, everyone else with `/`. Build a path by
+    hand and you have chosen one of them:
+
+        full = folder + "/" + name        # a bug that hides on the machine it was written on
+
+    `pathlib` is the way out. `Path` takes a path and gives you an object that knows what
+    the parts are, on whatever system is running it:
+
+        from pathlib import Path
+
+        location = Path("logs/2026/watch.log")
+        location.name        # 'watch.log'   the last segment, extension included
+        location.stem        # 'watch'       the name with the last extension removed
+        location.suffix      # '.log'        the last extension, dot included
+        location.parts       # ('logs', '2026', 'watch.log')
+
+    And joining uses `/` as an operator, not as a character you type:
+
+        Path("logs") / "2026" / "watch.log"
+
+    That reads like a path and prints correctly on both systems, because the separator is
+    chosen when the path is turned into text - not when you wrote the code.
+
+    One thing to watch: `stem` and `suffix` only take off the **last** extension.
+    `report.tar.gz` has stem `report.tar` and suffix `.gz`.
+
+  worked_example: |
+    # Renaming a backup, which is not what this mission asks for
+    from pathlib import Path
+
+    def backup_name(path):
+        original = Path(path)
+        return original.stem + "-old" + original.suffix
+
+    # backup_name("archive/notes.txt")  ->  'notes-old.txt'
+
+    # Joining without typing a separator:
+    #     destination = Path("archive") / "2026" / backup_name("notes.txt")
+    #     print(destination)      'archive\\2026\\notes-old.txt'  on Windows
+    #                             'archive/2026/notes-old.txt'    everywhere else
+
+  key_points:
+    - "Typing \"/\" or \"\\\\\" into a path is the bug. It works on the machine you wrote it on, which is exactly why it survives your testing."
+    - "Path(a) / b joins two segments and lets the operating system decide the separator."
+    - "name is the last segment. stem is that without the last extension. suffix is that extension, dot included."
+    - "Only the last extension comes off. report.tar.gz gives stem 'report.tar' and suffix '.gz'."
+    - "A file with no extension has an empty suffix and a stem equal to its name. Nothing raises - there is simply nothing to remove."
+
+brief: |
+  Write a function called describe that takes a path as a string, using "/" between
+  segments, and returns a dict with four keys:
+
+    - "name" - the last segment, extension included
+    - "stem" - that segment with its last extension removed
+    - "suffix" - that last extension, including the dot, or "" when there is none
+    - "parts" - every segment of the path, in order, as a list of strings
+
+  Every path you are given is relative - none of them start at the root of a drive.
+
+  You may not use split or rsplit. Taking a path apart with string surgery is the habit
+  this mission is here to replace, and it is the one that breaks on someone else's
+  computer.
+
+signature:
+  entrypoint: describe
+  stub: |
+    from pathlib import Path
+
+
+    def describe(path):
+        # Let pathlib take it apart. You should not need a separator character anywhere.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [split, rsplit]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["logs/2026/watch.log"]
+      expect:
+        name: watch.log
+        stem: watch
+        suffix: .log
+        parts: [logs, "2026", watch.log]
+    - args: ["notes.txt"]
+      expect:
+        name: notes.txt
+        stem: notes
+        suffix: .txt
+        parts: [notes.txt]
+  hidden:
+    # Two extensions. Only the last one comes off.
+    - args: ["archive/report.tar.gz"]
+      expect:
+        name: report.tar.gz
+        stem: report.tar
+        suffix: .gz
+        parts: [archive, report.tar.gz]
+    # No extension at all: empty suffix, and the stem is the whole name.
+    - args: ["data/README"]
+      expect:
+        name: README
+        stem: README
+        suffix: ""
+        parts: [data, README]
+    # A leading dot is not an extension. The whole thing is the stem.
+    - args: [".gitignore"]
+      expect:
+        name: .gitignore
+        stem: .gitignore
+        suffix: ""
+        parts: [.gitignore]
+    - args: ["a/b/c/d/manifest.json"]
+      expect:
+        name: manifest.json
+        stem: manifest
+        suffix: .json
+        parts: [a, b, c, d, manifest.json]
+    # A dot inside a directory name is not the file's extension.
+    - args: ["v1.2/notes.md"]
+      expect:
+        name: notes.md
+        stem: notes
+        suffix: .md
+        parts: [v1.2, notes.md]
+
+hints:
+  - level: 1
+    text: |
+      Three of the four answers are about the last segment only, and one is about all of
+      them. Which of pathlib's attributes gives you the whole sequence?
+  - level: 2
+    text: |
+      Build one Path from the string and read four attributes off it: name, stem, suffix
+      and parts. Put them in a dict.
+
+      parts is a tuple, and the mission asks for a list.
+  - level: 3
+    text: |
+      The same attributes, answering a different question:
+
+          from pathlib import Path
+
+          def is_a_log(path):
+              location = Path(path)
+              return location.suffix == ".log" and len(location.parts) > 1
+
+      Yours reports the attributes instead of judging them.
+
+solution: |
+  from pathlib import Path
+
+
+  def describe(path):
+      location = Path(path)
+
+      return {
+          "name": location.name,
+          "stem": location.stem,
+          "suffix": location.suffix,
+          "parts": list(location.parts),
+      }

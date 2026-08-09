@@ -1,0 +1,197 @@
+# Mission 7 of Files and Data. Introduces: csv.
+# Reinforces: split-and-parse, lists.
+#
+# This is Island 4's tool meeting its limit. The fixture contains a quoted field with a
+# comma inside it, which .split(",") gets wrong, so `split` is in forbidden_builtins -
+# not as a puzzle, but because the mission is unteachable if the wrong tool is available.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-07
+title: The column ledger
+track: python
+island: files-and-data
+order: 7
+difficulty: moderate
+tags: [files, csv, tabular]
+xp: 30
+
+concepts:
+  - csv
+  - open-and-read
+
+teaching:
+  analogy: |
+    A form with boxes on it is easy to read back: one box, one answer. The trouble starts
+    when an answer legitimately contains the thing that separates the boxes - an address
+    with a comma in it, on a form whose fields are separated by commas.
+
+    A clerk handles that with quotation marks, and every other clerk knows to read them
+    that way. It is not a clever trick. It is a shared agreement about what a separator
+    means when it is inside quotes.
+
+  explanation: |
+    A CSV file is a table as text. The first line is usually a header naming the columns,
+    and every line after it is one row.
+
+        port,item,weight
+        Lisbon,"rope, tarred",12
+
+    That second line has three fields, not four. The comma inside the quotes is part of
+    the value, and `"rope, tarred".split(",")` has no way to know that. The `csv` module
+    does, because implementing the agreement is what it is for.
+
+    `csv.DictReader` reads the header for you and hands each row back as a dict keyed by
+    column name:
+
+        import csv
+
+        with open(path, newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                print(row["port"], row["weight"])
+
+    Two details are not optional. `newline=""` is required by the module - without it,
+    a quoted field containing a line break is split into two rows on some platforms. And
+    **every field arrives as a string**, including the ones that look like numbers. A
+    weight of `"12"` needs `int()` before it can be added to anything.
+
+  worked_example: |
+    # Totalling a shopping list, which is not what this mission asks for
+    import csv
+
+    def total_cost(path):
+        total = 0
+        with open(path, newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                total = total + int(row["price"])
+        return total
+
+    # item,price
+    # bread,3
+    # "cheese, aged",11
+    #
+    # total_cost(...)  ->  14
+    # A .split(",") version reads that second row as three fields and crashes on "aged".
+
+  key_points:
+    - "A quoted field may contain the separator. That single rule is why .split(\",\") is not a CSV parser and never becomes one."
+    - "csv.DictReader uses the header line as keys, so you ask for row[\"weight\"] instead of counting positions."
+    - "Open with newline=\"\" when you use the csv module. It is the module's own requirement, not a style choice."
+    - "Every field is a string. row[\"weight\"] is \"12\", and adding it to a number needs int() first."
+    - The header row is not data. DictReader consumes it, so you never have to skip it yourself.
+
+brief: |
+  The harbour keeps its cargo in a CSV file with three columns - port, item and weight.
+  Some item names contain a comma, which is why they are quoted.
+
+  Write a function called cargo_for that takes a filename and a port name, and returns a
+  dict mapping each item loaded at that port to its weight as an integer:
+
+    - only rows whose port matches exactly are included
+    - the weight must come back as an int, not a string
+    - a port with nothing loaded returns an empty dict
+
+  You may not use split. A comma inside a quoted item name is not a separator, and only
+  the csv module knows that.
+
+  These files already exist in your working directory: cargo.csv, empty.csv and one.csv.
+
+files:
+  cargo.csv: |
+    port,item,weight
+    Lisbon,"rope, tarred",12
+    Porto,sailcloth,30
+    Lisbon,anchor,45
+    Faro,"crates, small",8
+  empty.csv: |
+    port,item,weight
+  one.csv: |
+    port,item,weight
+    Vigo,"salt, coarse",7
+
+signature:
+  entrypoint: cargo_for
+  stub: |
+    import csv
+
+
+    def cargo_for(filename, port):
+        # One pass over the rows, keeping the ones that match.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [split]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cargo.csv", "Lisbon"]
+      expect:
+        "rope, tarred": 12
+        anchor: 45
+    - args: ["cargo.csv", "Porto"]
+      expect:
+        sailcloth: 30
+  hidden:
+    # A header and nothing else. DictReader yields no rows at all.
+    - args: ["empty.csv", "Lisbon"]
+      expect: {}
+    # A port that is in the file but has no cargo of its own.
+    - args: ["cargo.csv", "Vigo"]
+      expect: {}
+    # The quoted comma, alone in its file, so nothing else can mask a broken parse.
+    - args: ["one.csv", "Vigo"]
+      expect:
+        "salt, coarse": 7
+    - args: ["cargo.csv", "Faro"]
+      expect:
+        "crates, small": 8
+    # Exact match. "lisbon" is a different port from "Lisbon".
+    - args: ["cargo.csv", "lisbon"]
+      expect: {}
+    - args: ["nowhere.csv", "Lisbon"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Open cargo.csv and look at the Lisbon row with your own eyes. How many commas are on
+      it, and how many fields does it actually have?
+  - level: 2
+    text: |
+      Open the file with newline="" and wrap the handle in csv.DictReader. Loop over it -
+      each row is a dict, so row["port"] and row["item"] and row["weight"] are all there
+      by name.
+
+      Compare row["port"] to the port you were given, and remember what type row["weight"]
+      arrives as.
+  - level: 3
+    text: |
+      The same reader, collecting a different column:
+
+          import csv
+
+          def emails_in(path, city):
+              found = {}
+              with open(path, newline="", encoding="utf-8") as handle:
+                  for row in csv.DictReader(handle):
+                      if row["city"] == city:
+                          found[row["name"]] = row["email"]
+              return found
+
+      Yours converts the value with int() before storing it.
+
+solution: |
+  import csv
+
+
+  def cargo_for(filename, port):
+      found = {}
+
+      with open(filename, newline="", encoding="utf-8") as handle:
+          for row in csv.DictReader(handle):
+              if row["port"] == port:
+                  found[row["item"]] = int(row["weight"])
+
+      return found

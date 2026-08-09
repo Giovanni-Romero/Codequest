@@ -1,0 +1,174 @@
+# Missao 6 de Arquivos e Dados. Nao introduz nada. Missao de ALIVIO - simple/20, abaixo da
+# faixa moderate da ilha.
+# Reforca: json, context-managers.
+#
+# O alivio e real - agrupar por tamanho e trabalho da Ilha 2 e o manuseio de arquivo e as
+# missoes 4 e 5 sem mudanca. O que a missao acrescenta e uma observacao que o jogador nao
+# tem como contestar: as chaves entram como int e voltam como str. Nenhuma fixture e
+# plantada, porque a funcao cria o arquivo de que precisa.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-06
+title: A ida e volta
+track: python
+island: files-and-data
+order: 6
+difficulty: simple
+tags: [json, round-trip, types]
+xp: 20
+
+concepts:
+  - json
+  - context-managers
+
+teaching:
+  analogy: |
+    Fale um número de telefone em voz alta e peça para alguém anotar num papel. Leia o papel
+    de volta e o número está intacto - nada se perdeu.
+
+    Agora faça o mesmo com um número de apartamento que começa com zero. Você falou "zero
+    quatro", o papel diz "04", e se isso é um número ou um rótulo é uma pergunta que o papel
+    não sabe responder. A viagem foi fiel aos caracteres e descuidada com o que eles eram.
+
+  explanation: |
+    Uma **ida e volta** é escrever uma estrutura e lê-la de volta. Quando o que volta é
+    igual ao que saiu, a viagem foi fiel.
+
+    JSON é fiel para dicts, listas, strings, floats, ints, booleanos e None. Não é fiel para
+    tudo, e as chaves de dict são onde você encontra isso primeiro:
+
+        json.loads(json.dumps({3: ["oak"]}))    ->  {'3': ['oak']}
+
+    Nada deu errado ali. Chaves JSON são strings por definição, então `json.dump` converte
+    as suas na saída e não tem como desconverter na entrada. A lista de palavras lá dentro
+    ficou intacta - a perda é só na chave.
+
+    Isso não é um defeito para contornar. É um fato para saber, porque ele decide se JSON é
+    o lugar certo para guardar uma estrutura em particular.
+
+  worked_example: |
+    # Salvando um placar, que nao e o que esta missao pede
+    import json
+
+    def salvar_placar(caminho, placar):
+        with open(caminho, "w", encoding="utf-8") as handle:
+            json.dump(placar, handle)
+
+        with open(caminho, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    # print(salvar_placar("s.json", {1: "ouro", 2: "prata"}))
+    # {'1': 'ouro', '2': 'prata'}     os valores mantiveram o tipo, as chaves nao
+
+  key_points:
+    - "Uma ida e volta é dump e depois load. Quando o que volta é igual ao que saiu, o formato foi fiel àqueles dados."
+    - "Chaves inteiras voltam como strings. {3: [...]} retorna como {\"3\": [...]}, e não existe opção para desligar isso."
+    - Os valores mantêm seus tipos. A perda é na chave, não dentro dela.
+    - "Escrever usa o modo \"w\". Acrescentar JSON em cima de JSON dá um arquivo que nada consegue carregar."
+    - Leia o arquivo de volta em vez de devolver o que você escreveu. É o único jeito de descobrir o que de fato sobreviveu.
+
+brief: |
+  Escreva uma função chamada group_by_length que recebe um nome de arquivo e uma lista de
+  palavras:
+
+    - agrupe as palavras pelo tamanho delas, num dict cujas chaves são os tamanhos como
+      inteiros e cujos valores são listas das palavras daquele tamanho
+    - as palavras ficam na ordem em que chegaram
+    - salve esse dict no arquivo como JSON
+    - carregue de volta a partir do arquivo e devolva o que você carregou
+
+  O arquivo ainda não existe. Sua função o cria.
+
+  Leia as chaves devolvidas com atenção antes de concluir que a missão está quebrada. Elas
+  não são o que você salvou, e essa é a lição.
+
+signature:
+  entrypoint: group_by_length
+  stub: |
+    import json
+
+
+    def group_by_length(filename, words):
+        # Agrupe, salve, carregue de volta.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["notes.json", ["oak", "pine", "elm"]]
+      expect:
+        "3": [oak, elm]
+        "4": [pine]
+    - args: ["notes.json", []]
+      expect: {}
+  hidden:
+    - args: ["notes.json", ["a"]]
+      expect:
+        "1": [a]
+    # A string vazia tem tamanho zero e ainda assim e uma palavra.
+    - args: ["notes.json", ["", "x"]]
+      expect:
+        "0": [""]
+        "1": [x]
+    # Duplicatas sao mantidas, nao fundidas.
+    - args: ["notes.json", ["ash", "ash"]]
+      expect:
+        "3": [ash, ash]
+    # A ordem dentro de um grupo e a ordem em que as palavras chegaram.
+    - args: ["notes.json", ["pine", "oak", "elm", "teak"]]
+      expect:
+        "4": [pine, teak]
+        "3": [oak, elm]
+    # Escrever duas vezes no mesmo arquivo nao pode deixar as palavras da primeira chamada.
+    - args: ["notes.json", ["yew"]]
+      expect:
+        "3": [yew]
+
+hints:
+  - level: 1
+    text: |
+      Monte o dict inteiro primeiro, e só depois pense no arquivo. O que você faz na
+      primeira vez que um tamanho aparece, que não pode fazer na segunda?
+  - level: 2
+    text: |
+      Comece com um dict vazio. Para cada palavra, verifique se o tamanho dela já é uma
+      chave - se não for, coloque uma lista vazia ali - e depois acrescente a palavra
+      naquela lista.
+
+      Depois um bloco with em modo "w" com json.dump, e um segundo bloco with para
+      json.load de volta.
+  - level: 3
+    text: |
+      O mesmo agrupamento, com outra pergunta:
+
+          grupos = {}
+          for nome in nomes:
+              inicial = nome[0]
+              if inicial not in grupos:
+                  grupos[inicial] = []
+              grupos[inicial].append(nome)
+
+      O seu agrupa por len(palavra) em vez da primeira letra, e depois faz a ida e volta
+      pelo arquivo.
+
+solution: |
+  import json
+
+
+  def group_by_length(filename, words):
+      grouped = {}
+      for word in words:
+          size = len(word)
+          if size not in grouped:
+              grouped[size] = []
+          grouped[size].append(word)
+
+      with open(filename, "w", encoding="utf-8") as handle:
+          json.dump(grouped, handle)
+
+      with open(filename, encoding="utf-8") as handle:
+          return json.load(handle)

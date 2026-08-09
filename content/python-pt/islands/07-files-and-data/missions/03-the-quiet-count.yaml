@@ -1,0 +1,163 @@
+# Missao 3 de Arquivos e Dados. Nao introduz nada. Missao de ALIVIO - simple/20, abaixo da
+# faixa moderate da ilha, exatamente como o alivio funciona nas Ilhas 2 a 6.
+# Reforca: open-and-read, context-managers, e o padrao acumulador da Ilha 2.
+#
+# Nada aqui e novo. O arquivo e aberto do jeito que a missao 2 estabeleceu e contado do
+# jeito que a Ilha 2 estabeleceu, entao a unica coisa praticada e segurar as duas juntas.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-03
+title: A contagem silenciosa
+track: python
+island: files-and-data
+order: 3
+difficulty: simple
+tags: [files, counting, accumulator]
+xp: 20
+
+concepts:
+  - open-and-read
+  - context-managers
+
+teaching:
+  analogy: |
+    Passar um ano de relatórios de plantão para descobrir quantas noites mencionaram
+    neblina não é um trabalho esperto. É uma passada, um dedo descendo a página, um risco
+    de cada vez.
+
+    O único jeito de errar é perder a conta no meio - e é por isso que o risco fica na mesa
+    ao seu lado, não na sua cabeça.
+
+  explanation: |
+    Você já tem as duas metades disso. A missão 2 deu o arquivo:
+
+        with open(filename, encoding="utf-8") as handle:
+            texto = handle.read()
+
+    e a Ilha 2 deu a contagem: comece um contador em zero antes do laço, some um dentro
+    dele, devolva depois.
+
+    O contador tem que ser criado **antes** do laço. Criado dentro, ele zera a cada linha e
+    a resposta é sempre 0 ou 1.
+
+    Para a comparação, `in` pergunta se uma string aparece em algum lugar dentro de outra,
+    e `.lower()` nos dois lados torna a pergunta cega a maiúsculas:
+
+        if "storm" in linha.lower():
+
+    Baixar só um lado é um bug que se esconde bem, porque funciona para toda linha que já
+    estava em minúsculas.
+
+  worked_example: |
+    # Contando quantas linhas sao longas, que nao e o que esta missao pede
+    def linhas_longas(caminho):
+        with open(caminho, encoding="utf-8") as handle:
+            texto = handle.read()
+
+        conta = 0                       # antes do laco, ou zera toda vez
+        for linha in texto.splitlines():
+            if len(linha) > 40:
+                conta = conta + 1
+
+        return conta
+
+  key_points:
+    - O contador começa antes do laço. Começado dentro, cada linha apaga o trabalho da anterior.
+    - "`\"fog\" in linha` pergunta se a palavra aparece em algum ponto da linha, não se a linha é igual a ela."
+    - "Baixe os dois lados antes de comparar. Baixar só um funciona para toda linha que já era minúscula, então o bug sobrevive aos seus testes."
+    - Uma linha conta uma vez, não importa quantas vezes a palavra aparece nela. Conte linhas, não ocorrências.
+
+brief: |
+  Escreva uma função chamada count_matching que recebe um nome de arquivo e uma palavra, e
+  devolve quantas linhas daquele arquivo contêm a palavra.
+
+    - a busca ignora maiúsculas, então "Storm" e "storm" combinam com "storm"
+    - uma linha que contém a palavra duas vezes ainda conta uma
+    - um arquivo sem linhas, ou sem nenhuma correspondência, devolve 0
+
+  Estes arquivos já existem no seu diretório de trabalho: watch.log, single.log e
+  empty.log.
+
+files:
+  watch.log: |
+    storm sighted north
+    calm water all watch
+    storm passing to the east
+    Storm gone by dawn
+    quiet
+    storm on storm, a bad night
+  single.log: |
+    storm alone
+  empty.log: ""
+
+signature:
+  entrypoint: count_matching
+  stub: |
+    def count_matching(filename, word):
+        # Uma passada pelo arquivo, uma contagem.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["watch.log", "storm"]
+      expect: 4
+    - args: ["watch.log", "calm"]
+      expect: 1
+  hidden:
+    - args: ["empty.log", "storm"]
+      expect: 0
+    - args: ["single.log", "storm"]
+      expect: 1
+    - args: ["watch.log", "kraken"]
+      expect: 0
+    # Em maiusculas desta vez. Uma solucao que baixa so a linha e nao a palavra devolve 0.
+    - args: ["watch.log", "STORM"]
+      expect: 4
+    # Aparece duas vezes numa linha, o que continua sendo uma linha.
+    - args: ["watch.log", "on"]
+      expect: 2
+
+hints:
+  - level: 1
+    text: |
+      Onde o contador precisa ser criado para sobreviver de uma linha para a próxima -
+      dentro do laço, ou antes dele?
+  - level: 2
+    text: |
+      Leia o arquivo dentro de um bloco `with`, depois percorra splitlines(). Para cada
+      linha, pergunte se a palavra em minúsculas aparece na linha em minúsculas, e some um
+      ao contador quando aparecer.
+  - level: 3
+    text: |
+      A mesma contagem, fazendo outra pergunta a cada linha:
+
+          def linhas_vazias(caminho):
+              with open(caminho, encoding="utf-8") as handle:
+                  texto = handle.read()
+
+              achadas = 0
+              for linha in texto.splitlines():
+                  if not linha.strip():
+                      achadas = achadas + 1
+
+              return achadas
+
+      A sua pergunta se a palavra está na linha, com os dois lados em minúsculas.
+
+solution: |
+  def count_matching(filename, word):
+      with open(filename, encoding="utf-8") as handle:
+          text = handle.read()
+
+      wanted = word.lower()
+      found = 0
+      for line in text.splitlines():
+          if wanted in line.lower():
+              found = found + 1
+
+      return found

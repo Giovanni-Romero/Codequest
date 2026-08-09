@@ -1,0 +1,196 @@
+# Missao 2 de Arquivos e Dados. Introduz: context-managers.
+# Reforca: open-and-read, try-except.
+#
+# O formato open/close da missao 1 e quebrado aqui de proposito: uma linha entre open() e
+# close() que levanta erro pula o close inteiro. `close` esta em forbidden_builtins, e e
+# isso que faz do `with` a unica rota em vez da rota recomendada - o guard bloqueia o
+# atributo pelo nome, entao handle.close() nao passa.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-02
+title: Feche você mesmo
+track: python
+island: files-and-data
+order: 2
+difficulty: moderate
+tags: [files, context-manager, with]
+xp: 30
+
+concepts:
+  - context-managers
+  - open-and-read
+
+teaching:
+  analogy: |
+    Chave emprestada tem que voltar para o gancho. Ninguém discute isso. O problema é o
+    alarme de incêndio: você está no meio do corredor com a chave no bolso, e a regra
+    "devolva quando terminar" silenciosamente não se aplica, porque você nunca chegou a
+    "terminar".
+
+    O que o prédio precisa não é de uma regra melhor. É de uma porta que tranca sozinha
+    atrás de você.
+
+  explanation: |
+    A missão 1 pediu que você escrevesse isto, e tem um buraco aqui:
+
+        handle = open(caminho, encoding="utf-8")
+        valor = int(handle.read())    # se isso levantar erro, a proxima linha nunca roda
+        handle.close()
+
+    Uma exceção no meio salta para fora da função. O `close()` é pulado. O handle fica
+    aberto até o interpretador resolver limpar, e num programa que abre milhares de
+    arquivos, "resolver" acaba.
+
+    Um **gerenciador de contexto** tira essa garantia de você e coloca na linguagem:
+
+        with open(caminho, encoding="utf-8") as handle:
+            valor = int(handle.read())
+
+    Quando o bloco acaba, o arquivo é fechado. Toda saída conta como fim: cair pelo fim do
+    bloco, um `return` no meio, ou uma exceção rasgando tudo. A exceção continua viajando
+    até quem chamou - o `with` fecha o arquivo, ele não engole o erro. Essa é a divisão de
+    trabalho certa, porque quem chamou geralmente precisa saber que algo falhou, e nunca
+    precisa saber que um arquivo estava aberto.
+
+    Depois do bloco, `handle` ainda existe como nome, mas o arquivo por trás está fechado.
+    Ler dali levanta `ValueError`.
+
+  worked_example: |
+    # Lendo um valor de configuracao, que nao e o que esta missao pede
+    def numero_da_porta(caminho):
+        with open(caminho, encoding="utf-8") as handle:
+            texto = handle.read()
+        return int(texto.strip())     # o arquivo ja esta fechado nesta linha
+
+    # Duas saidas, uma garantia:
+    def primeira_linha(caminho):
+        with open(caminho, encoding="utf-8") as handle:
+            for linha in handle:
+                return linha.strip()  # sair com return de dentro tambem fecha o arquivo
+        return ""
+
+  key_points:
+    - "`with` não é uma forma curta de escrever open. É a promessa de que o arquivo fecha mesmo quando o bloco termina mal."
+    - Um return dentro do bloco não pula o fechamento. Uma exceção também não.
+    - A exceção continua chegando em quem chamou. Um gerenciador de contexto limpa, ele não trata o erro.
+    - Leia dentro do bloco e calcule fora dele. Segure o arquivo pelo menor tempo possível.
+    - "Depois do bloco o arquivo está fechado. O nome continua existindo, mas ler por ele levanta ValueError."
+
+brief: |
+  Cada estação arquiva suas medições num arquivo de texto, um número por linha, linhas em
+  branco permitidas. Alguns desses arquivos têm uma anotação escrita à mão no lugar de um
+  número, e isso não é coisa para varrer para debaixo do tapete.
+
+  Escreva uma função chamada average_reading que recebe um nome de arquivo e devolve a
+  média dos números dele, arredondada em duas casas decimais:
+
+    - linhas em branco são ignoradas
+    - um arquivo sem nenhum número devolve 0.0
+    - uma linha que não é um número deixa ValueError sair da sua função
+
+  Você não pode chamar .close() em nada - o guard recusa a submissão. Use a construção que
+  fecha o arquivo por você, e repare que ela também é o único formato que sobrevive à
+  linha ruim.
+
+  Estes arquivos já existem no seu diretório de trabalho: readings.txt, one.txt,
+  blanks.txt, negatives.txt, bad.txt e empty.txt.
+
+files:
+  readings.txt: |
+    4
+    8
+    6
+  one.txt: |
+    5
+  blanks.txt: |
+    4
+
+    8
+
+  negatives.txt: |
+    -4
+    4
+  bad.txt: |
+    4
+    north by north-east
+    6
+  empty.txt: ""
+
+signature:
+  entrypoint: average_reading
+  stub: |
+    def average_reading(filename):
+        # Segure o arquivo apenas enquanto estiver lendo.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [close]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["readings.txt"]
+      expect: 6.0
+    - args: ["bad.txt"]
+      raises: ValueError
+  hidden:
+    - args: ["empty.txt"]
+      expect: 0.0
+    - args: ["one.txt"]
+      expect: 5.0
+    - args: ["blanks.txt"]
+      expect: 6.0
+    # Soma zero sem estar vazio. Uma solucao que testa o total em vez da contagem devolve
+    # 0.0 aqui por sorte e 0.0 para o arquivo vazio por acidente.
+    - args: ["negatives.txt"]
+      expect: 0.0
+    - args: ["readings.txt"]
+      expect: 6.0
+    - args: ["nowhere.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Escreva o formato da missão 1 no papel e desenhe uma seta da linha que levanta o erro
+      até onde o programa vai em seguida. Qual linha essa seta pula, e quem fecha o arquivo
+      então?
+  - level: 2
+    text: |
+      Use `with open(...) as handle:` e leia o arquivo inteiro dentro do bloco. Faça a
+      quebra em linhas, a conversão com float() e a conta depois que o bloco acabou - o
+      texto já está na sua mão a essa altura.
+
+      Antes de dividir, confira a quantidade de números que você juntou, não a soma deles.
+  - level: 3
+    text: |
+      O mesmo bloco, juntando outra coisa:
+
+          def maior_palavra(caminho):
+              with open(caminho, encoding="utf-8") as handle:
+                  texto = handle.read()
+
+              palavras = texto.split()
+              if not palavras:
+                  return ""
+              return max(palavras, key=len)
+
+      A sua converte cada linha com float() e tira a média do que juntou.
+
+solution: |
+  def average_reading(filename):
+      with open(filename, encoding="utf-8") as handle:
+          text = handle.read()
+
+      readings = []
+      for line in text.splitlines():
+          trimmed = line.strip()
+          if trimmed:
+              readings.append(float(trimmed))
+
+      if not readings:
+          return 0.0
+
+      return round(sum(readings) / len(readings), 2)

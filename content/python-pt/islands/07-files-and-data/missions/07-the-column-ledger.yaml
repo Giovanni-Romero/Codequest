@@ -1,0 +1,199 @@
+# Missao 7 de Arquivos e Dados. Introduz: csv.
+# Reforca: split-and-parse, lists.
+#
+# Aqui a ferramenta da Ilha 4 encontra seu limite. A fixture contem um campo entre aspas
+# com virgula dentro, que .split(",") le errado, entao `split` esta em forbidden_builtins -
+# nao como charada, mas porque a missao e inensinavel se a ferramenta errada estiver
+# disponivel.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-07
+title: O livro de colunas
+track: python
+island: files-and-data
+order: 7
+difficulty: moderate
+tags: [files, csv, tabular]
+xp: 30
+
+concepts:
+  - csv
+  - open-and-read
+
+teaching:
+  analogy: |
+    Um formulário com quadradinhos é fácil de ler de volta: um quadrado, uma resposta. O
+    problema começa quando uma resposta legitimamente contém aquilo que separa os
+    quadrados - um endereço com vírgula, num formulário cujos campos são separados por
+    vírgula.
+
+    Um atendente resolve isso com aspas, e todo outro atendente sabe ler daquele jeito. Não
+    é um truque esperto. É um acordo compartilhado sobre o que um separador significa
+    quando está dentro de aspas.
+
+  explanation: |
+    Um arquivo CSV é uma tabela em texto. A primeira linha costuma ser um cabeçalho que
+    nomeia as colunas, e cada linha depois dela é uma linha da tabela.
+
+        port,item,weight
+        Lisbon,"rope, tarred",12
+
+    Aquela segunda linha tem três campos, não quatro. A vírgula dentro das aspas faz parte
+    do valor, e `"rope, tarred".split(",")` não tem como saber disso. O módulo `csv` sabe,
+    porque implementar esse acordo é para o que ele existe.
+
+    `csv.DictReader` lê o cabeçalho por você e devolve cada linha como um dict indexado
+    pelo nome da coluna:
+
+        import csv
+
+        with open(caminho, newline="", encoding="utf-8") as handle:
+            for linha in csv.DictReader(handle):
+                print(linha["port"], linha["weight"])
+
+    Dois detalhes não são opcionais. `newline=""` é exigido pelo módulo - sem ele, um campo
+    entre aspas contendo quebra de linha vira duas linhas em algumas plataformas. E **todo
+    campo chega como string**, inclusive os que parecem números. Um peso `"12"` precisa de
+    `int()` antes de ser somado a qualquer coisa.
+
+  worked_example: |
+    # Totalizando uma lista de compras, que nao e o que esta missao pede
+    import csv
+
+    def custo_total(caminho):
+        total = 0
+        with open(caminho, newline="", encoding="utf-8") as handle:
+            for linha in csv.DictReader(handle):
+                total = total + int(linha["price"])
+        return total
+
+    # item,price
+    # bread,3
+    # "cheese, aged",11
+    #
+    # custo_total(...)  ->  14
+    # Uma versao com .split(",") le aquela segunda linha como tres campos e quebra em "aged".
+
+  key_points:
+    - "Um campo entre aspas pode conter o separador. Só essa regra já é o motivo de .split(\",\") não ser um parser de CSV, e nunca virar um."
+    - "csv.DictReader usa a linha de cabeçalho como chaves, então você pede row[\"weight\"] em vez de contar posições."
+    - "Abra com newline=\"\" quando usar o módulo csv. É exigência do próprio módulo, não escolha de estilo."
+    - "Todo campo é string. row[\"weight\"] é \"12\", e somá-lo a um número exige int() antes."
+    - A linha de cabeçalho não é dado. O DictReader a consome, então você nunca precisa pulá-la.
+
+brief: |
+  A capitania guarda a carga num arquivo CSV com três colunas - port, item e weight. Alguns
+  nomes de item contêm vírgula, e é por isso que estão entre aspas.
+
+  Escreva uma função chamada cargo_for que recebe um nome de arquivo e o nome de um porto,
+  e devolve um dict que mapeia cada item carregado naquele porto ao seu peso como inteiro:
+
+    - só entram as linhas cujo porto é exatamente igual
+    - o peso tem que voltar como int, não como string
+    - um porto sem nada carregado devolve dict vazio
+
+  Você não pode usar split. Uma vírgula dentro de um nome entre aspas não é separador, e só
+  o módulo csv sabe disso.
+
+  Estes arquivos já existem no seu diretório de trabalho: cargo.csv, empty.csv e one.csv.
+
+files:
+  cargo.csv: |
+    port,item,weight
+    Lisbon,"rope, tarred",12
+    Porto,sailcloth,30
+    Lisbon,anchor,45
+    Faro,"crates, small",8
+  empty.csv: |
+    port,item,weight
+  one.csv: |
+    port,item,weight
+    Vigo,"salt, coarse",7
+
+signature:
+  entrypoint: cargo_for
+  stub: |
+    import csv
+
+
+    def cargo_for(filename, port):
+        # Uma passada pelas linhas, guardando as que combinam.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [split]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cargo.csv", "Lisbon"]
+      expect:
+        "rope, tarred": 12
+        anchor: 45
+    - args: ["cargo.csv", "Porto"]
+      expect:
+        sailcloth: 30
+  hidden:
+    # Um cabecalho e mais nada. O DictReader nao produz nenhuma linha.
+    - args: ["empty.csv", "Lisbon"]
+      expect: {}
+    # Um porto que esta no arquivo mas nao tem carga propria.
+    - args: ["cargo.csv", "Vigo"]
+      expect: {}
+    # A virgula entre aspas, sozinha no arquivo, para que nada mais mascare um parse ruim.
+    - args: ["one.csv", "Vigo"]
+      expect:
+        "salt, coarse": 7
+    - args: ["cargo.csv", "Faro"]
+      expect:
+        "crates, small": 8
+    # Igualdade exata. "lisbon" e um porto diferente de "Lisbon".
+    - args: ["cargo.csv", "lisbon"]
+      expect: {}
+    - args: ["nowhere.csv", "Lisbon"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Abra cargo.csv e olhe a linha de Lisbon com os seus próprios olhos. Quantas vírgulas
+      tem nela, e quantos campos ela de fato tem?
+  - level: 2
+    text: |
+      Abra o arquivo com newline="" e envolva o handle num csv.DictReader. Percorra ele -
+      cada linha é um dict, então row["port"], row["item"] e row["weight"] estão todos lá
+      pelo nome.
+
+      Compare row["port"] com o porto que você recebeu, e lembre de que tipo row["weight"]
+      chega.
+  - level: 3
+    text: |
+      O mesmo leitor, coletando outra coluna:
+
+          import csv
+
+          def emails_de(caminho, cidade):
+              achados = {}
+              with open(caminho, newline="", encoding="utf-8") as handle:
+                  for linha in csv.DictReader(handle):
+                      if linha["city"] == cidade:
+                          achados[linha["name"]] = linha["email"]
+              return achados
+
+      A sua converte o valor com int() antes de guardar.
+
+solution: |
+  import csv
+
+
+  def cargo_for(filename, port):
+      found = {}
+
+      with open(filename, newline="", encoding="utf-8") as handle:
+          for row in csv.DictReader(handle):
+              if row["port"] == port:
+                  found[row["item"]] = int(row["weight"])
+
+      return found

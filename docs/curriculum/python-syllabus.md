@@ -854,15 +854,18 @@ works on your machine and nowhere else.
 **Concepts (6):** `open-and-read`, `context-managers`, `writing-files`, `json`, `csv`,
 `paths`
 
-### This island cannot be authored yet, and that is the main finding
+### This island could not be authored when it was designed — that gap is now closed
 
 Islands 3 and 4 designed *around* their engine limits. Island 5 could not, and the
-`raises:` field was built before its first mission was written. **Island 7 is a Island 5
-case, not an Island 3 case.** The gap and the proposed contract are in "Engine work this
-island requires" below; the mission map assumes that work is done.
+`raises:` field was built before its first mission was written. **Island 7 was a Island 5
+case, not an Island 3 case.**
 
-Designing it first is still the right order. The shape of the field falls out of what the
-missions need — a fixture mechanism designed before the island would have guessed.
+Designing it first was still the right order. The shape of the field fell out of what the
+missions needed — a fixture mechanism designed before the island would have guessed.
+
+**Status:** the blocker below was closed before authoring began. `files:` ships as
+designed here, with one addition the design asked for: the fixtures are re-planted before
+*every* test case, not only once during `prepare`. See `docs/mission-schema.md`.
 
 ### Mission map
 
@@ -900,11 +903,29 @@ Reinforcement count:
 
 Every concept is reused at least twice. No orphans, and no exception to argue this time.
 
-### Engine work this island requires
+### The paths rule, found during authoring
 
-Verified against the code before the map above was written, not assumed.
+**No mission on this island returns a path it built.** Missions 8 and 9 return `.stem`,
+`.suffix`, `.name` or `list(.parts)` — values with no separator in them.
 
-**1. There is no way to plant a file. This is the blocker.**
+The reason is the content suite. `tests/content/test_all_missions.py` runs each shipped
+solution for real, and the same solution runs on Linux in CI and on Windows on the
+author's machine. `str(Path("logs") / "watch.log")` is `logs/watch.log` in one place and
+`logs\watch.log` in the other, so a mission asserting on a joined path is green in one
+and red in the other — and whichever way the expectation is written, it teaches the player
+that one separator is the correct answer, which is the opposite of the lesson.
+
+So the teaching block carries the "never type a separator" rule and the tests grade its
+consequences. Any future island that touches paths inherits this constraint.
+
+### Engine work this island required
+
+Verified against the code before the map above was written, not assumed. Items 1 and 2
+were built. Items 3, 4 and 5 were never code work — they are rules the missions obey, and
+they are now written down in `docs/mission-schema.md` so the next island author inherits
+them instead of rediscovering them.
+
+**1. There is no way to plant a file. This is the blocker.** — *built.*
 `PythonRunner.prepare` (`engine/runners/python.py:116`) writes exactly two files into the
 sandbox — `submission.py`, and `harness.py` outside a frozen build. `docs/mission-schema.md`
 has no field that says "this mission needs `cargo.csv` to exist". Missions 1, 3, 7 and 10
@@ -925,7 +946,7 @@ Text only, names validated to a single path segment: a mission that could write
 edit — into an arbitrary file-write primitive. `content/` is data, and this is exactly
 where data stops being harmless.
 
-**2. The workdir is shared by every test case of one attempt.**
+**2. The workdir is shared by every test case of one attempt.** — *built, the first way.*
 `GameSession` calls `prepare` once and `execute` per case (`services/game_session.py:91,142`).
 A file written by case 1 is still there for case 2. This is the mirror image of the
 one-process-per-case rule that shaped Island 3: there, state did not survive; here, it

@@ -1,0 +1,264 @@
+# Mission 10 of Files and Data. Introduces nothing. Closing mission.
+# Reinforces: open-and-read, context-managers, writing-files, json, csv, paths - all six
+# concepts of the island, in one call.
+#
+# Back at the island's moderate band. Nothing here is harder than mission 7 or 9 on its
+# own; what is new is holding three files with three different shapes at once, which is
+# what real work with data actually feels like.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-10
+title: The full ledger
+track: python
+island: files-and-data
+order: 10
+difficulty: moderate
+tags: [files, csv, json, paths, closing]
+xp: 30
+
+concepts:
+  - csv
+  - json
+  - writing-files
+  - paths
+  - context-managers
+
+teaching:
+  analogy: |
+    An audit is two documents and one question. The captain's declaration says the hold
+    carries forty-two tonnes. The dock's own tally says what was actually carried aboard.
+    Nobody is accused of anything; the job is to put both numbers on one page and say
+    whether they agree.
+
+    What makes it an audit rather than an opinion is that the page gets written down and
+    kept, whichever way the answer came out.
+
+  explanation: |
+    Nothing new is introduced here. The island's six pieces, in one function:
+
+    - `json.load` for the declaration, which is nested and has names
+    - `csv.DictReader` for the tally, which is tabular and all strings
+    - `Path(...).stem` for naming the source without typing a separator
+    - a `with` block in mode `"w"` to write the report, and another to read it back
+
+    The only thing worth planning is the order. You need the ship's name from the JSON
+    before you can start the report, and you need every CSV row before you can write the
+    total. So: load the manifest, then walk the rows building both the lines and the sum,
+    then finish the report, then write it.
+
+    Comparing the two totals gives a boolean, and that boolean is a real answer. `False`
+    here does not mean the function failed - it means the audit found a discrepancy, which
+    is the entire reason anyone runs it.
+
+  worked_example: |
+    # Reconciling a stock count, which is not what this mission asks for
+    import csv
+    import json
+
+    def reconcile(expected_path, counted_path):
+        with open(expected_path, encoding="utf-8") as handle:
+            expected = json.load(handle)["count"]
+
+        counted = 0
+        with open(counted_path, newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                counted = counted + int(row["qty"])
+
+        return {"expected": expected, "counted": counted, "matches": expected == counted}
+
+  key_points:
+    - Load the manifest before the loop. The report's first line needs the ship's name, which only the JSON has.
+    - "Build the lines and the total in the same pass. Reading the CSV twice works and costs you a second open for nothing."
+    - "Every CSV field is a string and every JSON number is already a number. The int() calls belong on one side only."
+    - "A False result is an answer, not a failure. The report gets written either way - that is what makes it an audit."
+    - "Return what you read back from the report file, not the list you built. They should be the same, and if they are not you want to know."
+
+brief: |
+  Two files describe the same voyage and they may disagree.
+
+  The manifest is JSON:
+
+      {"ship": "Aurora", "declared_total": 42}
+
+  The cargo is CSV with three columns - port, item and weight. Some item names are quoted
+  because they contain a comma.
+
+  Write a function called close_the_books that takes a cargo filename, a manifest
+  filename and a report filename.
+
+  Build the report, one line each:
+
+    - the ship's name
+    - one line per cargo row, as "item: weight"
+    - "total: N", the weights added together
+    - "source: S", where S is the cargo filename without its extension
+
+  Write it to the report file, every line ending in a newline, then read it back.
+
+  Return a dict with five keys:
+
+    - "ship" - the ship's name
+    - "declared" - declared_total from the manifest
+    - "actual" - the total you added up
+    - "matches" - True when the two totals are equal, False when they are not
+    - "report" - the report file's lines, read back, as a list of strings
+
+  You may not use split or eval.
+
+  These files already exist in your working directory: cargo.csv, manifest.json,
+  short.csv, short.json, bare.csv and bare.json.
+
+files:
+  cargo.csv: |
+    port,item,weight
+    Lisbon,"rope, tarred",12
+    Porto,sailcloth,30
+  manifest.json: |
+    {"ship": "Aurora", "declared_total": 42}
+  short.csv: |
+    port,item,weight
+    Faro,salt,7
+  short.json: |
+    {"ship": "Petrel", "declared_total": 10}
+  bare.csv: |
+    port,item,weight
+  bare.json: |
+    {"ship": "Wren", "declared_total": 0}
+
+signature:
+  entrypoint: close_the_books
+  stub: |
+    import csv
+    import json
+    from pathlib import Path
+
+
+    def close_the_books(cargo_path, manifest_path, report_path):
+        # Manifest first, then the rows, then the report.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [split, eval]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cargo.csv", "manifest.json", "report.txt"]
+      expect:
+        ship: Aurora
+        declared: 42
+        actual: 42
+        matches: true
+        report: [Aurora, "rope, tarred: 12", "sailcloth: 30", "total: 42", "source: cargo"]
+    - args: ["short.csv", "short.json", "report.txt"]
+      expect:
+        ship: Petrel
+        declared: 10
+        actual: 7
+        matches: false
+        report: [Petrel, "salt: 7", "total: 7", "source: short"]
+  hidden:
+    # No cargo at all. The report still has its title, its total and its source line.
+    - args: ["bare.csv", "bare.json", "report.txt"]
+      expect:
+        ship: Wren
+        declared: 0
+        actual: 0
+        matches: true
+        report: [Wren, "total: 0", "source: bare"]
+    # Mismatched pair on purpose: Aurora's cargo against Petrel's declaration. The ship
+    # name comes from the manifest and the source line from the CSV, so a solution that
+    # takes either from the wrong file shows it here.
+    - args: ["cargo.csv", "short.json", "report.txt"]
+      expect:
+        ship: Petrel
+        declared: 10
+        actual: 42
+        matches: false
+        report: [Petrel, "rope, tarred: 12", "sailcloth: 30", "total: 42", "source: cargo"]
+    # The first visible case again. The fixtures are restored between cases and mode "w"
+    # empties the report, so this must not have grown.
+    - args: ["cargo.csv", "manifest.json", "report.txt"]
+      expect:
+        ship: Aurora
+        declared: 42
+        actual: 42
+        matches: true
+        report: [Aurora, "rope, tarred: 12", "sailcloth: 30", "total: 42", "source: cargo"]
+    # A different report target. Nothing in the content depends on where it is written.
+    - args: ["short.csv", "short.json", "audit.log"]
+      expect:
+        ship: Petrel
+        declared: 10
+        actual: 7
+        matches: false
+        report: [Petrel, "salt: 7", "total: 7", "source: short"]
+    - args: ["cargo.csv", "nowhere.json", "report.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Three files, and one of them has to be read before you can write the first line of
+      the report. Which one, and why?
+  - level: 2
+    text: |
+      Open the manifest with json.load and start your lines list with the ship's name.
+      Then loop the DictReader rows once, adding int(row["weight"]) to a total and
+      appending "item: weight" to the lines.
+
+      After the loop, append the total line and the source line built from
+      Path(cargo_path).stem. Then write with "\n".join(lines) + "\n" and read it back.
+  - level: 3
+    text: |
+      The two readers side by side, on a different pair of files:
+
+          with open(config_path, encoding="utf-8") as handle:
+              config = json.load(handle)
+
+          rows = []
+          with open(data_path, newline="", encoding="utf-8") as handle:
+              for row in csv.DictReader(handle):
+                  rows.append(row["label"])
+
+          summary = {"title": config["title"], "labels": rows}
+
+      Yours also totals a column, writes a report file, and reads it back.
+
+solution: |
+  import csv
+  import json
+  from pathlib import Path
+
+
+  def close_the_books(cargo_path, manifest_path, report_path):
+      with open(manifest_path, encoding="utf-8") as handle:
+          manifest = json.load(handle)
+
+      lines = [manifest["ship"]]
+      actual = 0
+
+      with open(cargo_path, newline="", encoding="utf-8") as handle:
+          for row in csv.DictReader(handle):
+              weight = int(row["weight"])
+              actual = actual + weight
+              lines.append(row["item"] + ": " + str(weight))
+
+      lines.append("total: " + str(actual))
+      lines.append("source: " + Path(cargo_path).stem)
+
+      with open(report_path, "w", encoding="utf-8") as handle:
+          handle.write("\n".join(lines) + "\n")
+
+      with open(report_path, encoding="utf-8") as handle:
+          written = handle.read().splitlines()
+
+      return {
+          "ship": manifest["ship"],
+          "declared": manifest["declared_total"],
+          "actual": actual,
+          "matches": actual == manifest["declared_total"],
+          "report": written,
+      }

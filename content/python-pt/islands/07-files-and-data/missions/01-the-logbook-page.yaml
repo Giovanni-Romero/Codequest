@@ -1,0 +1,182 @@
+# Missao 1 de Arquivos e Dados. Introduz: open-and-read.
+# Reforca: split-and-parse, exceptions.
+#
+# Primeira missao da ilha, entao usa de proposito o formato simples open/close. A missao 2
+# quebra esse formato deliberadamente - o jogador precisa segurar um arquivo aberto, e ver
+# que nada o obriga a fechar, antes que `with` soe como solucao e nao como sintaxe.
+# O arquivo que nao existe nao e um caso de borda aqui, e a segunda metade da licao.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-01
+title: A página do diário de bordo
+track: python
+island: files-and-data
+order: 1
+difficulty: moderate
+tags: [files, reading, exceptions]
+xp: 30
+
+concepts:
+  - open-and-read
+
+teaching:
+  analogy: |
+    Pedir o diário de bordo na capitania não te entrega o conteúdo do diário. Te entrega o
+    livro, no balcão, aberto. Você ainda tem que ler, e quando for embora alguém tem que
+    fechar e devolver à prateleira.
+
+    Duas coisas seguem daí, e são a lição inteira. Ler de novo de onde você parou não traz
+    nada - você já está na última página. E se o livro nunca existiu, o funcionário não te
+    entrega um livro em branco. Ele te diz, em voz alta, que esse livro não existe.
+
+  explanation: |
+    `open(caminho)` não te dá o texto. Te dá um **handle**: uma conexão aberta com o
+    arquivo, posicionada no início.
+
+        handle = open("logbook.txt", encoding="utf-8")
+        conteudo = handle.read()
+        handle.close()
+
+    `.read()` puxa o arquivo inteiro como uma única string e deixa o handle no fim, então
+    um segundo `.read()` no mesmo handle devolve `""`. Isso não é bug, é posição.
+
+    `encoding="utf-8"` vale digitar sempre. Sem ele, o Python escolhe um padrão que muda de
+    máquina para máquina, e um arquivo com acento lê certo para você e levanta erro para
+    outra pessoa.
+
+    Quando o caminho não existe, `open` levanta `FileNotFoundError`. Não devolve `None` e
+    não devolve texto vazio. Você já sabe o que fazer com uma exceção desde a ilha de
+    Erros - o ponto aqui é que esta é normal, não exótica. Arquivos somem. O mundo é assim.
+
+  worked_example: |
+    # Contando os caracteres de um bilhete, que nao e o que esta missao pede
+    handle = open("note.txt", encoding="utf-8")
+    texto = handle.read()
+    handle.close()
+
+    print(len(texto))            # 42
+    print(texto.splitlines())    # ['primeira linha', 'segunda linha']
+
+    # O handle e que se esgota, nao o arquivo:
+    handle = open("note.txt", encoding="utf-8")
+    print(len(handle.read()))    # 42
+    print(len(handle.read()))    # 0  - a posicao ja esta no fim
+    handle.close()
+
+  key_points:
+    - "open() devolve um handle, não o texto. O texto vem de chamar .read() nele."
+    - "Um handle tem posição. Leia duas vezes e a segunda devolve \"\", porque a primeira consumiu o arquivo."
+    - "Passe encoding=\"utf-8\" sempre. O padrão varia por máquina, então omitir é um bug que só aparece no computador dos outros."
+    - "Um caminho inexistente levanta FileNotFoundError. Nunca devolve texto vazio, então quem chamou não consegue ignorar o problema sem querer."
+    - "splitlines() corta o texto em linhas e descarta as quebras. Diferente de split(\"\\n\"), não deixa um item vazio no fim quando o arquivo termina em quebra de linha."
+
+brief: |
+  A capitania guarda as anotações de vigia em arquivos de texto puro, uma entrada por
+  linha. Algumas linhas estão em branco e outras têm espaços sobrando em volta, porque
+  foram escritas à mão.
+
+  Escreva uma função chamada read_entries que recebe um nome de arquivo e devolve as
+  entradas como uma lista de strings:
+
+    - cada entrada sem os espaços do começo e do fim
+    - linhas em branco fora, completamente
+    - um arquivo sem nada dentro devolve lista vazia
+
+  Não proteja contra arquivo inexistente. Se o nome não existir, deixe FileNotFoundError
+  sair da sua função - quem pediu um livro que não está lá merece ouvir isso.
+
+  Estes arquivos já existem no seu diretório de trabalho: logbook.txt, single.txt,
+  gappy.txt, padded.txt e empty.txt. Abra pelo nome, sem caminho na frente.
+
+files:
+  logbook.txt: |
+    dawn watch clear
+    midday squall from the west
+    night calm
+  single.txt: |
+    only line
+  gappy.txt: |
+    first entry
+
+    second entry
+
+  # A double-quoted scalar rather than a block, because the leading whitespace is the
+  # point of this fixture and a block scalar would swallow it into its own indentation.
+  padded.txt: "   spaced out   \n\ttabbed in\n"
+  empty.txt: ""
+
+signature:
+  entrypoint: read_entries
+  stub: |
+    def read_entries(filename):
+        # Abra o arquivo, leia, feche. Depois limpe as linhas.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["logbook.txt"]
+      expect: ["dawn watch clear", "midday squall from the west", "night calm"]
+    - args: ["nowhere.txt"]
+      raises: FileNotFoundError
+  hidden:
+    # O arquivo vazio e o caso degenerado: uma solucao que devolve [""] para ele esta
+    # descartando linhas em branco por acidente, nao de proposito.
+    - args: ["empty.txt"]
+      expect: []
+    - args: ["single.txt"]
+      expect: ["only line"]
+    - args: ["gappy.txt"]
+      expect: ["first entry", "second entry"]
+    - args: ["padded.txt"]
+      expect: ["spaced out", "tabbed in"]
+    # Repetido de proposito. Os arquivos sao replantados antes de cada caso, entao uma
+    # solucao que estragasse o arquivo no primeiro caso falharia aqui.
+    - args: ["logbook.txt"]
+      expect: ["dawn watch clear", "midday squall from the west", "night calm"]
+    - args: ["missing-too.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Você precisa de três coisas separadas do arquivo: pegar um handle nele, tirar o texto
+      de dentro, e soltá-lo. Qual dessas três o open() de fato faz?
+  - level: 2
+    text: |
+      Leia o arquivo inteiro para uma string, feche o handle, e só então trabalhe na
+      string. splitlines() a transforma em linhas. Para cada linha, dê strip() e guarde
+      apenas se o que sobrou não for vazio.
+  - level: 3
+    text: |
+      O mesmo formato, coletando outra coisa:
+
+          handle = open("prices.txt", encoding="utf-8")
+          texto = handle.read()
+          handle.close()
+
+          totais = []
+          for linha in texto.splitlines():
+              limpa = linha.strip()
+              if limpa:
+                  totais.append(float(limpa))
+
+      A sua guarda o texto em vez de virar número.
+
+solution: |
+  def read_entries(filename):
+      handle = open(filename, encoding="utf-8")
+      text = handle.read()
+      handle.close()
+
+      entries = []
+      for line in text.splitlines():
+          trimmed = line.strip()
+          if trimmed:
+              entries.append(trimmed)
+
+      return entries

@@ -1,0 +1,265 @@
+# Missao 10 de Arquivos e Dados. Nao introduz nada. Missao de encerramento.
+# Reforca: open-and-read, context-managers, writing-files, json, csv, paths - os seis
+# conceitos da ilha, numa chamada so.
+#
+# De volta a faixa moderate da ilha. Nada aqui e mais dificil que a missao 7 ou a 9
+# sozinhas; o que e novo e segurar tres arquivos de tres formatos ao mesmo tempo, que e a
+# cara do trabalho real com dados.
+# Schema reference: docs/mission-schema.md
+
+id: py-files-10
+title: O livro-caixa completo
+track: python
+island: files-and-data
+order: 10
+difficulty: moderate
+tags: [files, csv, json, paths, closing]
+xp: 30
+
+concepts:
+  - csv
+  - json
+  - writing-files
+  - paths
+  - context-managers
+
+teaching:
+  analogy: |
+    Uma auditoria são dois documentos e uma pergunta. A declaração do capitão diz que o
+    porão carrega quarenta e duas toneladas. A conferência do cais diz o que de fato subiu a
+    bordo. Ninguém está sendo acusado de nada; o trabalho é colocar os dois números na mesma
+    página e dizer se eles batem.
+
+    O que faz disso uma auditoria e não uma opinião é que a página é escrita e guardada,
+    tenha a resposta dado para que lado tiver.
+
+  explanation: |
+    Nada de novo é introduzido aqui. As seis peças da ilha, numa função:
+
+    - `json.load` para a declaração, que é aninhada e tem nomes
+    - `csv.DictReader` para a conferência, que é tabular e toda em strings
+    - `Path(...).stem` para nomear a origem sem digitar separador
+    - um bloco `with` em modo `"w"` para escrever o relatório, e outro para ler de volta
+
+    A única coisa a planejar é a ordem. Você precisa do nome do navio, que está no JSON,
+    antes de começar o relatório, e precisa de todas as linhas do CSV antes de escrever o
+    total. Então: carregue o manifesto, percorra as linhas montando as linhas e a soma,
+    termine o relatório, escreva.
+
+    Comparar os dois totais dá um booleano, e esse booleano é uma resposta de verdade.
+    `False` aqui não significa que a função falhou - significa que a auditoria achou uma
+    divergência, que é o motivo inteiro de alguém rodá-la.
+
+  worked_example: |
+    # Conferindo um estoque, que nao e o que esta missao pede
+    import csv
+    import json
+
+    def conferir(caminho_esperado, caminho_contado):
+        with open(caminho_esperado, encoding="utf-8") as handle:
+            esperado = json.load(handle)["count"]
+
+        contado = 0
+        with open(caminho_contado, newline="", encoding="utf-8") as handle:
+            for linha in csv.DictReader(handle):
+                contado = contado + int(linha["qty"])
+
+        return {"expected": esperado, "counted": contado, "matches": esperado == contado}
+
+  key_points:
+    - Carregue o manifesto antes do laço. A primeira linha do relatório precisa do nome do navio, que só o JSON tem.
+    - "Monte as linhas e o total na mesma passagem. Ler o CSV duas vezes funciona e custa um segundo open à toa."
+    - "Todo campo de CSV é string e todo número de JSON já é número. As chamadas de int() são de um lado só."
+    - "Um resultado False é uma resposta, não uma falha. O relatório é escrito de qualquer jeito - é isso que faz dele uma auditoria."
+    - "Devolva o que você leu de volta do arquivo de relatório, não a lista que montou. Deveriam ser iguais, e se não forem você quer saber."
+
+brief: |
+  Dois arquivos descrevem a mesma viagem e podem discordar.
+
+  O manifesto é JSON:
+
+      {"ship": "Aurora", "declared_total": 42}
+
+  A carga é CSV com três colunas - port, item e weight. Alguns nomes de item estão entre
+  aspas porque contêm vírgula.
+
+  Escreva uma função chamada close_the_books que recebe o nome do arquivo de carga, o nome
+  do manifesto e o nome do relatório.
+
+  Monte o relatório, uma linha cada:
+
+    - o nome do navio
+    - uma linha por linha de carga, no formato "item: weight"
+    - "total: N", os pesos somados
+    - "source: S", onde S é o nome do arquivo de carga sem a extensão
+
+  Escreva no arquivo de relatório, com toda linha terminando em quebra de linha, e depois
+  leia de volta.
+
+  Devolva um dict com cinco chaves:
+
+    - "ship" - o nome do navio
+    - "declared" - declared_total do manifesto
+    - "actual" - o total que você somou
+    - "matches" - True quando os dois totais são iguais, False quando não são
+    - "report" - as linhas do relatório, lidas de volta, como lista de strings
+
+  Você não pode usar split nem eval.
+
+  Estes arquivos já existem no seu diretório de trabalho: cargo.csv, manifest.json,
+  short.csv, short.json, bare.csv e bare.json.
+
+files:
+  cargo.csv: |
+    port,item,weight
+    Lisbon,"rope, tarred",12
+    Porto,sailcloth,30
+  manifest.json: |
+    {"ship": "Aurora", "declared_total": 42}
+  short.csv: |
+    port,item,weight
+    Faro,salt,7
+  short.json: |
+    {"ship": "Petrel", "declared_total": 10}
+  bare.csv: |
+    port,item,weight
+  bare.json: |
+    {"ship": "Wren", "declared_total": 0}
+
+signature:
+  entrypoint: close_the_books
+  stub: |
+    import csv
+    import json
+    from pathlib import Path
+
+
+    def close_the_books(cargo_path, manifest_path, report_path):
+        # Manifesto primeiro, depois as linhas, depois o relatorio.
+        # seu codigo aqui
+        pass
+
+constraints:
+  forbidden_builtins: [split, eval]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cargo.csv", "manifest.json", "report.txt"]
+      expect:
+        ship: Aurora
+        declared: 42
+        actual: 42
+        matches: true
+        report: [Aurora, "rope, tarred: 12", "sailcloth: 30", "total: 42", "source: cargo"]
+    - args: ["short.csv", "short.json", "report.txt"]
+      expect:
+        ship: Petrel
+        declared: 10
+        actual: 7
+        matches: false
+        report: [Petrel, "salt: 7", "total: 7", "source: short"]
+  hidden:
+    # Nenhuma carga. O relatorio ainda tem titulo, total e linha de origem.
+    - args: ["bare.csv", "bare.json", "report.txt"]
+      expect:
+        ship: Wren
+        declared: 0
+        actual: 0
+        matches: true
+        report: [Wren, "total: 0", "source: bare"]
+    # Par trocado de proposito: a carga do Aurora contra a declaracao do Petrel. O nome do
+    # navio vem do manifesto e a linha de origem vem do CSV, entao uma solucao que tira
+    # qualquer um dos dois do arquivo errado se revela aqui.
+    - args: ["cargo.csv", "short.json", "report.txt"]
+      expect:
+        ship: Petrel
+        declared: 10
+        actual: 42
+        matches: false
+        report: [Petrel, "rope, tarred: 12", "sailcloth: 30", "total: 42", "source: cargo"]
+    # O primeiro caso visivel de novo. As fixtures sao restauradas entre casos e o modo
+    # "w" esvazia o relatorio, entao isso nao pode ter crescido.
+    - args: ["cargo.csv", "manifest.json", "report.txt"]
+      expect:
+        ship: Aurora
+        declared: 42
+        actual: 42
+        matches: true
+        report: [Aurora, "rope, tarred: 12", "sailcloth: 30", "total: 42", "source: cargo"]
+    # Outro destino de relatorio. Nada no conteudo depende de onde ele e escrito.
+    - args: ["short.csv", "short.json", "audit.log"]
+      expect:
+        ship: Petrel
+        declared: 10
+        actual: 7
+        matches: false
+        report: [Petrel, "salt: 7", "total: 7", "source: short"]
+    - args: ["cargo.csv", "nowhere.json", "report.txt"]
+      raises: FileNotFoundError
+
+hints:
+  - level: 1
+    text: |
+      Três arquivos, e um deles precisa ser lido antes que você consiga escrever a primeira
+      linha do relatório. Qual, e por quê?
+  - level: 2
+    text: |
+      Abra o manifesto com json.load e comece sua lista de linhas com o nome do navio.
+      Depois percorra as linhas do DictReader uma vez, somando int(row["weight"]) num total
+      e acrescentando "item: weight" nas linhas.
+
+      Depois do laço, acrescente a linha do total e a linha de origem montada com
+      Path(cargo_path).stem. Aí escreva com "\n".join(linhas) + "\n" e leia de volta.
+  - level: 3
+    text: |
+      Os dois leitores lado a lado, em outro par de arquivos:
+
+          with open(caminho_config, encoding="utf-8") as handle:
+              config = json.load(handle)
+
+          linhas = []
+          with open(caminho_dados, newline="", encoding="utf-8") as handle:
+              for linha in csv.DictReader(handle):
+                  linhas.append(linha["label"])
+
+          resumo = {"title": config["title"], "labels": linhas}
+
+      A sua também totaliza uma coluna, escreve um relatório e o lê de volta.
+
+solution: |
+  import csv
+  import json
+  from pathlib import Path
+
+
+  def close_the_books(cargo_path, manifest_path, report_path):
+      with open(manifest_path, encoding="utf-8") as handle:
+          manifest = json.load(handle)
+
+      lines = [manifest["ship"]]
+      actual = 0
+
+      with open(cargo_path, newline="", encoding="utf-8") as handle:
+          for row in csv.DictReader(handle):
+              weight = int(row["weight"])
+              actual = actual + weight
+              lines.append(row["item"] + ": " + str(weight))
+
+      lines.append("total: " + str(actual))
+      lines.append("source: " + Path(cargo_path).stem)
+
+      with open(report_path, "w", encoding="utf-8") as handle:
+          handle.write("\n".join(lines) + "\n")
+
+      with open(report_path, encoding="utf-8") as handle:
+          written = handle.read().splitlines()
+
+      return {
+          "ship": manifest["ship"],
+          "declared": manifest["declared_total"],
+          "actual": actual,
+          "matches": actual == manifest["declared_total"],
+          "report": written,
+      }
