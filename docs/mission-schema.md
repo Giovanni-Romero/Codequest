@@ -26,6 +26,7 @@ engine. If the loader and this document disagree, one of them is a bug.
 | `brief` | string | yes | What the player must build |
 | `signature` | object | yes | See below |
 | `constraints` | object | no | Defaults applied when absent |
+| `files` | object | no | Data files planted in the sandbox. See below |
 | `tests` | object | yes | See below |
 | `hints` | list[object] | yes | At least one, normally three |
 | `solution` | string | yes | Must pass every test. Never sent to the AI mentor |
@@ -70,6 +71,57 @@ All optional. Defaults shown.
 
 Forbid the shortcut that skips the lesson. A mission about building a sum must forbid
 `sum`, otherwise the mission teaches nothing.
+
+---
+
+## `files`
+
+Optional. A mapping of filename to text content, written into the sandbox directory
+before the mission runs. This is what lets a mission about reading files hand the player
+something to open.
+
+```yaml
+files:
+  cargo.csv: |
+    port,weight
+    lisbon,10
+    porto,4
+```
+
+The player's code runs with the sandbox as its working directory, so `open("cargo.csv")`
+finds it with no path involved.
+
+### Filename rules
+
+A key must be a **plain filename**: one segment, nothing else. The loader rejects the
+file — with the mission — when a name
+
+- contains `/` or `\`, on any platform
+- contains `:`
+- starts with `.` (which also rules out `.` and `..`)
+- is one of `submission.py`, `harness.py`, `request.json`, `result.json`, which the
+  runner owns
+
+This is not fussiness. `content/` is the one part of the repository a non-programmer is
+invited to edit, and a name that becomes a write path turns that invitation into an
+arbitrary file-write primitive. The rule is to **reject** the name, never to clean it up.
+
+### Three things a mission may not assume
+
+1. **The sandbox directory is not empty, and its contents vary.** It always holds
+   `submission.py`, `request.json` and `result.json`, plus `harness.py` outside a
+   packaged build. No mission may list the directory or count what is in it.
+2. **An open file handle cannot cross back to the game.** Results travel as JSON; a
+   handle degrades to its `repr`. An entrypoint may neither take nor return one. Read or
+   write inside the function and return a value.
+3. **There is no stdin.** The sandbox process never gets one. A mission that needs input
+   takes arguments.
+
+### Every test case starts from the declared content
+
+Test cases share one sandbox directory, but the files are re-planted before each case.
+A submission that appends to a file in case 1 does not hand its leftovers to case 2 — so
+a mission may safely teach writing, and the author never has to think about the reuse.
 
 ---
 
