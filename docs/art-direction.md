@@ -56,6 +56,9 @@ Measured, not estimated:
 | `parchment` on `ink` | body text | 13.3:1 | 4.5 |
 | `parchment` on `ink-raised` | panel text | 11.9:1 | 4.5 |
 | `parchment` on `sea` | list rows | 10.0:1 | 4.5 |
+| `brass` on `sea` | selected mission row | 5.6:1 | 4.5 |
+| `verified` on `ink-raised` | completed mission row | 6.0:1 | 4.5 |
+| `verified` on `sea` | completed row, selected | 5.1:1 | 4.5 |
 | `parchment-dim` on `ink` | secondary text | 8.0:1 | 4.5 |
 | `beacon` on `ink` | accent text | 7.6:1 | 4.5 |
 | `brass` on `ink` | headings | 7.5:1 | 4.5 |
@@ -78,6 +81,21 @@ re-measure before shipping.
 
 **One accent, on purpose.** `beacon` marks exactly one thing per screen: where you are, or
 what to press. An interface where four things glow has no accent at all.
+
+**The island map's mission list breaks the plain list rule, and only there.** A track list
+has three rows and a save list has two, so `parchment` on `sea` is enough to find the
+selection. The mission list has a hundred nearly identical lines, and it was not — playing
+the game is what showed it. So there, and nowhere else:
+
+- the selected row is `brass`, bold
+- a completed row is `verified`
+
+A selected row goes brass whole, glyph included — the check does not stay green while it
+is selected. The rule is that colour never carries meaning *alone*, and the `✔` keeps its
+shape, so completion is still readable there. The third contrast pair above is measured
+because a completed row is green until the moment it is picked.
+
+This is the one place `brass` carries body text instead of a frame or a heading.
 
 ---
 

@@ -16,6 +16,7 @@ section 5.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import ClassVar
 
 from textual import work
@@ -26,6 +27,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from codequest.models.mission import Mission
+from codequest.models.profile import MissionStatus
 from codequest.services.game_session import AttemptOutcome
 from codequest.tui.screens.dialogs import ConfirmDialog
 from codequest.tui.strings import t
@@ -52,13 +54,16 @@ class MissionScreen(Screen):
         Binding("f3", "toggle_teaching", "Teaching", priority=True),
         Binding("f4", "reset_editor", "Reset", priority=True),
         Binding("f6", "next_mission", "Next", priority=True),
-        Binding("escape", "app.pop_screen", "Map", priority=True),
+        Binding("escape", "back_to_map", "Map", priority=True),
     ]
 
     def __init__(self, mission: Mission) -> None:
         super().__init__()
         self.mission = mission
         self.running = False
+        #: The last submission that passed, or None until one does. Used only to decide
+        #: whether leaving costs anything - see ``_would_lose_work``.
+        self._passing_code: str | None = None
 
     # ------------------------------------------------------------------ layout
 
@@ -176,17 +181,25 @@ class MissionScreen(Screen):
             context.missions.islands,
             on_case=report,
         )
-        self.app.call_from_thread(self._show_outcome, outcome)
+        self.app.call_from_thread(self._show_outcome, outcome, code)
 
     def _show_progress(self, done: int, total: int) -> None:
         self.query_one("#results", TestResults).show_waiting(done, total)
         progress = t("mission.case_progress", done=done, total=total)
         self.query_one("#run-status", Static).update(f"[$beacon]{progress}[/$beacon]")
 
-    def _show_outcome(self, outcome: AttemptOutcome) -> None:
+    def _show_outcome(self, outcome: AttemptOutcome, code: str) -> None:
         self.running = False
         self.query_one("#results", TestResults).show_verdict(outcome.verdict, outcome.xp_awarded)
         self.app.refresh_profile()
+
+        if outcome.passed:
+            # Code that has passed has done its job, so leaving no longer costs anything
+            # until the player edits it again. Without this the happy path - solve, then
+            # take the "F6 for the next mission" the status line just offered - would hit
+            # a confirmation every single time, and a prompt that always fires is a prompt
+            # people learn to dismiss without reading.
+            self._passing_code = code
 
         # Hand the mentor the failure, if it is here. Where they got stuck is usually
         # more informative than anything they will manage to type as a question.
@@ -260,13 +273,74 @@ class MissionScreen(Screen):
             on_answer,
         )
 
-    def action_next_mission(self) -> None:
-        """Jump straight to the next mission in the island. A no-op past the last one.
+    # ------------------------------------------------------------------ leaving
 
-        Silent rather than an error message: F6 is always listed in the footer, and
-        pressing it on the final mission of a track is not a mistake worth interrupting
-        the player for.
+    def _would_lose_work(self) -> bool:
+        """Whether walking away from this screen throws something away.
+
+        An unsolved mission always counts, whatever is in the editor: the player has not
+        finished, and F6 there is far more often a slip than a decision.
+
+        A solved one depends on the editor. "Untouched" means untouched *since the code
+        last mattered* - either the stub it opened with, or the submission that passed -
+        because the database records verdicts and never source. Anything else is work the
+        save file has no copy of.
+        """
+        profile = self.app.profile
+        completed = profile is not None and (
+            self.app.context.progress.mission_status(profile, self.mission)
+            is MissionStatus.COMPLETED
+        )
+        if not completed:
+            return True
+
+        editor = self.query_one("#editor", CodeEditor)
+        return editor.is_modified and editor.text != self._passing_code
+
+    def _leave(self, question: str, confirm_label: str, depart: Callable[[], None]) -> None:
+        """Run ``depart``, asking first when it would cost the player something.
+
+        F6 and Escape are the same accident with different keys, so they share one path.
+        The caller passes what leaving means rather than a flag, which keeps the decision
+        about *whether* to ask in one place and the decision about *where to go* with the
+        action that knows.
+        """
+        if not self._would_lose_work():
+            depart()
+            return
+
+        def on_answer(confirmed: bool | None) -> None:
+            if confirmed:
+                depart()
+
+        self.app.push_screen(ConfirmDialog(question, confirm_label=confirm_label), on_answer)
+
+    def action_next_mission(self) -> None:
+        """Jump to the next mission in the track, asking first if that costs work.
+
+        The lookup happens before the question. On the final mission F6 is a silent no-op -
+        it is always listed in the footer and pressing it there is not a mistake - and
+        asking "are you sure?" only to then do nothing would be worse than the silence.
         """
         next_mission = self.app.context.missions.next_mission_after(self.mission.id)
-        if next_mission is not None:
-            self.app.switch_screen(MissionScreen(next_mission))
+        if next_mission is None:
+            return
+
+        self._leave(
+            t("mission.next_confirm"),
+            t("mission.next_label"),
+            lambda: self.app.switch_screen(MissionScreen(next_mission)),
+        )
+
+    def action_back_to_map(self) -> None:
+        """Return to the island map, asking first if that costs work.
+
+        This is a screen action rather than the ``app.pop_screen`` binding it replaces,
+        for the single reason that an app action cannot be intercepted here. Escape sits
+        closer to the typing keys than F6 does, so it is the more likely accident.
+        """
+        self._leave(
+            t("mission.leave_confirm"),
+            t("mission.leave_label"),
+            self.app.pop_screen,
+        )

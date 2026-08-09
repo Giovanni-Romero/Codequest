@@ -114,10 +114,16 @@ class IslandMapScreen(Screen):
                     if mission.id in statuses
                     else MissionStatus.AVAILABLE
                 )
+                # The class carries the state; the check glyph in the line carries it a
+                # second time. Styling the whole row from CSS rather than wrapping the
+                # line in markup is what lets the selection highlight override it - inline
+                # markup would win over the stylesheet and the highlight would vanish
+                # exactly on the rows the player has already finished.
                 listing.append(
                     ListItem(
                         Label(self._mission_line(mission, status, statuses)),
                         id=f"mission-{mission.id}",
+                        classes="completed" if status is MissionStatus.COMPLETED else "",
                     )
                 )
 

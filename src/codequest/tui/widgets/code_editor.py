@@ -38,6 +38,16 @@ class CodeEditor(TextArea):
         self.text = self._stub
 
     @property
+    def is_modified(self) -> bool:
+        """Whether anything has been typed since the stub was loaded.
+
+        The editor is the only place a submission exists — nothing writes it to disk and
+        the database stores verdicts, never source. So any screen that is about to unmount
+        this widget has to ask this first, or the player's work is simply gone.
+        """
+        return self.text != self._stub
+
+    @property
     def submission(self) -> str:
         """What the player wrote, ready to hand to the engine."""
         return self.text

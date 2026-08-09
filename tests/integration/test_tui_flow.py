@@ -16,6 +16,7 @@ from textual.widgets import Input, Label, ListView
 
 from codequest.services.bootstrap import create_context
 from codequest.tui.app import CodeQuestApp
+from codequest.tui.screens.dialogs import ConfirmDialog
 from codequest.tui.screens.island_map import IslandMapScreen
 from codequest.tui.screens.main_menu import MainMenuScreen
 from codequest.tui.screens.mission import MissionScreen
@@ -53,6 +54,22 @@ async def _create_save(pilot, name: str = "giovanni") -> None:
     field.value = name
     await pilot.press("enter")
     await pilot.pause()
+
+
+async def _confirm(pilot) -> None:
+    """Say yes to the dialog that is up.
+
+    Cancel holds focus on mount, deliberately, so getting to the destructive button takes
+    a tab. Driving it by keystroke rather than calling dismiss() is what keeps that
+    ordering under test - a dialog that focused Confirm would still pass a dismiss(True).
+    """
+    await pilot.press("tab")
+    await pilot.press("enter")
+    await pilot.pause()
+
+
+def _dialog_is_up(pilot) -> bool:
+    return isinstance(pilot.app.screen, ConfirmDialog)
 
 
 # ------------------------------------------------------------------ navigation
@@ -199,7 +216,38 @@ async def test_the_map_shows_completion_after_returning_from_a_solved_mission(ap
         assert "10 XP" in str(row.query_one(Label).render())
 
 
-async def test_f6_advances_to_the_next_mission(app):
+async def test_a_solved_mission_row_carries_the_completed_class(app):
+    """The row's colour comes from CSS, not from markup inside the label.
+
+    That is the load-bearing part: inline markup would beat the stylesheet, so the
+    selection highlight would silently stop working on exactly the rows the player has
+    already finished. The check glyph still marks completion on its own, so nothing here
+    depends on the colour being seen.
+    """
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = CORRECT_SUM_LIST
+        await pilot.press("f5")
+        await pilot.pause(delay=6)
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        solved = pilot.app.screen.query_one("#mission-py-foundations-06")
+        untouched = pilot.app.screen.query_one("#mission-py-foundations-07")
+        assert solved.has_class("completed")
+        assert not untouched.has_class("completed")
+
+
+async def test_f6_advances_straight_after_solving(app):
+    """The happy path asks nothing.
+
+    Solve, then take the "F6 for the next mission" the status line just offered. The
+    editor holds the solution rather than the stub, so a naive dirty check would stop
+    here - and a confirmation on the most common path in the game is one people learn to
+    dismiss without reading, which is how the F4 dialog would lose its meaning too.
+    """
     async with app.run_test() as pilot:
         await _open_mission(pilot)
 
@@ -214,6 +262,49 @@ async def test_f6_advances_to_the_next_mission(app):
         assert pilot.app.screen.mission.id == "py-foundations-07"
 
 
+async def test_f6_asks_before_leaving_an_unsolved_mission(app):
+    """The accident this dialog exists for: reaching for F5 and hitting F6."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+        pilot.app.screen.query_one("#editor", CodeEditor).text = "my work in progress"
+
+        await pilot.press("f6")
+        await pilot.pause()
+
+        assert _dialog_is_up(pilot)
+
+
+async def test_cancelling_f6_keeps_the_mission_and_the_code(app):
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+        pilot.app.screen.query_one("#editor", CodeEditor).text = "my work in progress"
+
+        await pilot.press("f6")
+        await pilot.pause()
+        await pilot.press("escape")  # cancel the dialog
+        await pilot.pause()
+
+        assert isinstance(pilot.app.screen, MissionScreen)
+        assert pilot.app.screen.mission.id == "py-foundations-06"
+        assert pilot.app.screen.query_one("#editor", CodeEditor).text == "my work in progress"
+
+
+async def test_f6_asks_again_once_solved_code_is_edited(app):
+    """Passing makes leaving free. Typing after it makes leaving cost again."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = CORRECT_SUM_LIST
+        await pilot.press("f5")
+        await pilot.pause(delay=6)
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = CORRECT_SUM_LIST + "\n# more"
+        await pilot.press("f6")
+        await pilot.pause()
+
+        assert _dialog_is_up(pilot)
+
+
 async def test_f6_crosses_into_the_next_island(app):
     """The last mission of an island leads into the first of the next one.
 
@@ -225,20 +316,28 @@ async def test_f6_crosses_into_the_next_island(app):
 
         await pilot.press("f6")
         await pilot.pause()
+        await _confirm(pilot)
 
         assert pilot.app.screen.mission.id == "py-collections-01"
 
 
 async def test_f6_does_nothing_after_the_last_mission_of_the_track(app):
+    """And asks nothing either.
+
+    The lookup runs before the question on purpose. Asking "are you sure?" and then doing
+    nothing would be worse than the silence this has always had.
+    """
     async with app.run_test() as pilot:
         # Whichever mission is genuinely last, rather than a hardcoded id that goes
         # stale the moment another island ships.
         last = pilot.app.context.missions.missions[-1]
         await _open_mission(pilot, mission_id=last.id)
+        pilot.app.screen.query_one("#editor", CodeEditor).text = "my work in progress"
 
         await pilot.press("f6")
         await pilot.pause()
 
+        assert not _dialog_is_up(pilot)
         assert isinstance(pilot.app.screen, MissionScreen)
         assert pilot.app.screen.mission.id == last.id
 
@@ -308,8 +407,27 @@ async def test_escape_returns_to_the_map(app):
         await _open_mission(pilot)
         await pilot.press("escape")
         await pilot.pause()
+        await _confirm(pilot)
 
         assert isinstance(pilot.app.screen, IslandMapScreen)
+
+
+async def test_escape_asks_before_discarding_work(app):
+    """Escape is the same accident as F6 with a key that sits nearer the typing hand."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+        pilot.app.screen.query_one("#editor", CodeEditor).text = "my work in progress"
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert _dialog_is_up(pilot)
+
+        await pilot.press("escape")  # cancel the dialog
+        await pilot.pause()
+
+        assert isinstance(pilot.app.screen, MissionScreen)
+        assert pilot.app.screen.query_one("#editor", CodeEditor).text == "my work in progress"
 
 
 async def test_reset_asks_before_discarding_work(app):

@@ -130,6 +130,27 @@ _STRINGS: dict[str, dict[Language, str]] = {
         "[$parchment-dim]Tudo o que você digitou será descartado.[/$parchment-dim]",
     },
     "mission.reset_label": {"en": "Reset", "pt": "Reiniciar"},
+    # The two questions below say what is *lost*, not what changes. "Go to the next
+    # mission?" reads as navigation and gets a reflex yes; the cost has to be in the
+    # sentence, because the whole reason the dialog exists is a mistyped key.
+    "mission.next_confirm": {
+        "en": "Move on to the next mission?\n\n"
+        "[$parchment-dim]The code in the editor is not saved anywhere. "
+        "Leaving discards it.[/$parchment-dim]",
+        "pt": "Avançar para a próxima missão?\n\n"
+        "[$parchment-dim]O código do editor não está salvo em lugar nenhum. "
+        "Sair descarta ele.[/$parchment-dim]",
+    },
+    "mission.next_label": {"en": "Move on", "pt": "Avançar"},
+    "mission.leave_confirm": {
+        "en": "Go back to the island map?\n\n"
+        "[$parchment-dim]The code in the editor is not saved anywhere. "
+        "Leaving discards it.[/$parchment-dim]",
+        "pt": "Voltar para o mapa da ilha?\n\n"
+        "[$parchment-dim]O código do editor não está salvo em lugar nenhum. "
+        "Sair descarta ele.[/$parchment-dim]",
+    },
+    "mission.leave_label": {"en": "Leave", "pt": "Sair"},
     # -------------------------------------------------------------- dialogs.py
     "dialog.cancel": {"en": "Cancel", "pt": "Cancelar"},
     "dialog.delete": {"en": "Delete", "pt": "Apagar"},

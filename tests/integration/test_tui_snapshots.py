@@ -81,6 +81,35 @@ def test_island_map(snap_compare, context):
     assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)
 
 
+def test_island_map_selection_and_completion(snap_compare, context):
+    """The three row states side by side: selected, completed, and neither.
+
+    ``test_island_map`` above cannot show any of it. Its highlight lands on the first row,
+    which is an island header whose text is entirely inline markup, and no mission is
+    completed there - so it renders identically whether the mission-row colours exist or
+    not. A snapshot that cannot fail on a change is not covering that change.
+
+    Here row 1 is completed *and* selected, which is the case worth pinning: the selection
+    has to win over the state, and the green check has to survive it winning.
+    """
+    profile = context.progress.create_profile("giovanni", "python")
+    for mission_id in ("py-foundations-01", "py-foundations-02"):
+        mission = context.missions.get_mission(mission_id)
+        context.session.attempt(mission, mission.solution, profile, context.missions.islands)
+
+    async def run(pilot):
+        pilot.app.set_profile(profile)
+        from codequest.tui.screens.island_map import IslandMapScreen
+
+        pilot.app.push_screen(IslandMapScreen())
+        await pilot.pause()
+        # Off the island header and onto the first mission row.
+        await pilot.press("down")
+        await pilot.pause()
+
+    assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)
+
+
 def test_settings(snap_compare, context):
     async def run(pilot):
         await pilot.press("s")

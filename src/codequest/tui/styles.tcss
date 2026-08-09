@@ -116,6 +116,33 @@ ListView > ListItem.--highlight {
     max-height: 100%;
 }
 
+/* The map's own list, and only it - the main menu's track list and the save list keep
+   the plain highlight above. A row here is one of a hundred nearly identical lines, so
+   the selection has to be findable at a glance, which $parchment on $sea was not. */
+#entries > ListItem.completed {
+    color: $verified;
+}
+
+/* The selection - which moves - must win over the state, which does not.
+
+   Note the class name: Textual puts `-highlight` on the row, with one dash. The
+   `.--highlight` spelling above still matches something, which is why it has looked
+   correct for as long as it has only ever set a colour nothing else competes for - but
+   it loses every property another rule also sets. Written with two dashes, this rule
+   applied its `text-style` and silently lost its `color` to `.completed`, so a finished
+   mission stayed green when selected. One dash, and it wins.
+
+   A selected row goes brass whole, glyph included - the check does not stay green there.
+   That is fine and it is checked: the rule in symbols.py is that colour never carries
+   meaning *alone*, and the check keeps its shape. What the player reads is "this row is
+   selected, and it has a tick". */
+#entries > ListItem.-highlight,
+#entries > ListItem.completed.-highlight {
+    background: $sea;
+    color: $brass;
+    text-style: bold;
+}
+
 /* ---------------------------------------------------------- mission screen */
 
 #mission-body {
