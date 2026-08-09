@@ -19,7 +19,7 @@ from codequest.engine.runners.base import (
 )
 from codequest.engine.runners.python import PythonRunner
 from codequest.models.mission import Constraints, Signature, TestCase
-from conftest import make_mission
+from helpers import make_mission
 
 FAST = Constraints(max_runtime_ms=4000, max_memory_mb=256)
 

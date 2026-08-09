@@ -13,7 +13,7 @@ from codequest.models.curriculum import Island, Track, UnlockRule
 from codequest.models.mission import XP_BY_DIFFICULTY, Constraints, Difficulty
 from codequest.models.profile import LEVEL_THRESHOLDS, MissionStatus, Profile, Progress
 from codequest.models.verdict import CaseOutcome, FailureReason, Verdict
-from conftest import make_mission as _mission
+from helpers import make_mission as _mission
 
 # --------------------------------------------------------------------------- mission
 

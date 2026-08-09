@@ -23,7 +23,7 @@ from codequest.mentor.policy import (
 from codequest.mentor.prompts import MentorContext, build_messages, forbidden_strings
 from codequest.models.mission import Signature, TestCase
 from codequest.models.verdict import CaseOutcome, FailureReason, Verdict
-from conftest import make_mission
+from helpers import make_mission
 
 MISSION = make_mission(
     signature=Signature("sum_list", "def sum_list(numbers):\n    pass\n"),

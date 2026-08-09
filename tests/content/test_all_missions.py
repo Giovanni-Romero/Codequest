@@ -18,7 +18,7 @@ import pytest
 from codequest.engine.loader import iter_mission_paths, load_mission, load_track
 from codequest.models.mission import XP_BY_DIFFICULTY
 from codequest.services.game_session import GameSession
-from conftest import CONTENT_ROOT
+from helpers import CONTENT_ROOT
 
 #: "python-pt" is a content *directory*, not a second track id - the Portuguese mirror
 #: of the Python track lives in its own tree (see mission-author SKILL.md) so it can be

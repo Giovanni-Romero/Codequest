@@ -19,7 +19,7 @@ from codequest.services.game_session import GameSession
 from codequest.services.mission_service import MissionService
 from codequest.services.progress_service import ProgressService
 from codequest.storage.db import init_db
-from conftest import CONTENT_ROOT
+from helpers import CONTENT_ROOT
 
 SUM_LIST = CONTENT_ROOT / "python" / "islands" / "01-foundations" / "missions" / "06-sum-list.yaml"
 

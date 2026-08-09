@@ -14,7 +14,7 @@ from codequest.engine.guard import GuardReport
 from codequest.engine.runners.base import ExecutionResult
 from codequest.models.mission import TestCase
 from codequest.models.verdict import FailureReason
-from conftest import make_mission
+from helpers import make_mission
 
 
 def ok(value) -> ExecutionResult:

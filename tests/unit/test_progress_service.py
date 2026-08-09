@@ -16,7 +16,7 @@ from codequest.services.progress_service import (
     ProgressService,
 )
 from codequest.storage.db import init_db
-from conftest import make_mission
+from helpers import make_mission
 
 MISSION = make_mission(id="m1", xp=10)
 PASSED = Verdict("m1", True, FailureReason.PASSED, "all good")
