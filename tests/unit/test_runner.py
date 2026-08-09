@@ -173,6 +173,63 @@ def test_non_json_return_value_survives_as_a_representation(runner):
     assert isinstance(result.returned, str)
 
 
+# ------------------------------------------------------ the mission's own data files
+
+
+def _prepare_with_files(runner: PythonRunner, source: str, files: tuple[tuple[str, str], ...]):
+    mission = make_mission(
+        signature=Signature("double", "def double(n):\n    pass\n"),
+        files=files,
+    )
+    return runner.prepare(source, mission)
+
+
+def test_a_declared_file_is_readable_from_inside_the_sandbox(runner):
+    """Island 7 exists only if a mission can hand the player something to open."""
+    source = "def double(n):\n    return open('cargo.csv').read()\n"
+    prepared = _prepare_with_files(runner, source, (("cargo.csv", "port,weight\nlisbon,10\n"),))
+    try:
+        result = runner.execute(prepared, TestCase(args=(1,), expect=""), FAST)
+    finally:
+        runner.cleanup(prepared)
+
+    assert result.ok
+    assert result.returned == "port,weight\nlisbon,10\n"
+
+
+def test_a_declared_file_is_planted_fresh_for_every_case(runner):
+    """The workdir is shared across cases, so a case that writes must not poison the next.
+
+    Without re-planting, case two would read what case one appended and the mission
+    author would have to know the sandbox is reused. They should not have to.
+    """
+    source = (
+        "def double(n):\n"
+        "    with open('log.txt', 'a', encoding='utf-8') as handle:\n"
+        "        handle.write('x')\n"
+        "    return open('log.txt', encoding='utf-8').read()\n"
+    )
+    prepared = _prepare_with_files(runner, source, (("log.txt", "seed:"),))
+    try:
+        first = runner.execute(prepared, TestCase(args=(1,), expect=""), FAST)
+        second = runner.execute(prepared, TestCase(args=(1,), expect=""), FAST)
+    finally:
+        runner.cleanup(prepared)
+
+    assert first.returned == "seed:x"
+    assert second.returned == "seed:x"
+
+
+def test_a_mission_with_no_files_plants_nothing(runner):
+    prepared = _prepare(runner, "def double(n):\n    return n\n")
+    try:
+        planted = sorted(p.name for p in Path(prepared.workdir).iterdir())
+    finally:
+        runner.cleanup(prepared)
+
+    assert planted == ["harness.py", "submission.py"]
+
+
 # ------------------------------------------------------------------ housekeeping
 
 

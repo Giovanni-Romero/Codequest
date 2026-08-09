@@ -145,7 +145,18 @@ class Mission:
     solution: str
     constraints: Constraints = field(default_factory=Constraints)
     tags: tuple[str, ...] = ()
+    #: Data files the runner plants in the sandbox before the mission runs, as
+    #: ``(filename, content)`` pairs. A tuple of pairs rather than a dict because this
+    #: dataclass is frozen and a dict would punch a mutable hole straight through that.
+    #: Ordering is the author's, so a mission that describes its files in the brief
+    #: describes them in the order they were written.
+    files: tuple[tuple[str, str], ...] = ()
     source_path: str | None = None
+
+    @property
+    def file_map(self) -> dict[str, str]:
+        """The declared files as a fresh mapping, for callers that want lookup by name."""
+        return dict(self.files)
 
     @property
     def visible_tests(self) -> tuple[TestCase, ...]:

@@ -220,6 +220,79 @@ def test_yaml_that_is_not_a_mapping_is_rejected(tmp_path):
     assert "mapping" in str(exc_info.value)
 
 
+# ------------------------------------------------- the files block (Files and Data)
+
+
+def test_declared_files_load_in_the_order_the_author_wrote_them(mission_factory):
+    path = mission_factory(files={"cargo.csv": "port,weight\nlisbon,10\n", "notes.txt": "ok"})
+
+    mission = load_mission(path)
+
+    assert mission.files == (
+        ("cargo.csv", "port,weight\nlisbon,10\n"),
+        ("notes.txt", "ok"),
+    )
+    assert mission.file_map["notes.txt"] == "ok"
+
+
+def test_a_mission_without_files_gets_an_empty_tuple(tmp_mission):
+    """The block is optional, so every mission shipped before it must still load."""
+    assert load_mission(tmp_mission).files == ()
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../escape.txt",
+        "..\\escape.txt",
+        "nested/cargo.csv",
+        "nested\\cargo.csv",
+        "C:\\Windows\\evil.txt",
+        "/etc/passwd",
+        "..",
+        ".hidden",
+    ],
+)
+def test_a_filename_that_is_not_a_plain_name_is_rejected(mission_factory, name):
+    """Content is the part of the repo a non-coder edits. It must not be able to write
+    anywhere but the sandbox, so anything path-shaped is refused outright."""
+    path = mission_factory(files={name: "payload"})
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "files key" in str(exc_info.value)
+
+
+@pytest.mark.parametrize("name", ["submission.py", "harness.py", "request.json", "result.json"])
+def test_a_filename_the_runner_owns_is_rejected(mission_factory, name):
+    path = mission_factory(files={name: "payload"})
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "reserved by the runner" in str(exc_info.value)
+
+
+def test_non_text_file_content_is_rejected(mission_factory):
+    """The sandbox plants text. A number here means the author expected something else."""
+    path = mission_factory(files={"cargo.csv": 42})
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "must be text, got int" in str(exc_info.value)
+
+
+def test_files_that_is_not_a_mapping_is_rejected(mission_factory):
+    path = mission_factory(files=["cargo.csv"])
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "files must be a mapping" in str(exc_info.value)
+
+
 # ------------------------------------------------------------------ real content
 
 

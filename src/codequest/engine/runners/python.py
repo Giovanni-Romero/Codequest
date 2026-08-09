@@ -87,6 +87,18 @@ def _kill_process_tree(process: subprocess.Popen) -> None:
         process.kill()
 
 
+def _plant_files(workdir: Path, files: tuple[tuple[str, str], ...]) -> None:
+    """Write the mission's declared data files into the sandbox, overwriting freely.
+
+    Names arrive already validated by the loader, which rejects anything that is not a
+    plain filename. This function deliberately does no validation of its own and no
+    joining cleverness: ``workdir / name`` is safe *because* of that upstream rule, and
+    a second, weaker check here would only invite someone to relax the first one.
+    """
+    for name, content in files:
+        (workdir / name).write_text(content, encoding="utf-8")
+
+
 def _spawn_kwargs() -> dict[str, object]:
     """Platform flags that put the child in its own killable group."""
     if os.name == "nt":
@@ -131,6 +143,7 @@ class PythonRunner:
             entry_file.write_text(submission, encoding="utf-8")
             if not getattr(sys, "frozen", False):
                 shutil.copyfile(harness_module.__file__, Path(workdir) / "harness.py")
+            _plant_files(Path(workdir), mission.files)
         except OSError as exc:
             shutil.rmtree(workdir, ignore_errors=True)
             raise RunnerError(f"cannot write the sandbox files: {exc}") from exc
@@ -139,6 +152,7 @@ class PythonRunner:
             workdir=workdir,
             entry_file=str(entry_file),
             entrypoint=mission.signature.entrypoint,
+            files=mission.files,
             metadata={"limits_enforced": "cpu,memory" if SUPPORTS_RESOURCE_LIMITS else "timeout"},
         )
 
@@ -152,6 +166,17 @@ class PythonRunner:
         request_path = workdir / "request.json"
         result_path = workdir / "result.json"
         result_path.unlink(missing_ok=True)
+
+        # The workdir outlives a single case, so a submission that wrote to a declared
+        # file - which is the whole point of the Files island - would hand the next case
+        # its leftovers. Re-planting makes every case start from the mission's own data,
+        # and means a mission author never has to know the workdir is shared.
+        try:
+            _plant_files(workdir, prepared.files)
+        except OSError as exc:
+            # An unwritable sandbox is our problem, not the player's, and it is reported
+            # the same way as a sandbox process that will not start - see below.
+            raise RunnerError(f"cannot restore the mission's data files: {exc}") from exc
 
         timeout_seconds = constraints.max_runtime_ms / 1000
         request = {

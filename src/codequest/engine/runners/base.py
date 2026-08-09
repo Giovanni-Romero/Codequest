@@ -37,6 +37,11 @@ class PreparedCode:
     workdir: str
     entry_file: str
     entrypoint: str
+    #: Data files the mission declared, carried here as ``(name, content)`` pairs so
+    #: ``execute()`` can put them back before every case without needing the Mission
+    #: again. Keeping them on the prepared code rather than widening ``execute``'s
+    #: signature is what leaves the Runner protocol untouched for the next language.
+    files: tuple[tuple[str, str], ...] = ()
     error: str | None = None
     reason: FailureReason = FailureReason.PASSED
     metadata: dict[str, str] = field(default_factory=dict)

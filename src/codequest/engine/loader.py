@@ -53,6 +53,35 @@ _REQUIRED_MISSION_FIELDS = (
 
 _REQUIRED_TEACHING_FIELDS = ("analogy", "explanation", "worked_example", "key_points")
 
+#: Filenames the Python runner owns inside the sandbox directory. A mission that
+#: declared one of these would overwrite the submission or the harness and break the
+#: run in a way that looks like a player mistake.
+_RESERVED_SANDBOX_NAMES = frozenset({"submission.py", "harness.py", "request.json", "result.json"})
+
+
+def _rejects_as_filename(name: str) -> str | None:
+    """Return why ``name`` is unusable as a sandbox filename, or None when it is fine.
+
+    # [AI-ENG:path-traversal] A name that arrives as declarative data and then becomes a
+    # write path is the same bug as an agent taking the filename straight out of the
+    # model's tool call. The defence is to *reject* the whole name when it is not a plain
+    # single segment — never to clean it up. Sanitising invites the arms race: stripping
+    # ``"../"`` from ``"....//....//etc"`` *produces* ``"../../etc"``. Rejecting ends it.
+    """
+    if not isinstance(name, str) or not name:
+        return "must be a non-empty string"
+    # Both separators are checked on every platform, so a Linux CI run cannot green-light
+    # a name that would escape the sandbox once a player opens the game on Windows.
+    if "/" in name or "\\" in name:
+        return "must be a plain filename, with no directory separator"
+    if ":" in name:
+        return "must not contain a drive letter or stream marker"
+    if name.startswith("."):
+        return "must not start with a dot"
+    if name in _RESERVED_SANDBOX_NAMES:
+        return f"is reserved by the runner ({', '.join(sorted(_RESERVED_SANDBOX_NAMES))})"
+    return None
+
 
 def _read_yaml(path: Path) -> Any:
     """Parse a YAML file, or raise ContentError naming the file.
@@ -204,6 +233,20 @@ def _validate_mission(raw: Any) -> list[str]:
     if not isinstance(raw.get("order", 0), int):
         problems.append("order must be an integer")
 
+    files = raw.get("files")
+    if isinstance(files, dict):
+        for name, content in files.items():
+            rejection = _rejects_as_filename(name)
+            if rejection is not None:
+                problems.append(f"files key {name!r} {rejection}")
+            elif not isinstance(content, str):
+                problems.append(
+                    f"files['{name}'] must be text, got {type(content).__name__}. "
+                    "The sandbox plants text files only"
+                )
+    elif files is not None:
+        problems.append("files must be a mapping of filename to text content")
+
     return problems
 
 
@@ -239,6 +282,16 @@ def _build_constraints(raw: Any) -> Constraints:
         max_runtime_ms=int(raw.get("max_runtime_ms") or defaults.max_runtime_ms),
         max_memory_mb=int(raw.get("max_memory_mb") or defaults.max_memory_mb),
     )
+
+
+def _build_files(raw: Any) -> tuple[tuple[str, str], ...]:
+    """Freeze the optional ``files`` block into ordered ``(name, content)`` pairs.
+
+    Validation already ran, so every name here is known to be a plain filename.
+    """
+    if not isinstance(raw, dict):
+        return ()
+    return tuple((str(name), content) for name, content in raw.items())
 
 
 def load_mission(path: str | Path) -> Mission:
@@ -284,6 +337,7 @@ def load_mission(path: str | Path) -> Mission:
         solution=raw["solution"],
         constraints=_build_constraints(raw.get("constraints")),
         tags=_as_tuple(raw.get("tags")),
+        files=_build_files(raw.get("files")),
         source_path=str(path),
     )
 
