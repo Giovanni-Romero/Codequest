@@ -1,0 +1,247 @@
+# Missão 9 de Async e Concorrência. Não introduz nada.
+# Reforça: when-concurrency-helps, gather, threads, gil.
+#
+# Missão de alívio, e a tabela-resumo da ilha virada código. Toda regra dela foi defendida
+# em algum lugar antes: rede para async é a missão 4, disco para threads é a missão 5, CPU
+# para processos é a missão 7, e a regra da contagem é a missão 8 - um item só não tem nada
+# com que se sobrepor, então o ramo é custo puro.
+#
+# A regra da contagem é o que impede isso de ser tabela de consulta. Quem mapeia tipos para
+# ferramentas e esquece dela falha em três dos sete casos, e os três em que falha são
+# exatamente aqueles em que a missão 8 se gastou.
+#
+# Sem sonos e sem threads: a ferramenta é nomeada, não iniciada.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-09
+title: A ferramenta certa
+track: python
+island: async-and-concurrency
+order: 9
+difficulty: challenging
+tags: [async, decisions, relief]
+xp: 45
+
+concepts:
+  - when-concurrency-helps
+
+teaching:
+  analogy: |
+    A loja de ferragens guarda três coisas atrás do balcão: um rolo de corda, uma caixa de
+    manilhas e um arco de serra.
+
+    Ninguém discute qual é a melhor. Perguntam qual é o serviço, e o serviço escolhe.
+
+    A única resposta genuinamente errada é pegar sempre a mesma porque é a mais perto da
+    sua mão.
+
+  explanation: |
+    Esta ilha produziu quatro ferramentas. Aqui estão elas juntas, que é a primeira vez que
+    todas aparecem no mesmo lugar.
+
+    **`asyncio`, com `gather`** — para muitas esperas em coisas que falam o dialeto async:
+    chamadas de rede, drivers modernos de banco, filas. Uma thread, milhares de esperas
+    pendentes, quase nenhum custo por ramo. É a concorrência mais barata que existe, e exige
+    que tudo na cadeia seja corrotina.
+
+    **Threads** — para muitas esperas em coisas que *não* falam esse dialeto: arquivos, um
+    driver antigo, uma biblioteca bloqueante que você não escreveu e não vai reescrever.
+    Mais pesada por ramo que uma tarefa, e o código fica exatamente como estava. É isso que
+    você está comprando.
+
+    **Processos** — para computação de verdade. Cada um ganha o próprio interpretador e a
+    própria GIL, que é o único jeito de aritmética realmente rodar em paralelo no CPython.
+    Caros de iniciar, e os dados precisam ser copiados, então compensa para trabalho graúdo
+    e perde no miúdo.
+
+    **Um laço simples** — sempre que o trabalho for pequeno ou houver só um dele. A missão 8
+    é o argumento inteiro: um ramo tem custo fixo, e um trabalho só não tem nada com que se
+    sobrepor, então concorrência num item só é custo com uma justificativa colada.
+
+    Duas regras de bolso que vale guardar depois desta ilha:
+
+    - **Pergunte o que o programa está esperando antes de perguntar qual ferramenta.** Um
+      profiler responde isso e uma opinião não, que é a Ilha 10 dizendo a mesma coisa.
+    - **A quantidade importa tanto quanto o tipo.** Quarenta chamadas de rede querem
+      `asyncio`. Uma chamada de rede quer `requests.get` e uma boa noite de sono.
+
+  worked_example: |
+    # Uma tabela de despacho escolhendo por categoria, num domínio sem concorrência nenhuma
+    _BY_MATERIAL = {"glass": "crate", "rope": "coil", "iron": "pallet"}
+
+
+    def stow(items):
+        plan = {}
+        tally = {"crate": 0, "coil": 0, "pallet": 0, "shelf": 0}
+
+        for item in items:
+            how = "shelf" if item["units"] < 5 else _BY_MATERIAL[item["material"]]
+            plan[item["name"]] = how
+            tally[how] = tally[how] + 1
+
+        return {"plan": plan, "tally": tally}
+
+
+    print(stow([{"name": "jars", "material": "glass", "units": 40}]))
+    # {'plan': {'jars': 'crate'}, 'tally': {'crate': 1, 'coil': 0, 'pallet': 0, 'shelf': 0}}
+    # A quantidade é checada primeiro. Abaixo do limiar o material nunca chega a votar.
+
+  key_points:
+    - "`asyncio` para muitas esperas em coisas que falam async: o ramo mais barato, e exige corrotinas até o fim da cadeia."
+    - "Threads para muitas esperas em código bloqueante que você não vai reescrever. Ramo mais pesado; o código fica como está."
+    - "Processos para computação de verdade — o único jeito de o CPython rodar aritmética em paralelo — ao preço de iniciar e copiar."
+    - "Um laço simples para um item só, ou para trabalho pequeno demais para valer um ramo. Essa é a regra da missão 8, e ela vence o tipo."
+    - "Pergunte o que o programa espera antes de perguntar qual ferramenta. Meça primeiro; a resposta muitas vezes é 'nenhuma delas'."
+
+brief: |
+  Três ferramentas atrás do balcão, e uma manhã inteira de serviços para distribuir.
+
+  Escreva uma função chamada right_tool que recebe uma lista de cargas de trabalho e devolve:
+
+      {"plan": ..., "counts": ...}
+
+  Cada carga é um dict com `"name"`, `"kind"` e `"count"` — quantos daquilo há para fazer.
+
+  **A contagem é checada primeiro.** Uma carga com `count` abaixo de 2 recebe
+  `"sequential"`, seja qual for o tipo dela: não há nada com que sobrepô-la, então um ramo
+  seria custo puro.
+
+  Caso contrário o tipo decide:
+
+      "network"  ->  "async"
+      "disk"     ->  "threads"
+      "cpu"      ->  "processes"
+
+  `plan` mapeia o nome de toda carga para a string que você escolheu.
+
+  `counts` conta quantas cargas foram para cada ferramenta. Ele tem de conter **as quatro
+  chaves toda vez**, nesta ordem, com 0 onde nada foi atribuído:
+
+      {"async": ..., "threads": ..., "processes": ..., "sequential": ...}
+
+  Uma lista vazia dá um `plan` vazio e as quatro contagens em 0.
+
+  Nomes são únicos dentro de um caso, e `count` nunca é negativo.
+
+signature:
+  entrypoint: right_tool
+  stub: |
+    def right_tool(workloads):
+        # A contagem vota primeiro. O tipo só fala se a contagem deixar.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[{name: downloads, kind: network, count: 40}, {name: thumbnails, kind: cpu, count: 12}]]
+      expect:
+        plan: {downloads: async, thumbnails: processes}
+        counts: {async: 1, threads: 0, processes: 1, sequential: 0}
+    # Um arquivo. Trabalho de disco, e ainda assim um laço simples, porque há um só dele.
+    - args: [[{name: one_file, kind: disk, count: 1}]]
+      expect:
+        plan: {one_file: sequential}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 1}
+  hidden:
+    # Nada a planejar. As quatro chaves continuam presentes.
+    - args: [[]]
+      expect:
+        plan: {}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 0}
+    - args: [[{name: logs, kind: disk, count: 200}]]
+      expect:
+        plan: {logs: threads}
+        counts: {async: 0, threads: 1, processes: 0, sequential: 0}
+    # Uma chamada de rede. O tipo que mais tenta você a usar asyncio, e a contagem diz não.
+    - args: [[{name: solo_ping, kind: network, count: 1}]]
+      expect:
+        plan: {solo_ping: sequential}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 1}
+    # Zero de alguma coisa. Abaixo do limiar como qualquer outra, e ainda ganha um plano.
+    - args: [[{name: hash, kind: cpu, count: 0}]]
+      expect:
+        plan: {hash: sequential}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 1}
+    # As quatro ferramentas de uma vez, e a fronteira fica entre a primeira e a última:
+    # dois basta, um não.
+    - args:
+        [
+          [
+            {name: api, kind: network, count: 2},
+            {name: backup, kind: disk, count: 9},
+            {name: resize, kind: cpu, count: 30},
+            {name: ping, kind: network, count: 1},
+          ],
+        ]
+      expect:
+        plan: {api: async, backup: threads, resize: processes, ping: sequential}
+        counts: {async: 1, threads: 1, processes: 1, sequential: 1}
+
+hints:
+  - level: 1
+    text: |
+      Dois dos casos têm o mesmo `kind` e respostas diferentes. O que separa os dois?
+
+      E como `counts` tem de ficar quando nada foi atribuído a uma ferramenta — a chave some
+      ou aparece em 0?
+  - level: 2
+    text: |
+      Comece `counts` como um dict completo com as quatro chaves em 0, antes do laço.
+      Construí-lo a partir do que você viu perderia as chaves que você nunca usou.
+
+      Um dict mapeia os três tipos às ferramentas:
+      `{"network": "async", "disk": "threads", "cpu": "processes"}`.
+
+      Depois, por carga: se `workload["count"] < 2`, a ferramenta é `"sequential"`; senão
+      consulte o dict. Escreva em `plan`, e some um em `counts[tool]`.
+  - level: 3
+    text: |
+      O mesmo formato de guarda-antes-da-consulta, roteando correspondência:
+
+          _BY_SIZE = {"letter": "envelope", "parcel": "box", "pallet": "freight"}
+
+
+          def route(items):
+              plan = {}
+              tally = {"envelope": 0, "box": 0, "freight": 0, "hand": 0}
+
+              for item in items:
+                  if item["km"] < 1:
+                      how = "hand"
+                  else:
+                      how = _BY_SIZE[item["size"]]
+                  plan[item["ref"]] = how
+                  tally[how] = tally[how] + 1
+
+              return {"plan": plan, "tally": tally}
+
+
+          print(route([{"ref": "A1", "size": "parcel", "km": 0}]))
+          # {'plan': {'A1': 'hand'}, 'tally': {'envelope': 0, 'box': 0, 'freight': 0, 'hand': 1}}
+
+      Note que a guarda roda antes da consulta, então o tamanho nunca é consultado para uma
+      entrega na porta ao lado. A sua funciona igual, sobre uma contagem em vez de uma
+      distância.
+
+solution: |
+  _TOOL_BY_KIND = {"network": "async", "disk": "threads", "cpu": "processes"}
+
+
+  def right_tool(workloads):
+      plan = {}
+      counts = {"async": 0, "threads": 0, "processes": 0, "sequential": 0}
+
+      for workload in workloads:
+          if workload["count"] < 2:
+              tool = "sequential"
+          else:
+              tool = _TOOL_BY_KIND[workload["kind"]]
+
+          plan[workload["name"]] = tool
+          counts[tool] = counts[tool] + 1
+
+      return {"plan": plan, "counts": counts}

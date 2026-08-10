@@ -1,0 +1,31 @@
+id: async-and-concurrency
+name: Async e Concorrência
+track: python
+order: 11
+theme: Esperar não é trabalhar
+description: |
+  A Ilha 10 ensinou que um programa lento normalmente está fazendo trabalho demais. Esta
+  aqui é sobre o outro caso: o programa que quase não faz nada, e passa a vida esperando
+  um disco, uma rede ou um relógio.
+
+  A espera é o único custo que a concorrência consegue recuperar, porque um programa que
+  espera não está usando nada. Trabalho não é assim, e nenhuma quantidade de async faz
+  aritmética terminar antes.
+
+  O último terço desta ilha é gasto na metade mais difícil da habilidade: os dias em que
+  a concorrência piora tudo, e a resposta certa é o laço simples que você já sabia
+  escrever.
+
+concepts:
+  - blocking-vs-nonblocking
+  - async-await
+  - event-loop
+  - gather
+  - threads
+  - gil
+  - when-concurrency-helps
+
+unlock_requires:
+  missions_completed: 107
+
+completion_reward_xp: 300

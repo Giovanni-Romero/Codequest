@@ -1,0 +1,307 @@
+# Async and Concurrency mission 8. Introduces: when-concurrency-helps.
+# Reinforces: gil, gather, blocking-vs-nonblocking, big-o.
+#
+# The refusal mission the syllabus has demanded since v1.1: at least one mission must show
+# a case where concurrency is slower. It is the hardest one on the island to grade, because
+# the honest proof is a stopwatch and this island refuses stopwatches (they lie on a cold
+# Windows filesystem - CLAUDE.md section 5).
+#
+# So the brief declares the cost model and the player computes with it. This is Island 10's
+# specification rule applied to concurrency, and the syllabus predicted it would be needed
+# here: "a brief that says 'run them concurrently' is not a specification either." The
+# model is deliberately simple and deliberately true in shape - waiting overlaps so it
+# collapses to the longest one, computing does not so it still sums, and every branch costs
+# a fixed amount to start.
+#
+# [AI-ENG:concurrency-cost] An agent that fans out ten tool calls in parallel pays exactly
+# this trade: overlap the waiting, never the work, and pay a fixed cost per branch. The
+# reflex to parallelise a batch of LLM calls that each take twenty milliseconds is the same
+# reflex this mission refuses, at a different scale.
+#
+# No sleeps at all: nothing is run here, only decided. That is the mission.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-08
+title: The slower fleet
+track: python
+island: async-and-concurrency
+order: 8
+difficulty: expert
+tags: [async, refusal, cost-model]
+xp: 60
+
+concepts:
+  - when-concurrency-helps
+
+teaching:
+  analogy: |
+    A skipper has ten crates to move from the quay to a shed thirty metres away. Each trip
+    takes twenty seconds.
+
+    He could carry them himself: two hundred seconds, and he already knows how.
+
+    Or he could hire ten porters. Each one needs finding, briefing, and paying off — call
+    it five hundred seconds of the skipper's time, per porter. The carrying now takes
+    twenty seconds. The morning takes an hour and a half.
+
+    Nobody in this story was wrong about porters being faster at carrying. The mistake was
+    never checking that the carrying was the expensive part.
+
+  explanation: |
+    Concurrency is not free and it is not a speed setting. It is a trade, and it has a
+    shape you can write down:
+
+    - **It overlaps waiting.** Ten waits of one second, run together, cost one second.
+    - **It does not overlap work.** Ten seconds of Python arithmetic on threads is still
+      ten seconds — the GIL, mission 7 — and on processes it is faster only if the chunks
+      are big enough to outweigh copying the data across.
+    - **Every branch costs something fixed.** A task object, a thread, a process, a
+      connection. Microseconds for an `asyncio` task; more for a thread; a lot for a
+      process. It is paid **per branch**, whether or not the branch was worth it.
+
+    Put those together and you get the rule the whole island has been building to:
+
+    > Concurrency wins when the waiting you can overlap is larger than the fixed cost of
+    > the branches you create. When it is not, the plain loop is the right answer and the
+    > concurrent version is slower, longer, and harder to debug.
+
+    The case people get wrong is small work in large quantities. A thousand jobs of fifty
+    microseconds each is fifty milliseconds sequentially. Give each one a task at a hundred
+    microseconds of overhead and you have just spent a hundred milliseconds creating tasks
+    to save nothing at all, because there was no waiting in there to overlap.
+
+    And notice what concurrency never does: **it does not reduce the total work.** The same
+    bytes are parsed, the same sums are added. It only stops you from standing still while
+    something else is slow. If nothing is slow, there is nothing to stop.
+
+    So the honest order of operations is Island 10's, one more time. Measure. Find where
+    the time goes. Only then choose a tool — and be willing to conclude that the tool is a
+    `for` loop.
+
+  worked_example: |
+    # Deciding between two delivery plans with an explicit cost model, and no vans involved
+    def plan(parcels, setup_per_van):
+        one_van = sum(parcels)
+        many_vans = len(parcels) * setup_per_van + max(parcels, default=0)
+
+        return {
+            "one_van": one_van,
+            "many_vans": many_vans,
+            "use": "many" if many_vans < one_van else "one",
+        }
+
+
+    print(plan([90, 80, 70], 5))     # {'one_van': 240, 'many_vans': 105, 'use': 'many'}
+    print(plan([3, 2, 1], 5))        # {'one_van': 6, 'many_vans': 18, 'use': 'one'}
+    # Same model, same code, opposite answer. The numbers decided, not the enthusiasm.
+
+  key_points:
+    - "Concurrency overlaps waiting and nothing else. It never reduces the total amount of work."
+    - "Every branch has a fixed cost — a task, a thread, a process — paid whether the branch was worth it or not."
+    - "It wins only when the overlapped waiting exceeds the branches' fixed cost. Below that line the plain loop is faster."
+    - "Many small jobs with no waiting in them is the classic loss: all the overhead, none of the overlap."
+    - "When the two are equal, choose the sequential version. Equal speed and less machinery is not a tie."
+
+brief: |
+  Do not run the fleet. Decide whether to.
+
+  Write a function called fleet that takes a list of jobs and a fixed `overhead_us` — the
+  microseconds it costs to start one branch — and returns:
+
+      {"sequential_us": ..., "concurrent_us": ..., "difference_us": ..., "choice": ...}
+
+  Each job is a dict with `"name"`, `"us"` (how long it takes, in microseconds) and
+  `"kind"`, which is `"wait"` or `"compute"`.
+
+  **This is the model. Use exactly it — nothing here is measured.**
+
+  `sequential_us` is the sum of every job's `us`. One after another, nothing overlaps.
+
+  `concurrent_us` is three terms added together:
+
+      len(jobs) * overhead_us          one branch started per job, always paid
+      + the largest `us` among the "wait" jobs, or 0 if there are none
+      + the sum of the `us` of the "compute" jobs
+
+  Waiting collapses to the longest one because waits overlap. Computing still sums because
+  it does not — that is mission 7's GIL, written as arithmetic.
+
+  `difference_us` is `sequential_us - concurrent_us`. Positive means concurrency wins.
+
+  `choice` is the string `"concurrent"` when `concurrent_us` is **strictly less than**
+  `sequential_us`, and `"sequential"` otherwise. A tie is not a tie: equal speed with less
+  machinery means you take the loop.
+
+  An empty job list gives 0, 0, 0 and `"sequential"`.
+
+signature:
+  entrypoint: fleet
+  stub: |
+    def fleet(jobs, overhead_us):
+        # Two totals from the model in the brief, then compare them. Nothing is run.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # Ten tiny computations. Two hundred microseconds of work, five thousand of overhead.
+    # This is the mission's whole argument in one case.
+    - args:
+        [
+          [
+            {name: j0, us: 20, kind: compute},
+            {name: j1, us: 20, kind: compute},
+            {name: j2, us: 20, kind: compute},
+            {name: j3, us: 20, kind: compute},
+            {name: j4, us: 20, kind: compute},
+            {name: j5, us: 20, kind: compute},
+            {name: j6, us: 20, kind: compute},
+            {name: j7, us: 20, kind: compute},
+            {name: j8, us: 20, kind: compute},
+            {name: j9, us: 20, kind: compute},
+          ],
+          500,
+        ]
+      expect:
+        sequential_us: 200
+        concurrent_us: 5200
+        difference_us: -5000
+        choice: sequential
+    # Three real network calls. Now the overhead is noise and concurrency is the answer.
+    - args:
+        [
+          [
+            {name: a, us: 100000, kind: wait},
+            {name: b, us: 100000, kind: wait},
+            {name: c, us: 100000, kind: wait},
+          ],
+          500,
+        ]
+      expect:
+        sequential_us: 300000
+        concurrent_us: 101500
+        difference_us: 198500
+        choice: concurrent
+  hidden:
+    # No jobs. Both totals are 0, the difference is 0, and a tie goes to the loop.
+    - args: [[], 500]
+      expect:
+        sequential_us: 0
+        concurrent_us: 0
+        difference_us: 0
+        choice: sequential
+    # A single wait. There is nothing to overlap it with, so the branch is pure loss —
+    # and this is the case people get wrong most often.
+    - args: [[{name: solo, us: 5000, kind: wait}], 500]
+      expect:
+        sequential_us: 5000
+        concurrent_us: 5500
+        difference_us: -500
+        choice: sequential
+    - args: [[{name: solo, us: 500, kind: wait}], 500]
+      expect:
+        sequential_us: 500
+        concurrent_us: 1000
+        difference_us: -500
+        choice: sequential
+    # Mixed, and it loses by two thousand. The compute job cannot be overlapped, so all
+    # the concurrency bought was one wait it was already going to do.
+    - args: [[{name: net, us: 80000, kind: wait}, {name: hash, us: 40000, kind: compute}], 1000]
+      expect:
+        sequential_us: 120000
+        concurrent_us: 122000
+        difference_us: -2000
+        choice: sequential
+    # Six tiny waits. Waiting overlaps and it still loses, because there was barely any.
+    - args:
+        [
+          [
+            {name: t0, us: 30, kind: wait},
+            {name: t1, us: 30, kind: wait},
+            {name: t2, us: 30, kind: wait},
+            {name: t3, us: 30, kind: wait},
+            {name: t4, us: 30, kind: wait},
+            {name: t5, us: 30, kind: wait},
+          ],
+          200,
+        ]
+      expect:
+        sequential_us: 180
+        concurrent_us: 1230
+        difference_us: -1050
+        choice: sequential
+    # Free branches. With no overhead concurrency cannot lose on waiting — which is the
+    # cleanest way to see that the overhead is the entire argument.
+    - args: [[{name: a, us: 50000, kind: wait}, {name: b, us: 50000, kind: wait}], 0]
+      expect:
+        sequential_us: 100000
+        concurrent_us: 50000
+        difference_us: 50000
+        choice: concurrent
+
+hints:
+  - level: 1
+    text: |
+      Nothing runs in this mission. Every number comes from the three-term formula in the
+      brief.
+
+      The term that catches people: the overhead is multiplied by **all** the jobs, not
+      just the waiting ones. A branch costs the same whether or not it was a good idea.
+  - level: 2
+    text: |
+      `sequential_us` is one `sum` with a generator expression over `job["us"]`.
+
+      For the other one, split the jobs into two lists of durations — the waits and the
+      computes — with two comprehensions filtering on `job["kind"]`.
+
+      Then: `len(jobs) * overhead_us + max(waits, default=0) + sum(computes)`. The
+      `default=0` is what stops `max` raising when there is nothing waiting.
+
+      `choice` is one conditional expression, and the comparison is strict `<`.
+  - level: 3
+    text: |
+      The same three-term shape, choosing between one oven and several:
+
+          def bake(trays, oven_setup):
+              one_oven = sum(tray["minutes"] for tray in trays)
+
+              proving = [t["minutes"] for t in trays if t["stage"] == "prove"]
+              kneading = [t["minutes"] for t in trays if t["stage"] == "knead"]
+              many_ovens = len(trays) * oven_setup + max(proving, default=0) + sum(kneading)
+
+              return {
+                  "one": one_oven,
+                  "many": many_ovens,
+                  "pick": "many" if many_ovens < one_oven else "one",
+              }
+
+
+          print(bake([{"minutes": 60, "stage": "prove"},
+                      {"minutes": 60, "stage": "prove"}], 5))
+          # {'one': 120, 'many': 70, 'pick': 'many'}
+
+      Proving overlaps, kneading does not, and every oven costs the same to light. Yours
+      has one more key: the difference between the two totals, in that order.
+
+solution: |
+  def fleet(jobs, overhead_us):
+      sequential_us = sum(job["us"] for job in jobs)
+
+      waits = [job["us"] for job in jobs if job["kind"] == "wait"]
+      computes = [job["us"] for job in jobs if job["kind"] == "compute"]
+
+      concurrent_us = len(jobs) * overhead_us + max(waits, default=0) + sum(computes)
+      difference_us = sequential_us - concurrent_us
+
+      choice = "concurrent" if concurrent_us < sequential_us else "sequential"
+
+      return {
+          "sequential_us": sequential_us,
+          "concurrent_us": concurrent_us,
+          "difference_us": difference_us,
+          "choice": choice,
+      }

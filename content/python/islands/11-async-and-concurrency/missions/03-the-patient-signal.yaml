@@ -1,0 +1,226 @@
+# Async and Concurrency mission 3. Introduces nothing.
+# Reinforces: async-await, return-values, accumulator-pattern, dictionaries.
+#
+# Relief mission, and the point it makes by being boring: a coroutine returns a value like
+# any other function. Everything the player already knows about writing a function still
+# applies inside an `async def` - the empty case, the guard against dividing by zero, the
+# dict at the end. `async` changed when the function runs, not what it is.
+#
+# One await, at the top, and then ordinary code. That shape is the common case in real
+# async programming and it is worth meeting while nothing else is going on.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-03
+title: The patient signal
+track: python
+island: async-and-concurrency
+order: 3
+difficulty: challenging
+tags: [async, await, relief]
+xp: 45
+
+concepts:
+  - async-await
+
+teaching:
+  analogy: |
+    The lighthouse keeper waits for the tide gauge to settle before reading it. That wait
+    is the only unusual thing about the job.
+
+    Once the needle stops moving, everything after is the work any clerk does: read the
+    figures, add them up, divide by how many there were, write it on the form. Nobody
+    fills the form in differently because they had to wait for it.
+
+  explanation: |
+    A coroutine is a function. It takes arguments, it has a body, it returns a value, and
+    the caller gets that value.
+
+    This sounds too obvious to say, and it is the thing people get wrong first. The `async`
+    keyword changes **when** the function runs — it can now pause at an `await` and let the
+    loop use the gap. It changes nothing about what the function *is*:
+
+    - It returns with `return`, and the returned value can be anything: a number, a dict,
+      `None`.
+    - Its arguments work exactly as they always did, defaults included.
+    - `if`, `for`, `try` and every other statement behave identically inside it.
+    - An empty input still needs handling. A division still needs a zero check.
+
+    The only new rule is that the value comes back through an `await`. Whoever calls
+    `patient_signal()` gets a coroutine; whoever writes `await patient_signal()` gets the
+    dict. In this game the engine is that caller, so you simply `return` and it arrives.
+
+    The common shape in real async code is exactly this mission: **await once, near the
+    top, then ordinary code**. The awaits are where the outside world is — a database, an
+    HTTP call, a queue — and everything between them is the same Python you have written
+    since Island 1.
+
+  worked_example: |
+    # A coroutine that waits once and then does entirely unremarkable work
+    import asyncio
+
+
+    async def stock_check(names):
+        await asyncio.sleep(0.01)
+
+        longest = ""
+        for name in names:
+            if len(name) > len(longest):
+                longest = name
+
+        return {"items": len(names), "longest": longest or None}
+
+
+    print(asyncio.run(stock_check(["rope", "lantern"])))     # {'items': 2, 'longest': 'lantern'}
+    print(asyncio.run(stock_check([])))                      # {'items': 0, 'longest': None}
+    # One await. After it, a loop and an empty-case guard, and nothing about either is async.
+
+  key_points:
+    - "A coroutine returns a value with `return`, like any function. `async` changed when it runs, not what it is."
+    - "Everything you know about writing functions still applies inside an `async def`: defaults, loops, guards, the empty case."
+    - "The usual shape is await once near the top, then plain code. The awaits are where the outside world is."
+    - "Returning `None` from a coroutine is a normal answer, not an error — and it is the right answer for an average with nothing to average."
+    - "The caller is the one who has to `await`. Here the engine is the caller, so a plain `return` is enough."
+
+brief: |
+  Wait for the gauge to settle, then read it.
+
+  Write a coroutine called patient_signal that takes a list of readings and a number of
+  milliseconds, and returns:
+
+      {"count": ..., "total": ..., "mean": ..., "waited_ms": ...}
+
+  First `await asyncio.sleep(ms / 1000)`. Everything after that is ordinary work.
+
+  `count` is how many readings there were. `total` is their sum. `mean` is the average
+  **rounded to two decimal places** with `round(total / count, 2)`, or `None` when there
+  are no readings at all. `waited_ms` is the `ms` you were given, unchanged.
+
+  An empty list gives a count of 0, a total of 0, and a mean of `None`.
+
+  Import `asyncio` yourself. The engine awaits your function for you — do not call
+  `asyncio.run`.
+
+signature:
+  entrypoint: patient_signal
+  stub: |
+    async def patient_signal(readings, ms):
+        # Await once, at the top. After that it is the same work as any other mission.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[4, 8, 6], 20]
+      expect:
+        count: 3
+        total: 18
+        mean: 6.0
+        waited_ms: 20
+    - args: [[10], 10]
+      expect:
+        count: 1
+        total: 10
+        mean: 10.0
+        waited_ms: 10
+  hidden:
+    # Nothing to average. The guard is the whole mission for this case.
+    - args: [[], 10]
+      expect:
+        count: 0
+        total: 0
+        mean: null
+        waited_ms: 10
+    # Empty and no wait at all. Both edges at once.
+    - args: [[], 0]
+      expect:
+        count: 0
+        total: 0
+        mean: null
+        waited_ms: 0
+    # A zero wait still yields to the loop, and the rest of the work is unaffected.
+    - args: [[1, 2], 0]
+      expect:
+        count: 2
+        total: 3
+        mean: 1.5
+        waited_ms: 0
+    # Negatives cancel. A total of 0 is not the same as no readings, and the mean proves it.
+    - args: [[-5, 5], 15]
+      expect:
+        count: 2
+        total: 0
+        mean: 0.0
+        waited_ms: 15
+    - args: [[1, 1, 1], 5]
+      expect:
+        count: 3
+        total: 3
+        mean: 1.0
+        waited_ms: 5
+    - args: [[7, 8], 30]
+      expect:
+        count: 2
+        total: 15
+        mean: 7.5
+        waited_ms: 30
+
+hints:
+  - level: 1
+    text: |
+      The wait is one line at the top and then it is out of the way. What is left is a
+      count, a sum, and one division that must not happen when the count is zero.
+
+      What should the mean be when there is nothing to average? The brief says, and it is
+      not 0.
+  - level: 2
+    text: |
+      `import asyncio`, then `async def patient_signal(readings, ms):`.
+
+      First line of the body: `await asyncio.sleep(ms / 1000)`.
+
+      Then `count = len(readings)` and `total = sum(readings)`. The mean needs a branch:
+      `None` when `count` is 0, otherwise `round(total / count, 2)`.
+
+      Return all four keys, and pass `ms` straight through to `waited_ms`.
+  - level: 3
+    text: |
+      The same shape, over rainfall instead of gauge readings:
+
+          import asyncio
+
+
+          async def rainfall(days, ms):
+              await asyncio.sleep(ms / 1000)
+
+              days_seen = len(days)
+              wettest = None
+              if days_seen > 0:
+                  wettest = max(days)
+
+              return {"days": days_seen, "wettest": wettest, "slept_ms": ms}
+
+
+          print(asyncio.run(rainfall([3, 9], 5)))     # {'days': 2, 'wettest': 9, 'slept_ms': 5}
+
+      Note the guard around `max`, which would raise on an empty list. Yours guards a
+      division for the same reason, and has one extra key.
+
+solution: |
+  import asyncio
+
+
+  async def patient_signal(readings, ms):
+      await asyncio.sleep(ms / 1000)
+
+      count = len(readings)
+      total = sum(readings)
+
+      mean = None
+      if count > 0:
+          mean = round(total / count, 2)
+
+      return {"count": count, "total": total, "mean": mean, "waited_ms": ms}

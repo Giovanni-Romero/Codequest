@@ -1,0 +1,317 @@
+# Async and Concurrency mission 10. Introduces nothing. Closing mission of the island,
+# and of the Python track.
+# Reinforces: all seven concepts of the island.
+#
+# Every piece is copied from an earlier mission with different names: the gather and the
+# shared completion list are mission 4, the threads-with-slots are mission 5, the cost
+# model is mission 8. Nothing here is new and nothing here is easy, which is what a
+# closing mission is for.
+#
+# The one genuine decision is not stated: the computes go on threads and the brief does not
+# say it is a good idea, because mission 7 already said it is not. The player runs them
+# there anyway, because the mission asks for a demonstration rather than for the fastest
+# possible program - and the `choice` field they compute at the end is the island's answer
+# to what they just did.
+#
+# Sleep budget: the waits are gathered, so the wall clock is the longest one. 50ms here.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-10
+title: The whole voyage
+track: python
+island: async-and-concurrency
+order: 10
+difficulty: expert
+tags: [async, closing, gather, threads]
+xp: 60
+
+concepts:
+  - blocking-vs-nonblocking
+  - async-await
+  - event-loop
+  - gather
+  - threads
+  - gil
+  - when-concurrency-helps
+
+teaching:
+  analogy: |
+    The last morning at the harbour office.
+
+    Three telegrams are sent off at once and nobody sits watching any of them. Three
+    ledgers are handed to three clerks who all queue for the same pen. And before the
+    skipper signs anything, someone works out on paper whether the whole arrangement was
+    worth the trouble.
+
+    Nothing in the room is new. Today the room runs.
+
+  explanation: |
+    This mission introduces nothing. It asks you to put four things in the right order
+    without being told which goes where, which is the part no panel can teach.
+
+    The short version of each decision, for the next time you meet it.
+
+    **Is it waiting or is it working?** Everything on this island hangs off that one
+    question, and it is answered by measuring, not by guessing. Waiting can be overlapped.
+    Working cannot, and reaching for concurrency there is a rewrite that buys nothing.
+
+    **`asyncio` or threads?** If the code already speaks the async dialect all the way
+    down, `gather` is the cheapest branch there is. If it does not — a file, an old driver,
+    something you are not rewriting — a thread runs it unchanged, which is exactly what you
+    are paying for.
+
+    **What order do results come back in?** `gather` gives you argument order and that
+    guarantee is why it is usable. Threads give you nothing: you choose a slot in advance
+    or you accept a coin flip. Completion order is a fact about the clock, and it is worth
+    recording only when you want to see the overlap.
+
+    **Was any of it worth it?** Count the branches, count the waiting, compare. A hundred
+    branches at five hundred microseconds is fifty milliseconds spent before any work
+    happens, and if the jobs were fifty microseconds each you have made a fast program
+    slow and hard to read at the same time.
+
+    None of the four has an answer that holds everywhere. They have an answer here, and
+    being able to say why is what the island was for.
+
+  worked_example: |
+    # The same two engines side by side, on a shipment rather than on durations
+    import asyncio
+    import threading
+
+
+    async def unload(holds, crates):
+        landed = []
+
+        async def open_hold(seconds):
+            await asyncio.sleep(seconds)
+            landed.append(seconds)
+            return f"hold {seconds} clear"
+
+        called = list(await asyncio.gather(*[open_hold(s) for s in holds]))
+
+        weights = [None] * len(crates)
+
+        def weigh(slot, size):
+            weights[slot] = size * 2
+
+        hands = []
+        for slot, size in enumerate(crates):
+            hand = threading.Thread(target=weigh, args=(slot, size))
+            hands.append(hand)
+            hand.start()
+        for hand in hands:
+            hand.join()
+
+        return {"called": called, "landed": landed, "weights": weights}
+
+
+    print(asyncio.run(unload([0.02, 0.01], [3, 4])))
+    # {'called': ['hold 0.02 clear', 'hold 0.01 clear'], 'landed': [0.01, 0.02], 'weights': [6, 8]}
+    # Argument order in `called`, clock order in `landed`, slot order in `weights`.
+
+  key_points:
+    - "Answer 'waiting or working' first. Everything else on this island is downstream of it, and only measuring answers it."
+    - "`gather` for coroutines, threads for blocking code you are not rewriting. The second is heavier and asks nothing of the code."
+    - "`gather` returns argument order. Threads return nothing — pick a slot in advance, or accept a coin flip."
+    - "Completion order is evidence that the waits overlapped, and evidence is the only thing it is good for."
+    - "Count the branches against the waiting before you build any of it. The right answer is sometimes a `for` loop."
+
+brief: |
+  Run the whole harbour office, one last time.
+
+  Write a coroutine called whole_voyage that takes a list of `waits` in milliseconds, a
+  list of `computes` in sizes, and a fixed `overhead_us`, and returns:
+
+      {"results": ..., "finished": ..., "sums": ...,
+       "sequential_us": ..., "concurrent_us": ..., "choice": ...}
+
+  **The waits, concurrently.** Give each one a coroutine that awaits
+  `asyncio.sleep(ms / 1000)`, appends its `ms` to a shared list, and returns
+  `"waited {ms}ms"`. Start them with one `asyncio.gather`. `results` is what `gather`
+  returned, as a list — argument order. `finished` is the shared list — completion order.
+  All the durations in a case are different, so there is never a tie.
+
+  **The computes, on threads.** Give each size its own `threading.Thread` writing
+  `sum(range(size))` into its own slot of `sums`, so `sums` follows the input order. Start
+  them all, then join them all. Mission 7 told you threads will not make this faster; you
+  are running it there anyway so that the last field can tell you what it cost.
+
+  **The verdict, on the waits only.** Using mission 8's model, in microseconds:
+
+      sequential_us = sum(waits) * 1000
+      concurrent_us = len(waits) * overhead_us + max(waits, default=0) * 1000
+
+  `choice` is `"concurrent"` when `concurrent_us` is **strictly less than**
+  `sequential_us`, and `"sequential"` otherwise.
+
+  Two empty lists give two empty lists, an empty `sums`, 0, 0 and `"sequential"`.
+
+  Import `asyncio` and `threading` yourself. The engine awaits your function — do not call
+  `asyncio.run`.
+
+signature:
+  entrypoint: whole_voyage
+  stub: |
+    async def whole_voyage(waits, computes, overhead_us):
+        # Gather the waits. Thread the computes. Then work out whether any of it was worth it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[30, 10, 20], [100, 5], 500]
+      expect:
+        results: ["waited 30ms", "waited 10ms", "waited 20ms"]
+        finished: [10, 20, 30]
+        sums: [4950, 10]
+        sequential_us: 60000
+        concurrent_us: 31500
+        choice: concurrent
+    # One wait. There is nothing to overlap it with, so the branch loses by its own cost.
+    - args: [[15], [10], 500]
+      expect:
+        results: ["waited 15ms"]
+        finished: [15]
+        sums: [45]
+        sequential_us: 15000
+        concurrent_us: 15500
+        choice: sequential
+  hidden:
+    # Nothing at all. An empty gather returns an empty list and a tie goes to the loop.
+    - args: [[], [], 500]
+      expect:
+        results: []
+        finished: []
+        sums: []
+        sequential_us: 0
+        concurrent_us: 0
+        choice: sequential
+    - args: [[40, 20], [], 1000]
+      expect:
+        results: ["waited 40ms", "waited 20ms"]
+        finished: [20, 40]
+        sums: []
+        sequential_us: 60000
+        concurrent_us: 42000
+        choice: concurrent
+    # Computing only. No waiting means nothing to overlap, and the verdict says so.
+    - args: [[], [50], 500]
+      expect:
+        results: []
+        finished: []
+        sums: [1225]
+        sequential_us: 0
+        concurrent_us: 0
+        choice: sequential
+    # A compute of size 0 still gets a thread, and that thread still has to be joined.
+    - args: [[10, 30, 50], [0], 200]
+      expect:
+        results: ["waited 10ms", "waited 30ms", "waited 50ms"]
+        finished: [10, 30, 50]
+        sums: [0]
+        sequential_us: 90000
+        concurrent_us: 50600
+        choice: concurrent
+    # An absurd overhead. The waiting is real and concurrency still loses, which is the
+    # island's last word: the numbers decide, not the tool.
+    - args: [[25], [], 30000]
+      expect:
+        results: ["waited 25ms"]
+        finished: [25]
+        sums: []
+        sequential_us: 25000
+        concurrent_us: 55000
+        choice: sequential
+    - args: [[50, 10], [1000, 2000, 3000], 100]
+      expect:
+        results: ["waited 50ms", "waited 10ms"]
+        finished: [10, 50]
+        sums: [499500, 1999000, 4498500]
+        sequential_us: 60000
+        concurrent_us: 50200
+        choice: concurrent
+
+hints:
+  - level: 1
+    text: |
+      Three blocks, and each one is a mission you have already finished. Work out which
+      mission each block is before you write anything.
+
+      One trap in the arithmetic: `waits` is in milliseconds and the verdict is in
+      microseconds. Where does the factor of a thousand go, and where does it not?
+  - level: 2
+    text: |
+      Block one is mission 4, unchanged: `finished = []`, an inner `async def` that sleeps,
+      appends and returns the string, then `await asyncio.gather(*[...])` wrapped in
+      `list(...)`.
+
+      Block two is mission 5, unchanged: `sums = [None] * len(computes)`, an inner function
+      taking a slot and a size, `enumerate` to build and start the threads, a second loop
+      to join them.
+
+      Block three is mission 8, on the waits only. `sum(waits) * 1000` and
+      `len(waits) * overhead_us + max(waits, default=0) * 1000`. The overhead is already in
+      microseconds, so it is the one term that is not multiplied.
+  - level: 3
+    text: |
+      The last piece, since the other two are in missions 4 and 5 — the verdict, written on
+      its own:
+
+          def verdict(delays_ms, per_branch_us):
+              one_by_one = sum(delays_ms) * 1000
+              together = len(delays_ms) * per_branch_us + max(delays_ms, default=0) * 1000
+
+              return "together" if together < one_by_one else "one_by_one"
+
+
+          print(verdict([30, 10, 20], 500))     # together
+          print(verdict([15], 500))             # one_by_one
+
+      Yours returns `"concurrent"` and `"sequential"` instead, and reports both totals
+      alongside the word.
+
+solution: |
+  import asyncio
+  import threading
+
+
+  async def whole_voyage(waits, computes, overhead_us):
+      finished = []
+
+      async def run(ms):
+          await asyncio.sleep(ms / 1000)
+          finished.append(ms)
+          return f"waited {ms}ms"
+
+      results = list(await asyncio.gather(*[run(ms) for ms in waits]))
+
+      sums = [None] * len(computes)
+
+      def crunch(index, size):
+          sums[index] = sum(range(size))
+
+      threads = []
+      for index, size in enumerate(computes):
+          thread = threading.Thread(target=crunch, args=(index, size))
+          threads.append(thread)
+          thread.start()
+
+      for thread in threads:
+          thread.join()
+
+      sequential_us = sum(waits) * 1000
+      concurrent_us = len(waits) * overhead_us + max(waits, default=0) * 1000
+      choice = "concurrent" if concurrent_us < sequential_us else "sequential"
+
+      return {
+          "results": results,
+          "finished": finished,
+          "sums": sums,
+          "sequential_us": sequential_us,
+          "concurrent_us": concurrent_us,
+          "choice": choice,
+      }

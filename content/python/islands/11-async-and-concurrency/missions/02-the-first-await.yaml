@@ -1,0 +1,244 @@
+# Async and Concurrency mission 2. Introduces: async-await AND event-loop.
+# Reinforces: blocking-vs-nonblocking, functions, for-loop.
+#
+# The third and last exception to the one-new-concept rule in the whole curriculum, after
+# Island 6 mission 3 and Island 8 mission 1. It is the least avoidable of the three:
+# `await` outside a running loop is a SyntaxError or a RuntimeError depending on where you
+# put it, so a player who has not heard of the loop cannot read their own first error.
+#
+# The inner coroutine is not decoration. A player who writes `results.append(wait_for(ms))`
+# without `await` gets a list of coroutine objects, which the harness serializes by repr
+# with a fresh memory address every run - so forgetting the await fails loudly, and that is
+# the listed misconception being caught by the test rather than only named in a panel.
+#
+# Deliberately sequential. Mission 4 takes the same input and the same durations and makes
+# it concurrent, so the two answers can be compared side by side.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-02
+title: The first await
+track: python
+island: async-and-concurrency
+order: 2
+difficulty: expert
+tags: [async, await, event-loop]
+xp: 60
+
+concepts:
+  - async-await
+  - event-loop
+
+teaching:
+  analogy: |
+    A kitchen with one cook.
+
+    The cook puts a pot on to boil and stands there watching it. Nothing else happens in
+    the kitchen for eleven minutes. That is the ordinary function you have written all
+    year: it does one thing, start to finish, and the kitchen belongs to it.
+
+    Now the cook learns one sentence: "call me when it boils." They put the pot on, say
+    that sentence, and start chopping. When the pot is ready, someone tells them.
+
+    Two things had to exist for that sentence to work. The cook had to be *able* to walk
+    away mid-task, and somebody had to be keeping the list of what was waiting on what.
+    `async def` is the first. The event loop is the second, and neither is any use alone.
+
+  explanation: |
+    An `async def` function is a **coroutine function**. Calling it does not run it. It
+    hands you a coroutine object — a job that has not started — and the job only runs when
+    something awaits it.
+
+        async def fetch():
+            return 1
+
+        fetch()          # <coroutine object fetch at 0x...>, and a warning. Nothing ran.
+        await fetch()    # 1
+
+    That is the first misconception, and it is worth meeting on purpose: forgetting
+    `await` is not an error, it is a value you did not want.
+
+    **`await` means "pause here, and let something else run until this is ready."** It is
+    only legal inside an `async def`, because only a coroutine has the ability to pause.
+
+    The thing that decides what runs while you are paused is the **event loop**. One
+    thread, one loop, a list of paused coroutines. When one awaits, the loop picks another
+    that is ready. Nothing is parallel: there is exactly one thread, and exactly one line
+    of Python executing at any instant. What has changed is that the idle time is now
+    *usable*.
+
+    Two consequences to keep:
+
+    - **A coroutine that never awaits freezes the loop.** The loop cannot interrupt you; it
+      only gets control back when you hand it back. A three-second calculation with no
+      `await` in it stops every other task on the loop dead.
+    - **`await asyncio.sleep(x)` and `time.sleep(x)` are not the same.** The first yields to
+      the loop. The second blocks the thread the loop is running on, so it stalls every
+      task there is. Putting `time.sleep` inside a coroutine is the classic first bug.
+
+    In this game, **the engine awaits your entrypoint for you**. Write `async def` and
+    return a value; do not call `asyncio.run` yourself, because there is already a loop
+    running and nesting them raises `RuntimeError`.
+
+  worked_example: |
+    # Two coroutines, one awaiting the other - in a domain with no lists in it
+    import asyncio
+
+
+    async def temperature(city):
+        await asyncio.sleep(0.01)
+        return f"{city} is 18C"
+
+
+    async def report():
+        first = await temperature("Lisbon")
+        second = await temperature("Porto")
+        return first + " and " + second
+
+
+    print(asyncio.run(report()))     # Lisbon is 18C and Porto is 18C
+    # Note the two awaits, one after another. The second starts when the first is done.
+    # `asyncio.run` appears here because this is a script; in the mission the engine does it.
+
+  key_points:
+    - "Calling an `async def` gives you a coroutine object, not a result. Only `await` runs it."
+    - "`await` is only legal inside an `async def`. Outside one it is a SyntaxError, and that error is telling you a loop is missing."
+    - "The event loop is one thread juggling paused coroutines. Nothing is parallel; the idle time is merely reused."
+    - "A coroutine with no `await` in it cannot be interrupted, and freezes every other task on the loop."
+    - "Use `await asyncio.sleep(...)`, never `time.sleep(...)`, inside a coroutine. The second blocks the whole loop."
+
+brief: |
+  Do the waiting again, this time in coroutines — and still one at a time.
+
+  Write two functions.
+
+  A coroutine called wait_for that takes a number of milliseconds, awaits
+  `asyncio.sleep(ms / 1000)`, and **returns** the string `"waited {ms}ms"` — so 20 gives
+  `"waited 20ms"`.
+
+  A coroutine called one_at_a_time that takes a list of millisecond values and returns:
+
+      {"results": ..., "total_ms": ..., "count": ...}
+
+  Await `wait_for` once **per value, in order**, collecting each returned string into
+  `results`. `total_ms` is the sum of the list. `count` is how many values there were.
+
+  An empty list gives an empty `results`, 0 and 0.
+
+  `one_at_a_time` is the function the engine runs, and **the engine awaits it for you**.
+  Do not call `asyncio.run` yourself — there is already a loop running, and starting a
+  second one inside it raises `RuntimeError`.
+
+  Import `asyncio` yourself. This is still sequential: each wait starts when the one
+  before it has finished, so the whole thing takes `total_ms`. Mission 4 fixes that.
+
+signature:
+  entrypoint: one_at_a_time
+  stub: |
+    async def one_at_a_time(waits):
+        # One await per value, in order. Forget the await and you collect promises.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20]]
+      expect:
+        results: ["waited 10ms", "waited 20ms"]
+        total_ms: 30
+        count: 2
+    - args: [[30]]
+      expect:
+        results: ["waited 30ms"]
+        total_ms: 30
+        count: 1
+  hidden:
+    # Nothing to wait for. The loop body never runs and the coroutine still returns.
+    - args: [[]]
+      expect:
+        results: []
+        total_ms: 0
+        count: 0
+    # A zero-length wait is still a real await: it yields to the loop and comes back.
+    - args: [[0]]
+      expect:
+        results: ["waited 0ms"]
+        total_ms: 0
+        count: 1
+    # Repeated durations. Sequential order means the results cannot be shuffled.
+    - args: [[5, 5, 5]]
+      expect:
+        results: ["waited 5ms", "waited 5ms", "waited 5ms"]
+        total_ms: 15
+        count: 3
+    # Four in a row, adding up to a tenth of a second of nothing at all.
+    - args: [[10, 20, 30, 40]]
+      expect:
+        results: ["waited 10ms", "waited 20ms", "waited 30ms", "waited 40ms"]
+        total_ms: 100
+        count: 4
+    - args: [[0, 15]]
+      expect:
+        results: ["waited 0ms", "waited 15ms"]
+        total_ms: 15
+        count: 2
+
+hints:
+  - level: 1
+    text: |
+      Both of your functions are `async def`. One of them awaits the other.
+
+      If your `results` come back looking like `<coroutine object wait_for at 0x...>`,
+      you have called it without awaiting it — and that is exactly the mistake worth
+      making once.
+  - level: 2
+    text: |
+      `import asyncio` at the top.
+
+      `wait_for` is three lines: `async def`, one `await asyncio.sleep(ms / 1000)`, one
+      `return` of the f-string.
+
+      `one_at_a_time` is an ordinary `for` loop that happens to be inside an `async def`.
+      `results.append(await wait_for(ms))` — the `await` goes *inside* the append, because
+      what you want in the list is the value, not the promise of it.
+
+      `total_ms` is `sum(waits)` and does not need any of this.
+  - level: 3
+    text: |
+      The same two-coroutine shape, reading gauges instead of waiting:
+
+          import asyncio
+
+
+          async def read_gauge(name):
+              await asyncio.sleep(0.005)
+              return f"{name} ok"
+
+
+          async def sweep(names):
+              readings = []
+              for name in names:
+                  readings.append(await read_gauge(name))
+              return {"readings": readings, "checked": len(names)}
+
+      Yours waits on a number instead of a name, and has one more key to fill in.
+
+solution: |
+  import asyncio
+
+
+  async def wait_for(ms):
+      await asyncio.sleep(ms / 1000)
+      return f"waited {ms}ms"
+
+
+  async def one_at_a_time(waits):
+      results = []
+
+      for ms in waits:
+          results.append(await wait_for(ms))
+
+      return {"results": results, "total_ms": sum(waits), "count": len(waits)}

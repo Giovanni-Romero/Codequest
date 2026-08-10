@@ -1,0 +1,272 @@
+# Async and Concurrency mission 5. Introduces: threads.
+# Reinforces: blocking-vs-nonblocking, gather, functions, enumerate-zip.
+#
+# The other tool for the same problem, and the one that does not need the functions
+# rewritten. That is the real argument for threads and it is why they still exist: a
+# blocking library you do not control cannot be made into a coroutine, and a thread does
+# not ask it to be.
+#
+# Results are collected **by index**, never by append. Append order is arrival order, which
+# is exactly what mission 4 graded and exactly what would be nondeterministic here - the
+# case [10, 10] has two threads with identical sleeps and would be a coin flip. Collecting
+# by index makes the mission deterministic AND teaches the correct habit, which is a rare
+# case of the test design and the lesson pointing the same way.
+#
+# Sleep budget: concurrent, so the wall clock is the longest wait. Largest here is 40ms.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-05
+title: The second hand
+track: python
+island: async-and-concurrency
+order: 5
+difficulty: expert
+tags: [async, threads, concurrency]
+xp: 60
+
+concepts:
+  - threads
+
+teaching:
+  analogy: |
+    The harbour office has one clerk who has learned to say "call me when it boils". Every
+    task they handle has to be rewritten in that style, and the ones that were not — the
+    old ledger machine that simply stops for a minute when you pull the lever — still stop
+    the whole office dead.
+
+    So the office hires a second pair of hands. Not to think faster. To sit at the ledger
+    machine and be stopped *there*, where it costs nobody anything, while the clerk carries
+    on.
+
+    Nobody rewrote the ledger machine. That is the entire argument for threads.
+
+  explanation: |
+    A **thread** is a second line of execution inside the same process, sharing the same
+    memory. The operating system decides when each one runs, and it can take control away
+    from a thread at any moment.
+
+    That last sentence is the difference from `asyncio`. A coroutine gives up control
+    voluntarily, at an `await` you can see. A thread is interrupted whether it likes it or
+    not, anywhere at all.
+
+    Which buys the thing that matters here: **a thread can be blocked without blocking
+    anything else.** A function that calls `time.sleep`, or an old database driver that
+    knows nothing about coroutines, cannot be awaited — but it can be run on a thread, and
+    the rest of the program carries on while it sits there.
+
+        import threading
+
+        thread = threading.Thread(target=work, args=(1,))
+        thread.start()      # runs alongside; this line returns immediately
+        thread.join()       # wait here until it is done
+
+    Three rules that catch everyone:
+
+    - **`start()` runs it, `join()` waits for it.** Reading a result before joining reads
+      whatever was there before, which is usually `None`. Start every thread, *then* join
+      every thread — joining inside the starting loop makes it sequential again.
+    - **A thread's return value goes nowhere.** `target` returns into the void. The result
+      has to be written into something both sides can see: a list, a dict, an attribute.
+    - **Arrival order is not argument order.** Two threads that both finish "at about the
+      same time" can land either way round. If you `append` results as they arrive, your
+      output is a coin flip. **Write into a slot you chose in advance** — `results[index]`
+      — and the order is yours again.
+
+    That last rule is not a trick for passing this mission. It is how you keep a
+    concurrent program's output reproducible, and it is why `gather` was designed to
+    return argument order in mission 4.
+
+  worked_example: |
+    # Three doors opened at once, results kept in the order the doors were listed
+    import threading
+    import time
+
+
+    def unlock(doors):
+        opened = [None] * len(doors)
+
+        def turn(slot, door):
+            time.sleep(door["ms"] / 1000)
+            opened[slot] = door["name"] + " open"
+
+        crew = []
+        for slot, door in enumerate(doors):
+            hand = threading.Thread(target=turn, args=(slot, door))
+            crew.append(hand)
+            hand.start()
+
+        for hand in crew:
+            hand.join()
+
+        return opened
+
+
+    print(unlock([{"name": "hold", "ms": 20}, {"name": "cabin", "ms": 5}]))
+    # ['hold open', 'cabin open']
+    # "cabin" finished first and is still second. The slot decided that, not the clock.
+
+  key_points:
+    - "A thread is a second line of execution in the same memory. The OS interrupts it whenever it likes; a coroutine only pauses where you wrote `await`."
+    - "Threads run blocking code without rewriting it. That is the reason to choose them over asyncio, and often the only one."
+    - "`start()` launches, `join()` waits. Start them all first, then join them all — joining inside the start loop makes it sequential again."
+    - "A thread's return value is lost. Write results into shared storage instead."
+    - "Never collect results by appending as they arrive: that is arrival order, and it is nondeterministic. Write into a slot chosen in advance."
+
+brief: |
+  Do mission 4's job again, with threads instead of coroutines.
+
+  Write a function called second_hand — an **ordinary** function, not a coroutine — that
+  takes a list of millisecond values and returns:
+
+      {"results": ..., "threads": ..., "longest_ms": ...}
+
+  Give every value its own `threading.Thread`. The thread blocks with
+  `time.sleep(ms / 1000)` — the blocking one, on purpose — and then writes the string
+  `"waited {ms}ms"` into `results`.
+
+  `results` must come back in the **order of the input**, so build it as a list of `None`
+  the right length up front and have each thread write into its own index. Do not append.
+
+  Start every thread, then join every thread. `threads` is how many you made.
+  `longest_ms` is the largest value in the list, or 0 when the list is empty — that is
+  roughly how long the whole thing takes, since they overlap.
+
+  An empty list gives an empty `results`, 0 and 0.
+
+  Import `threading` and `time` yourself. Unlike missions 2, 3 and 4, this function is not
+  a coroutine and nothing awaits it.
+
+signature:
+  entrypoint: second_hand
+  stub: |
+    def second_hand(waits):
+        # A slot per wait, chosen before anything starts. Start them all, then join them all.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[30, 10, 20]]
+      expect:
+        results: ["waited 30ms", "waited 10ms", "waited 20ms"]
+        threads: 3
+        longest_ms: 30
+    - args: [[40]]
+      expect:
+        results: ["waited 40ms"]
+        threads: 1
+        longest_ms: 40
+  hidden:
+    # No threads at all. The join loop runs zero times and `max` would raise without a default.
+    - args: [[]]
+      expect:
+        results: []
+        threads: 0
+        longest_ms: 0
+    # Two identical waits. Collected by arrival this would be a coin flip; by slot it is not.
+    - args: [[10, 10]]
+      expect:
+        results: ["waited 10ms", "waited 10ms"]
+        threads: 2
+        longest_ms: 10
+    - args: [[5, 25, 15]]
+      expect:
+        results: ["waited 5ms", "waited 25ms", "waited 15ms"]
+        threads: 3
+        longest_ms: 25
+    # A zero-length sleep still starts, runs and joins like any other thread.
+    - args: [[0, 20]]
+      expect:
+        results: ["waited 0ms", "waited 20ms"]
+        threads: 2
+        longest_ms: 20
+    # Three the same. Sequentially this would be 60ms; overlapped it is 20.
+    - args: [[20, 20, 20]]
+      expect:
+        results: ["waited 20ms", "waited 20ms", "waited 20ms"]
+        threads: 3
+        longest_ms: 20
+
+hints:
+  - level: 1
+    text: |
+      A thread cannot hand you its return value. Where does it put the answer instead, so
+      that the function can read it after the join?
+
+      And what is wrong with `results.append(...)` inside the thread, given that two of
+      the test cases have identical durations?
+  - level: 2
+    text: |
+      `results = [None] * len(waits)` before anything starts. Every slot is now reserved.
+
+      The worker takes the slot number as well as the duration:
+
+          def run(index, ms):
+              time.sleep(ms / 1000)
+              results[index] = f"waited {ms}ms"
+
+      Build the threads with `enumerate(waits)`, `start()` each as you go and keep it in a
+      list. Then a second loop over that list calling `join()`. Two loops, not one — a
+      `join` inside the first loop waits for each thread before starting the next, and you
+      are back to mission 1.
+
+      `max(waits, default=0)` handles the empty case in one call.
+  - level: 3
+    text: |
+      The same shape, with the two loops kept apart:
+
+          import threading
+          import time
+
+
+          def stamp(letters):
+              marks = [None] * len(letters)
+
+              def press(slot, letter):
+                  time.sleep(letter["ms"] / 1000)
+                  marks[slot] = letter["id"] + "-stamped"
+
+              crew = []
+              for slot, letter in enumerate(letters):
+                  hand = threading.Thread(target=press, args=(slot, letter))
+                  crew.append(hand)
+                  hand.start()
+
+              for hand in crew:
+                  hand.join()
+
+              return {"marks": marks, "hands": len(crew)}
+
+      Yours works on plain numbers rather than dicts, and has a third key that does not
+      need a thread at all.
+
+solution: |
+  import threading
+  import time
+
+
+  def second_hand(waits):
+      results = [None] * len(waits)
+
+      def run(index, ms):
+          time.sleep(ms / 1000)
+          results[index] = f"waited {ms}ms"
+
+      threads = []
+      for index, ms in enumerate(waits):
+          thread = threading.Thread(target=run, args=(index, ms))
+          threads.append(thread)
+          thread.start()
+
+      for thread in threads:
+          thread.join()
+
+      return {
+          "results": results,
+          "threads": len(waits),
+          "longest_ms": max(waits, default=0),
+      }

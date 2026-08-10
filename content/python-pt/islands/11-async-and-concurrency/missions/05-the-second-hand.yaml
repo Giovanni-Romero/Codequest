@@ -1,0 +1,272 @@
+# Missão 5 de Async e Concorrência. Introduz: threads.
+# Reforça: blocking-vs-nonblocking, gather, functions, enumerate-zip.
+#
+# A outra ferramenta para o mesmo problema, e a que não exige reescrever as funções. Esse é
+# o argumento de verdade para threads e é por isso que elas ainda existem: uma biblioteca
+# bloqueante que você não controla não pode virar corrotina, e uma thread não pede isso a ela.
+#
+# Os resultados são coletados **por índice**, nunca por append. Ordem de append é ordem de
+# chegada, que é exatamente o que a missão 4 avaliou e exatamente o que seria não
+# determinístico aqui - o caso [10, 10] tem duas threads com sonos idênticos e seria cara ou
+# coroa. Coletar por índice torna a missão determinística E ensina o hábito correto, um caso
+# raro de o desenho do teste e a lição apontarem para o mesmo lado.
+#
+# Orçamento de sono: concorrente, então o relógio de parede é a maior espera. 40ms aqui.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-05
+title: O segundo par de mãos
+track: python
+island: async-and-concurrency
+order: 5
+difficulty: expert
+tags: [async, threads, concurrency]
+xp: 60
+
+concepts:
+  - threads
+
+teaching:
+  analogy: |
+    A capitania tem um escriturário que aprendeu a dizer "me chama quando ferver". Toda
+    tarefa que ele cuida precisa ser reescrita nesse estilo, e as que não foram — a velha
+    máquina de livro-caixa que simplesmente para por um minuto quando você puxa a alavanca —
+    continuam parando o escritório inteiro.
+
+    Então a capitania contrata um segundo par de mãos. Não para pensar mais rápido. Para
+    sentar na máquina de livro-caixa e ficar parado *ali*, onde isso não custa nada a
+    ninguém, enquanto o escriturário toca o resto.
+
+    Ninguém reescreveu a máquina de livro-caixa. Esse é o argumento inteiro para threads.
+
+  explanation: |
+    Uma **thread** é uma segunda linha de execução dentro do mesmo processo, compartilhando
+    a mesma memória. O sistema operacional decide quando cada uma roda, e pode tirar o
+    controle de uma thread a qualquer momento.
+
+    Essa última frase é a diferença para o `asyncio`. Uma corrotina abre mão do controle
+    voluntariamente, num `await` que você consegue ver. Uma thread é interrompida querendo
+    ou não, em qualquer lugar.
+
+    O que compra a coisa que importa aqui: **uma thread pode ficar bloqueada sem bloquear
+    mais nada.** Uma função que chama `time.sleep`, ou um driver antigo de banco que não
+    sabe nada de corrotinas, não pode ser aguardada — mas pode rodar numa thread, e o resto
+    do programa segue enquanto ela fica ali parada.
+
+        import threading
+
+        thread = threading.Thread(target=work, args=(1,))
+        thread.start()      # roda em paralelo; esta linha retorna imediatamente
+        thread.join()       # espera aqui até ela terminar
+
+    Três regras que pegam todo mundo:
+
+    - **`start()` roda, `join()` espera.** Ler um resultado antes do join lê o que estava
+      lá antes, que normalmente é `None`. Inicie todas as threads, *depois* junte todas —
+      dar join dentro do laço de início torna tudo sequencial de novo.
+    - **O valor de retorno de uma thread não vai a lugar nenhum.** `target` retorna para o
+      vazio. O resultado tem de ser escrito em algo que os dois lados enxerguem: uma lista,
+      um dict, um atributo.
+    - **Ordem de chegada não é ordem de argumento.** Duas threads que terminam "mais ou
+      menos ao mesmo tempo" podem cair em qualquer ordem. Se você faz `append` conforme
+      chegam, sua saída é cara ou coroa. **Escreva numa posição escolhida de antemão** —
+      `results[index]` — e a ordem volta a ser sua.
+
+    Essa última regra não é um truque para passar nesta missão. É como se mantém a saída de
+    um programa concorrente reprodutível, e é por isso que o `gather` foi desenhado para
+    devolver ordem de argumento na missão 4.
+
+  worked_example: |
+    # Três portas abertas de uma vez, resultados na ordem em que as portas foram listadas
+    import threading
+    import time
+
+
+    def unlock(doors):
+        opened = [None] * len(doors)
+
+        def turn(slot, door):
+            time.sleep(door["ms"] / 1000)
+            opened[slot] = door["name"] + " open"
+
+        crew = []
+        for slot, door in enumerate(doors):
+            hand = threading.Thread(target=turn, args=(slot, door))
+            crew.append(hand)
+            hand.start()
+
+        for hand in crew:
+            hand.join()
+
+        return opened
+
+
+    print(unlock([{"name": "hold", "ms": 20}, {"name": "cabin", "ms": 5}]))
+    # ['hold open', 'cabin open']
+    # "cabin" terminou primeiro e continua em segundo. A posição decidiu isso, não o relógio.
+
+  key_points:
+    - "Uma thread é uma segunda linha de execução na mesma memória. O SO a interrompe quando quer; uma corrotina só pausa onde você escreveu `await`."
+    - "Threads rodam código bloqueante sem reescrevê-lo. É esse o motivo para escolhê-las em vez de asyncio, e muitas vezes o único."
+    - "`start()` lança, `join()` espera. Inicie todas primeiro, depois junte todas — dar join dentro do laço de início torna tudo sequencial de novo."
+    - "O valor de retorno de uma thread se perde. Escreva resultados num lugar compartilhado."
+    - "Nunca colete resultados com append conforme chegam: isso é ordem de chegada, e é não determinística. Escreva numa posição escolhida de antemão."
+
+brief: |
+  Faça o serviço da missão 4 de novo, com threads em vez de corrotinas.
+
+  Escreva uma função chamada second_hand — uma função **comum**, não uma corrotina — que
+  recebe uma lista de valores em milissegundos e devolve:
+
+      {"results": ..., "threads": ..., "longest_ms": ...}
+
+  Dê a cada valor a própria `threading.Thread`. A thread bloqueia com
+  `time.sleep(ms / 1000)` — a bloqueante, de propósito — e depois escreve a string
+  `"waited {ms}ms"` em `results`.
+
+  `results` tem de voltar na **ordem da entrada**, então construa uma lista de `None` do
+  tamanho certo antes e faça cada thread escrever no próprio índice. Não use append.
+
+  Inicie todas as threads, depois junte todas. `threads` é quantas você criou.
+  `longest_ms` é o maior valor da lista, ou 0 quando a lista está vazia — que é
+  aproximadamente quanto tudo leva, já que elas se sobrepõem.
+
+  Uma lista vazia dá um `results` vazio, 0 e 0.
+
+  Importe `threading` e `time` você mesmo. Diferente das missões 2, 3 e 4, esta função não é
+  corrotina e nada a aguarda.
+
+signature:
+  entrypoint: second_hand
+  stub: |
+    def second_hand(waits):
+        # Uma posição por espera, escolhida antes de tudo começar. Inicie todas, depois junte todas.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[30, 10, 20]]
+      expect:
+        results: ["waited 30ms", "waited 10ms", "waited 20ms"]
+        threads: 3
+        longest_ms: 30
+    - args: [[40]]
+      expect:
+        results: ["waited 40ms"]
+        threads: 1
+        longest_ms: 40
+  hidden:
+    # Nenhuma thread. O laço de join roda zero vezes e `max` levantaria erro sem o default.
+    - args: [[]]
+      expect:
+        results: []
+        threads: 0
+        longest_ms: 0
+    # Duas esperas idênticas. Coletado por chegada isso seria cara ou coroa; por posição, não.
+    - args: [[10, 10]]
+      expect:
+        results: ["waited 10ms", "waited 10ms"]
+        threads: 2
+        longest_ms: 10
+    - args: [[5, 25, 15]]
+      expect:
+        results: ["waited 5ms", "waited 25ms", "waited 15ms"]
+        threads: 3
+        longest_ms: 25
+    # Um sono de tamanho zero ainda inicia, roda e é juntado como qualquer outra thread.
+    - args: [[0, 20]]
+      expect:
+        results: ["waited 0ms", "waited 20ms"]
+        threads: 2
+        longest_ms: 20
+    # Três iguais. Em sequência isso seria 60ms; sobreposto é 20.
+    - args: [[20, 20, 20]]
+      expect:
+        results: ["waited 20ms", "waited 20ms", "waited 20ms"]
+        threads: 3
+        longest_ms: 20
+
+hints:
+  - level: 1
+    text: |
+      Uma thread não consegue te entregar o valor de retorno dela. Onde ela põe a resposta
+      então, para a função conseguir ler depois do join?
+
+      E o que há de errado com `results.append(...)` dentro da thread, dado que dois dos
+      casos de teste têm durações idênticas?
+  - level: 2
+    text: |
+      `results = [None] * len(waits)` antes de tudo começar. Toda posição já está reservada.
+
+      O trabalhador recebe o número da posição além da duração:
+
+          def run(index, ms):
+              time.sleep(ms / 1000)
+              results[index] = f"waited {ms}ms"
+
+      Construa as threads com `enumerate(waits)`, dê `start()` em cada uma conforme cria e
+      guarde numa lista. Depois um segundo laço sobre essa lista chamando `join()`. Dois
+      laços, não um — um `join` dentro do primeiro laço espera cada thread antes de iniciar
+      a próxima, e você voltou para a missão 1.
+
+      `max(waits, default=0)` resolve o caso vazio numa chamada só.
+  - level: 3
+    text: |
+      O mesmo formato, com os dois laços mantidos separados:
+
+          import threading
+          import time
+
+
+          def stamp(letters):
+              marks = [None] * len(letters)
+
+              def press(slot, letter):
+                  time.sleep(letter["ms"] / 1000)
+                  marks[slot] = letter["id"] + "-stamped"
+
+              crew = []
+              for slot, letter in enumerate(letters):
+                  hand = threading.Thread(target=press, args=(slot, letter))
+                  crew.append(hand)
+                  hand.start()
+
+              for hand in crew:
+                  hand.join()
+
+              return {"marks": marks, "hands": len(crew)}
+
+      A sua trabalha com números simples em vez de dicts, e tem uma terceira chave que não
+      precisa de thread nenhuma.
+
+solution: |
+  import threading
+  import time
+
+
+  def second_hand(waits):
+      results = [None] * len(waits)
+
+      def run(index, ms):
+          time.sleep(ms / 1000)
+          results[index] = f"waited {ms}ms"
+
+      threads = []
+      for index, ms in enumerate(waits):
+          thread = threading.Thread(target=run, args=(index, ms))
+          threads.append(thread)
+          thread.start()
+
+      for thread in threads:
+          thread.join()
+
+      return {
+          "results": results,
+          "threads": len(waits),
+          "longest_ms": max(waits, default=0),
+      }

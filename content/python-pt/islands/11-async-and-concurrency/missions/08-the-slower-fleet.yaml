@@ -1,0 +1,306 @@
+# Missão 8 de Async e Concorrência. Introduz: when-concurrency-helps.
+# Reforça: gil, gather, blocking-vs-nonblocking, big-o.
+#
+# A missão da recusa que o syllabus exige desde a v1.1: pelo menos uma missão precisa
+# mostrar um caso em que a concorrência é mais lenta. É a mais difícil da ilha de avaliar,
+# porque a prova honesta é um cronômetro e esta ilha recusa cronômetros (eles mentem num
+# sistema de arquivos Windows frio - CLAUDE.md seção 5).
+#
+# Então o enunciado declara o modelo de custo e o jogador calcula com ele. Isso é a regra da
+# especificação da Ilha 10 aplicada à concorrência, e o syllabus previu que seria preciso
+# aqui: "a brief that says 'run them concurrently' is not a specification either." O modelo
+# é deliberadamente simples e deliberadamente verdadeiro no formato - espera se sobrepõe,
+# então colapsa na maior; cálculo não, então continua somando; e todo ramo custa um valor fixo.
+#
+# [AI-ENG:concurrency-cost] Um agente que dispara dez chamadas de ferramenta em paralelo
+# paga exatamente esta troca: sobreponha a espera, nunca o trabalho, e pague um custo fixo
+# por ramo. O reflexo de paralelizar um lote de chamadas de LLM que levam vinte
+# milissegundos cada é o mesmo reflexo que esta missão recusa, em outra escala.
+#
+# Sem sonos: nada é rodado aqui, só decidido. Essa é a missão.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-08
+title: A frota mais lenta
+track: python
+island: async-and-concurrency
+order: 8
+difficulty: expert
+tags: [async, refusal, cost-model]
+xp: 60
+
+concepts:
+  - when-concurrency-helps
+
+teaching:
+  analogy: |
+    Um capitão tem dez engradados para levar do cais até um galpão a trinta metros. Cada
+    viagem leva vinte segundos.
+
+    Ele podia carregar sozinho: duzentos segundos, e ele já sabe fazer isso.
+
+    Ou podia contratar dez carregadores. Cada um precisa ser encontrado, instruído e pago —
+    digamos quinhentos segundos do tempo do capitão, por carregador. O carregamento agora
+    leva vinte segundos. A manhã leva uma hora e meia.
+
+    Ninguém nessa história estava errado sobre carregadores serem mais rápidos carregando. O
+    erro foi nunca ter conferido se carregar era a parte cara.
+
+  explanation: |
+    Concorrência não é de graça e não é um botão de velocidade. É uma troca, e tem um formato
+    que você consegue escrever:
+
+    - **Ela sobrepõe espera.** Dez esperas de um segundo, juntas, custam um segundo.
+    - **Ela não sobrepõe trabalho.** Dez segundos de aritmética Python em threads continuam
+      sendo dez segundos — a GIL, missão 7 — e em processos só fica mais rápido se os
+      pedaços forem grandes o bastante para compensar copiar os dados.
+    - **Todo ramo custa um valor fixo.** Um objeto de tarefa, uma thread, um processo, uma
+      conexão. Microssegundos para uma tarefa `asyncio`; mais para uma thread; muito para um
+      processo. É pago **por ramo**, tendo o ramo valido a pena ou não.
+
+    Junte isso e você tem a regra para a qual a ilha inteira vinha construindo:
+
+    > Concorrência ganha quando a espera que você consegue sobrepor é maior que o custo fixo
+    > dos ramos que você cria. Quando não é, o laço simples é a resposta certa e a versão
+    > concorrente é mais lenta, mais longa e mais difícil de depurar.
+
+    O caso que as pessoas erram é trabalho pequeno em grande quantidade. Mil trabalhos de
+    cinquenta microssegundos cada são cinquenta milissegundos em sequência. Dê a cada um uma
+    tarefa a cem microssegundos de custo e você acabou de gastar cem milissegundos criando
+    tarefas para não economizar nada, porque não havia espera nenhuma ali para sobrepor.
+
+    E repare no que a concorrência nunca faz: **ela não reduz o trabalho total.** Os mesmos
+    bytes são interpretados, as mesmas somas são feitas. Ela só te impede de ficar parado
+    enquanto outra coisa está lenta. Se nada está lento, não há nada para impedir.
+
+    Então a ordem honesta das operações é a da Ilha 10, mais uma vez. Meça. Descubra para
+    onde vai o tempo. Só então escolha uma ferramenta — e esteja disposto a concluir que a
+    ferramenta é um laço `for`.
+
+  worked_example: |
+    # Decidindo entre dois planos de entrega com um modelo de custo explícito, e sem vans
+    def plan(parcels, setup_per_van):
+        one_van = sum(parcels)
+        many_vans = len(parcels) * setup_per_van + max(parcels, default=0)
+
+        return {
+            "one_van": one_van,
+            "many_vans": many_vans,
+            "use": "many" if many_vans < one_van else "one",
+        }
+
+
+    print(plan([90, 80, 70], 5))     # {'one_van': 240, 'many_vans': 105, 'use': 'many'}
+    print(plan([3, 2, 1], 5))        # {'one_van': 6, 'many_vans': 18, 'use': 'one'}
+    # Mesmo modelo, mesmo código, resposta oposta. Os números decidiram, não o entusiasmo.
+
+  key_points:
+    - "Concorrência sobrepõe espera e mais nada. Ela nunca reduz a quantidade total de trabalho."
+    - "Todo ramo tem um custo fixo — uma tarefa, uma thread, um processo — pago tendo o ramo valido a pena ou não."
+    - "Ela só ganha quando a espera sobreposta supera o custo fixo dos ramos. Abaixo dessa linha o laço simples é mais rápido."
+    - "Muitos trabalhos pequenos sem espera dentro é a perda clássica: todo o custo, nenhuma sobreposição."
+    - "Quando os dois empatam, escolha a versão sequencial. Mesma velocidade com menos maquinário não é empate."
+
+brief: |
+  Não rode a frota. Decida se deve.
+
+  Escreva uma função chamada fleet que recebe uma lista de trabalhos e um `overhead_us`
+  fixo — os microssegundos que custa iniciar um ramo — e devolve:
+
+      {"sequential_us": ..., "concurrent_us": ..., "difference_us": ..., "choice": ...}
+
+  Cada trabalho é um dict com `"name"`, `"us"` (quanto ele leva, em microssegundos) e
+  `"kind"`, que é `"wait"` ou `"compute"`.
+
+  **Este é o modelo. Use exatamente ele — nada aqui é medido.**
+
+  `sequential_us` é a soma dos `us` de todo trabalho. Um depois do outro, nada se sobrepõe.
+
+  `concurrent_us` são três termos somados:
+
+      len(jobs) * overhead_us          um ramo iniciado por trabalho, sempre pago
+      + o maior `us` entre os trabalhos "wait", ou 0 se não houver nenhum
+      + a soma dos `us` dos trabalhos "compute"
+
+  Espera colapsa na maior porque esperas se sobrepõem. Cálculo continua somando porque não
+  se sobrepõe — essa é a GIL da missão 7, escrita como aritmética.
+
+  `difference_us` é `sequential_us - concurrent_us`. Positivo significa que a concorrência
+  ganha.
+
+  `choice` é a string `"concurrent"` quando `concurrent_us` for **estritamente menor** que
+  `sequential_us`, e `"sequential"` caso contrário. Empate não é empate: mesma velocidade
+  com menos maquinário significa que você fica com o laço.
+
+  Uma lista vazia de trabalhos dá 0, 0, 0 e `"sequential"`.
+
+signature:
+  entrypoint: fleet
+  stub: |
+    def fleet(jobs, overhead_us):
+        # Dois totais pelo modelo do enunciado, depois compare. Nada é rodado.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # Dez cálculos minúsculos. Duzentos microssegundos de trabalho, cinco mil de custo.
+    # Este é o argumento inteiro da missão num caso só.
+    - args:
+        [
+          [
+            {name: j0, us: 20, kind: compute},
+            {name: j1, us: 20, kind: compute},
+            {name: j2, us: 20, kind: compute},
+            {name: j3, us: 20, kind: compute},
+            {name: j4, us: 20, kind: compute},
+            {name: j5, us: 20, kind: compute},
+            {name: j6, us: 20, kind: compute},
+            {name: j7, us: 20, kind: compute},
+            {name: j8, us: 20, kind: compute},
+            {name: j9, us: 20, kind: compute},
+          ],
+          500,
+        ]
+      expect:
+        sequential_us: 200
+        concurrent_us: 5200
+        difference_us: -5000
+        choice: sequential
+    # Três chamadas de rede de verdade. Agora o custo é ruído e a concorrência é a resposta.
+    - args:
+        [
+          [
+            {name: a, us: 100000, kind: wait},
+            {name: b, us: 100000, kind: wait},
+            {name: c, us: 100000, kind: wait},
+          ],
+          500,
+        ]
+      expect:
+        sequential_us: 300000
+        concurrent_us: 101500
+        difference_us: 198500
+        choice: concurrent
+  hidden:
+    # Nenhum trabalho. Os dois totais são 0, a diferença é 0, e empate fica com o laço.
+    - args: [[], 500]
+      expect:
+        sequential_us: 0
+        concurrent_us: 0
+        difference_us: 0
+        choice: sequential
+    # Uma espera só. Não há nada com que sobrepô-la, então o ramo é perda pura —
+    # e este é o caso que as pessoas erram com mais frequência.
+    - args: [[{name: solo, us: 5000, kind: wait}], 500]
+      expect:
+        sequential_us: 5000
+        concurrent_us: 5500
+        difference_us: -500
+        choice: sequential
+    - args: [[{name: solo, us: 500, kind: wait}], 500]
+      expect:
+        sequential_us: 500
+        concurrent_us: 1000
+        difference_us: -500
+        choice: sequential
+    # Misturado, e perde por dois mil. O trabalho de cálculo não pode ser sobreposto, então
+    # tudo o que a concorrência comprou foi uma espera que já ia acontecer.
+    - args: [[{name: net, us: 80000, kind: wait}, {name: hash, us: 40000, kind: compute}], 1000]
+      expect:
+        sequential_us: 120000
+        concurrent_us: 122000
+        difference_us: -2000
+        choice: sequential
+    # Seis esperas minúsculas. Espera se sobrepõe e mesmo assim perde, porque mal havia espera.
+    - args:
+        [
+          [
+            {name: t0, us: 30, kind: wait},
+            {name: t1, us: 30, kind: wait},
+            {name: t2, us: 30, kind: wait},
+            {name: t3, us: 30, kind: wait},
+            {name: t4, us: 30, kind: wait},
+            {name: t5, us: 30, kind: wait},
+          ],
+          200,
+        ]
+      expect:
+        sequential_us: 180
+        concurrent_us: 1230
+        difference_us: -1050
+        choice: sequential
+    # Ramos de graça. Sem custo a concorrência não consegue perder na espera — que é o jeito
+    # mais limpo de ver que o custo é o argumento inteiro.
+    - args: [[{name: a, us: 50000, kind: wait}, {name: b, us: 50000, kind: wait}], 0]
+      expect:
+        sequential_us: 100000
+        concurrent_us: 50000
+        difference_us: 50000
+        choice: concurrent
+
+hints:
+  - level: 1
+    text: |
+      Nada roda nesta missão. Todo número vem da fórmula de três termos do enunciado.
+
+      O termo que pega as pessoas: o custo é multiplicado por **todos** os trabalhos, não só
+      pelos que esperam. Um ramo custa o mesmo tendo sido uma boa ideia ou não.
+  - level: 2
+    text: |
+      `sequential_us` é um `sum` com uma expressão geradora sobre `job["us"]`.
+
+      Para o outro, separe os trabalhos em duas listas de durações — as esperas e os
+      cálculos — com duas compreensões filtrando por `job["kind"]`.
+
+      Depois: `len(jobs) * overhead_us + max(waits, default=0) + sum(computes)`. O
+      `default=0` é o que impede `max` de levantar erro quando não há espera nenhuma.
+
+      `choice` é uma expressão condicional só, e a comparação é `<` estrito.
+  - level: 3
+    text: |
+      O mesmo formato de três termos, escolhendo entre um forno e vários:
+
+          def bake(trays, oven_setup):
+              one_oven = sum(tray["minutes"] for tray in trays)
+
+              proving = [t["minutes"] for t in trays if t["stage"] == "prove"]
+              kneading = [t["minutes"] for t in trays if t["stage"] == "knead"]
+              many_ovens = len(trays) * oven_setup + max(proving, default=0) + sum(kneading)
+
+              return {
+                  "one": one_oven,
+                  "many": many_ovens,
+                  "pick": "many" if many_ovens < one_oven else "one",
+              }
+
+
+          print(bake([{"minutes": 60, "stage": "prove"},
+                      {"minutes": 60, "stage": "prove"}], 5))
+          # {'one': 120, 'many': 70, 'pick': 'many'}
+
+      Fermentar se sobrepõe, sovar não, e todo forno custa o mesmo para acender. A sua tem
+      uma chave a mais: a diferença entre os dois totais, nessa ordem.
+
+solution: |
+  def fleet(jobs, overhead_us):
+      sequential_us = sum(job["us"] for job in jobs)
+
+      waits = [job["us"] for job in jobs if job["kind"] == "wait"]
+      computes = [job["us"] for job in jobs if job["kind"] == "compute"]
+
+      concurrent_us = len(jobs) * overhead_us + max(waits, default=0) + sum(computes)
+      difference_us = sequential_us - concurrent_us
+
+      choice = "concurrent" if concurrent_us < sequential_us else "sequential"
+
+      return {
+          "sequential_us": sequential_us,
+          "concurrent_us": concurrent_us,
+          "difference_us": difference_us,
+          "choice": choice,
+      }

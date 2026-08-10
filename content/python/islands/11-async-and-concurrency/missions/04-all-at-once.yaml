@@ -1,0 +1,255 @@
+# Async and Concurrency mission 4. Introduces: gather.
+# Reinforces: async-await, event-loop, blocking-vs-nonblocking, lists.
+#
+# The payoff of the island, and the same input as mission 2 on purpose: [10, 20] took 30ms
+# there and takes 20ms here. The tests cannot see the clock, so the proof is structural -
+# `finished` comes back in duration order, which is only possible if the waits overlapped.
+# A sequential implementation produces `finished == waits` and fails on the very first case.
+#
+# Completion order is the island's grading mechanism (syllabus, "No mission may assert on
+# elapsed time"). It is deterministic only if the durations differ by more than the
+# platform's timer granularity, which on Windows is around 15ms. Every case therefore uses
+# distinct durations at least 20ms apart, and the brief promises the player they are
+# distinct so nobody has to invent a tie-breaking rule.
+#
+# Sleep budget: concurrent, so the wall clock is the *longest* wait, never the sum. The
+# largest case here is 70ms.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-04
+title: All at once
+track: python
+island: async-and-concurrency
+order: 4
+difficulty: expert
+tags: [async, gather, concurrency]
+xp: 60
+
+concepts:
+  - gather
+
+teaching:
+  analogy: |
+    Three kettles and one cook again.
+
+    In mission 2 the cook filled a kettle, waited for it, then filled the next. Three
+    kettles, eleven minutes each, thirty-three minutes.
+
+    Today the cook fills all three, switches all three on, and sits down. The kettles do
+    not take turns — they were never competing for anything. Eleven minutes later all
+    three are boiling.
+
+    Notice which one whistles first: the one with the least water in it, not the one that
+    was filled first. That is the only visible evidence anything overlapped, and it is
+    what this mission is graded on.
+
+  explanation: |
+    **`asyncio.gather` starts several coroutines at once and gives you every result when
+    they are all in.**
+
+        results = await asyncio.gather(one(), two(), three())
+
+    All three start immediately. `await` on the `gather` pauses until the last of them
+    finishes, and `results` is a list.
+
+    The guarantee worth memorising: **`gather` returns results in the order you passed the
+    coroutines, not the order they finished.** That is what makes it usable. You do not
+    have to label anything or sort anything — position 0 of the result belongs to the
+    first argument, always, even if it was the slowest.
+
+    Compare it to what you wrote in mission 2:
+
+        for ms in waits:                     # sequential: each starts when the last ended
+            results.append(await wait_for(ms))
+
+        await asyncio.gather(*[...])         # concurrent: all start now
+
+    The loop takes the *sum* of the waits. The `gather` takes the *longest* one. On
+    `[10, 20]` that is 30ms against 20ms; on twenty network calls of 200ms each it is four
+    seconds against a fifth of a second, and that is the difference this whole island
+    exists for.
+
+    Three things to keep:
+
+    - **Nothing is parallel.** One thread, one loop. The waits overlap; no two lines of
+      your Python run at the same instant.
+    - **Awaiting them one by one in a loop is not gathering.** `for c in coros: await c`
+      is the sequential version with extra steps.
+    - **One exception cancels the batch.** If any coroutine raises, `gather` raises and the
+      other results are lost — unless you pass `return_exceptions=True`, which hands you
+      the exception objects as ordinary results instead.
+
+  worked_example: |
+    # Three signals fired at once, in a domain with no durations in it
+    import asyncio
+
+
+    async def ping(host, delay):
+        await asyncio.sleep(delay)
+        return host.upper()
+
+
+    async def sweep():
+        return await asyncio.gather(ping("north", 0.03), ping("south", 0.01))
+
+
+    print(asyncio.run(sweep()))     # ['NORTH', 'SOUTH']
+    # "south" finished first and is still second in the list. Argument order, every time.
+
+  key_points:
+    - "`gather` starts every coroutine immediately and returns when the last one is done. Sequential awaits take the sum; a gather takes the longest."
+    - "`gather` returns results in **argument order**, never completion order. That guarantee is what makes it usable without labelling anything."
+    - "Awaiting coroutines one after another in a loop is the sequential version, not the concurrent one."
+    - "Nothing is parallel. One thread, one loop — only the waiting overlaps."
+    - "By default one exception cancels the whole batch. `return_exceptions=True` hands you the exceptions as results instead."
+
+brief: |
+  The same waits as mission 2, all started at once.
+
+  Write a coroutine called all_at_once that takes a list of millisecond values and returns:
+
+      {"results": ..., "finished": ..., "count": ...}
+
+  Every value gets its own coroutine, which awaits `asyncio.sleep(ms / 1000)`, then
+  **appends its `ms` to a shared list**, then returns the string `"waited {ms}ms"`.
+
+  Start them all with a single `asyncio.gather` and await it once.
+
+  `results` is what `gather` gave you, as a list — so it is in **argument order**, the same
+  order as the input.
+
+  `finished` is that shared list — so it is in **completion order**, shortest wait first.
+  On `[50, 10, 30]` the two lists disagree, and that disagreement is the only proof
+  anything overlapped.
+
+  `count` is how many values there were.
+
+  An empty list gives two empty lists and 0.
+
+  Every case gives you durations that are **all different**, so there is never a tie to
+  break. Import `asyncio` yourself; the engine awaits your function.
+
+signature:
+  entrypoint: all_at_once
+  stub: |
+    async def all_at_once(waits):
+        # One shared list for completion order, one gather for everything else.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # The headline case: `results` follows the input, `finished` follows the clock.
+    - args: [[50, 10, 30]]
+      expect:
+        results: ["waited 50ms", "waited 10ms", "waited 30ms"]
+        finished: [10, 30, 50]
+        count: 3
+    # Already sorted, so the two lists agree. Passing this one proves nothing on its own.
+    - args: [[20, 60]]
+      expect:
+        results: ["waited 20ms", "waited 60ms"]
+        finished: [20, 60]
+        count: 2
+  hidden:
+    # Nothing to gather. `asyncio.gather()` with no arguments returns an empty list.
+    - args: [[]]
+      expect:
+        results: []
+        finished: []
+        count: 0
+    # One coroutine. Concurrency with a single task is just the task.
+    - args: [[25]]
+      expect:
+        results: ["waited 25ms"]
+        finished: [25]
+        count: 1
+    - args: [[10, 30, 50, 70]]
+      expect:
+        results: ["waited 10ms", "waited 30ms", "waited 50ms", "waited 70ms"]
+        finished: [10, 30, 50, 70]
+        count: 4
+    # Exactly reversed: the two lists are mirror images, and only a real gather produces it.
+    - args: [[70, 50, 30, 10]]
+      expect:
+        results: ["waited 70ms", "waited 50ms", "waited 30ms", "waited 10ms"]
+        finished: [10, 30, 50, 70]
+        count: 4
+    - args: [[40, 20]]
+      expect:
+        results: ["waited 40ms", "waited 20ms"]
+        finished: [20, 40]
+        count: 2
+    - args: [[15, 45]]
+      expect:
+        results: ["waited 15ms", "waited 45ms"]
+        finished: [15, 45]
+        count: 2
+
+hints:
+  - level: 1
+    text: |
+      Two orders come out of this, and only one of them is `gather`'s job.
+
+      `gather` hands you argument order. Completion order is something you have to record
+      yourself, from inside each coroutine, at the moment it wakes up. Where can a list
+      live so that every one of those coroutines can see the same one?
+  - level: 2
+    text: |
+      Define `finished = []` in `all_at_once`, before anything starts.
+
+      Define the worker **inside** `all_at_once`, so it closes over that list:
+
+          async def run(ms):
+              await asyncio.sleep(ms / 1000)
+              finished.append(ms)
+              return f"waited {ms}ms"
+
+      Then one line starts them all: `await asyncio.gather(*[run(ms) for ms in waits])`.
+      The `*` matters — `gather` takes coroutines as separate arguments, not one list.
+
+      Wrap what it returns in `list(...)` before putting it in the dict.
+  - level: 3
+    text: |
+      The same two-orders trick, dispatching couriers:
+
+          import asyncio
+
+
+          async def deliver(routes):
+              arrived = []
+
+              async def go(route):
+                  await asyncio.sleep(route["minutes"] / 1000)
+                  arrived.append(route["name"])
+                  return route["name"].upper()
+
+              shouted = await asyncio.gather(*[go(route) for route in routes])
+              return {"shouted": list(shouted), "arrived": arrived}
+
+
+          print(asyncio.run(deliver([{"name": "far", "minutes": 30},
+                                     {"name": "near", "minutes": 10}])))
+          # {'shouted': ['FAR', 'NEAR'], 'arrived': ['near', 'far']}
+
+      Yours records the duration rather than the name, and has a third key.
+
+solution: |
+  import asyncio
+
+
+  async def all_at_once(waits):
+      finished = []
+
+      async def run(ms):
+          await asyncio.sleep(ms / 1000)
+          finished.append(ms)
+          return f"waited {ms}ms"
+
+      results = await asyncio.gather(*[run(ms) for ms in waits])
+
+      return {"results": list(results), "finished": finished, "count": len(waits)}

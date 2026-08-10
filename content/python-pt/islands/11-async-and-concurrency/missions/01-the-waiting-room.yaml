@@ -1,0 +1,268 @@
+# Missão 1 de Async e Concorrência. Introduz: blocking-vs-nonblocking.
+# Reforça: for-loop, accumulator-pattern, dictionaries.
+#
+# Nenhum async em lugar nenhum desta missão, e esse é o ponto. A Ilha 5 ensinou exceções
+# antes de try/except e a Ilha 7 ensinou open-and-read antes dos context managers, pelo
+# mesmo motivo: o jogador precisa sentir três décimos de segundo de espera inútil se
+# somarem antes que `await` seja uma solução em vez de uma moda.
+#
+# Os sonos são reais, e a aritmética também. As duas metades da resposta vêm de rodar os
+# jobs, não de ler a entrada: `checksum` só se obtém fazendo o trabalho, e `waiting_ms` só
+# se obtém classificando certo.
+#
+# A fórmula do checksum está escrita no enunciado. Regra da especificação da Ilha 10: um
+# número avaliado precisa de um cálculo especificado, não apenas de um plausível.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-01
+title: A sala de espera
+track: python
+island: async-and-concurrency
+order: 1
+difficulty: expert
+tags: [async, blocking, baseline]
+xp: 60
+
+concepts:
+  - blocking-vs-nonblocking
+
+teaching:
+  analogy: |
+    Duas pessoas atrás do balcão da capitania, e as duas parecem igualmente ocupadas.
+
+    A primeira está somando uma coluna de números. Tire a caneta dela e o trabalho para.
+
+    A segunda está com o telefone no ouvido, na espera, ouvindo música. Tire o telefone
+    dela e nada se perde além da espera. Ela está ali há dez minutos e não fez nada.
+
+    Da porta, as duas parecem idênticas. Tudo nesta ilha depende de distinguir uma da
+    outra, porque só uma das duas se resolve contratando mais gente.
+
+  explanation: |
+    Um programa gasta o tempo dele de duas formas muito diferentes.
+
+    **Trabalhar** significa que a CPU está ocupada: somando, comparando, ordenando,
+    interpretando. O único jeito de terminar antes é fazer menos disso — que é a Ilha 10
+    inteira.
+
+    **Bloquear** significa que o programa pediu uma resposta a algo fora dele e parou até
+    ela chegar. Uma leitura de disco, uma chamada de rede, `time.sleep`. Durante um bloqueio
+    a CPU está ociosa. Seu programa não está lento por estar ocupado; está lento por estar
+    parado.
+
+    A palavra **bloquear** nomeia o que a espera faz com o resto do programa: nada mais
+    roda. `time.sleep(1)` bloqueia. Um `requests.get` comum também. A linha seguinte não
+    executa por um segundo, e nenhuma outra linha em lugar nenhum executa também.
+
+    É esse o custo que a concorrência consegue recuperar, e é o **único**. Três esperas de
+    um segundo, uma depois da outra, levam três segundos. Sobrepostas, levam um, porque
+    espera não é um recurso pelo qual alguém esteja competindo. Três segundos de aritmética
+    sobrepostos continuam levando três segundos, e você vai gastar as missões 7 e 8
+    exatamente no porquê.
+
+    Então, antes de tudo: olhe um programa lento e diga qual das duas coisas ele está
+    fazendo. Um programa genuinamente ocupado não é um problema de concorrência, e recorrer
+    a `async` ali não compra nada e custa uma reescrita.
+
+  worked_example: |
+    # Dividindo uma conta entre o que foi comido e o que foi de gorjeta
+    def split(lines):
+        food = 0
+        tip = 0
+
+        for line in lines:
+            if line["kind"] == "tip":
+                tip = tip + line["cents"]
+            else:
+                food = food + line["cents"]
+
+        return {"food": food, "tip": tip, "total": food + tip}
+
+
+    print(split([{"kind": "dish", "cents": 900}, {"kind": "tip", "cents": 150}]))
+    # {'food': 900, 'tip': 150, 'total': 1050}
+    # Uma passada, dois acumuladores, e a classificação decide qual deles cresce.
+
+  key_points:
+    - "Trabalhar mantém a CPU ocupada; bloquear a deixa ociosa. Um programa lento é uma coisa ou a outra, e a correção é diferente para cada uma."
+    - "`time.sleep` é o substituto honesto de uma chamada de rede: os dois param seu programa sem usar nada."
+    - "Concorrência só recupera espera. Ela nunca reduz a quantidade total de trabalho."
+    - "Rodando em sequência, as esperas se somam. Essa soma é o número que toda missão posterior desta ilha tenta bater."
+    - "Antes de recorrer a async, diga qual das duas coisas seu programa está fazendo. Recorrer a ele em código preso na CPU é uma reescrita que não compra nada."
+
+brief: |
+  Rode os trabalhos de uma manhã do jeito simples, e informe para onde foi o tempo.
+
+  Escreva uma função chamada waiting_room que recebe uma lista de trabalhos e devolve um
+  dict:
+
+      {"waiting_ms": ..., "working_ms": ..., "checksum": ..., "order": ...}
+
+  Cada trabalho é um dict com `"name"`, `"ms"` e `"kind"`. Rode todos **na ordem dada**, um
+  depois do outro. Nada aqui roda ao mesmo tempo que outra coisa.
+
+  Um trabalho de tipo `"wait"` é rodado bloqueando pelos seus `ms`:
+  `time.sleep(job["ms"] / 1000)`. Some os `ms` dele a `waiting_ms`.
+
+  Um trabalho de tipo `"work"` é rodado calculando de verdade
+  `sum(range(job["ms"] * 1000))`. Some esse número a `checksum`, e some os `ms` dele a
+  `working_ms`.
+
+  `order` é a lista dos nomes dos trabalhos, na ordem em que você os rodou.
+
+  Uma lista vazia dá zeros, um `order` vazio, e checksum 0.
+
+  Importe `time` você mesmo. Você vai notar que os testes demoram um instante para rodar, e
+  notar isso é metade desta missão.
+
+signature:
+  entrypoint: waiting_room
+  stub: |
+    def waiting_room(jobs):
+        # Dois acumuladores, um checksum, uma lista. O tipo decide qual deles cresce.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[{name: fetch, ms: 30, kind: wait}, {name: tally, ms: 20, kind: work}]]
+      expect:
+        waiting_ms: 30
+        working_ms: 20
+        checksum: 199990000
+        order: [fetch, tally]
+    - args: [[{name: port, ms: 10, kind: wait}]]
+      expect:
+        waiting_ms: 10
+        working_ms: 0
+        checksum: 0
+        order: [port]
+  hidden:
+    # Nenhum trabalho. Todo acumulador fica no valor inicial.
+    - args: [[]]
+      expect:
+        waiting_ms: 0
+        working_ms: 0
+        checksum: 0
+        order: []
+    # Trabalho de tamanho zero. `sum(range(0))` é 0, e o trabalho rodou e conta do mesmo jeito.
+    - args: [[{name: a, ms: 0, kind: work}]]
+      expect:
+        waiting_ms: 0
+        working_ms: 0
+        checksum: 0
+        order: [a]
+    # Três esperas em sequência. Trinta milissegundos fazendo absolutamente nada, e é este
+    # o número que a missão 4 vai cortar para dez.
+    - args:
+        [
+          [
+            {name: a, ms: 10, kind: wait},
+            {name: b, ms: 10, kind: wait},
+            {name: c, ms: 10, kind: wait},
+          ],
+        ]
+      expect:
+        waiting_ms: 30
+        working_ms: 0
+        checksum: 0
+        order: [a, b, c]
+    # Só trabalho. A CPU fica ocupada o tempo todo, e nenhuma concorrência desta ilha ajuda.
+    - args: [[{name: one, ms: 5, kind: work}, {name: two, ms: 15, kind: work}]]
+      expect:
+        waiting_ms: 0
+        working_ms: 20
+        checksum: 124990000
+        order: [one, two]
+    # Misturado, e os dois totais são iguais por coincidência. Só um deles é recuperável.
+    - args:
+        [
+          [
+            {name: w, ms: 20, kind: wait},
+            {name: c, ms: 30, kind: work},
+            {name: w2, ms: 10, kind: wait},
+          ],
+        ]
+      expect:
+        waiting_ms: 30
+        working_ms: 30
+        checksum: 449985000
+        order: [w, c, w2]
+
+hints:
+  - level: 1
+    text: |
+      Uma passada pelos trabalhos. Todo trabalho acrescenta o nome dele; depois disso, o
+      `kind` decide qual dos dois totais cresce e se alguma coisa é calculada.
+
+      O que `time.sleep` quer como argumento — milissegundos ou segundos?
+  - level: 2
+    text: |
+      `import time` no topo.
+
+      Comece quatro coisas antes do laço: `waiting_ms`, `working_ms`, `checksum` em 0, e
+      `order` como lista vazia.
+
+      Dentro do laço, acrescente o nome primeiro, já que todo trabalho roda. Depois
+      ramifique em `job["kind"]`: `"wait"` dorme `job["ms"] / 1000` e faz `waiting_ms`
+      crescer; qualquer outra coisa calcula `sum(range(job["ms"] * 1000))` dentro de
+      `checksum` e faz `working_ms` crescer.
+  - level: 3
+    text: |
+      O mesmo formato, separando entregas em duas pilhas e fazendo algo em cada uma:
+
+          import time
+
+
+          def rounds(stops):
+              driven = 0
+              parked = 0
+              plates = []
+
+              for stop in stops:
+                  plates.append(stop["plate"])
+                  if stop["kind"] == "park":
+                      time.sleep(stop["ms"] / 1000)
+                      parked = parked + stop["ms"]
+                  else:
+                      driven = driven + stop["ms"]
+
+              return {"driven": driven, "parked": parked, "plates": plates}
+
+
+          print(rounds([{"plate": "AB1", "ms": 10, "kind": "park"}]))
+          # {'driven': 0, 'parked': 10, 'plates': ['AB1']}
+
+      A sua tem uma quarta coisa para carregar — o checksum — e ele só cresce no outro
+      ramo.
+
+solution: |
+  import time
+
+
+  def waiting_room(jobs):
+      waiting_ms = 0
+      working_ms = 0
+      checksum = 0
+      order = []
+
+      for job in jobs:
+          order.append(job["name"])
+
+          if job["kind"] == "wait":
+              time.sleep(job["ms"] / 1000)
+              waiting_ms = waiting_ms + job["ms"]
+          else:
+              checksum = checksum + sum(range(job["ms"] * 1000))
+              working_ms = working_ms + job["ms"]
+
+      return {
+          "waiting_ms": waiting_ms,
+          "working_ms": working_ms,
+          "checksum": checksum,
+          "order": order,
+      }

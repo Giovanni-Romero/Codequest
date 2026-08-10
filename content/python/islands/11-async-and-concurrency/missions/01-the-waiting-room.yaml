@@ -1,0 +1,265 @@
+# Async and Concurrency mission 1. Introduces: blocking-vs-nonblocking.
+# Reinforces: for-loop, accumulator-pattern, dictionaries.
+#
+# No async anywhere in this mission, and that is the point. Island 5 taught exceptions
+# before try/except and Island 7 taught open-and-read before context managers, for the
+# same reason: a player has to feel three tenths of a second of pointless waiting add up
+# before `await` is a solution rather than a fashion.
+#
+# The sleeps are real, and so is the arithmetic. Both halves of the answer come from
+# running the jobs, not from reading the input: `checksum` is only obtainable by doing
+# the work, and `waiting_ms` is only obtainable by classifying it correctly.
+#
+# The checksum formula is spelled out in the brief. Island 10's specification rule: a
+# graded number needs a specified computation, not merely a plausible one.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-01
+title: The waiting room
+track: python
+island: async-and-concurrency
+order: 1
+difficulty: expert
+tags: [async, blocking, baseline]
+xp: 60
+
+concepts:
+  - blocking-vs-nonblocking
+
+teaching:
+  analogy: |
+    Two people are behind the counter at the harbour office and both look equally busy.
+
+    The first is adding up a column of figures. Take the pen away and the work stops.
+
+    The second is holding a telephone to their ear, on hold, listening to music. Take the
+    telephone away and nothing is lost except the wait. They have been sitting there for
+    ten minutes and have done nothing at all.
+
+    From the doorway the two look identical. Everything in this island depends on telling
+    them apart, because only one of the two can be fixed by hiring more people.
+
+  explanation: |
+    A program spends its time in two very different ways.
+
+    **Working** means the CPU is busy: adding, comparing, sorting, parsing. The only way to
+    finish sooner is to do less of it — which is the whole of Island 10.
+
+    **Blocking** means the program has asked something outside itself for an answer and
+    stopped until it arrives. A disk read, a network call, `time.sleep`. During a block the
+    CPU is idle. Your program is not slow because it is busy; it is slow because it is
+    standing still.
+
+    The word **blocking** names what the wait does to the rest of your program: nothing
+    else runs. `time.sleep(1)` blocks. So does an ordinary `requests.get`. The line after
+    it does not execute for a second, and neither does any other line anywhere.
+
+    That is the cost concurrency can take back, and it is the *only* one. Three waits of
+    one second each, run one after another, take three seconds. Overlapped, they take one,
+    because waiting is not a resource anybody is competing for. Three seconds of
+    arithmetic overlapped still take three seconds, and you will spend missions 7 and 8 on
+    exactly why.
+
+    So before any of it: look at a slow program and say which of the two it is doing. A
+    program that is genuinely busy is not a concurrency problem, and reaching for `async`
+    there buys nothing and costs a rewrite.
+
+  worked_example: |
+    # Splitting a bill into what was eaten and what was tipped
+    def split(lines):
+        food = 0
+        tip = 0
+
+        for line in lines:
+            if line["kind"] == "tip":
+                tip = tip + line["cents"]
+            else:
+                food = food + line["cents"]
+
+        return {"food": food, "tip": tip, "total": food + tip}
+
+
+    print(split([{"kind": "dish", "cents": 900}, {"kind": "tip", "cents": 150}]))
+    # {'food': 900, 'tip': 150, 'total': 1050}
+    # One pass, two accumulators, and the classification decides which one grows.
+
+  key_points:
+    - "Working keeps the CPU busy; blocking leaves it idle. A slow program is one or the other, and the fix is different for each."
+    - "`time.sleep` is the honest stand-in for a network call: both stop your program without using anything."
+    - "Concurrency can only take back waiting. It never reduces the total amount of work."
+    - "Run sequentially, waits add up. That sum is the number every later mission on this island is trying to beat."
+    - "Before reaching for async, say which of the two your program is doing. Reaching for it on CPU-bound code is a rewrite that buys nothing."
+
+brief: |
+  Run a morning's jobs the plain way, and report where the time went.
+
+  Write a function called waiting_room that takes a list of jobs and returns a dict:
+
+      {"waiting_ms": ..., "working_ms": ..., "checksum": ..., "order": ...}
+
+  Each job is a dict with `"name"`, `"ms"` and `"kind"`. Run them **in the order given**,
+  one after another. Nothing here runs at the same time as anything else.
+
+  A job of kind `"wait"` is run by blocking for its `ms`: `time.sleep(job["ms"] / 1000)`.
+  Add its `ms` to `waiting_ms`.
+
+  A job of kind `"work"` is run by actually computing `sum(range(job["ms"] * 1000))`. Add
+  that number to `checksum`, and add its `ms` to `working_ms`.
+
+  `order` is the list of job names, in the order you ran them.
+
+  An empty list gives zeros, an empty `order`, and a checksum of 0.
+
+  Import `time` yourself. You will notice the tests take a moment to run, and noticing is
+  half of this mission.
+
+signature:
+  entrypoint: waiting_room
+  stub: |
+    def waiting_room(jobs):
+        # Two accumulators, one checksum, one list. The kind decides which grows.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[{name: fetch, ms: 30, kind: wait}, {name: tally, ms: 20, kind: work}]]
+      expect:
+        waiting_ms: 30
+        working_ms: 20
+        checksum: 199990000
+        order: [fetch, tally]
+    - args: [[{name: port, ms: 10, kind: wait}]]
+      expect:
+        waiting_ms: 10
+        working_ms: 0
+        checksum: 0
+        order: [port]
+  hidden:
+    # No jobs. Every accumulator stays at its starting value.
+    - args: [[]]
+      expect:
+        waiting_ms: 0
+        working_ms: 0
+        checksum: 0
+        order: []
+    # Zero-sized work. `sum(range(0))` is 0, and the job still ran and still counts.
+    - args: [[{name: a, ms: 0, kind: work}]]
+      expect:
+        waiting_ms: 0
+        working_ms: 0
+        checksum: 0
+        order: [a]
+    # Three waits in a row. Thirty milliseconds of doing absolutely nothing, and this is
+    # the number mission 4 will cut to ten.
+    - args:
+        [
+          [
+            {name: a, ms: 10, kind: wait},
+            {name: b, ms: 10, kind: wait},
+            {name: c, ms: 10, kind: wait},
+          ],
+        ]
+      expect:
+        waiting_ms: 30
+        working_ms: 0
+        checksum: 0
+        order: [a, b, c]
+    # Work only. The CPU is busy the whole time, and no concurrency in this island helps.
+    - args: [[{name: one, ms: 5, kind: work}, {name: two, ms: 15, kind: work}]]
+      expect:
+        waiting_ms: 0
+        working_ms: 20
+        checksum: 124990000
+        order: [one, two]
+    # Mixed, and the two totals are equal by coincidence. Only one of them is recoverable.
+    - args:
+        [
+          [
+            {name: w, ms: 20, kind: wait},
+            {name: c, ms: 30, kind: work},
+            {name: w2, ms: 10, kind: wait},
+          ],
+        ]
+      expect:
+        waiting_ms: 30
+        working_ms: 30
+        checksum: 449985000
+        order: [w, c, w2]
+
+hints:
+  - level: 1
+    text: |
+      One pass over the jobs. Every job appends its name; after that, the `kind` decides
+      which of the two totals grows and whether anything is computed.
+
+      What does `time.sleep` want as its argument — milliseconds or seconds?
+  - level: 2
+    text: |
+      `import time` at the top.
+
+      Start four things before the loop: `waiting_ms`, `working_ms`, `checksum` at 0, and
+      `order` as an empty list.
+
+      Inside the loop, append the name first, since every job runs. Then branch on
+      `job["kind"]`: `"wait"` sleeps `job["ms"] / 1000` and grows `waiting_ms`; anything
+      else computes `sum(range(job["ms"] * 1000))` into `checksum` and grows `working_ms`.
+  - level: 3
+    text: |
+      The same shape, sorting deliveries into two piles and doing something in each:
+
+          import time
+
+
+          def rounds(stops):
+              driven = 0
+              parked = 0
+              plates = []
+
+              for stop in stops:
+                  plates.append(stop["plate"])
+                  if stop["kind"] == "park":
+                      time.sleep(stop["ms"] / 1000)
+                      parked = parked + stop["ms"]
+                  else:
+                      driven = driven + stop["ms"]
+
+              return {"driven": driven, "parked": parked, "plates": plates}
+
+
+          print(rounds([{"plate": "AB1", "ms": 10, "kind": "park"}]))
+          # {'driven': 0, 'parked': 10, 'plates': ['AB1']}
+
+      Yours has a fourth thing to carry — the checksum — and it only grows on the other
+      branch.
+
+solution: |
+  import time
+
+
+  def waiting_room(jobs):
+      waiting_ms = 0
+      working_ms = 0
+      checksum = 0
+      order = []
+
+      for job in jobs:
+          order.append(job["name"])
+
+          if job["kind"] == "wait":
+              time.sleep(job["ms"] / 1000)
+              waiting_ms = waiting_ms + job["ms"]
+          else:
+              checksum = checksum + sum(range(job["ms"] * 1000))
+              working_ms = working_ms + job["ms"]
+
+      return {
+          "waiting_ms": waiting_ms,
+          "working_ms": working_ms,
+          "checksum": checksum,
+          "order": order,
+      }

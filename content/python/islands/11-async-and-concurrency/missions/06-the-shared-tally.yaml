@@ -1,0 +1,279 @@
+# Async and Concurrency mission 6. Introduces nothing.
+# Reinforces: threads, gather, blocking-vs-nonblocking.
+#
+# Relief mission, and the honesty case of this island. In CPython an unlocked
+# `counter += 1` in a short loop almost always still produces the right total, because the
+# interpreter rarely switches threads mid-statement at these sizes. So the wrong version
+# passes the test.
+#
+# The brief says so out loud. Precedent: Island 8's honesty rule and Island 10 mission 1,
+# where `values.index()` in a try would also have passed. A game that pretended to detect
+# the missing lock would be lying, and "almost always right" is exactly the shape of the
+# bug being taught - a test that went green on the unlocked version would be *reproducing*
+# the bug rather than catching it.
+#
+# No sleeps: threads plus a lock, nothing to wait for.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-06
+title: The shared tally
+track: python
+island: async-and-concurrency
+order: 6
+difficulty: challenging
+tags: [async, threads, locks, relief]
+xp: 45
+
+concepts:
+  - threads
+
+teaching:
+  analogy: |
+    One tally sheet on the wall and four people counting crates.
+
+    Each of them does the same three things over and over: read the number on the sheet,
+    add one in their head, write the new number back.
+
+    Now picture two of them reading "41" at the same instant. Both think "42". Both write
+    "42". Two crates went by and the sheet advanced by one.
+
+    Nobody made a mistake. Each of the three steps was done correctly. The bug is that
+    they were allowed to overlap, and the fix is a rule nobody can break: whoever is at
+    the sheet holds the pen, and everyone else waits for it.
+
+  explanation: |
+    Threads share memory. That is what makes them useful and it is what makes them
+    dangerous.
+
+    `counter = counter + 1` looks like one thing and is three: read, add, store. A thread
+    can be interrupted between any two of them, and if a second thread reads before the
+    first has stored, one of the increments vanishes. This is a **race condition**, and its
+    signature is that the answer is wrong *sometimes*.
+
+    A **`threading.Lock`** is a token only one thread can hold:
+
+        lock = threading.Lock()
+
+        with lock:
+            counter = counter + 1
+
+    Whoever arrives second waits at the `with` until the first leaves. The three steps
+    become one indivisible thing — *atomic* is the word — and the count is right every time.
+
+    Two costs, and they are the reason you do not simply lock everything:
+
+    - **A lock serialises whatever it covers.** Code inside the lock runs one thread at a
+      time. Hold it across a slow operation and you have written a sequential program that
+      also pays for threads.
+    - **Two locks taken in different orders deadlock.** Thread A holds one and wants the
+      other; thread B holds the other and wants the first. Both wait forever.
+
+    Now the honest part, and read it twice.
+
+    **In CPython, the unlocked version of this mission will usually give the right answer
+    anyway.** The interpreter runs a stretch of bytecode before it considers switching
+    threads, and at these sizes the switch rarely lands in the middle of the increment. The
+    test cannot tell the two versions apart, and it is not pretending to.
+
+    That is not a reason to skip the lock — it is the reason the bug is famous. Code that
+    is right in testing, right in development, and wrong once a week in production under
+    load is the worst kind there is. Write the lock because the correctness does not come
+    from luck.
+
+  worked_example: |
+    # A shared list rather than a counter, guarded the same way
+    import threading
+
+
+    def gather_names(crews):
+        lock = threading.Lock()
+        roll = []
+
+        def sign(crew):
+            for name in crew:
+                with lock:
+                    roll.append(name.upper())
+
+        hands = [threading.Thread(target=sign, args=(crew,)) for crew in crews]
+        for hand in hands:
+            hand.start()
+        for hand in hands:
+            hand.join()
+
+        return len(roll)
+
+
+    print(gather_names([["ana", "bo"], ["cy"]]))     # 3
+    # The order of `roll` is nondeterministic. Its length is not, and that is what is read.
+
+  key_points:
+    - "`counter = counter + 1` is three operations. A thread can be interrupted between any two of them, and an increment goes missing."
+    - "A `Lock` used with `with` makes a block atomic: one thread inside at a time, everyone else waits."
+    - "A lock serialises what it covers. Holding one across slow work gives you a sequential program that also pays for threads."
+    - "Two locks taken in different orders by two threads deadlock. Always take them in the same order."
+    - "In CPython the unlocked version usually passes anyway. 'Usually' is the bug — correctness that comes from luck is the kind that fails in production."
+
+brief: |
+  Count crates from four sides at once, and get the number right.
+
+  Write a function called shared_tally that takes a number of `workers` and a number of
+  `steps`, and returns:
+
+      {"total": ..., "expected": ..., "safe": ...}
+
+  Start `workers` threads. Each one increments a **single shared counter** `steps` times,
+  and every increment happens inside a `threading.Lock`.
+
+  Start them all, join them all, then read the counter.
+
+  `total` is the counter's final value. `expected` is `workers * steps`. `safe` is whether
+  the two are equal — a plain boolean, which with a correct lock is always `True`.
+
+  `workers` of 0 gives a total of 0. So does `steps` of 0.
+
+  Being straight with you: at these sizes the version **without** the lock will almost
+  certainly produce the right total too, and this mission cannot tell the difference. That
+  is not a loophole, it is the lesson. A race condition that shows up one run in ten
+  thousand still costs you a night, and the reason to write the lock is that correctness
+  should not depend on the interpreter being in a good mood.
+
+  Import `threading` yourself.
+
+signature:
+  entrypoint: shared_tally
+  stub: |
+    def shared_tally(workers, steps):
+        # One counter, one lock, `workers` threads all reaching for both.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [4, 250]
+      expect:
+        total: 1000
+        expected: 1000
+        safe: true
+    - args: [1, 10]
+      expect:
+        total: 10
+        expected: 10
+        safe: true
+  hidden:
+    # No workers. Nothing starts, nothing joins, and the counter never moves.
+    - args: [0, 100]
+      expect:
+        total: 0
+        expected: 0
+        safe: true
+    # Workers with nothing to do. Three threads start and immediately finish.
+    - args: [3, 0]
+      expect:
+        total: 0
+        expected: 0
+        safe: true
+    # Eight threads and four thousand increments — the case most likely to lose one.
+    - args: [8, 500]
+      expect:
+        total: 4000
+        expected: 4000
+        safe: true
+    - args: [2, 1]
+      expect:
+        total: 2
+        expected: 2
+        safe: true
+    - args: [5, 200]
+      expect:
+        total: 1000
+        expected: 1000
+        safe: true
+
+hints:
+  - level: 1
+    text: |
+      The counter has to be one thing that every thread sees. A plain `counter = 0` in the
+      outer function, reassigned inside the inner one, is not that — reassigning a name
+      inside a nested function creates a *new local* and the outer one never changes.
+
+      Two ways out. What are they?
+  - level: 2
+    text: |
+      Either declare `nonlocal counter` at the top of the worker, or keep the count inside
+      a mutable container — `tally = {"count": 0}` — and mutate that. The container needs
+      no keyword and is the more common style.
+
+      Then:
+
+          lock = threading.Lock()
+
+          def run():
+              for _ in range(steps):
+                  with lock:
+                      tally["count"] = tally["count"] + 1
+
+      Build `workers` threads with `threading.Thread(target=run)`, start them all in one
+      loop, join them all in a second loop, and read `tally["count"]` after.
+
+      Note there are no arguments to pass: every thread runs the identical job.
+  - level: 3
+    text: |
+      The same lock, guarding a shared maximum instead of a sum:
+
+          import threading
+
+
+          def deepest(crews, casts):
+              lock = threading.Lock()
+              best = {"depth": 0}
+
+              def sound():
+                  for cast in range(casts):
+                      with lock:
+                          if cast > best["depth"]:
+                              best["depth"] = cast
+
+              hands = [threading.Thread(target=sound) for _ in range(crews)]
+              for hand in hands:
+                  hand.start()
+              for hand in hands:
+                  hand.join()
+
+              return best["depth"]
+
+
+          print(deepest(3, 5))     # 4
+
+      Yours adds instead of comparing, and reports two more numbers alongside the answer.
+
+solution: |
+  import threading
+
+
+  def shared_tally(workers, steps):
+      lock = threading.Lock()
+      tally = {"count": 0}
+
+      def run():
+          for _ in range(steps):
+              with lock:
+                  tally["count"] = tally["count"] + 1
+
+      threads = [threading.Thread(target=run) for _ in range(workers)]
+
+      for thread in threads:
+          thread.start()
+
+      for thread in threads:
+          thread.join()
+
+      expected = workers * steps
+      return {
+          "total": tally["count"],
+          "expected": expected,
+          "safe": tally["count"] == expected,
+      }

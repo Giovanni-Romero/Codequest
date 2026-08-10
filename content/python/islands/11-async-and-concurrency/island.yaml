@@ -1,0 +1,30 @@
+id: async-and-concurrency
+name: Async and Concurrency
+track: python
+order: 11
+theme: Waiting is not working
+description: |
+  Island 10 taught you that a slow program is usually doing too much work. This one is
+  about the other case: the program doing almost nothing at all, and spending its life
+  waiting for a disk, a network or a clock.
+
+  Waiting is the one cost concurrency can take back, because a program that is waiting is
+  not using anything. Work is not, and no amount of async makes arithmetic finish sooner.
+
+  The last third of this island is spent on the harder half of the skill: the days when
+  concurrency makes everything worse, and the right answer is the plain loop you already
+  knew how to write.
+
+concepts:
+  - blocking-vs-nonblocking
+  - async-await
+  - event-loop
+  - gather
+  - threads
+  - gil
+  - when-concurrency-helps
+
+unlock_requires:
+  missions_completed: 107
+
+completion_reward_xp: 300

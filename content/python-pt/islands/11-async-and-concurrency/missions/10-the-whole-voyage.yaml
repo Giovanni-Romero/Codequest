@@ -1,0 +1,316 @@
+# Missão 10 de Async e Concorrência. Não introduz nada. Missão de fechamento da ilha,
+# e da trilha Python.
+# Reforça: todos os sete conceitos da ilha.
+#
+# Cada peça é copiada de uma missão anterior com outros nomes: o gather e a lista
+# compartilhada de conclusão são a missão 4, as threads com posições são a missão 5, o
+# modelo de custo é a missão 8. Nada aqui é novo e nada aqui é fácil, que é para isso que
+# serve uma missão de fechamento.
+#
+# A única decisão genuína não é dita: os cálculos vão para threads e o enunciado não diz que
+# isso é boa ideia, porque a missão 7 já disse que não é. O jogador roda ali mesmo assim,
+# porque a missão pede uma demonstração e não o programa mais rápido possível - e o campo
+# `choice` que ele calcula no fim é a resposta da ilha ao que ele acabou de fazer.
+#
+# Orçamento de sono: as esperas são reunidas, então o relógio é a maior delas. 50ms aqui.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-10
+title: A viagem inteira
+track: python
+island: async-and-concurrency
+order: 10
+difficulty: expert
+tags: [async, closing, gather, threads]
+xp: 60
+
+concepts:
+  - blocking-vs-nonblocking
+  - async-await
+  - event-loop
+  - gather
+  - threads
+  - gil
+  - when-concurrency-helps
+
+teaching:
+  analogy: |
+    A última manhã na capitania.
+
+    Três telegramas são despachados de uma vez e ninguém fica olhando nenhum deles. Três
+    livros-caixa vão para três escriturários que disputam a mesma caneta. E antes de o
+    capitão assinar qualquer coisa, alguém calcula no papel se todo esse arranjo valeu o
+    trabalho.
+
+    Nada na sala é novo. Hoje a sala roda.
+
+  explanation: |
+    Esta missão não introduz nada. Ela pede que você ponha quatro coisas na ordem certa sem
+    que lhe digam qual vai onde, que é a parte que nenhum painel consegue ensinar.
+
+    A versão curta de cada decisão, para a próxima vez que você a encontrar.
+
+    **É espera ou é trabalho?** Tudo nesta ilha pende dessa única pergunta, e ela é
+    respondida medindo, não chutando. Espera pode ser sobreposta. Trabalho não, e recorrer à
+    concorrência ali é uma reescrita que não compra nada.
+
+    **`asyncio` ou threads?** Se o código já fala o dialeto async até o fim da cadeia,
+    `gather` é o ramo mais barato que existe. Se não fala — um arquivo, um driver antigo,
+    algo que você não vai reescrever — uma thread roda aquilo sem alteração, que é exatamente
+    o que você está pagando.
+
+    **Em que ordem os resultados voltam?** `gather` te dá ordem de argumento e essa garantia
+    é o que o torna utilizável. Threads não te dão nada: ou você escolhe uma posição de
+    antemão ou aceita cara ou coroa. Ordem de conclusão é um fato sobre o relógio, e só vale
+    registrar quando você quer ver a sobreposição.
+
+    **Alguma coisa disso valeu a pena?** Conte os ramos, conte a espera, compare. Cem ramos
+    a quinhentos microssegundos são cinquenta milissegundos gastos antes de qualquer
+    trabalho acontecer, e se os serviços eram de cinquenta microssegundos cada você acabou
+    de deixar um programa rápido lento e difícil de ler ao mesmo tempo.
+
+    Nenhuma das quatro tem resposta que valha em todo lugar. Elas têm uma resposta aqui, e
+    conseguir dizer por quê é para o que a ilha serviu.
+
+  worked_example: |
+    # Os mesmos dois motores lado a lado, sobre um carregamento em vez de durações
+    import asyncio
+    import threading
+
+
+    async def unload(holds, crates):
+        landed = []
+
+        async def open_hold(seconds):
+            await asyncio.sleep(seconds)
+            landed.append(seconds)
+            return f"hold {seconds} clear"
+
+        called = list(await asyncio.gather(*[open_hold(s) for s in holds]))
+
+        weights = [None] * len(crates)
+
+        def weigh(slot, size):
+            weights[slot] = size * 2
+
+        hands = []
+        for slot, size in enumerate(crates):
+            hand = threading.Thread(target=weigh, args=(slot, size))
+            hands.append(hand)
+            hand.start()
+        for hand in hands:
+            hand.join()
+
+        return {"called": called, "landed": landed, "weights": weights}
+
+
+    print(asyncio.run(unload([0.02, 0.01], [3, 4])))
+    # {'called': ['hold 0.02 clear', 'hold 0.01 clear'], 'landed': [0.01, 0.02], 'weights': [6, 8]}
+    # Ordem de argumento em `called`, ordem do relógio em `landed`, ordem de posição em `weights`.
+
+  key_points:
+    - "Responda 'espera ou trabalho' primeiro. Todo o resto desta ilha vem depois disso, e só medir responde."
+    - "`gather` para corrotinas, threads para código bloqueante que você não vai reescrever. A segunda é mais pesada e não pede nada ao código."
+    - "`gather` devolve ordem de argumento. Threads não devolvem nada — escolha uma posição de antemão, ou aceite cara ou coroa."
+    - "Ordem de conclusão é evidência de que as esperas se sobrepuseram, e evidência é a única coisa para que ela serve."
+    - "Conte os ramos contra a espera antes de construir qualquer coisa. A resposta certa às vezes é um laço `for`."
+
+brief: |
+  Rode a capitania inteira, uma última vez.
+
+  Escreva uma corrotina chamada whole_voyage que recebe uma lista de `waits` em
+  milissegundos, uma lista de `computes` em tamanhos, e um `overhead_us` fixo, e devolve:
+
+      {"results": ..., "finished": ..., "sums": ...,
+       "sequential_us": ..., "concurrent_us": ..., "choice": ...}
+
+  **As esperas, concorrentes.** Dê a cada uma a própria corrotina, que aguarda
+  `asyncio.sleep(ms / 1000)`, acrescenta os `ms` dela a uma lista compartilhada, e devolve
+  `"waited {ms}ms"`. Inicie todas com um `asyncio.gather`. `results` é o que o `gather`
+  devolveu, como lista — ordem de argumento. `finished` é a lista compartilhada — ordem de
+  conclusão. Todas as durações de um caso são diferentes, então nunca há empate.
+
+  **Os cálculos, em threads.** Dê a cada tamanho a própria `threading.Thread` escrevendo
+  `sum(range(size))` na própria posição de `sums`, para `sums` seguir a ordem da entrada.
+  Inicie todas, depois junte todas. A missão 7 te disse que threads não vão deixar isso mais
+  rápido; você está rodando ali mesmo assim para o último campo poder te dizer o que custou.
+
+  **O veredito, só sobre as esperas.** Usando o modelo da missão 8, em microssegundos:
+
+      sequential_us = sum(waits) * 1000
+      concurrent_us = len(waits) * overhead_us + max(waits, default=0) * 1000
+
+  `choice` é `"concurrent"` quando `concurrent_us` for **estritamente menor** que
+  `sequential_us`, e `"sequential"` caso contrário.
+
+  Duas listas vazias dão duas listas vazias, um `sums` vazio, 0, 0 e `"sequential"`.
+
+  Importe `asyncio` e `threading` você mesmo. O motor aguarda a sua função — não chame
+  `asyncio.run`.
+
+signature:
+  entrypoint: whole_voyage
+  stub: |
+    async def whole_voyage(waits, computes, overhead_us):
+        # Reúna as esperas. Mande os cálculos para threads. Depois veja se valeu a pena.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[30, 10, 20], [100, 5], 500]
+      expect:
+        results: ["waited 30ms", "waited 10ms", "waited 20ms"]
+        finished: [10, 20, 30]
+        sums: [4950, 10]
+        sequential_us: 60000
+        concurrent_us: 31500
+        choice: concurrent
+    # Uma espera. Não há nada com que sobrepô-la, então o ramo perde pelo próprio custo.
+    - args: [[15], [10], 500]
+      expect:
+        results: ["waited 15ms"]
+        finished: [15]
+        sums: [45]
+        sequential_us: 15000
+        concurrent_us: 15500
+        choice: sequential
+  hidden:
+    # Absolutamente nada. Um gather vazio devolve lista vazia e empate fica com o laço.
+    - args: [[], [], 500]
+      expect:
+        results: []
+        finished: []
+        sums: []
+        sequential_us: 0
+        concurrent_us: 0
+        choice: sequential
+    - args: [[40, 20], [], 1000]
+      expect:
+        results: ["waited 40ms", "waited 20ms"]
+        finished: [20, 40]
+        sums: []
+        sequential_us: 60000
+        concurrent_us: 42000
+        choice: concurrent
+    # Só cálculo. Nenhuma espera significa nada a sobrepor, e o veredito diz isso.
+    - args: [[], [50], 500]
+      expect:
+        results: []
+        finished: []
+        sums: [1225]
+        sequential_us: 0
+        concurrent_us: 0
+        choice: sequential
+    # Um cálculo de tamanho 0 ainda ganha uma thread, e essa thread ainda tem de ser juntada.
+    - args: [[10, 30, 50], [0], 200]
+      expect:
+        results: ["waited 10ms", "waited 30ms", "waited 50ms"]
+        finished: [10, 30, 50]
+        sums: [0]
+        sequential_us: 90000
+        concurrent_us: 50600
+        choice: concurrent
+    # Um custo absurdo. A espera é real e a concorrência perde do mesmo jeito, que é a última
+    # palavra da ilha: os números decidem, não a ferramenta.
+    - args: [[25], [], 30000]
+      expect:
+        results: ["waited 25ms"]
+        finished: [25]
+        sums: []
+        sequential_us: 25000
+        concurrent_us: 55000
+        choice: sequential
+    - args: [[50, 10], [1000, 2000, 3000], 100]
+      expect:
+        results: ["waited 50ms", "waited 10ms"]
+        finished: [10, 50]
+        sums: [499500, 1999000, 4498500]
+        sequential_us: 60000
+        concurrent_us: 50200
+        choice: concurrent
+
+hints:
+  - level: 1
+    text: |
+      Três blocos, e cada um é uma missão que você já terminou. Descubra qual missão é cada
+      bloco antes de escrever qualquer coisa.
+
+      Uma armadilha na aritmética: `waits` está em milissegundos e o veredito está em
+      microssegundos. Onde entra o fator de mil, e onde não entra?
+  - level: 2
+    text: |
+      O bloco um é a missão 4, sem mudança: `finished = []`, um `async def` interno que
+      dorme, acrescenta e devolve a string, depois `await asyncio.gather(*[...])` envolvido
+      em `list(...)`.
+
+      O bloco dois é a missão 5, sem mudança: `sums = [None] * len(computes)`, uma função
+      interna recebendo posição e tamanho, `enumerate` para construir e iniciar as threads,
+      um segundo laço para juntá-las.
+
+      O bloco três é a missão 8, só sobre as esperas. `sum(waits) * 1000` e
+      `len(waits) * overhead_us + max(waits, default=0) * 1000`. O custo já está em
+      microssegundos, então é o único termo que não é multiplicado.
+  - level: 3
+    text: |
+      A última peça, já que as outras duas estão nas missões 4 e 5 — o veredito, escrito
+      sozinho:
+
+          def verdict(delays_ms, per_branch_us):
+              one_by_one = sum(delays_ms) * 1000
+              together = len(delays_ms) * per_branch_us + max(delays_ms, default=0) * 1000
+
+              return "together" if together < one_by_one else "one_by_one"
+
+
+          print(verdict([30, 10, 20], 500))     # together
+          print(verdict([15], 500))             # one_by_one
+
+      O seu devolve `"concurrent"` e `"sequential"` no lugar, e informa os dois totais junto
+      da palavra.
+
+solution: |
+  import asyncio
+  import threading
+
+
+  async def whole_voyage(waits, computes, overhead_us):
+      finished = []
+
+      async def run(ms):
+          await asyncio.sleep(ms / 1000)
+          finished.append(ms)
+          return f"waited {ms}ms"
+
+      results = list(await asyncio.gather(*[run(ms) for ms in waits]))
+
+      sums = [None] * len(computes)
+
+      def crunch(index, size):
+          sums[index] = sum(range(size))
+
+      threads = []
+      for index, size in enumerate(computes):
+          thread = threading.Thread(target=crunch, args=(index, size))
+          threads.append(thread)
+          thread.start()
+
+      for thread in threads:
+          thread.join()
+
+      sequential_us = sum(waits) * 1000
+      concurrent_us = len(waits) * overhead_us + max(waits, default=0) * 1000
+      choice = "concurrent" if concurrent_us < sequential_us else "sequential"
+
+      return {
+          "results": results,
+          "finished": finished,
+          "sums": sums,
+          "sequential_us": sequential_us,
+          "concurrent_us": concurrent_us,
+          "choice": choice,
+      }

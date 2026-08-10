@@ -1,0 +1,254 @@
+# Missão 4 de Async e Concorrência. Introduz: gather.
+# Reforça: async-await, event-loop, blocking-vs-nonblocking, lists.
+#
+# A recompensa da ilha, e a mesma entrada da missão 2 de propósito: [10, 20] levava 30ms lá
+# e leva 20ms aqui. Os testes não enxergam o relógio, então a prova é estrutural -
+# `finished` volta em ordem de duração, o que só é possível se as esperas se sobrepuseram.
+# Uma implementação sequencial produz `finished == waits` e falha logo no primeiro caso.
+#
+# Ordem de conclusão é o mecanismo de avaliação da ilha (syllabus, "No mission may assert on
+# elapsed time"). Ela só é determinística se as durações diferirem por mais que a
+# granularidade do timer da plataforma, que no Windows fica por volta de 15ms. Todo caso usa
+# durações distintas com pelo menos 20ms de diferença, e o enunciado promete ao jogador que
+# elas são distintas para ninguém ter de inventar regra de desempate.
+#
+# Orçamento de sono: concorrente, então o relógio de parede é a *maior* espera, nunca a
+# soma. O maior caso aqui é 70ms.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-04
+title: Tudo de uma vez
+track: python
+island: async-and-concurrency
+order: 4
+difficulty: expert
+tags: [async, gather, concurrency]
+xp: 60
+
+concepts:
+  - gather
+
+teaching:
+  analogy: |
+    Três chaleiras e um cozinheiro de novo.
+
+    Na missão 2 o cozinheiro enchia uma chaleira, esperava por ela, e enchia a próxima. Três
+    chaleiras, onze minutos cada, trinta e três minutos.
+
+    Hoje ele enche as três, liga as três, e senta. As chaleiras não se revezam — elas nunca
+    estiveram competindo por nada. Onze minutos depois as três estão fervendo.
+
+    Repare qual apita primeiro: a com menos água, não a que foi enchida primeiro. Essa é a
+    única evidência visível de que alguma coisa se sobrepôs, e é o que esta missão avalia.
+
+  explanation: |
+    **`asyncio.gather` inicia várias corrotinas de uma vez e te dá todos os resultados
+    quando todas terminaram.**
+
+        results = await asyncio.gather(one(), two(), three())
+
+    As três começam imediatamente. O `await` no `gather` pausa até a última terminar, e
+    `results` é uma lista.
+
+    A garantia que vale decorar: **`gather` devolve os resultados na ordem em que você
+    passou as corrotinas, não na ordem em que elas terminaram.** É isso que o torna
+    utilizável. Você não precisa rotular nem ordenar nada — a posição 0 do resultado pertence
+    ao primeiro argumento, sempre, mesmo que ele tenha sido o mais lento.
+
+    Compare com o que você escreveu na missão 2:
+
+        for ms in waits:                     # sequencial: cada uma começa quando a anterior acabou
+            results.append(await wait_for(ms))
+
+        await asyncio.gather(*[...])         # concorrente: todas começam agora
+
+    O laço leva a *soma* das esperas. O `gather` leva a *maior* delas. Em `[10, 20]` isso é
+    30ms contra 20ms; em vinte chamadas de rede de 200ms cada é quatro segundos contra um
+    quinto de segundo, e é para essa diferença que esta ilha inteira existe.
+
+    Três coisas para guardar:
+
+    - **Nada é paralelo.** Uma thread, um loop. As esperas se sobrepõem; duas linhas do seu
+      Python nunca rodam no mesmo instante.
+    - **Aguardá-las uma a uma num laço não é fazer gather.** `for c in coros: await c` é a
+      versão sequencial com passos a mais.
+    - **Uma exceção cancela o lote.** Se qualquer corrotina levantar, o `gather` levanta e os
+      outros resultados se perdem — a menos que você passe `return_exceptions=True`, que te
+      entrega os objetos de exceção como resultados comuns.
+
+  worked_example: |
+    # Três sinais disparados de uma vez, num domínio sem durações nenhuma
+    import asyncio
+
+
+    async def ping(host, delay):
+        await asyncio.sleep(delay)
+        return host.upper()
+
+
+    async def sweep():
+        return await asyncio.gather(ping("north", 0.03), ping("south", 0.01))
+
+
+    print(asyncio.run(sweep()))     # ['NORTH', 'SOUTH']
+    # "south" terminou primeiro e continua em segundo na lista. Ordem dos argumentos, sempre.
+
+  key_points:
+    - "`gather` inicia toda corrotina imediatamente e retorna quando a última termina. Awaits sequenciais levam a soma; um gather leva a maior."
+    - "`gather` devolve resultados em **ordem de argumento**, nunca de conclusão. Essa garantia é o que o torna utilizável sem rotular nada."
+    - "Aguardar corrotinas uma depois da outra num laço é a versão sequencial, não a concorrente."
+    - "Nada é paralelo. Uma thread, um loop — só a espera se sobrepõe."
+    - "Por padrão uma exceção cancela o lote inteiro. `return_exceptions=True` te entrega as exceções como resultados."
+
+brief: |
+  As mesmas esperas da missão 2, todas iniciadas de uma vez.
+
+  Escreva uma corrotina chamada all_at_once que recebe uma lista de valores em milissegundos
+  e devolve:
+
+      {"results": ..., "finished": ..., "count": ...}
+
+  Cada valor ganha a própria corrotina, que aguarda `asyncio.sleep(ms / 1000)`, depois
+  **acrescenta os `ms` dela a uma lista compartilhada**, e depois devolve a string
+  `"waited {ms}ms"`.
+
+  Inicie todas com um único `asyncio.gather` e aguarde uma vez só.
+
+  `results` é o que o `gather` te deu, como lista — então está em **ordem de argumento**, a
+  mesma ordem da entrada.
+
+  `finished` é aquela lista compartilhada — então está em **ordem de conclusão**, a espera
+  mais curta primeiro. Em `[50, 10, 30]` as duas listas discordam, e essa discordância é a
+  única prova de que algo se sobrepôs.
+
+  `count` é quantos valores havia.
+
+  Uma lista vazia dá duas listas vazias e 0.
+
+  Todo caso te dá durações **todas diferentes**, então nunca há empate para desfazer.
+  Importe `asyncio` você mesmo; o motor aguarda a sua função.
+
+signature:
+  entrypoint: all_at_once
+  stub: |
+    async def all_at_once(waits):
+        # Uma lista compartilhada para a ordem de conclusão, um gather para todo o resto.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # O caso principal: `results` segue a entrada, `finished` segue o relógio.
+    - args: [[50, 10, 30]]
+      expect:
+        results: ["waited 50ms", "waited 10ms", "waited 30ms"]
+        finished: [10, 30, 50]
+        count: 3
+    # Já ordenado, então as duas listas concordam. Passar neste sozinho não prova nada.
+    - args: [[20, 60]]
+      expect:
+        results: ["waited 20ms", "waited 60ms"]
+        finished: [20, 60]
+        count: 2
+  hidden:
+    # Nada a reunir. `asyncio.gather()` sem argumentos devolve uma lista vazia.
+    - args: [[]]
+      expect:
+        results: []
+        finished: []
+        count: 0
+    # Uma corrotina. Concorrência com uma tarefa só é apenas a tarefa.
+    - args: [[25]]
+      expect:
+        results: ["waited 25ms"]
+        finished: [25]
+        count: 1
+    - args: [[10, 30, 50, 70]]
+      expect:
+        results: ["waited 10ms", "waited 30ms", "waited 50ms", "waited 70ms"]
+        finished: [10, 30, 50, 70]
+        count: 4
+    # Exatamente invertido: as duas listas são espelhos, e só um gather de verdade produz isso.
+    - args: [[70, 50, 30, 10]]
+      expect:
+        results: ["waited 70ms", "waited 50ms", "waited 30ms", "waited 10ms"]
+        finished: [10, 30, 50, 70]
+        count: 4
+    - args: [[40, 20]]
+      expect:
+        results: ["waited 40ms", "waited 20ms"]
+        finished: [20, 40]
+        count: 2
+    - args: [[15, 45]]
+      expect:
+        results: ["waited 15ms", "waited 45ms"]
+        finished: [15, 45]
+        count: 2
+
+hints:
+  - level: 1
+    text: |
+      Duas ordens saem disto, e só uma delas é trabalho do `gather`.
+
+      O `gather` te entrega a ordem de argumento. A ordem de conclusão é algo que você tem
+      de registrar sozinho, de dentro de cada corrotina, no momento em que ela acorda. Onde
+      uma lista pode morar para que todas essas corrotinas vejam a mesma?
+  - level: 2
+    text: |
+      Defina `finished = []` em `all_at_once`, antes de qualquer coisa começar.
+
+      Defina o trabalhador **dentro** de `all_at_once`, para ele fechar sobre essa lista:
+
+          async def run(ms):
+              await asyncio.sleep(ms / 1000)
+              finished.append(ms)
+              return f"waited {ms}ms"
+
+      Depois uma linha inicia todas: `await asyncio.gather(*[run(ms) for ms in waits])`. O
+      `*` importa — `gather` recebe corrotinas como argumentos separados, não uma lista.
+
+      Envolva o que ele devolve em `list(...)` antes de pôr no dict.
+  - level: 3
+    text: |
+      O mesmo truque das duas ordens, despachando entregadores:
+
+          import asyncio
+
+
+          async def deliver(routes):
+              arrived = []
+
+              async def go(route):
+                  await asyncio.sleep(route["minutes"] / 1000)
+                  arrived.append(route["name"])
+                  return route["name"].upper()
+
+              shouted = await asyncio.gather(*[go(route) for route in routes])
+              return {"shouted": list(shouted), "arrived": arrived}
+
+
+          print(asyncio.run(deliver([{"name": "far", "minutes": 30},
+                                     {"name": "near", "minutes": 10}])))
+          # {'shouted': ['FAR', 'NEAR'], 'arrived': ['near', 'far']}
+
+      A sua registra a duração em vez do nome, e tem uma terceira chave.
+
+solution: |
+  import asyncio
+
+
+  async def all_at_once(waits):
+      finished = []
+
+      async def run(ms):
+          await asyncio.sleep(ms / 1000)
+          finished.append(ms)
+          return f"waited {ms}ms"
+
+      results = await asyncio.gather(*[run(ms) for ms in waits])
+
+      return {"results": list(results), "finished": finished, "count": len(waits)}

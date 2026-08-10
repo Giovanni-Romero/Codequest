@@ -1,0 +1,246 @@
+# Missão 2 de Async e Concorrência. Introduz: async-await E event-loop.
+# Reforça: blocking-vs-nonblocking, functions, for-loop.
+#
+# A terceira e última exceção à regra de um conceito novo por missão em todo o currículo,
+# depois da missão 3 da Ilha 6 e da missão 1 da Ilha 8. É a menos evitável das três:
+# `await` fora de um loop rodando é SyntaxError ou RuntimeError dependendo de onde você o
+# põe, então quem não ouviu falar do loop não consegue ler o próprio primeiro erro.
+#
+# A corrotina interna não é enfeite. Quem escrever `results.append(wait_for(ms))` sem
+# `await` recebe uma lista de objetos corrotina, que o harness serializa por repr com um
+# endereço de memória novo a cada execução - então esquecer o await falha alto, e essa é a
+# concepção errada listada sendo pega pelo teste em vez de só nomeada num painel.
+#
+# Sequencial de propósito. A missão 4 recebe a mesma entrada e as mesmas durações e torna
+# tudo concorrente, para as duas respostas poderem ser comparadas lado a lado.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-02
+title: O primeiro await
+track: python
+island: async-and-concurrency
+order: 2
+difficulty: expert
+tags: [async, await, event-loop]
+xp: 60
+
+concepts:
+  - async-await
+  - event-loop
+
+teaching:
+  analogy: |
+    Uma cozinha com um cozinheiro só.
+
+    Ele põe uma panela para ferver e fica ali olhando. Nada mais acontece na cozinha por
+    onze minutos. Essa é a função comum que você escreveu o ano todo: faz uma coisa, do
+    começo ao fim, e a cozinha pertence a ela.
+
+    Agora o cozinheiro aprende uma frase: "me chama quando ferver". Ele põe a panela, diz a
+    frase, e começa a picar cebola. Quando a panela está pronta, alguém avisa.
+
+    Duas coisas precisaram existir para essa frase funcionar. O cozinheiro precisou ser
+    *capaz* de sair no meio da tarefa, e alguém precisou ficar com a lista do que estava
+    esperando o quê. `async def` é a primeira. O event loop é a segunda, e nenhuma das duas
+    serve sozinha.
+
+  explanation: |
+    Uma função `async def` é uma **função corrotina**. Chamá-la não a executa. Ela te
+    entrega um objeto corrotina — um trabalho que não começou — e o trabalho só roda quando
+    alguém o aguarda.
+
+        async def fetch():
+            return 1
+
+        fetch()          # <coroutine object fetch at 0x...>, e um aviso. Nada rodou.
+        await fetch()    # 1
+
+    Essa é a primeira concepção errada, e vale encontrá-la de propósito: esquecer o `await`
+    não é um erro, é um valor que você não queria.
+
+    **`await` significa "pause aqui, e deixe outra coisa rodar até isto ficar pronto".** Só
+    é legal dentro de um `async def`, porque só uma corrotina tem a capacidade de pausar.
+
+    A coisa que decide o que roda enquanto você está pausado é o **event loop**. Uma
+    thread, um loop, uma lista de corrotinas pausadas. Quando uma aguarda, o loop escolhe
+    outra que esteja pronta. Nada é paralelo: existe exatamente uma thread, e exatamente
+    uma linha de Python executando a cada instante. O que mudou é que o tempo ocioso agora
+    é *aproveitável*.
+
+    Duas consequências para guardar:
+
+    - **Uma corrotina que nunca aguarda congela o loop.** O loop não consegue te
+      interromper; ele só recupera o controle quando você o devolve. Um cálculo de três
+      segundos sem nenhum `await` dentro para toda outra tarefa do loop.
+    - **`await asyncio.sleep(x)` e `time.sleep(x)` não são a mesma coisa.** O primeiro cede
+      ao loop. O segundo bloqueia a thread em que o loop está rodando, então trava todas as
+      tarefas que existem. Pôr `time.sleep` dentro de uma corrotina é o primeiro bug
+      clássico.
+
+    Neste jogo, **o motor aguarda o seu entrypoint por você**. Escreva `async def` e devolva
+    um valor; não chame `asyncio.run`, porque já existe um loop rodando e aninhá-los levanta
+    `RuntimeError`.
+
+  worked_example: |
+    # Duas corrotinas, uma aguardando a outra - num domínio sem listas nenhuma
+    import asyncio
+
+
+    async def temperature(city):
+        await asyncio.sleep(0.01)
+        return f"{city} is 18C"
+
+
+    async def report():
+        first = await temperature("Lisbon")
+        second = await temperature("Porto")
+        return first + " and " + second
+
+
+    print(asyncio.run(report()))     # Lisbon is 18C and Porto is 18C
+    # Note os dois awaits, um depois do outro. O segundo começa quando o primeiro terminou.
+    # `asyncio.run` aparece aqui porque isto é um script; na missão o motor faz isso.
+
+  key_points:
+    - "Chamar um `async def` te dá um objeto corrotina, não um resultado. Só `await` o executa."
+    - "`await` só é legal dentro de um `async def`. Fora de um, é SyntaxError, e esse erro está te dizendo que falta um loop."
+    - "O event loop é uma thread só fazendo malabarismo com corrotinas pausadas. Nada é paralelo; o tempo ocioso é apenas reaproveitado."
+    - "Uma corrotina sem nenhum `await` dentro não pode ser interrompida, e congela todas as outras tarefas do loop."
+    - "Use `await asyncio.sleep(...)`, nunca `time.sleep(...)`, dentro de uma corrotina. O segundo bloqueia o loop inteiro."
+
+brief: |
+  Faça a espera de novo, agora em corrotinas — e ainda uma de cada vez.
+
+  Escreva duas funções.
+
+  Uma corrotina chamada wait_for que recebe um número de milissegundos, aguarda
+  `asyncio.sleep(ms / 1000)`, e **devolve** a string `"waited {ms}ms"` — então 20 dá
+  `"waited 20ms"`.
+
+  Uma corrotina chamada one_at_a_time que recebe uma lista de valores em milissegundos e
+  devolve:
+
+      {"results": ..., "total_ms": ..., "count": ...}
+
+  Aguarde `wait_for` uma vez **por valor, em ordem**, juntando cada string devolvida em
+  `results`. `total_ms` é a soma da lista. `count` é quantos valores havia.
+
+  Uma lista vazia dá um `results` vazio, 0 e 0.
+
+  `one_at_a_time` é a função que o motor roda, e **o motor a aguarda por você**. Não chame
+  `asyncio.run` — já existe um loop rodando, e começar um segundo dentro dele levanta
+  `RuntimeError`.
+
+  Importe `asyncio` você mesmo. Isto ainda é sequencial: cada espera começa quando a
+  anterior terminou, então tudo leva `total_ms`. A missão 4 corrige isso.
+
+signature:
+  entrypoint: one_at_a_time
+  stub: |
+    async def one_at_a_time(waits):
+        # Um await por valor, em ordem. Esqueça o await e você junta promessas.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20]]
+      expect:
+        results: ["waited 10ms", "waited 20ms"]
+        total_ms: 30
+        count: 2
+    - args: [[30]]
+      expect:
+        results: ["waited 30ms"]
+        total_ms: 30
+        count: 1
+  hidden:
+    # Nada a esperar. O corpo do laço nunca roda e a corrotina devolve do mesmo jeito.
+    - args: [[]]
+      expect:
+        results: []
+        total_ms: 0
+        count: 0
+    # Uma espera de tamanho zero ainda é um await de verdade: cede ao loop e volta.
+    - args: [[0]]
+      expect:
+        results: ["waited 0ms"]
+        total_ms: 0
+        count: 1
+    # Durações repetidas. Ordem sequencial significa que os resultados não podem embaralhar.
+    - args: [[5, 5, 5]]
+      expect:
+        results: ["waited 5ms", "waited 5ms", "waited 5ms"]
+        total_ms: 15
+        count: 3
+    # Quatro em sequência, somando um décimo de segundo de absolutamente nada.
+    - args: [[10, 20, 30, 40]]
+      expect:
+        results: ["waited 10ms", "waited 20ms", "waited 30ms", "waited 40ms"]
+        total_ms: 100
+        count: 4
+    - args: [[0, 15]]
+      expect:
+        results: ["waited 0ms", "waited 15ms"]
+        total_ms: 15
+        count: 2
+
+hints:
+  - level: 1
+    text: |
+      As suas duas funções são `async def`. Uma delas aguarda a outra.
+
+      Se os seus `results` voltarem parecendo `<coroutine object wait_for at 0x...>`, você
+      a chamou sem aguardar — e esse é exatamente o erro que vale cometer uma vez.
+  - level: 2
+    text: |
+      `import asyncio` no topo.
+
+      `wait_for` tem três linhas: `async def`, um `await asyncio.sleep(ms / 1000)`, e um
+      `return` da f-string.
+
+      `one_at_a_time` é um laço `for` comum que por acaso está dentro de um `async def`.
+      `results.append(await wait_for(ms))` — o `await` vai *dentro* do append, porque o que
+      você quer na lista é o valor, não a promessa dele.
+
+      `total_ms` é `sum(waits)` e não precisa de nada disso.
+  - level: 3
+    text: |
+      O mesmo formato de duas corrotinas, lendo medidores em vez de esperar:
+
+          import asyncio
+
+
+          async def read_gauge(name):
+              await asyncio.sleep(0.005)
+              return f"{name} ok"
+
+
+          async def sweep(names):
+              readings = []
+              for name in names:
+                  readings.append(await read_gauge(name))
+              return {"readings": readings, "checked": len(names)}
+
+      A sua espera sobre um número em vez de um nome, e tem uma chave a mais para preencher.
+
+solution: |
+  import asyncio
+
+
+  async def wait_for(ms):
+      await asyncio.sleep(ms / 1000)
+      return f"waited {ms}ms"
+
+
+  async def one_at_a_time(waits):
+      results = []
+
+      for ms in waits:
+          results.append(await wait_for(ms))
+
+      return {"results": results, "total_ms": sum(waits), "count": len(waits)}

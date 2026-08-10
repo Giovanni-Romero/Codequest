@@ -1,0 +1,295 @@
+# Missão 7 de Async e Concorrência. Introduz: gil.
+# Reforça: threads, event-loop, big-o, blocking-vs-nonblocking.
+#
+# `gil` é o terceiro conceito de painel do currículo, depois de print-debugging e
+# interactive-debugger na Ilha 6. Provar que a GIL existe significa cronometrar threads
+# presas na CPU, que é o que esta ilha proibiu; provar por condição de corrida é pior,
+# porque o resultado é não determinístico por definição e o teste seria intermitente
+# exatamente do jeito que ensina o jogador a desconfiar do jogo.
+#
+# Então o painel ensina e o teste avalia a **consequência**: o jogador separa os trabalhos
+# pelo que de fato ajudaria cada um, e depois tem de rodar as duas metades do jeito que
+# separou. A classificação não é tabela de consulta porque os dois ramos produzem tipos
+# diferentes de resultado - string para os que vão a threads, inteiro para os calculados -
+# então uma atribuição errada produz um `results` errado além de uma lista errada.
+#
+# Orçamento de sono: as esperas rodam concorrentes, então o relógio é a maior delas. 30ms aqui.
+# Referência do schema: docs/mission-schema.md
+
+id: py-async-07
+title: Um de cada vez, afinal
+track: python
+island: async-and-concurrency
+order: 7
+difficulty: expert
+tags: [async, gil, threads]
+xp: 60
+
+concepts:
+  - gil
+
+teaching:
+  analogy: |
+    A capitania contrata quatro escriturários e compra uma caneta.
+
+    Para o serviço que é sobretudo espera — ficar na linha, olhar a régua de maré — quatro
+    escriturários são quatro vezes melhores, porque nenhum deles precisa da caneta enquanto
+    espera. Três podem estar esperando enquanto o quarto escreve.
+
+    Para o serviço que é sobretudo escrita, quatro escriturários não são melhores que um, e
+    são ligeiramente piores. Existe uma caneta. Eles fazem fila por ela, e perdem um tempo
+    passando-a de mão em mão.
+
+    A caneta não é uma falha de projeto. É por causa dela que ninguém precisa verificar se
+    outra pessoa está no meio de uma frase na mesma linha, e é por causa dela que o
+    escriturário sozinho sempre foi rápido.
+
+  explanation: |
+    O CPython tem uma **Global Interpreter Lock** — a GIL. É um lock que uma thread precisa
+    segurar para executar bytecode Python, então **só uma thread roda Python por vez**, não
+    importa quantos núcleos você tenha.
+
+    A consequência se parte limpa em duas, e essa partição é o conceito inteiro:
+
+    - **Esperar libera a GIL.** `time.sleep`, uma leitura de socket, uma leitura de disco,
+      uma chamada de banco: o interpretador passa o lock adiante antes de bloquear. Então
+      quatro threads esperando em quatro chamadas de rede realmente se sobrepõem, e threads
+      realmente deixam trabalho preso em I/O quatro vezes mais rápido.
+    - **Calcular segura a GIL.** Quatro threads somando quatro ranges grandes se revezam num
+      núcleo. Você tem o mesmo tempo total de uma thread, mais o custo de alternar entre
+      elas. Threads deixam Python preso na CPU *ligeiramente mais lento*, nunca mais rápido.
+
+    O que usar no lugar, quando o trabalho é computação de verdade: **mais processos**.
+    `multiprocessing` e `ProcessPoolExecutor` dão a cada trabalhador o próprio interpretador
+    e a própria GIL, ao custo de copiar dados entre eles — então compensa para trabalho
+    graúdo e perde feio em trabalho miúdo. Ou faça menos trabalho, que é a Ilha 10 e
+    normalmente a resposta melhor.
+
+    Duas coisas que as pessoas erram sobre ela:
+
+    - **A GIL não torna estado compartilhado seguro.** A corrida da missão 6 continua sendo
+      uma corrida. O lock é segurado por trecho de bytecode, não por comando seu.
+    - **É uma troca, não um bug.** Removê-la torna Python de thread única mais lento, que é
+      o caso de quase todo programa. Outras linguagens fizeram a outra escolha e pagam por
+      isso em outro lugar. (O Python 3.13 traz um build opcional sem ela; não é o padrão, e a
+      troca continua sendo uma troca.)
+
+    Esta missão não cronometra nada, porque cronometrar threads é exatamente a medição que
+    esta ilha se recusa a confiar. Ela avalia o que você faz com o conhecimento: ponha a
+    espera em threads, e deixe o cálculo em paz.
+
+  worked_example: |
+    # Separando tarefas pelo que ajudaria cada uma, e fazendo cada pilha do seu jeito
+    import threading
+    import time
+
+
+    def morning(chores):
+        done = {}
+
+        def wait_out(chore):
+            time.sleep(chore["ms"] / 1000)
+            done[chore["id"]] = "waited"
+
+        hands = [threading.Thread(target=wait_out, args=(c,))
+                 for c in chores if c["kind"] == "soak"]
+        for hand in hands:
+            hand.start()
+        for hand in hands:
+            hand.join()
+
+        for chore in chores:
+            if chore["kind"] != "soak":
+                done[chore["id"]] = len(chore["id"])
+
+        return done
+
+
+    print(morning([{"id": "beans", "kind": "soak", "ms": 10},
+                   {"id": "flour", "kind": "sift", "ms": 0}]))
+    # {'beans': 'waited', 'flour': 5}
+    # O molho se sobrepôs. A peneira não, e mandá-la para uma thread não ganharia nada.
+
+  key_points:
+    - "Um lock, uma thread rodando Python por vez. Mais núcleos não mudam isso no CPython."
+    - "Esperar libera a GIL, então threads realmente sobrepõem I/O. Calcular a segura, então threads nunca aceleram aritmética."
+    - "Para computação de verdade, use processos — cada um ganha o próprio interpretador — ou faça menos trabalho, que costuma ser melhor."
+    - "A GIL não torna estado compartilhado seguro. A corrida da missão 6 continua sendo uma corrida, e continua precisando do lock."
+    - "É uma troca que torna Python de thread única rápido, não um defeito. Quase todo programa é de thread única."
+
+brief: |
+  Separe os trabalhos da manhã pelo que de fato ajudaria cada um, e rode cada pilha do jeito
+  dela.
+
+  Escreva uma função chamada dispatch que recebe uma lista de trabalhos e devolve:
+
+      {"threaded": ..., "sequential": ..., "results": ...}
+
+  Cada trabalho é um dict com `"name"`, `"kind"` e `"size"`. O tipo é `"wait"` ou
+  `"compute"`.
+
+  Um trabalho `"wait"` é I/O: ele libera a GIL, então **rode cada um deles na própria
+  `threading.Thread`**, todos ao mesmo tempo. A thread bloqueia com
+  `time.sleep(size / 1000)` e registra a string `"waited {size}ms"` para o nome daquele
+  trabalho.
+
+  Um trabalho `"compute"` é aritmética: threads não ajudariam, então **rode um depois do
+  outro**, na ordem dada, na thread principal. Cada um registra o inteiro
+  `sum(range(size))` para o nome dele.
+
+  `threaded` é a lista dos nomes que você mandou para threads, na ordem da entrada.
+  `sequential` é a lista dos que você não mandou, na ordem da entrada. `results` é um dict
+  mapeando o nome de todo trabalho para o que ele registrou.
+
+  Uma lista vazia dá duas listas vazias e um dict vazio.
+
+  Inicie todas as threads antes de juntar qualquer uma. Importe `threading` e `time` você
+  mesmo. Nomes são únicos dentro de um caso.
+
+signature:
+  entrypoint: dispatch
+  stub: |
+    def dispatch(jobs):
+        # Duas pilhas. Uma delas ganha threads, e a outra não ganha nada além de um laço.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[{name: download, kind: wait, size: 20}, {name: checksum, kind: compute, size: 1000}]]
+      expect:
+        threaded: [download]
+        sequential: [checksum]
+        results: {download: "waited 20ms", checksum: 499500}
+    - args: [[{name: only, kind: compute, size: 10}]]
+      expect:
+        threaded: []
+        sequential: [only]
+        results: {only: 45}
+  hidden:
+    # Nenhum trabalho de nenhum dos dois tipos.
+    - args: [[]]
+      expect:
+        threaded: []
+        sequential: []
+        results: {}
+    # Só espera. Em sequência isso são 40ms; em threads são 30.
+    - args: [[{name: a, kind: wait, size: 30}, {name: b, kind: wait, size: 10}]]
+      expect:
+        threaded: [a, b]
+        sequential: []
+        results: {a: "waited 30ms", b: "waited 10ms"}
+    # `sum(range(0))` é 0. O trabalho rodou e pertence à pilha sequencial do mesmo jeito.
+    - args: [[{name: x, kind: compute, size: 0}]]
+      expect:
+        threaded: []
+        sequential: [x]
+        results: {x: 0}
+    # Intercalado. As duas listas têm de manter a ordem da entrada, não a ordem em que você rodou.
+    - args:
+        [
+          [
+            {name: n1, kind: wait, size: 10},
+            {name: c1, kind: compute, size: 5},
+            {name: n2, kind: wait, size: 25},
+            {name: c2, kind: compute, size: 100},
+          ],
+        ]
+      expect:
+        threaded: [n1, n2]
+        sequential: [c1, c2]
+        results: {n1: "waited 10ms", c1: 10, n2: "waited 25ms", c2: 4950}
+    # Uma espera de zero ainda é espera. O tipo decide a pilha, nunca o tamanho.
+    - args: [[{name: solo, kind: wait, size: 0}]]
+      expect:
+        threaded: [solo]
+        sequential: []
+        results: {solo: "waited 0ms"}
+
+hints:
+  - level: 1
+    text: |
+      Qual dos dois tipos fica mais rápido com threads, e qual só fica mais complicado? O
+      painel de ensino responde isso numa frase.
+
+      Depois: as duas listas de nomes têm de estar na ordem da entrada. A ordem em que você
+      *roda* as coisas precisa bater com a ordem em que você as *lista*?
+  - level: 2
+    text: |
+      Construa as duas listas de nomes primeiro, direto da entrada, com duas compreensões
+      filtrando por `job["kind"]`. Isso resolve a ordenação antes de existir thread alguma.
+
+      Depois um `results = {}` compartilhado.
+
+      A pilha de espera: uma `threading.Thread` por trabalho de espera, todas iniciadas,
+      depois todas juntadas. O trabalhador dorme `job["size"] / 1000` e define
+      `results[job["name"]]`.
+
+      A pilha de cálculo: um laço `for` comum sobre `jobs`, pulando o que não for
+      `"compute"`, definindo `results[job["name"]] = sum(range(job["size"]))`.
+  - level: 3
+    text: |
+      O mesmo formato de duas pilhas, com cartas e encomendas:
+
+          import threading
+          import time
+
+
+          def post(items):
+              posted = {}
+
+              def mail(item):
+                  time.sleep(item["ms"] / 1000)
+                  posted[item["ref"]] = "sent"
+
+              hands = [threading.Thread(target=mail, args=(i,))
+                       for i in items if i["kind"] == "letter"]
+              for hand in hands:
+                  hand.start()
+              for hand in hands:
+                  hand.join()
+
+              for item in items:
+                  if item["kind"] != "letter":
+                      posted[item["ref"]] = item["ms"] * 2
+
+              return posted
+
+      A sua também informa que nomes foram para cada pilha, e as duas listas seguem a
+      entrada em vez da execução.
+
+solution: |
+  import threading
+  import time
+
+
+  def dispatch(jobs):
+      threaded = [job["name"] for job in jobs if job["kind"] == "wait"]
+      sequential = [job["name"] for job in jobs if job["kind"] == "compute"]
+      results = {}
+
+      def run_wait(job):
+          time.sleep(job["size"] / 1000)
+          results[job["name"]] = f"waited {job['size']}ms"
+
+      threads = [
+          threading.Thread(target=run_wait, args=(job,))
+          for job in jobs
+          if job["kind"] == "wait"
+      ]
+
+      for thread in threads:
+          thread.start()
+
+      for thread in threads:
+          thread.join()
+
+      for job in jobs:
+          if job["kind"] == "compute":
+              results[job["name"]] = sum(range(job["size"]))
+
+      return {"threaded": threaded, "sequential": sequential, "results": results}

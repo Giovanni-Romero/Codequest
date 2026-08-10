@@ -1,0 +1,246 @@
+# Async and Concurrency mission 9. Introduces nothing.
+# Reinforces: when-concurrency-helps, gather, threads, gil.
+#
+# Relief mission, and the island's summary table turned into code. Every rule in it was
+# argued somewhere earlier: network to async is mission 4, disk to threads is mission 5,
+# CPU to processes is mission 7, and the count rule is mission 8 - one item has nothing to
+# overlap with, so the branch is pure overhead.
+#
+# The count rule is what stops this being a lookup table. A player who maps kinds to tools
+# and forgets it fails three of the seven cases, and the three it fails are exactly the
+# ones mission 8 spent itself on.
+#
+# No sleeps and no threads: the tool is named, not started.
+# Schema reference: docs/mission-schema.md
+
+id: py-async-09
+title: The right tool
+track: python
+island: async-and-concurrency
+order: 9
+difficulty: challenging
+tags: [async, decisions, relief]
+xp: 45
+
+concepts:
+  - when-concurrency-helps
+
+teaching:
+  analogy: |
+    The chandlery keeps three things behind the counter: a coil of rope, a crate of
+    shackles, and a hacksaw.
+
+    Nobody argues about which is best. You are asked what the job is, and the job picks.
+
+    The only genuinely wrong answer is reaching for the same one every time because it is
+    nearest to your hand.
+
+  explanation: |
+    This island has produced four tools. Here they are together, which is the first time
+    they have all been in one place.
+
+    **`asyncio`, with `gather`** — for many waits on things that speak the async dialect:
+    network calls, modern database drivers, queues. One thread, thousands of pending waits,
+    almost no cost per branch. It is the cheapest concurrency there is, and it demands that
+    everything in the chain be a coroutine.
+
+    **Threads** — for many waits on things that do *not* speak that dialect: files, an old
+    driver, a blocking library you did not write and will not rewrite. Heavier per branch
+    than a task, and the code stays exactly as it was. That is what you are buying.
+
+    **Processes** — for real computation. Each one gets its own interpreter and its own
+    GIL, which is the only way arithmetic actually runs in parallel in CPython. Expensive
+    to start, and the data has to be copied across, so it pays for chunky work and loses on
+    small.
+
+    **A plain loop** — whenever the work is small or there is only one of it. Mission 8 is
+    the whole argument: a branch has a fixed cost, and one job has nothing to overlap with,
+    so concurrency on a single item is overhead with a rationalisation attached.
+
+    Two rules of thumb worth keeping past this island:
+
+    - **Ask what the program is waiting for before asking which tool.** A profiler answers
+      that question and an opinion does not, which is Island 10 saying the same thing.
+    - **The count matters as much as the kind.** Forty network calls want `asyncio`. One
+      network call wants `requests.get` and a good night's sleep.
+
+  worked_example: |
+    # A dispatch table picking a tool by category, in a domain with no concurrency in it
+    _BY_MATERIAL = {"glass": "crate", "rope": "coil", "iron": "pallet"}
+
+
+    def stow(items):
+        plan = {}
+        tally = {"crate": 0, "coil": 0, "pallet": 0, "shelf": 0}
+
+        for item in items:
+            how = "shelf" if item["units"] < 5 else _BY_MATERIAL[item["material"]]
+            plan[item["name"]] = how
+            tally[how] = tally[how] + 1
+
+        return {"plan": plan, "tally": tally}
+
+
+    print(stow([{"name": "jars", "material": "glass", "units": 40}]))
+    # {'plan': {'jars': 'crate'}, 'tally': {'crate': 1, 'coil': 0, 'pallet': 0, 'shelf': 0}}
+    # The quantity is checked first. Below the threshold the material never gets a vote.
+
+  key_points:
+    - "`asyncio` for many waits on async-aware things: cheapest per branch, and it requires coroutines all the way down."
+    - "Threads for many waits on blocking code you are not rewriting. Heavier per branch; the code stays as it is."
+    - "Processes for real computation — the only way CPython runs arithmetic in parallel — at the price of startup and copying."
+    - "A plain loop for one item, or for work too small to be worth a branch. That is mission 8's rule, and it outranks the kind."
+    - "Ask what the program waits for before asking which tool. Measure first; the answer is often 'none of them'."
+
+brief: |
+  Three tools behind the counter, and a morning's worth of jobs to hand out.
+
+  Write a function called right_tool that takes a list of workloads and returns:
+
+      {"plan": ..., "counts": ...}
+
+  Each workload is a dict with `"name"`, `"kind"` and `"count"` — how many of that thing
+  there are to do.
+
+  **The count is checked first.** A workload with a `count` below 2 gets `"sequential"`,
+  whatever its kind: there is nothing to overlap it with, so a branch would be pure
+  overhead.
+
+  Otherwise the kind decides:
+
+      "network"  ->  "async"
+      "disk"     ->  "threads"
+      "cpu"      ->  "processes"
+
+  `plan` maps every workload's name to the string you chose.
+
+  `counts` tallies how many workloads went to each tool. It must contain **all four keys
+  every time**, in this order, with 0 where nothing was assigned:
+
+      {"async": ..., "threads": ..., "processes": ..., "sequential": ...}
+
+  An empty list gives an empty `plan` and all four counts at 0.
+
+  Names are unique within a case, and `count` is never negative.
+
+signature:
+  entrypoint: right_tool
+  stub: |
+    def right_tool(workloads):
+        # The count gets the first vote. The kind only speaks if the count let it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[{name: downloads, kind: network, count: 40}, {name: thumbnails, kind: cpu, count: 12}]]
+      expect:
+        plan: {downloads: async, thumbnails: processes}
+        counts: {async: 1, threads: 0, processes: 1, sequential: 0}
+    # One file. Disk work, and still a plain loop, because there is one of it.
+    - args: [[{name: one_file, kind: disk, count: 1}]]
+      expect:
+        plan: {one_file: sequential}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 1}
+  hidden:
+    # Nothing to plan. All four keys are still present.
+    - args: [[]]
+      expect:
+        plan: {}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 0}
+    - args: [[{name: logs, kind: disk, count: 200}]]
+      expect:
+        plan: {logs: threads}
+        counts: {async: 0, threads: 1, processes: 0, sequential: 0}
+    # A single network call. The kind that most tempts you into asyncio, and the count says no.
+    - args: [[{name: solo_ping, kind: network, count: 1}]]
+      expect:
+        plan: {solo_ping: sequential}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 1}
+    # Zero of something. Below the threshold like any other, and it still gets a plan.
+    - args: [[{name: hash, kind: cpu, count: 0}]]
+      expect:
+        plan: {hash: sequential}
+        counts: {async: 0, threads: 0, processes: 0, sequential: 1}
+    # All four tools at once, and the boundary sits between the first and the last:
+    # two is enough, one is not.
+    - args:
+        [
+          [
+            {name: api, kind: network, count: 2},
+            {name: backup, kind: disk, count: 9},
+            {name: resize, kind: cpu, count: 30},
+            {name: ping, kind: network, count: 1},
+          ],
+        ]
+      expect:
+        plan: {api: async, backup: threads, resize: processes, ping: sequential}
+        counts: {async: 1, threads: 1, processes: 1, sequential: 1}
+
+hints:
+  - level: 1
+    text: |
+      Two of the cases have the same `kind` and different answers. What separates them?
+
+      And what does `counts` have to look like when nothing was assigned to a tool — is
+      the key missing, or present at 0?
+  - level: 2
+    text: |
+      Start `counts` as a full dict with all four keys at 0, before the loop. Building it
+      from what you saw would drop the keys you never used.
+
+      A dict maps the three kinds to their tools:
+      `{"network": "async", "disk": "threads", "cpu": "processes"}`.
+
+      Then per workload: if `workload["count"] < 2`, the tool is `"sequential"`; otherwise
+      look it up. Write it into `plan`, and add one to `counts[tool]`.
+  - level: 3
+    text: |
+      The same guard-then-lookup shape, routing post:
+
+          _BY_SIZE = {"letter": "envelope", "parcel": "box", "pallet": "freight"}
+
+
+          def route(items):
+              plan = {}
+              tally = {"envelope": 0, "box": 0, "freight": 0, "hand": 0}
+
+              for item in items:
+                  if item["km"] < 1:
+                      how = "hand"
+                  else:
+                      how = _BY_SIZE[item["size"]]
+                  plan[item["ref"]] = how
+                  tally[how] = tally[how] + 1
+
+              return {"plan": plan, "tally": tally}
+
+
+          print(route([{"ref": "A1", "size": "parcel", "km": 0}]))
+          # {'plan': {'A1': 'hand'}, 'tally': {'envelope': 0, 'box': 0, 'freight': 0, 'hand': 1}}
+
+      Note the guard runs before the lookup, so the size never gets consulted for a
+      next-door delivery. Yours works the same way, on a count instead of a distance.
+
+solution: |
+  _TOOL_BY_KIND = {"network": "async", "disk": "threads", "cpu": "processes"}
+
+
+  def right_tool(workloads):
+      plan = {}
+      counts = {"async": 0, "threads": 0, "processes": 0, "sequential": 0}
+
+      for workload in workloads:
+          if workload["count"] < 2:
+              tool = "sequential"
+          else:
+              tool = _TOOL_BY_KIND[workload["kind"]]
+
+          plan[workload["name"]] = tool
+          counts[tool] = counts[tool] + 1
+
+      return {"plan": plan, "counts": counts}
