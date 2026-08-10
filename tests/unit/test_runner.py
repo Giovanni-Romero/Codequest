@@ -125,6 +125,61 @@ def test_recursion_error_is_reported_not_fatal(runner):
     assert result.exception_type == "RecursionError"
 
 
+# ------------------------------------------------------------ the coroutine entrypoint
+
+
+def test_async_entrypoint_is_awaited_not_returned_as_a_coroutine(runner):
+    """Without the await, this returns ``<coroutine object ... at 0x...>`` every run.
+
+    A fresh address each time, so the case could never pass — and it would *look* like
+    a value rather than like the promise it is. The Async island depends on this.
+    """
+    source = (
+        "import asyncio\n\nasync def double(n):\n    await asyncio.sleep(0)\n    return n * 2\n"
+    )
+
+    result = _run(runner, source, TestCase(args=(21,), expect=42))
+
+    assert result.ok
+    assert result.returned == 42
+    assert result.status == "ok"
+
+
+def test_exception_raised_inside_a_coroutine_is_data_not_an_empty_result(runner):
+    """The await has to sit inside the harness's own error handling.
+
+    If it escapes, the parent gets an empty result file and no idea why — which is the
+    exact failure a ``raises:`` case on the Async island would hit.
+    """
+    source = "async def double(n):\n    raise ValueError('the tide went out')\n"
+
+    result = _run(runner, source, TestCase(args=(1,), expect=1))
+
+    assert result.status == "error"
+    assert result.exception_type == "ValueError"
+    assert "the tide went out" in result.exception_message
+
+
+def test_a_sync_entrypoint_may_still_run_its_own_event_loop(runner):
+    """Only the *entrypoint* must not nest loops. A sync one owning a loop is legal.
+
+    Missions 5 to 9 of the Async island are shaped this way: the player drives asyncio
+    themselves and hands back plain data.
+    """
+    source = (
+        "import asyncio\n\n"
+        "async def wait(n):\n"
+        "    await asyncio.sleep(0)\n"
+        "    return n + 1\n\n"
+        "def double(n):\n"
+        "    return asyncio.run(wait(n))\n"
+    )
+
+    result = _run(runner, source, TestCase(args=(41,), expect=42))
+
+    assert result.returned == 42
+
+
 # ------------------------------------------------------- the channel separation rule
 
 

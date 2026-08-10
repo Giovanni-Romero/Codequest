@@ -128,6 +128,32 @@ def test_entrypoint_missing_from_the_solution_is_rejected(mission_factory):
     assert "solution does not define 'def double('" in str(exc_info.value)
 
 
+def test_an_async_entrypoint_is_accepted(mission_factory):
+    """The harness awaits a coroutine entrypoint, so the loader must let one through.
+
+    Rejecting it here would reject a shape the engine supports — and every mission on
+    the Async island has this shape.
+    """
+    path = mission_factory(
+        signature={"entrypoint": "double", "stub": "async def double(n):\n    pass\n"},
+        solution="async def double(n):\n    return n * 2\n",
+    )
+
+    mission = load_mission(path)
+
+    assert mission.signature.entrypoint == "double"
+
+
+def test_the_wrong_name_is_still_rejected_when_it_is_async(mission_factory):
+    """The regression that matters: widening for ``async`` must not widen for anything else."""
+    path = mission_factory(solution="async def other(n):\n    return n\n")
+
+    with pytest.raises(MissionValidationError) as exc_info:
+        load_mission(path)
+
+    assert "solution does not define 'def double('" in str(exc_info.value)
+
+
 def test_empty_hidden_test_group_is_rejected(mission_factory):
     """Without hidden cases, returning a constant passes the mission."""
     path = mission_factory(tests={"visible": [{"args": [2], "expect": 4}], "hidden": []})

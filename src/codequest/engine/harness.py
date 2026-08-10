@@ -30,6 +30,7 @@ import importlib.util
 import json
 import sys
 import traceback
+import types
 from typing import Any
 
 
@@ -130,6 +131,28 @@ def run(request: dict[str, Any]) -> dict[str, Any]:
 
     try:
         returned = function(*args, **kwargs)
+        if isinstance(returned, types.CoroutineType):
+            # [AI-ENG:deferred-results] What the callable handed back is not the answer:
+            # it is a promise to produce one. Serializing it now would ship
+            # ``<coroutine object ... at 0x7f...>`` — a fresh address every run, and a
+            # value that looks like data. Resolving the promise *before* the boundary,
+            # inside the same error handling that covers the ordinary call, is the same
+            # discipline an agent's tool executor needs: await first, then serialize,
+            # then report. The order is the whole point.
+            #
+            # ``asyncio.run`` owns its event loop from creation to close, so it must be
+            # the outermost call. A mission whose async entrypoint ran its own would be
+            # nesting loops; every async brief says the engine awaits for them.
+            #
+            # Imported here rather than at the top, and detected with ``types`` rather
+            # than ``inspect``: this module is re-executed by a fresh interpreter for
+            # every test case of every mission, and ``import asyncio`` costs about 75 ms
+            # against a 5 ms baseline. Paying that on all 117 missions to serve the four
+            # that are async pushed a TUI snapshot test past its deadline — a cost
+            # measured after the test went red, not guessed at beforehand.
+            import asyncio
+
+            returned = asyncio.run(returned)
     except MemoryError:
         return {"status": "memory", "type": "MemoryError", "message": "out of memory"}
     except RecursionError as exc:

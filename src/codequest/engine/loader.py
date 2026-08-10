@@ -103,8 +103,16 @@ def _read_yaml(path: Path) -> Any:
 
 
 def _defines_function(source: str, name: str) -> bool:
-    """Whether ``source`` contains a ``def name(`` at any indentation level."""
-    pattern = rf"^\s*def\s+{re.escape(name)}\s*\("
+    """Whether ``source`` defines ``name``, sync or async, at any indentation level.
+
+    ``async def`` counts. The harness awaits a coroutine entrypoint before serializing
+    it, so an async mission is an ordinary mission as far as everything downstream is
+    concerned, and rejecting it here would reject a shape the engine supports.
+
+    Same pattern as ``mentor.policy.defines_entrypoint`` — the anti-spoiler filter has
+    always allowed for an async entrypoint, and this was the half that had not.
+    """
+    pattern = rf"^\s*(?:async\s+)?def\s+{re.escape(name)}\s*\("
     return re.search(pattern, source, re.MULTILINE) is not None
 
 
