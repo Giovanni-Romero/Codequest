@@ -1,0 +1,258 @@
+# Missão 5 de Objetos. Introduz: custom-exceptions.
+# Reforça: raising, classes, input-validation.
+#
+# O conceito que o syllabus trouxe da Ilha 5 para cá, porque definir uma exceção é uma
+# definição de classe e a Ilha 5 acontece muito antes de `class` existir.
+#
+# A missão levanta duas exceções diferentes de propósito. O `raises:` compara pelo nome
+# exato do tipo (engine/evaluator.py), então um caso que espera OverloadError realmente
+# falha quando chega um ValueError - que é o argumento inteiro a favor de dar nome às suas
+# falhas, tornado observável em vez de afirmado.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-05
+title: A capitania recusa
+track: python
+island: objects
+order: 5
+difficulty: moderate
+tags: [objects, exceptions, validation]
+xp: 30
+
+concepts:
+  - custom-exceptions
+
+teaching:
+  analogy: |
+    Um porto tem dois jeitos de recusar uma carga, e não são a mesma recusa.
+
+    "Este caixote é mais pesado do que o guindaste levanta" é sobre o porto: um limite real,
+    e o capitão pode voltar amanhã com uma carga menor. "Este caixote pesa menos quatro
+    quilos" é sobre o papel: ninguém resolve isso esperando, porque aquele número nunca foi
+    um peso.
+
+    Se o capitão do porto grita a mesma palavra nos dois casos, o comandante não aprende nada
+    com nenhuma delas. Duas recusas, dois nomes.
+
+  explanation: |
+    A Ilha 5 te ensinou a levantar as exceções embutidas. `ValueError` diz que um valor
+    estava errado, e é exatamente isso quando alguém te entrega um peso negativo.
+
+    Mas a maior parte das falhas do seu programa não são as que o Python trouxe de fábrica.
+    "O caixote passou da capacidade" é uma regra que o seu porto inventou, e enfiá-la dentro
+    de `ValueError` significa que quem quiser pegar *essa* falha precisa pegar todo problema
+    de valor da chamada.
+
+    Então você dá nome a ela. Uma exceção própria é uma classe, e a menor que serve para
+    alguma coisa não tem corpo nenhum:
+
+        class OverloadError(Exception):
+            pass
+
+    Essa é a definição inteira. Ela herda tudo de que precisa - a mensagem, o traceback, a
+    capacidade de ser capturada - e a única coisa que você acrescentou foi um nome. Você a
+    levanta como qualquer outra:
+
+        raise OverloadError(f"{weight} passaria do limite de {self.capacity}")
+
+    Herde de `Exception`, nunca de `BaseException`. `BaseException` também cobre
+    `KeyboardInterrupt` e `SystemExit`, então quem escrevesse `except BaseException` para
+    pegar o seu erro engoliria junto o jogador apertando Ctrl-C.
+
+    O que isso compra é precisão do outro lado. `except OverloadError` pega a sua regra e
+    deixa um `ValueError` sem relação passar direto até quem deveria ficar sabendo.
+
+  worked_example: |
+    # Uma biblioteca, que não é o que esta missão pede
+    class ShelfFullError(Exception):
+        pass
+
+
+    class Shelf:
+        def __init__(self, slots):
+            self.slots = slots
+            self.books = []
+
+        def put(self, title):
+            if title == "":
+                raise ValueError("um livro precisa de título")
+            if len(self.books) + 1 > self.slots:
+                raise ShelfFullError(f"{self.slots} vagas, todas ocupadas")
+            self.books.append(title)
+
+
+    estante = Shelf(1)
+    estante.put("Moby Dick")
+
+    try:
+        estante.put("Ulisses")
+    except ShelfFullError:
+        print("sem espaço")     # esta aqui
+    except ValueError:
+        print("título ruim")    # não esta
+
+  key_points:
+    - "Uma exceção própria é uma classe que herda de `Exception`, e `pass` é um corpo completo. Qualquer coisa além disso é opcional."
+    - "Herde de `Exception`, não de `BaseException`. Quem capturar `BaseException` para pegar o seu erro engole junto o Ctrl-C, e a culpa é sua por ter tentado a pessoa."
+    - "Definir uma e levantar `ValueError` mesmo assim não ganha nada. O nome só vale alguma coisa se for ele que chega."
+    - "O nome é a mensagem para o outro código; a string que você passa é a mensagem para um humano. As duas valem a pena, e são para leitores diferentes."
+    - "Duas falhas com dois nomes deixam quem chama tratar uma e deixar a outra passar. Duas falhas com um nome só obrigam a tratar as duas ou nenhuma."
+
+brief: |
+  A capitania recusa dois tipos de carga, por dois motivos diferentes.
+
+  Defina uma exceção chamada OverloadError. Ela herda de Exception e não precisa de corpo.
+
+  Defina uma classe chamada Crate:
+
+    - `__init__` recebe uma capacidade, guarda como `self.capacity`, e coloca `self.load`
+      em 0
+    - um método chamado `add` recebe um peso e, **nesta ordem**:
+        1. levanta ValueError se o peso for negativo
+        2. levanta OverloadError se adicioná-lo levasse a carga **acima** da capacidade
+        3. caso contrário, soma ao `self.load`
+
+  Carregar um caixote até exatamente a capacidade é permitido. Só passar dela não é.
+
+  Depois escreva uma função chamada stow que recebe uma capacidade e uma lista de pesos,
+  constrói um caixote, adiciona todos os pesos na ordem, e devolve a carga final como
+  número. Se algum peso for recusado, deixe a exceção viajar - `stow` não captura nada.
+
+  A ordem das duas checagens importa e os testes dependem dela: um peso de -5 num caixote
+  cheio é um ValueError, porque aquele número nunca foi um peso, para começo de conversa.
+
+  Você não pode importar dataclasses aqui.
+
+signature:
+  entrypoint: stow
+  stub: |
+    class OverloadError(Exception):
+        # Não precisa de corpo.
+        pass
+
+
+    class Crate:
+        def __init__(self, capacity):
+            # seu código aqui
+            pass
+
+        def add(self, weight):
+            # Negativo primeiro. Depois acima da capacidade. Depois guarde.
+            # seu código aqui
+            pass
+
+
+    def stow(capacity, weights):
+        # Adicione todos. Não capture nada.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, [30, 20]]
+      expect: 50
+    - args: [10, [8, 8]]
+      raises: OverloadError
+  hidden:
+    # Exatamente na capacidade é permitido. A fronteira é "acima", não "em".
+    - args: [50, [20, 30]]
+      expect: 50
+    # Um quilo depois dela não é.
+    - args: [50, [20, 31]]
+      raises: OverloadError
+    # Um peso negativo, num caixote com todo o espaço do mundo. Ainda assim ValueError.
+    - args: [100, [-5]]
+      raises: ValueError
+    # As duas regras quebradas ao mesmo tempo. A ordem do enunciado decide qual chega.
+    - args: [0, [-5]]
+      raises: ValueError
+    # Nenhum peso. O caixote está vazio e nada foi recusado.
+    - args: [100, []]
+      expect: 0
+    # Um caixote de capacidade zero aceita um peso zero, porque zero não é acima de zero.
+    - args: [0, [0]]
+      expect: 0
+    # A recusa vem no terceiro add, depois de dois terem passado. Ela sai do stow assim mesmo.
+    - args: [10, [4, 4, 4]]
+      raises: OverloadError
+    # Longo e legal, então uma solução que levanta erro em tudo não tem onde se esconder.
+    - args: [100, [10, 10, 10, 10, 10]]
+      expect: 50
+
+hints:
+  - level: 1
+    text: |
+      Quanto de uma classe você precisa escrever para que `raise OverloadError(...)` funcione?
+      Tente a menor coisa que você conseguir imaginar antes de escrever qualquer coisa maior.
+
+      E para a checagem de capacidade: qual comparação deixa um peso cair exatamente no
+      limite - `>` ou `>=`?
+  - level: 2
+    text: |
+      A exceção tem três linhas: o `class`, a herança entre parênteses, e o `pass`.
+
+      Dentro do `add`, dois `if` antes de qualquer atribuição. O segundo pergunta sobre
+      `self.load + weight`, não sobre `weight` sozinho - é o total que precisa caber.
+
+      O `stow` não tem `try` em lugar nenhum. Uma exceção levantada dentro do `add` deixa o
+      `stow` por conta própria, que é exatamente o que os testes estão checando.
+  - level: 3
+    text: |
+      As mesmas duas recusas, num ônibus:
+
+          class FullError(Exception):
+              pass
+
+
+          class Bus:
+              def __init__(self, seats):
+                  self.seats = seats
+                  self.riders = 0
+
+              def board(self, group):
+                  if group < 0:
+                      raise ValueError("um grupo não pode ser negativo")
+                  if self.riders + group > self.seats:
+                      raise FullError(f"{self.seats} lugares, {self.riders} ocupados")
+                  self.riders = self.riders + group
+
+
+          def run(seats, groups):
+              onibus = Bus(seats)
+              for group in groups:
+                  onibus.board(group)
+              return onibus.riders
+
+      A sua pesa carga em vez de contar passageiros, e a exceção tem outro nome.
+
+solution: |
+  class OverloadError(Exception):
+      pass
+
+
+  class Crate:
+      def __init__(self, capacity):
+          self.capacity = capacity
+          self.load = 0
+
+      def add(self, weight):
+          if weight < 0:
+              raise ValueError(f"{weight} is not a weight")
+          if self.load + weight > self.capacity:
+              raise OverloadError(f"{weight} would take the load past {self.capacity}")
+          self.load = self.load + weight
+
+
+  def stow(capacity, weights):
+      crate = Crate(capacity)
+
+      for weight in weights:
+          crate.add(weight)
+
+      return crate.load

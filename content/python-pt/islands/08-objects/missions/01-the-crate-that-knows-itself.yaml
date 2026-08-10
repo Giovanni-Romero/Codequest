@@ -1,0 +1,227 @@
+# Missão 1 de Objetos. Introduz: classes, instances.
+#
+# Dois conceitos em uma missão, e o syllabus argumenta isso em detalhe: uma classe sem
+# instância é uma definição que ninguém executou, e uma instância sem classe é impossível.
+#
+# O motor não consegue provar que uma classe foi escrita - ele só vê o valor de retorno, e
+# uma compreensão de duas linhas devolve a mesma lista. O enunciado diz isso em voz alta em
+# vez de fingir o contrário, que é a mesma escolha que a Ilha 6 fez para print-debugging. O
+# que os testes *conseguem* fazer é tornar a independência observável: o caso 2 constrói
+# dois caixotes com argumentos idênticos e muda só um.
+#
+# forbidden_imports bloqueia dataclasses. Ela chega na missão 8, e o sentido inteiro daquela
+# missão é que o jogador já digitou __init__ na mão.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-01
+title: O caixote que sabe de si
+track: python
+island: objects
+order: 1
+difficulty: moderate
+tags: [objects, classes, instances]
+xp: 30
+
+concepts:
+  - classes
+  - instances
+
+teaching:
+  analogy: |
+    Um formulário em branco na capitania não é um registro de carga. Ele é o formato de um:
+    duas linhas, uma dizendo "conteúdo" e outra dizendo "peso". Ninguém consegue olhar para
+    o formulário em branco e dizer o que está no porão.
+
+    Preencha um e você tem um registro. Preencha um segundo e você tem outro, ao lado do
+    primeiro, com as suas próprias duas respostas. Rasurar o peso de um não muda nada no
+    outro, e isso vale por mais parecidos que os dois fossem no começo. O formulário em
+    branco é a classe. Cada folha preenchida é uma instância.
+
+  explanation: |
+    Uma classe define um tipo de valor, e os valores em si se chamam instâncias. Você
+    constrói uma chamando a classe como se fosse uma função:
+
+        caixote = Crate("corda", 12)
+
+    Essa chamada executa o `__init__`, cujo trabalho é guardar os argumentos na instância
+    que está sendo construída. O primeiro parâmetro do `__init__` é essa instância, e por
+    convenção ele se chama `self`:
+
+        class Crate:
+            def __init__(self, name, weight):
+                self.name = name
+                self.weight = weight
+
+    `self` não é palavra reservada. É um parâmetro comum que o Python preenche para você
+    quando você escreve `Crate("corda", 12)` - por isso a chamada passa dois argumentos e a
+    definição lista três.
+
+    Tudo que for guardado com `self.alguma_coisa = ...` pertence àquela instância e só a
+    ela. Dois caixotes construídos com argumentos idênticos continuam sendo dois registros
+    separados, e mudar um deixa o outro exatamente como estava.
+
+  worked_example: |
+    # Uma luminária, que não é o que esta missão pede
+    class Lamp:
+        def __init__(self, room, lit):
+            self.room = room
+            self.lit = lit
+
+
+    cozinha = Lamp("cozinha", False)
+    corredor = Lamp("corredor", False)
+
+    cozinha.lit = True
+
+    print(cozinha.lit)    # True
+    print(corredor.lit)   # False - as duas nunca estiveram ligadas uma na outra
+
+  key_points:
+    - "`self` é o primeiro parâmetro de todo método, e o Python o passa por você. Esquecer dele é o erro que todo iniciante encontra uma vez."
+    - "`self.name = name` guarda um valor apenas nesta instância. Nada que você atribui ali é visível de outra instância."
+    - "`Crate` é o formulário em branco e `Crate(...)` é uma cópia preenchida. Os parênteses são o que faz a diferença."
+    - "Duas instâncias construídas com os mesmos argumentos são dois objetos, não um. O `==` diz que são diferentes, e ele está certo até você ensinar outra coisa a ele."
+    - "`__init__` guarda valores. Ele não pode retornar nada - o Python já está devolvendo a instância nova para você."
+
+brief: |
+  A capitania precisa de dois registros de carga e uma correção.
+
+  Primeiro defina uma classe chamada Crate. O `__init__` dela recebe um nome e um peso, e
+  guarda os dois na instância como `self.name` e `self.weight`.
+
+  Depois escreva uma função chamada relabel que recebe cinco argumentos:
+
+    - name_a, weight_a - para o primeiro caixote
+    - name_b, weight_b - para o segundo caixote
+    - new_weight - o peso corrigido apenas do *primeiro* caixote
+
+  Construa os dois caixotes, mude o peso do primeiro para new_weight, e devolva uma lista
+  com dois dicionários, nesta ordem:
+
+      [{"name": ..., "weight": ...}, {"name": ..., "weight": ...}]
+
+  Leia os valores de volta das instâncias na hora de montar esses dicionários.
+
+  Você não pode importar dataclasses aqui - escrever `__init__` na mão é a missão.
+
+  Uma coisa que vale dizer com todas as letras: uma resposta de duas linhas que pula a
+  classe inteira devolve a lista certa, e os testes não conseguem perceber. Escreva a classe
+  mesmo assim. Tudo nesta ilha é construído em cima dela, e a missão 2 não te dá nada em que
+  se apoiar se você pular esta.
+
+signature:
+  entrypoint: relabel
+  stub: |
+    class Crate:
+        def __init__(self, name, weight):
+            # Guarde os dois em self.
+            # seu código aqui
+            pass
+
+
+    def relabel(name_a, weight_a, name_b, weight_b, new_weight):
+        # Construa dois caixotes, corrija o primeiro, reporte os dois.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", 12, "sail", 30, 20]
+      expect:
+        - {name: rope, weight: 20}
+        - {name: sail, weight: 30}
+    # Argumentos idênticos para os dois caixotes. Se os dois compartilharem qualquer coisa,
+    # este caso denuncia.
+    - args: ["anchor", 45, "anchor", 45, 50]
+      expect:
+        - {name: anchor, weight: 50}
+        - {name: anchor, weight: 45}
+  hidden:
+    # O caso da independência de novo. É o que mais importa, então é cobrado duas vezes.
+    - args: ["barrel", 8, "barrel", 8, 9]
+      expect:
+        - {name: barrel, weight: 9}
+        - {name: barrel, weight: 8}
+    # A correção não muda nada. O caixote continua sendo reetiquetado com o mesmo número.
+    - args: ["rope", 12, "sail", 30, 12]
+      expect:
+        - {name: rope, weight: 12}
+        - {name: sail, weight: 30}
+    # Zero é um peso. Nada aqui justifica tratá-lo como ausente.
+    - args: ["letters", 0, "post", 0, 0]
+      expect:
+        - {name: letters, weight: 0}
+        - {name: post, weight: 0}
+    # Uma correção negativa. Nenhuma validação foi ensinada ainda, então ela é guardada.
+    - args: ["ballast", 100, "rope", 12, -5]
+      expect:
+        - {name: ballast, weight: -5}
+        - {name: rope, weight: 12}
+    # Um nome vazio é um nome.
+    - args: ["", 3, "sail", 30, 4]
+      expect:
+        - {name: "", weight: 4}
+        - {name: sail, weight: 30}
+    # A ordem faz parte da resposta: o caixote corrigido vem primeiro, sempre.
+    - args: ["sail", 30, "rope", 12, 31]
+      expect:
+        - {name: sail, weight: 31}
+        - {name: rope, weight: 12}
+
+hints:
+  - level: 1
+    text: |
+      Quantos parâmetros o `__init__` lista, e quantos argumentos o `Crate("corda", 12)`
+      passa? A diferença entre esses dois números tem nome, e é o primeiro deles.
+  - level: 2
+    text: |
+      Dentro do `__init__`, duas atribuições: `self.name = name` e `self.weight = weight`.
+
+      Dentro do `relabel`, construa os dois caixotes primeiro. Depois mude o primeiro com uma
+      atribuição comum - `caixote_a.weight = new_weight` - e monte os dois dicionários lendo
+      os atributos de volta de cada instância.
+  - level: 3
+    text: |
+      O mesmo formato, para luminárias em vez de caixotes:
+
+          class Lamp:
+              def __init__(self, room, lit):
+                  self.room = room
+                  self.lit = lit
+
+
+          def switch(room_a, lit_a, room_b, lit_b, new_state):
+              primeira = Lamp(room_a, lit_a)
+              segunda = Lamp(room_b, lit_b)
+
+              primeira.lit = new_state
+
+              return [
+                  {"room": primeira.room, "lit": primeira.lit},
+                  {"room": segunda.room, "lit": segunda.lit},
+              ]
+
+      A sua carrega um peso em vez de um interruptor, e as chaves são outras.
+
+solution: |
+  class Crate:
+      def __init__(self, name, weight):
+          self.name = name
+          self.weight = weight
+
+
+  def relabel(name_a, weight_a, name_b, weight_b, new_weight):
+      first = Crate(name_a, weight_a)
+      second = Crate(name_b, weight_b)
+
+      first.weight = new_weight
+
+      return [
+          {"name": first.name, "weight": first.weight},
+          {"name": second.name, "weight": second.weight},
+      ]

@@ -1,0 +1,323 @@
+# Missão 7 de Objetos. Introduz: composition-over-inheritance.
+# Reforça: classes, methods, dunder-methods.
+#
+# O painel de ensino mostra a versão com herança e a rejeita com um motivo, porque "prefira
+# composição" como slogan não ensina nada - o jogador precisa ver a classe que herda de um
+# motor e perceber que um navio não é um tipo de motor.
+#
+# Duas classes, e a de fora delega em vez de reimplementar. O `total_weight` perguntando a
+# cada parte o próprio peso é a ideia inteira em uma linha: o Ship nunca aprende como um
+# Engine se pesa.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-07
+title: O casco e o motor
+track: python
+island: objects
+order: 7
+difficulty: moderate
+tags: [objects, composition, design]
+xp: 30
+
+concepts:
+  - composition-over-inheritance
+
+teaching:
+  analogy: |
+    Um navio tem um motor. Ninguém no porto diria que um navio *é* um motor, e o motivo é
+    fácil de testar: você pode tirar o motor, colocar outro, e continua sendo o mesmo navio.
+    Tente isso com "uma chalupa é um tipo de navio" e não há nada para tirar.
+
+    A pergunta que separa os dois é sempre a mesma. Esta peça pode ser trocada por outra do
+    mesmo tipo, deixando o conjunto reconhecível? Se sim, o conjunto *tem* a peça. Se a
+    resposta for "aí você estaria descrevendo outra embarcação", então ele *é* um tipo do
+    outro.
+
+  explanation: |
+    Existem dois jeitos de construir uma classe a partir de outra.
+
+    **Herança** diz "é um". A classe nova pega tudo que a antiga tinha e pode ser usada em
+    qualquer lugar onde a antiga era esperada:
+
+        class Ship(Engine):    # um navio é um tipo de motor?
+            ...
+
+    **Composição** diz "tem um". A classe nova guarda uma instância da outra e pede coisas
+    a ela:
+
+        class Ship:
+            def __init__(self, name, engine):
+                self.name = name
+                self.engine = engine
+
+            def total_weight(self):
+                return self.hull_weight + self.engine.weight
+
+    Leia a versão com herança em voz alta e ela cai. Um `Ship(Engine)` pode ser passado para
+    qualquer coisa que espere um motor, o que é absurdo, e agora ele carrega todo método que
+    um motor tem, façam sentido num navio ou não. Esse teste - "posso entregar isto a um
+    código que espera o pai, e isso seria sensato?" - é para o que a herança serve de
+    verdade. Ela não é uma ferramenta de reaproveitamento.
+
+    A versão composta custa um nome a mais: você escreve `ship.engine.weight` em vez de
+    `ship.weight`. Em troca o motor pode ser trocado, o Ship nunca aprende como um motor
+    calcula nada, e acrescentar um mastro depois acrescenta uma linha em vez de um segundo pai.
+
+    Pergunte a cada parte a resposta dela em vez de meter a mão dentro. `self.engine.weight`
+    está certo; copiar o peso do motor para dentro do navio na construção é como os dois se
+    desencontram.
+
+  worked_example: |
+    # Uma casa, que não é o que esta missão pede
+    class Boiler:
+        def __init__(self, kilowatts):
+            self.kilowatts = kilowatts
+
+        def running_cost(self):
+            return self.kilowatts * 3
+
+
+    class House:
+        def __init__(self, address, boiler):
+            self.address = address
+            self.boiler = boiler          # tem uma caldeira, não é um tipo de caldeira
+
+        def monthly_bill(self):
+            return 40 + self.boiler.running_cost()
+
+
+    casa = House("Rua do Cais, 12", Boiler(5))
+    print(casa.monthly_bill())    # 55
+
+    casa.boiler = Boiler(2)       # trocada, e continua sendo a mesma casa
+    print(casa.monthly_bill())    # 46
+
+  key_points:
+    - "\"É um\" quer dizer herança, \"tem um\" quer dizer composição. Diga a frase em voz alta antes de escolher - um navio que é um motor é uma frase que ninguém escreveria."
+    - "Herança é sobre substituibilidade, não sobre reaproveitamento. Se um código que espera o pai quebraria com o seu filho, você herdou pelo motivo errado."
+    - "Composição custa um nome a mais em cada chamada e compra uma peça que você pode trocar. Essa troca quase sempre vale a pena."
+    - "Peça a resposta à peça - `self.engine.weight` - em vez de copiar o valor na construção. Uma cópia é uma segunda fonte da verdade esperando para discordar."
+    - "Duas peças são dois atributos. Dois pais são uma decisão sobre qual deles vence quando os dois definem o mesmo método, e você vai errar isso uma hora."
+
+brief: |
+  Um navio é montado a partir de peças, e não é um tipo de nenhuma delas.
+
+  Defina uma classe chamada Engine:
+
+    - `__init__` recebe um peso e uma potência, guardados como `self.weight` e `self.power`
+    - `__repr__` devolve exatamente `Engine(400, 90)` - o peso, depois a potência
+
+  Defina uma classe chamada Ship:
+
+    - `__init__` recebe um nome, um peso de casco, e uma **instância** de Engine, guardados
+      como `self.name`, `self.hull_weight` e `self.engine`
+    - um método chamado `total_weight` devolve o peso do casco mais o peso do motor,
+      perguntando ao motor em vez de guardar uma cópia
+    - um método chamado `is_powered` devolve True quando a potência do motor é pelo menos
+      metade do `total_weight`, e False caso contrário
+    - `__repr__` devolve exatamente `Ship('Aurora', 1200)` - o nome entre aspas, depois o
+      peso total
+
+  Depois escreva uma função chamada assemble que recebe um nome, um peso de casco, um peso
+  de motor e uma potência de motor:
+
+    - construa o Engine primeiro, depois o Ship que o guarda
+    - devolva um dicionário no formato {"ship": ..., "engine": ..., "total": ..., "powered": ...}
+
+  `ship` e `engine` são o `repr` de cada um. `total` é `total_weight()`. `powered` é
+  `is_powered()`.
+
+  Ship não pode herdar de Engine. Ele guarda um.
+
+  Você não pode importar dataclasses aqui.
+
+signature:
+  entrypoint: assemble
+  stub: |
+    class Engine:
+        def __init__(self, weight, power):
+            self.weight = weight
+            self.power = power
+
+        def __repr__(self):
+            # seu código aqui
+            pass
+
+
+    class Ship:
+        def __init__(self, name, hull_weight, engine):
+            # O motor chega já construído. Guarde-o como está.
+            # seu código aqui
+            pass
+
+        def total_weight(self):
+            # Pergunte ao motor. Não copie o peso dele.
+            # seu código aqui
+            pass
+
+        def is_powered(self):
+            # Pelo menos metade. Não mais que metade.
+            # seu código aqui
+            pass
+
+        def __repr__(self):
+            # seu código aqui
+            pass
+
+
+    def assemble(name, hull_weight, engine_weight, engine_power):
+        # O motor primeiro, depois o navio que o guarda.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["Aurora", 800, 400, 900]
+      expect:
+        ship: "Ship('Aurora', 1200)"
+        engine: "Engine(400, 900)"
+        total: 1200
+        powered: true
+    - args: ["Petrel", 800, 400, 100]
+      expect:
+        ship: "Ship('Petrel', 1200)"
+        engine: "Engine(400, 100)"
+        total: 1200
+        powered: false
+  hidden:
+    # Potência exatamente na metade do total. "Pelo menos" quer dizer que este tem força.
+    - args: ["Aurora", 800, 400, 600]
+      expect:
+        ship: "Ship('Aurora', 1200)"
+        engine: "Engine(400, 600)"
+        total: 1200
+        powered: true
+    # Uma unidade abaixo da metade. A fronteira, vista do outro lado.
+    - args: ["Aurora", 800, 400, 599]
+      expect:
+        ship: "Ship('Aurora', 1200)"
+        engine: "Engine(400, 599)"
+        total: 1200
+        powered: false
+    # Um casco sem peso. O total é só o motor, então um total_weight que esqueceu de somar
+    # o motor devolve 0 aqui e é pego.
+    - args: ["Skiff", 0, 50, 25]
+      expect:
+        ship: "Ship('Skiff', 50)"
+        engine: "Engine(50, 25)"
+        total: 50
+        powered: true
+    # Um motor sem peso. O caso espelhado: um total_weight que esqueceu o casco falha.
+    - args: ["Barge", 900, 0, 450]
+      expect:
+        ship: "Ship('Barge', 900)"
+        engine: "Engine(0, 450)"
+        total: 900
+        powered: true
+    # Sem potência nenhuma, e nada para mover.
+    - args: ["Hulk", 0, 0, 0]
+      expect:
+        ship: "Ship('Hulk', 0)"
+        engine: "Engine(0, 0)"
+        total: 0
+        powered: true
+    # Um nome vazio continua ganhando as aspas no repr.
+    - args: ["", 100, 100, 500]
+      expect:
+        ship: "Ship('', 200)"
+        engine: "Engine(100, 500)"
+        total: 200
+        powered: true
+    # Grande e desequilibrado, então uma resposta chumbada não tem onde se esconder.
+    - args: ["Leviathan", 9000, 1000, 4000]
+      expect:
+        ship: "Ship('Leviathan', 10000)"
+        engine: "Engine(1000, 4000)"
+        total: 10000
+        powered: false
+
+hints:
+  - level: 1
+    text: |
+      O `Ship.__init__` recebe um Engine já construído. O que ele guarda - o motor, ou os
+      números tirados de dentro dele? Uma dessas duas respostas te deixa trocar o motor
+      depois, e a outra não.
+  - level: 2
+    text: |
+      `self.engine = engine`, sem desempacotar nada. O peso do motor passa a ser
+      `self.engine.weight` em todo lugar onde você precisar dele.
+
+      `total_weight` é um `return` só com uma soma. `is_powered` compara a potência do motor
+      com metade do que `total_weight()` devolve - e sim, um método pode chamar outro método
+      da mesma instância através do `self`.
+
+      O `Ship.__repr__` também chama `total_weight()`, então a etiqueta nunca fica velha.
+  - level: 3
+    text: |
+      O mesmo formato de duas classes, para uma bicicleta:
+
+          class Wheel:
+              def __init__(self, weight, size):
+                  self.weight = weight
+                  self.size = size
+
+              def __repr__(self):
+                  return f"Wheel({self.weight}, {self.size})"
+
+
+          class Bicycle:
+              def __init__(self, owner, frame_weight, wheel):
+                  self.owner = owner
+                  self.frame_weight = frame_weight
+                  self.wheel = wheel
+
+              def total_weight(self):
+                  return self.frame_weight + self.wheel.weight * 2
+
+              def __repr__(self):
+                  return f"Bicycle({self.owner!r}, {self.total_weight()})"
+
+      A sua guarda um motor em vez de duas rodas, e tem um segundo método que responde uma
+      pergunta de sim ou não.
+
+solution: |
+  class Engine:
+      def __init__(self, weight, power):
+          self.weight = weight
+          self.power = power
+
+      def __repr__(self):
+          return f"Engine({self.weight}, {self.power})"
+
+
+  class Ship:
+      def __init__(self, name, hull_weight, engine):
+          self.name = name
+          self.hull_weight = hull_weight
+          self.engine = engine
+
+      def total_weight(self):
+          return self.hull_weight + self.engine.weight
+
+      def is_powered(self):
+          return self.engine.power >= self.total_weight() / 2
+
+      def __repr__(self):
+          return f"Ship({self.name!r}, {self.total_weight()})"
+
+
+  def assemble(name, hull_weight, engine_weight, engine_power):
+      engine = Engine(engine_weight, engine_power)
+      ship = Ship(name, hull_weight, engine)
+
+      return {
+          "ship": repr(ship),
+          "engine": repr(engine),
+          "total": ship.total_weight(),
+          "powered": ship.is_powered(),
+      }

@@ -1,0 +1,233 @@
+# Mission 2 of Objects. Introduces: methods.
+# Reinforces: classes, instances.
+#
+# The mission is built around the one thing a method can do that a plain function cannot
+# do as neatly: change the instance it was called on. Calling `load` twice must give a
+# different answer the second time, which is what makes the state real rather than
+# decorative - and case 2 is exactly that call, made twice.
+#
+# The second half is pure-vs-side-effects from Island 3, met from the other side:
+# `remaining` reports and `load` changes, and the brief makes the player write one of each.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-02
+title: The crate that does something
+track: python
+island: objects
+order: 2
+difficulty: moderate
+tags: [objects, methods, state]
+xp: 30
+
+concepts:
+  - methods
+
+teaching:
+  analogy: |
+    A cargo record with a weight written on it is a piece of paper. A cargo record with a
+    clerk standing next to it is something else: you can say "add thirty kilos" and the
+    number changes, and you never touch the sheet yourself.
+
+    The useful part is not that the clerk saves you a pen. It is that the clerk is the only
+    one holding one. Nobody can write a weight of minus four on that sheet by reaching
+    across the desk, because the only way in is to ask, and the clerk knows the rules.
+
+  explanation: |
+    A method is a function defined inside a class. It takes `self` first, exactly like
+    `__init__`, and it can read and change whatever that instance is holding:
+
+        class Crate:
+            def __init__(self, capacity):
+                self.capacity = capacity
+                self.load = 0
+
+            def add(self, weight):
+                self.load = self.load + weight
+
+    You call it through an instance, and the instance goes in as `self` automatically:
+
+        crate = Crate(100)
+        crate.add(30)
+
+    Two kinds of method are worth telling apart from the first day. One **changes** the
+    instance - `add` above, which leaves `self.load` different from how it found it. The
+    other only **reports** on it, computing an answer from what is already there and
+    changing nothing.
+
+    That difference is Island 3's pure-versus-side-effects rule, now with a name attached
+    to the thing being mutated. A reporting method can be called ten times in a row and
+    give the same answer every time. A changing method cannot, and that is the point of it.
+
+  worked_example: |
+    # A kettle, which is not what this mission asks for
+    class Kettle:
+        def __init__(self, litres):
+            self.litres = litres
+            self.poured = 0
+
+        def pour(self, amount):        # changes the kettle
+            self.poured = self.poured + amount
+
+        def left(self):                # only reports
+            return self.litres - self.poured
+
+
+    kettle = Kettle(2)
+    kettle.pour(0.5)
+    kettle.pour(0.5)
+
+    print(kettle.left())   # 1.0
+    print(kettle.left())   # 1.0 - reporting twice changes nothing
+
+  key_points:
+    - "A method is a function whose first parameter is `self`. Forgetting `self` produces \"takes 1 positional argument but 2 were given\", which is Python telling you it passed the instance and you had nowhere to put it."
+    - "`self.load` and `load` are different names. The one without `self.` disappears when the method ends."
+    - "A method that changes the instance should not also return it. Return `None` and let the caller read the attribute - mixing the two is how you get code that works only if you call it exactly once."
+    - "A reporting method computes from what is stored and stores nothing. Calling it twice must give the same answer, and if it does not, it is a changing method wearing the wrong name."
+    - "Behaviour that belongs to the data lives beside it. That is the entire argument for classes, and it is worth more than the syntax."
+
+brief: |
+  A crate has a capacity and starts empty.
+
+  Define a class called Crate:
+
+    - `__init__` takes a capacity and stores it as `self.capacity`. It also sets
+      `self.load` to 0 - a fresh crate is empty, and the caller does not get to say
+      otherwise.
+    - a method called `add` takes a weight and adds it to `self.load`. It returns nothing.
+    - a method called `remaining` returns how much room is left: capacity minus load. It
+      changes nothing.
+
+  Then write a function called stow that takes a capacity and a list of weights:
+
+    - build one crate with that capacity
+    - add every weight in the list, in order
+    - return a dict shaped {"load": ..., "remaining": ...}, reading `load` off the
+      instance and calling `remaining` for the other
+
+  Nothing here validates anything. A crate can be overloaded, and `remaining` is then
+  negative - that is a real answer, and mission 5 is where refusing becomes the job.
+
+  You cannot import dataclasses here.
+
+signature:
+  entrypoint: stow
+  stub: |
+    class Crate:
+        def __init__(self, capacity):
+            # Capacity comes from the caller. Load always starts at 0.
+            # your code here
+            pass
+
+        def add(self, weight):
+            # Changes the crate. Returns nothing.
+            # your code here
+            pass
+
+        def remaining(self):
+            # Reports on the crate. Changes nothing.
+            # your code here
+            pass
+
+
+    def stow(capacity, weights):
+        # One crate, every weight added in order, then the report.
+        # your code here
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, [30, 20]]
+      expect: {load: 50, remaining: 50}
+    # The same weight twice. If `add` replaced instead of accumulating, this is 30.
+    - args: [100, [30, 30]]
+      expect: {load: 60, remaining: 40}
+  hidden:
+    # No weights at all. A fresh crate reports its whole capacity as free.
+    - args: [100, []]
+      expect: {load: 0, remaining: 100}
+    # One weight, exactly filling the crate.
+    - args: [50, [50]]
+      expect: {load: 50, remaining: 0}
+    # Overloaded. `remaining` goes negative and nothing stops it.
+    - args: [10, [8, 8]]
+      expect: {load: 16, remaining: -6}
+    # A zero weight is still an add. It must not be skipped or the count drifts.
+    - args: [20, [0, 0, 5]]
+      expect: {load: 5, remaining: 15}
+    # Floats survive. Nothing in the brief says the weights are whole numbers.
+    - args: [10, [2.5, 2.5]]
+      expect: {load: 5.0, remaining: 5.0}
+    # A capacity of zero. Every crate starts empty, including this one.
+    - args: [0, []]
+      expect: {load: 0, remaining: 0}
+    # Long enough that a hardcoded answer has nowhere to hide.
+    - args: [1000, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]
+      expect: {load: 55, remaining: 945}
+
+hints:
+  - level: 1
+    text: |
+      `add` has to leave the crate different from how it found it, and `remaining` must not.
+      Which of the two writes to `self`, and which only reads from it?
+  - level: 2
+    text: |
+      `__init__` takes `self` and `capacity` - two parameters, and `self.load = 0` is
+      written by you, not passed in.
+
+      `add` is `self.load = self.load + weight`. `remaining` is a single `return` with a
+      subtraction in it and no assignment anywhere.
+
+      In `stow`, one loop over `weights` calling `crate.add(...)` each time. Then read
+      `crate.load` and call `crate.remaining()`.
+  - level: 3
+    text: |
+      The same two shapes, on a water tank:
+
+          class Tank:
+              def __init__(self, size):
+                  self.size = size
+                  self.filled = 0
+
+              def pour(self, litres):
+                  self.filled = self.filled + litres
+
+              def headroom(self):
+                  return self.size - self.filled
+
+
+          def fill(size, pours):
+              tank = Tank(size)
+              for litres in pours:
+                  tank.pour(litres)
+              return {"filled": tank.filled, "headroom": tank.headroom()}
+
+      Yours uses different words, and one of the two dict values comes from a method call
+      rather than an attribute.
+
+solution: |
+  class Crate:
+      def __init__(self, capacity):
+          self.capacity = capacity
+          self.load = 0
+
+      def add(self, weight):
+          self.load = self.load + weight
+
+      def remaining(self):
+          return self.capacity - self.load
+
+
+  def stow(capacity, weights):
+      crate = Crate(capacity)
+
+      for weight in weights:
+          crate.add(weight)
+
+      return {"load": crate.load, "remaining": crate.remaining()}

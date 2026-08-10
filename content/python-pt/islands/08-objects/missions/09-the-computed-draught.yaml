@@ -1,0 +1,354 @@
+# Missão 9 de Objetos. Introduz: properties.
+# Reforça: methods, dataclasses, custom-exceptions, composition-over-inheritance.
+#
+# Duas properties fazendo trabalhos diferentes: `load` é calculada e só de leitura,
+# `capacity` é guardada e protegida. Ensinar só a calculada deixa o jogador achando que
+# @property é um jeito de evitar parênteses; ensinar só a protegida deixa ele achando que é
+# um validador.
+#
+# A armadilha de ordem no __init__ é proposital e é a aresta mais afiada da missão: atribuir
+# self.capacity executa um setter que lê self.crates, então a lista precisa existir antes.
+# Falha com AttributeError, que é uma mensagem genuinamente confusa na primeira vez.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-09
+title: O calado calculado
+track: python
+island: objects
+order: 9
+difficulty: moderate
+tags: [objects, properties, validation]
+xp: 30
+
+concepts:
+  - properties
+
+teaching:
+  analogy: |
+    O quadro da capitania mostra o calado de um navio - o quanto ele afunda na água. Ninguém
+    escreve aquele número no quadro. Alguém lê no casco a cada vez, porque um número anotado
+    de manhã é mentira à tarde.
+
+    Do lado dele está a capacidade licenciada, que **é** anotada. Essa pode ser mudada, mas
+    não por qualquer um com uma caneta: você leva ao capitão do porto, que se recusa a
+    licenciar um porão para menos do que já está dentro dele.
+
+    Um número é sempre recalculado. O outro é guardado atrás de alguém que sabe dizer não.
+
+  explanation: |
+    Uma property é um método que você lê como se fosse um atributo. Sem parênteses na
+    chamada:
+
+        class Hold:
+            @property
+            def free(self):
+                return self.capacity - self.load
+
+        porao.free      # executa o método, dá um número
+
+    Isso compra duas coisas diferentes, e vale separá-las.
+
+    **Calculada.** `free` não está guardada em lugar nenhum, então não tem como envelhecer.
+    Guarde-a e você passa a ter dois fatos que precisam andar juntos, e um dia não vão andar.
+    O custo é que ela roda toda vez que você lê - tudo bem para uma subtração, um problema se
+    você esconder uma consulta ao banco atrás de uma.
+
+    **Protegida.** Uma property também pode ter um setter, que roda na atribuição:
+
+        @property
+        def capacity(self):
+            return self._capacity
+
+        @capacity.setter
+        def capacity(self, value):
+            if value < 0:
+                raise ValueError("uma capacidade não pode ser negativa")
+            self._capacity = value
+
+    O valor guardado se muda para `self._capacity` - um nome diferente, por convenção com um
+    sublinhado na frente - porque `self.capacity = value` dentro do setter chamaria o setter
+    de novo, para sempre.
+
+    Para o que isso serve de verdade: `porao.capacity = 50` já estava escrito por todo o
+    código, e acrescentar a property muda o que aquela linha faz sem mudar uma única chamada.
+
+    Uma aresta afiada. Se o `__init__` atribui `self.capacity = capacity`, essa atribuição
+    executa o setter, e o que quer que o setter leia já tem de existir. Ordene as linhas do
+    `__init__` de acordo, ou você vai encontrar um `AttributeError` sobre um atributo que
+    está bem ali na sua frente.
+
+  worked_example: |
+    # Um termostato, que não é o que esta missão pede
+    class Thermostat:
+        def __init__(self, readings, target):
+            self.readings = readings      # primeiro: o setter abaixo lê isto
+            self.target = target
+
+        @property
+        def average(self):                # calculada, só leitura, nunca velha
+            return sum(self.readings) / len(self.readings)
+
+        @property
+        def target(self):
+            return self._target
+
+        @target.setter
+        def target(self, value):
+            if value < min(self.readings):
+                raise ValueError("alvo abaixo de qualquer coisa que a sala já foi")
+            self._target = value
+
+
+    t = Thermostat([18, 20, 22], 21)
+    print(t.average)      # 20.0 - sem parênteses
+    t.target = 19         # executa o setter, que permite
+    t.readings.append(30)
+    print(t.average)      # 22.5 - recalculada, porque nunca foi guardada
+
+  key_points:
+    - "Uma property é lida sem parênteses. `porao.free` executa o método; `porao.free()` tenta chamar o que quer que ele tenha devolvido."
+    - "Uma property calculada não tem como envelhecer, porque não há nada guardado para ficar desatualizado. Isso vale mais do que os microssegundos que ela custa."
+    - "O setter tem de guardar sob outro nome - `self._capacity`. Atribuir a `self.capacity` dentro do setter de `capacity` chama o setter de novo, para sempre."
+    - "Acrescentar uma property é invisível para quem chama. `porao.capacity = 50` continua funcionando e passa a ser checado, por isso você pode acrescentar a proteção depois sem tocar em nada."
+    - "Se o `__init__` atribui através de um setter, tudo que aquele setter lê tem de estar montado na linha anterior. O erro é um `AttributeError` longe da causa."
+
+brief: |
+  Um porão reporta o que está carregando e se recusa a ser licenciado para menos do que isso.
+
+  Defina uma exceção chamada OverloadError, herdando de Exception.
+
+  Usando `@dataclass`, defina uma classe chamada Crate com dois campos: `name`, um str, e
+  `weight`, um int. Não escreva método nenhum nela.
+
+  Defina uma classe comum chamada Hold:
+
+    - `__init__` recebe uma capacidade. Ele coloca `self.crates` como lista vazia
+      **primeiro**, e depois atribui `self.capacity` - e essa atribuição passa pelo setter
+      abaixo, então a ordem não é opcional.
+    - `load` é uma **property**, calculada somando o peso de cada caixote. Nada é guardado.
+    - `free` é uma **property**, devolvendo capacidade menos carga.
+    - `capacity` é uma **property** com setter. O setter levanta ValueError quando o valor
+      novo é negativo, levanta OverloadError quando ele é menor que a carga atual, e caso
+      contrário guarda como `self._capacity`.
+    - um método chamado `add` recebe um Crate. Ele levanta OverloadError quando o caixote
+      levaria a carga acima da capacidade, e caso contrário dá append em `self.crates`.
+
+  Uma capacidade igual à carga atual é permitida. Só ficar abaixo dela não é.
+
+  Depois escreva uma função chamada retrim que recebe uma capacidade inicial, uma lista de
+  pares [nome, peso], e uma capacidade nova:
+
+    - construa o porão
+    - construa um Crate para cada par e adicione, na ordem
+    - atribua a capacidade nova a `hold.capacity`
+    - devolva um dicionário no formato {"load": ..., "free": ..., "capacity": ...}
+
+  Não capture nada. Toda recusa sai do retrim.
+
+  Você não pode usar sum - o `load` soma os pesos ele mesmo.
+
+signature:
+  entrypoint: retrim
+  stub: |
+    from dataclasses import dataclass
+
+
+    class OverloadError(Exception):
+        pass
+
+
+    @dataclass
+    class Crate:
+        # Dois campos, nenhum método.
+        # seu código aqui
+        pass
+
+
+    class Hold:
+        def __init__(self, capacity):
+            # A lista primeiro. A atribuição abaixo executa o setter.
+            # seu código aqui
+            pass
+
+        @property
+        def load(self):
+            # Calculada a partir dos caixotes. Guardada em lugar nenhum.
+            # seu código aqui
+            pass
+
+        @property
+        def free(self):
+            # seu código aqui
+            pass
+
+        @property
+        def capacity(self):
+            # seu código aqui
+            pass
+
+        @capacity.setter
+        def capacity(self, value):
+            # Negativo é ValueError. Abaixo da carga é OverloadError.
+            # seu código aqui
+            pass
+
+        def add(self, crate):
+            # seu código aqui
+            pass
+
+
+    def retrim(start_capacity, entries, new_capacity):
+        # Construa, carregue, relicencie, reporte.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, [["rope", 12], ["sail", 30]], 80]
+      expect: {load: 42, free: 38, capacity: 80}
+    - args: [100, [], 50]
+      expect: {load: 0, free: 50, capacity: 50}
+  hidden:
+    # Relicenciar abaixo do que já está a bordo. A regra do próprio setter.
+    - args: [100, [["rope", 60]], 50]
+      raises: OverloadError
+    # Exatamente na carga é permitido, e não deixa espaço nenhum.
+    - args: [100, [["rope", 60]], 60]
+      expect: {load: 60, free: 0, capacity: 60}
+    # Uma capacidade negativa é ValueError, não OverloadError. Duas regras, dois nomes.
+    - args: [100, [], -1]
+      raises: ValueError
+    # A capacidade inicial passa pelo mesmo setter, então isto falha antes de qualquer
+    # caixote existir. É o que prova que o __init__ atribuiu em vez de guardar direto.
+    - args: [-5, [], 10]
+      raises: ValueError
+    # Um caixote que não cabe. O `add` recusa, e o retrim não captura.
+    - args: [10, [["rope", 12]], 10]
+      raises: OverloadError
+    # Aumentando a licença. `free` acompanha sem nada ser recalculado à mão.
+    - args: [100, [["rope", 12]], 500]
+      expect: {load: 12, free: 488, capacity: 500}
+    # Um caixote de peso zero continua sendo um caixote, e não move nada.
+    - args: [10, [["letters", 0]], 10]
+      expect: {load: 0, free: 10, capacity: 10}
+    # Nada em lugar nenhum. Toda property ainda tem de responder.
+    - args: [0, [], 0]
+      expect: {load: 0, free: 0, capacity: 0}
+    # Vários caixotes, adicionados um por vez, cada um checado contra a carga corrente.
+    - args: [50, [["a", 10], ["b", 10], ["c", 10]], 30]
+      expect: {load: 30, free: 0, capacity: 30}
+
+hints:
+  - level: 1
+    text: |
+      `load` não está guardada em lugar nenhum. Então quando o `add` pergunta "esse caixote
+      caberia?", de onde vem o número com que ele compara?
+
+      E no `__init__`: o setter de capacidade precisa saber a carga atual. O que a carga
+      precisa que exista antes de conseguir ser calculada?
+  - level: 2
+    text: |
+      `load` é um laço sobre `self.crates` com um total corrente, devolvido. `free` é uma
+      subtração usando `self.load` - sem parênteses, porque é uma property.
+
+      O getter de `capacity` devolve `self._capacity`. O setter checa `value < 0` primeiro,
+      depois `value < self.load`, depois atribui `self._capacity = value`. Nunca
+      `self.capacity = value` lá dentro.
+
+      O `__init__` tem duas linhas e a lista vazia vem primeiro.
+  - level: 3
+    text: |
+      Os mesmos dois tipos de property, num estacionamento:
+
+          class FullError(Exception):
+              pass
+
+
+          class CarPark:
+              def __init__(self, spaces):
+                  self.cars = []
+                  self.spaces = spaces
+
+              @property
+              def taken(self):
+                  total = 0
+                  for car in self.cars:
+                      total = total + 1
+                  return total
+
+              @property
+              def spaces(self):
+                  return self._spaces
+
+              @spaces.setter
+              def spaces(self, value):
+                  if value < 0:
+                      raise ValueError("um estacionamento não tem vagas negativas")
+                  if value < self.taken:
+                      raise FullError(f"{self.taken} carros já estão estacionados")
+                  self._spaces = value
+
+      A sua soma pesos em vez de contar carros, e tem uma terceira property que subtrai.
+
+solution: |
+  from dataclasses import dataclass
+
+
+  class OverloadError(Exception):
+      pass
+
+
+  @dataclass
+  class Crate:
+      name: str
+      weight: int
+
+
+  class Hold:
+      def __init__(self, capacity):
+          self.crates = []
+          self.capacity = capacity
+
+      @property
+      def load(self):
+          total = 0
+          for crate in self.crates:
+              total = total + crate.weight
+          return total
+
+      @property
+      def free(self):
+          return self.capacity - self.load
+
+      @property
+      def capacity(self):
+          return self._capacity
+
+      @capacity.setter
+      def capacity(self, value):
+          if value < 0:
+              raise ValueError(f"{value} is not a capacity")
+          if value < self.load:
+              raise OverloadError(f"{self.load} is already aboard")
+          self._capacity = value
+
+      def add(self, crate):
+          if self.load + crate.weight > self.capacity:
+              raise OverloadError(f"{crate.weight} would take the load past {self.capacity}")
+          self.crates.append(crate)
+
+
+  def retrim(start_capacity, entries, new_capacity):
+      hold = Hold(start_capacity)
+
+      for name, weight in entries:
+          hold.add(Crate(name, weight))
+
+      hold.capacity = new_capacity
+
+      return {"load": hold.load, "free": hold.free, "capacity": hold.capacity}

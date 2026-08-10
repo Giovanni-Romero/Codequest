@@ -1,0 +1,286 @@
+# Missão 8 de Objetos. Introduz: dataclasses.
+# Reforça: dunder-methods, classes, composition-over-inheritance.
+#
+# Colocada depois de quatro missões escrevendo __init__ e __repr__ na mão, de propósito. Um
+# jogador que encontra o @dataclass primeiro vê um decorador fazendo algo invisível; um
+# jogador que digitou esses métodos pessoalmente vê um decorador apagando o próprio trabalho.
+#
+# O default mutável é a armadilha da Ilha 3 na roupa de dataclass, e o modo de falha é
+# diferente o bastante para merecer o próprio espaço: ela levanta erro na hora de definir a
+# classe em vez de te surpreender na segunda chamada, que é a linguagem tendo aprendido com
+# a versão em função.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-08
+title: A papelada de graça
+track: python
+island: objects
+order: 8
+difficulty: moderate
+tags: [objects, dataclasses, dunder]
+xp: 30
+
+concepts:
+  - dataclasses
+
+teaching:
+  analogy: |
+    A capitania escrevia todo registro de carga à mão: conteúdo, peso, e depois as mesmas
+    três linhas de formalidade no rodapé de toda folha. Todo escriturário escrevia, todo
+    escriturário de vez em quando pulava uma, e as folhas com uma linha faltando eram
+    justamente as que davam problema do outro lado.
+
+    Aí alguém mandou imprimir os formulários já com as formalidades. O escriturário preenche
+    conteúdo e peso. O resto está lá, correto, em toda folha, porque ninguém está mais
+    digitando aquilo.
+
+    Nada no registro mudou. O que mudou foi quem digita.
+
+  explanation: |
+    Você já escreveu `__init__`, `__repr__` e `__eq__` na mão quatro vezes, e eles tinham o
+    mesmo formato todas as vezes: pegue os campos, guarde os campos, imprima os campos,
+    compare os campos.
+
+    O `@dataclass` escreve os três para você a partir de uma lista dos campos e seus tipos:
+
+        from dataclasses import dataclass
+
+        @dataclass
+        class Crate:
+            name: str
+            weight: int
+
+    Essa é a classe inteira. Ela tem um `__init__` recebendo `name` e `weight`, um
+    `__repr__` dando `Crate(name='rope', weight=12)`, e um `__eq__` comparando os dois
+    campos - todos gerados, nenhum digitado por você.
+
+    Duas coisas merecem precisão. O `__repr__` gerado usa `campo=valor`, com os nomes dos
+    campos dentro, que **não** é o formato que você vinha escrevendo à mão. E o decorador não
+    muda nada sobre o que uma classe é: você continua podendo colocar seus próprios métodos
+    embaixo dos campos, e eles funcionam exatamente como antes.
+
+    Campos podem ter valores padrão, e aqui a armadilha do default mutável da Ilha 3 volta:
+
+        @dataclass
+        class Crate:
+            items: list = []          # ValueError, na hora do import
+
+    Um valor padrão é avaliado uma vez só, então uma lista seria compartilhada por todo
+    caixote já construído. A versão em função desse bug esperava até a sua segunda chamada
+    para se mostrar. O `@dataclass` recusa já na definição da classe, e te manda usar
+    `field(default_factory=list)` - uma função que ele chama do zero para cada instância.
+
+  worked_example: |
+    # Uma receita, que não é o que esta missão pede
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Recipe:
+        title: str
+        minutes: int
+        steps: list = field(default_factory=list)
+
+        def is_quick(self):           # seus próprios métodos continuam morando aqui
+            return self.minutes <= 15
+
+
+    sopa = Recipe("sopa", 40)
+    torrada = Recipe("torrada", 5)
+
+    sopa.steps.append("picar")
+
+    print(sopa)                # Recipe(title='sopa', minutes=40, steps=['picar'])
+    print(torrada.steps)       # [] - não é a mesma lista, por causa do default_factory
+    print(torrada.is_quick())  # True
+    print(Recipe("sopa", 40, ["picar"]) == sopa)   # True - __eq__ gerado
+
+  key_points:
+    - "`@dataclass` escreve `__init__`, `__repr__` e `__eq__` a partir dos campos. Ele não muda o que a classe é - ele digita o que você digitaria."
+    - "O `__repr__` gerado é `Crate(name='rope', weight=12)`, com os nomes dos campos dentro. Se você quiser outro formato, escreva `__repr__` você mesmo e o decorador não encosta nele."
+    - "Um default mutável levanta `ValueError` na hora de definir a classe. Use `field(default_factory=list)`, que é chamado uma vez por instância em vez de uma vez por classe."
+    - "Seus próprios métodos vão no corpo, embaixo dos campos. Uma dataclass é uma classe comum com três métodos já preenchidos."
+    - "As anotações dos campos são o que o decorador lê. Um campo sem anotação é invisível para ele e vira silenciosamente um atributo de classe comum."
+
+brief: |
+  O mesmo caixote da missão 4, com as formalidades já impressas no formulário.
+
+  Usando `@dataclass`, defina uma classe chamada Crate com três campos, nesta ordem:
+
+    - `name`, um str
+    - `weight`, um int
+    - `items`, uma lista com valor padrão vazio
+
+  Não escreva `__init__`, `__repr__` nem `__eq__`. O decorador escreve os três, e a missão é
+  cobrada nos que ele escreveu.
+
+  Dê à classe um método seu, chamado `heavy`, devolvendo True quando o peso for acima de 100.
+
+  O padrão de `items` tem de ser uma lista nova por caixote. Um `= []` puro nem importa.
+
+  Depois escreva uma função chamada manifest que recebe name, weight, e uma lista de itens
+  extras:
+
+    - construa um caixote só com o nome e o peso, deixando `items` no padrão
+    - dê append de cada item extra na lista `items` desse caixote, um por vez
+    - construa um segundo caixote com o mesmo nome e peso, de novo deixando `items` no padrão
+    - devolva um dicionário no formato {"label": ..., "heavy": ..., "fresh": ..., "same": ...}
+
+  `label` é o `repr` do primeiro caixote. `heavy` é `heavy()` nele. `fresh` é a lista `items`
+  do segundo caixote. `same` é se os dois caixotes são iguais, comparados com `==`.
+
+  Se `fresh` voltar com os itens extras dentro, o padrão está compartilhado e a missão está
+  te avisando.
+
+signature:
+  entrypoint: manifest
+  stub: |
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Crate:
+        # Três campos com anotações. O terceiro precisa de uma fábrica, não de um valor.
+        # seu código aqui
+
+        def heavy(self):
+            # seu código aqui
+            pass
+
+
+    def manifest(name, weight, extras):
+        # Dois caixotes com os mesmos argumentos. Só o primeiro recebe os extras.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", 12, ["coil"]]
+      expect:
+        label: "Crate(name='rope', weight=12, items=['coil'])"
+        heavy: false
+        fresh: []
+        same: false
+    - args: ["ballast", 500, []]
+      expect:
+        label: "Crate(name='ballast', weight=500, items=[])"
+        heavy: true
+        fresh: []
+        same: true
+  hidden:
+    # Sem extras, então os dois caixotes são idênticos e o __eq__ gerado tem de dizer isso.
+    - args: ["rope", 12, []]
+      expect:
+        label: "Crate(name='rope', weight=12, items=[])"
+        heavy: false
+        fresh: []
+        same: true
+    # Exatamente 100 não é pesado. "Acima" é a fronteira.
+    - args: ["rope", 100, []]
+      expect:
+        label: "Crate(name='rope', weight=100, items=[])"
+        heavy: false
+        fresh: []
+        same: true
+    # Um a mais.
+    - args: ["rope", 101, []]
+      expect:
+        label: "Crate(name='rope', weight=101, items=[])"
+        heavy: true
+        fresh: []
+        same: true
+    # Vários extras, em ordem. `fresh` continuar vazia é o sentido inteiro da missão.
+    - args: ["crate", 50, ["a", "b", "c"]]
+      expect:
+        label: "Crate(name='crate', weight=50, items=['a', 'b', 'c'])"
+        heavy: false
+        fresh: []
+        same: false
+    # Nome vazio e peso zero continuam sendo valores, e o repr põe aspas no nome.
+    - args: ["", 0, []]
+      expect:
+        label: "Crate(name='', weight=0, items=[])"
+        heavy: false
+        fresh: []
+        same: true
+    # Um extra cujo texto contém uma aspa, então o repr da lista não é trivial.
+    - args: ["rope", 12, ["o'brien"]]
+      expect:
+        label: "Crate(name='rope', weight=12, items=[\"o'brien\"])"
+        heavy: false
+        fresh: []
+        same: false
+
+hints:
+  - level: 1
+    text: |
+      Um campo de dataclass é um nome, dois pontos e um tipo - sem atribuição, a menos que
+      ele tenha valor padrão. O que dá errado se o padrão de uma lista for escrito como
+      `= []`, e o que o Python sugere no lugar quando recusa?
+  - level: 2
+    text: |
+      Três linhas no corpo da classe, depois o seu método. A terceira linha é
+      `items: list = field(default_factory=list)` - `list` sem parênteses, porque você está
+      entregando a própria função para o decorador chamar depois.
+
+      No `manifest`, `Crate(name, weight)` duas vezes. Só o primeiro ganha um laço dando
+      append nos extras. Depois `repr`, a chamada do método, os `items` do segundo caixote, e
+      o `==`.
+  - level: 3
+    text: |
+      O mesmo formato, para uma playlist:
+
+          from dataclasses import dataclass, field
+
+
+          @dataclass
+          class Playlist:
+              title: str
+              minutes: int
+              tracks: list = field(default_factory=list)
+
+              def is_long(self):
+                  return self.minutes > 60
+
+
+          def build(title, minutes, extras):
+              primeira = Playlist(title, minutes)
+              for track in extras:
+                  primeira.tracks.append(track)
+              segunda = Playlist(title, minutes)
+              return {"text": repr(primeira), "long": primeira.is_long(), "empty": segunda.tracks}
+
+      A sua tem uma quarta chave, respondendo se os dois são iguais.
+
+solution: |
+  from dataclasses import dataclass, field
+
+
+  @dataclass
+  class Crate:
+      name: str
+      weight: int
+      items: list = field(default_factory=list)
+
+      def heavy(self):
+          return self.weight > 100
+
+
+  def manifest(name, weight, extras):
+      first = Crate(name, weight)
+
+      for item in extras:
+          first.items.append(item)
+
+      second = Crate(name, weight)
+
+      return {
+          "label": repr(first),
+          "heavy": first.heavy(),
+          "fresh": second.items,
+          "same": first == second,
+      }

@@ -1,0 +1,249 @@
+# Mission 4 of Objects. Introduces: dunder-methods.
+# Reinforces: methods, f-strings, instances.
+#
+# The first mission on this island whose output the engine reads directly rather than
+# through a hand-built dict: `__repr__` returns a string and `__eq__` returns a bool, so
+# the test can grade the dunder itself instead of a summary of it.
+#
+# All three dunders in one mission is deliberate. They are one idea - answering a question
+# the language already knows how to ask - and teaching them one per mission would be three
+# missions about syntax. The map calls this one concept and it is.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-04
+title: Printed plainly
+track: python
+island: objects
+order: 4
+difficulty: moderate
+tags: [objects, dunder, repr, equality]
+xp: 30
+
+concepts:
+  - dunder-methods
+
+teaching:
+  analogy: |
+    Every crate in the harbour arrives with a serial number stencilled on the side. It is
+    unique, it is correct, and it is completely useless to the clerk holding a clipboard:
+    `0x7f3a91c4`. Two crates of identical rope have different numbers, so the numbers
+    cannot answer "are these the same load?" either.
+
+    What the clerk wants is a label. Contents, count, in a shape you can read out loud. And
+    a rule that says two crates count as the same when they hold the same things - not when
+    they happen to be the same physical box.
+
+    Both of those are decisions somebody has to make. Nothing about the crate decides them
+    for you.
+
+  explanation: |
+    Some method names have two underscores on each side. Python calls them for you when
+    something in the language needs an answer about your object - which is why they are
+    known as dunder methods, from **d**ouble **under**score.
+
+    Three of them are worth writing on almost any class you build:
+
+        class Crate:
+            def __repr__(self):
+                return f"Crate({self.name!r}, {len(self.items)} items)"
+
+            def __eq__(self, other):
+                return self.name == other.name and self.items == other.items
+
+            def __len__(self):
+                return len(self.items)
+
+    You never call these directly. `repr(crate)` calls `__repr__`, `crate_a == crate_b`
+    calls `__eq__`, and `len(crate)` calls `__len__`. Printing an object calls `__repr__`
+    too, when there is no `__str__` to prefer.
+
+    Without `__repr__`, printing gives you `<Crate object at 0x7f3a91c4>` - true, useless,
+    and different on every run. Without `__eq__`, `==` compares identity: two crates built
+    from identical arguments come out unequal, because they are two objects.
+
+    The `!r` inside that f-string asks for the *repr* of the value rather than its plain
+    text, which is what puts the quotes around a string. `Crate('rope', 2 items)` tells you
+    the name is text; `Crate(rope, 2 items)` leaves you guessing.
+
+  worked_example: |
+    # A playing card, which is not what this mission asks for
+    class Card:
+        def __init__(self, rank, suit):
+            self.rank = rank
+            self.suit = suit
+
+        def __repr__(self):
+            return f"Card({self.rank!r} of {self.suit!r})"
+
+        def __eq__(self, other):
+            return self.rank == other.rank and self.suit == other.suit
+
+
+    a = Card("ace", "spades")
+    b = Card("ace", "spades")
+
+    print(repr(a))    # Card('ace' of 'spades')
+    print(a == b)     # True  - because __eq__ says so
+    print(a is b)     # False - they are still two objects
+
+  key_points:
+    - "You never call a dunder yourself. `repr(x)`, `x == y` and `len(x)` are the calls; the dunders are what answers them."
+    - "`__repr__` must return a string. Returning anything else raises TypeError at the moment something tries to print your object, which is usually far from the class."
+    - "Without `__eq__`, `==` asks \"are these the same object?\". With it, you decide what \"same\" means - and the two answers differ for every pair built from identical arguments."
+    - "Defining `__eq__` silently removes the `__hash__` your class had, so instances stop working in a set or as a dict key. Add `__hash__` when you need that; this mission does not."
+    - "`__len__` must return a non-negative whole number. It is also what makes `if crate:` false for an empty crate, which surprises people who never wrote it."
+
+brief: |
+  Give a crate a readable label and a definition of sameness.
+
+  Define a class called Crate:
+
+    - `__init__` takes a name and a list of items, stored as `self.name` and `self.items`
+    - `__repr__` returns exactly this shape, with the name in quotes:
+
+          Crate('rope', 2 items)
+
+      Do not pluralise. One item is still written `1 items`.
+    - `__eq__` returns True when the other crate has the same name **and** the same items,
+      in the same order
+    - `__len__` returns how many items the crate holds
+
+  Then write a function called inspect_pair that takes four arguments - name_a, items_a,
+  name_b, items_b - builds both crates and returns a dict:
+
+      {"label": ..., "same": ..., "size": ...}
+
+  `label` is `repr` of the first crate. `same` is the result of comparing the two crates
+  with `==`. `size` is `len` of the first crate.
+
+  Build all three by calling `repr`, `==` and `len` on the instances. Assembling the
+  string by hand is the one thing this mission is here to stop you doing.
+
+  You cannot import dataclasses here.
+
+signature:
+  entrypoint: inspect_pair
+  stub: |
+    class Crate:
+        def __init__(self, name, items):
+            self.name = name
+            self.items = items
+
+        def __repr__(self):
+            # Must return a string.
+            # your code here
+            pass
+
+        def __eq__(self, other):
+            # Same name and same items.
+            # your code here
+            pass
+
+        def __len__(self):
+            # your code here
+            pass
+
+
+    def inspect_pair(name_a, items_a, name_b, items_b):
+        # repr, ==, len. Three calls, three answers.
+        # your code here
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", ["coil", "coil"], "rope", ["coil", "coil"]]
+      expect: {label: "Crate('rope', 2 items)", same: true, size: 2}
+    - args: ["rope", ["coil"], "sail", ["coil"]]
+      expect: {label: "Crate('rope', 1 items)", same: false, size: 1}
+  hidden:
+    # Empty crate. The label still reports a count and len is 0, not missing.
+    - args: ["rope", [], "rope", []]
+      expect: {label: "Crate('rope', 0 items)", same: true, size: 0}
+    # Same name, different contents. Both halves of __eq__ have to be checked.
+    - args: ["rope", ["coil"], "rope", ["coil", "coil"]]
+      expect: {label: "Crate('rope', 1 items)", same: false, size: 1}
+    # Same contents, different order. Lists compare in order, so this is not the same crate.
+    - args: ["rope", ["a", "b"], "rope", ["b", "a"]]
+      expect: {label: "Crate('rope', 2 items)", same: false, size: 2}
+    # An empty name is a name, and it still gets its quotes.
+    - args: ["", ["coil"], "", ["coil"]]
+      expect: {label: "Crate('', 1 items)", same: true, size: 1}
+    # A name that contains a quote. This is why !r exists rather than str().
+    - args: ["o'brien", [], "o'brien", []]
+      expect: {label: "Crate(\"o'brien\", 0 items)", same: true, size: 0}
+    # The first crate is empty and the second is not. `size` reports the first, always.
+    - args: ["rope", [], "sail", ["coil", "coil", "coil"]]
+      expect: {label: "Crate('rope', 0 items)", same: false, size: 0}
+
+hints:
+  - level: 1
+    text: |
+      `repr(crate)` and `crate_a == crate_b` and `len(crate)` are three calls you already
+      know how to write. What has to exist on the class before each of them gives a useful
+      answer instead of an address, a False, or a TypeError?
+  - level: 2
+    text: |
+      `__repr__` is one `return` with an f-string in it. The count inside that string is the
+      number of items - the same number `__len__` returns, so you can call `len(self.items)`
+      in both places.
+
+      `__eq__` takes `self` and `other` and returns one boolean expression joined with
+      `and`. `__len__` takes only `self`.
+
+      Then `inspect_pair` builds two crates and calls the three built-in functions on them.
+  - level: 3
+    text: |
+      The same three, on a shopping bag:
+
+          class Bag:
+              def __init__(self, shop, goods):
+                  self.shop = shop
+                  self.goods = goods
+
+              def __repr__(self):
+                  return f"Bag({self.shop!r}, {len(self.goods)} things)"
+
+              def __eq__(self, other):
+                  return self.shop == other.shop and self.goods == other.goods
+
+              def __len__(self):
+                  return len(self.goods)
+
+
+          def compare(shop_a, goods_a, shop_b, goods_b):
+              first = Bag(shop_a, goods_a)
+              second = Bag(shop_b, goods_b)
+              return {"text": repr(first), "match": first == second, "count": len(first)}
+
+      Yours says `items` where this says `things`, and the dict keys are different.
+
+solution: |
+  class Crate:
+      def __init__(self, name, items):
+          self.name = name
+          self.items = items
+
+      def __repr__(self):
+          return f"Crate({self.name!r}, {len(self.items)} items)"
+
+      def __eq__(self, other):
+          return self.name == other.name and self.items == other.items
+
+      def __len__(self):
+          return len(self.items)
+
+
+  def inspect_pair(name_a, items_a, name_b, items_b):
+      first = Crate(name_a, items_a)
+      second = Crate(name_b, items_b)
+
+      return {
+          "label": repr(first),
+          "same": first == second,
+          "size": len(first),
+      }

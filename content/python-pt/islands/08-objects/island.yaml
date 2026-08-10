@@ -1,0 +1,28 @@
+id: objects
+name: Objetos
+track: python
+order: 8
+theme: Os dados e o comportamento que pertence a eles
+description: |
+  Todas as ilhas até aqui mantiveram dados e comportamento separados. Um dicionário
+  guardava os valores, uma função fazia algo com ele, e nada impedia quem chamasse de
+  entregar a essa função um dicionário com o formato errado.
+
+  Aqui os dois passam a morar juntos. O caixote conhece o próprio peso, e o único código
+  autorizado a mudá-lo fica ao lado dele. Nada nesta ilha é capacidade nova - é o mesmo
+  trabalho que você já faz, com uma fronteira desenhada em volta.
+
+concepts:
+  - classes
+  - instances
+  - methods
+  - dunder-methods
+  - custom-exceptions
+  - composition-over-inheritance
+  - dataclasses
+  - properties
+
+unlock_requires:
+  missions_completed: 74
+
+completion_reward_xp: 260

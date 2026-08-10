@@ -1,0 +1,228 @@
+# Missão 6 de Objetos. Não introduz nada.
+# Reforça: dunder-methods, instances, classes.
+#
+# Missão de alívio, e ela merece o lugar por mostrar algo que a missão 4 só conseguia
+# afirmar: o `in` é construído em cima do `==`, então escrever `__eq__` mudou silenciosamente
+# o que `x in vistos` significa. O jogador não escreve comparação nenhuma dentro do laço e a
+# remoção de duplicatas funciona assim mesmo.
+#
+# Um set seria a ferramenta óbvia e está proibido, porque definir __eq__ sem __hash__ deixa
+# as instâncias não-hasheáveis - o equívoco está no syllabus, e encontrá-lo como TypeError
+# convence mais do que ler sobre ele.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-06
+title: Dois do mesmo tipo
+track: python
+island: objects
+order: 6
+difficulty: simple
+tags: [objects, dunder, equality, relief]
+xp: 20
+
+concepts:
+  - dunder-methods
+
+teaching:
+  analogy: |
+    O escriturário separando os caixotes do dia em pilhas não compara números de série. Dois
+    caixotes de doze quilos de corda vão para a mesma pilha, porque para efeito da pilha eles
+    são o mesmo caixote. Os números de série continuam diferentes e ninguém liga.
+
+    Mude o que "o mesmo" significa - diga que agora a pilha é por fornecedor - e o
+    escriturário separa de outro jeito sem aprender nenhuma habilidade nova. A regra se
+    mudou de lugar, a separação não.
+
+  explanation: |
+    Uma vez que uma classe tem `__eq__`, tudo no Python que pergunta "essas duas são a mesma?"
+    passa a usar a sua resposta. Não só o `==`:
+
+        caixote in caixotes        # percorre a lista chamando ==
+        caixotes.count(caixote)    # a mesma coisa
+        caixotes.index(caixote)    # a mesma coisa
+
+    Então um laço que remove duplicatas não contém comparação nenhuma escrita por você. Você
+    dá append numa lista dos que já viu, e `if caixote not in vistos` faz o trabalho com a
+    regra que você definiu na classe.
+
+    O que não vem de brinde é o set. Um set acha duplicatas por hash, e definir `__eq__`
+    remove o `__hash__` que a sua classe herdava - porque dois objetos que se comparam iguais
+    têm de ter o mesmo hash, e o Python não consegue adivinhar como. Colocar as suas
+    instâncias num set levanta `TypeError: unhashable type`. Você pode escrever `__hash__`
+    quando precisar. Esta missão não precisa.
+
+    Ficar com o primeiro de cada par em vez do último importa mais do que parece. As duas
+    coisas são uma linha, e só uma delas preserva a ordem em que o porto de fato recebeu.
+
+  worked_example: |
+    # Cores, que não é o que esta missão pede
+    class Colour:
+        def __init__(self, name, hexcode):
+            self.name = name
+            self.hexcode = hexcode
+
+        def __repr__(self):
+            return f"Colour({self.name!r})"
+
+        def __eq__(self, other):
+            return self.hexcode == other.hexcode
+
+
+    def palette(entries):
+        vistas = []
+        for name, hexcode in entries:
+            cor = Colour(name, hexcode)
+            if cor not in vistas:
+                vistas.append(cor)
+        return [repr(cor) for cor in vistas]
+
+
+    print(palette([["vermelho", "#f00"], ["carmim", "#f00"], ["azul", "#00f"]]))
+    # ["Colour('vermelho')", "Colour('azul')"] - carmim se perdeu, porque a regra é o hexcode
+
+  key_points:
+    - "`in`, `.count()` e `.index()` todos chamam `__eq__`. Defina uma vez e todos eles passam a usar a sua definição de igualdade."
+    - "`__eq__` decide o que \"o mesmo\" significa para o seu tipo. Ele não precisa comparar todos os atributos, e escolher quais comparar é uma decisão de projeto."
+    - "Um set não consegue guardar as suas instâncias depois que `__eq__` existe, porque defini-lo remove o `__hash__`. O `TypeError` é o Python se recusando a adivinhar, não um bug."
+    - "Ficar com o primeiro de cada duplicata preserva a ordem em que as coisas chegaram. Ficar com o último não preserva, e a diferença só aparece na saída."
+
+brief: |
+  Os caixotes do dia chegaram com duplicatas na lista. Reduza a uma de cada.
+
+  Defina uma classe chamada Crate:
+
+    - `__init__` recebe um nome e um peso
+    - `__repr__` devolve exatamente `Crate('rope', 12)` - o nome entre aspas, depois o peso
+    - `__eq__` devolve True quando o outro caixote tem o mesmo nome e o mesmo peso
+
+  Depois escreva uma função chamada distinct que recebe uma lista de pares [nome, peso]:
+
+    - construa um Crate por par, na ordem
+    - fique apenas com o primeiro caixote de cada tipo, descartando qualquer caixote
+      posterior que seja igual a um que você já guardou
+    - devolva uma lista com o `repr` de cada caixote guardado, na ordem em que foram
+      guardados
+
+  Use `in` para decidir se você já viu um caixote antes. Você escreveu a regra no `__eq__`,
+  então deixe-a trabalhar - nada de comparar nomes e pesos na mão dentro do laço.
+
+  Você não pode usar set, e não pode importar dataclasses.
+
+signature:
+  entrypoint: distinct
+  stub: |
+    class Crate:
+        def __init__(self, name, weight):
+            self.name = name
+            self.weight = weight
+
+        def __repr__(self):
+            # seu código aqui
+            pass
+
+        def __eq__(self, other):
+            # seu código aqui
+            pass
+
+
+    def distinct(entries):
+        # Fique com o primeiro de cada. Deixe o `in` fazer a pergunta.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [set, frozenset]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["rope", 12], ["sail", 30], ["rope", 12]]]
+      expect: ["Crate('rope', 12)", "Crate('sail', 30)"]
+    - args: [[["rope", 12], ["rope", 30]]]
+      expect: ["Crate('rope', 12)", "Crate('rope', 30)"]
+  hidden:
+    # Nada chegou. Uma lista vazia é uma resposta de verdade.
+    - args: [[]]
+      expect: []
+    # Um caixote só, sem nada com que comparar.
+    - args: [[["rope", 12]]]
+      expect: ["Crate('rope', 12)"]
+    # Todos os caixotes idênticos. Só o primeiro sobrevive.
+    - args: [[["rope", 12], ["rope", 12], ["rope", 12]]]
+      expect: ["Crate('rope', 12)"]
+    # Mesmo peso, nomes diferentes. A regra compara os dois, então os dois ficam.
+    - args: [[["rope", 12], ["chain", 12]]]
+      expect: ["Crate('rope', 12)", "Crate('chain', 12)"]
+    # A duplicata não é vizinha. Uma solução que compara só com o caixote anterior falha
+    # aqui e em nenhum outro lugar.
+    - args: [[["rope", 12], ["sail", 30], ["rope", 12], ["chain", 5]]]
+      expect: ["Crate('rope', 12)", "Crate('sail', 30)", "Crate('chain', 5)"]
+    # O primeiro de cada, não o último. Se a ordem sair invertida, este é o caso que avisa.
+    - args: [[["sail", 30], ["rope", 12], ["sail", 30]]]
+      expect: ["Crate('sail', 30)", "Crate('rope', 12)"]
+    # Zero e um nome vazio, os dois ainda são valores.
+    - args: [[["", 0], ["", 0], ["rope", 0]]]
+      expect: ["Crate('', 0)", "Crate('rope', 0)"]
+
+hints:
+  - level: 1
+    text: |
+      O que `caixote in vistos` faz de verdade, um item por vez? Se você souber isso, você
+      sabe por que este laço não precisa de nenhuma comparação de nomes ou pesos dentro dele.
+  - level: 2
+    text: |
+      Uma lista chamada `vistos`, começando vazia. Um laço sobre `entries`, construindo um
+      Crate a partir de cada par. Um `if ... not in vistos` protegendo um único `append`.
+
+      Depois uma segunda passada - ou uma compreensão - transformando `vistos` numa lista de
+      strings de `repr`. A lista que você monta no laço guarda caixotes, não texto.
+  - level: 3
+    text: |
+      O mesmo laço, com selos:
+
+          class Stamp:
+              def __init__(self, country, value):
+                  self.country = country
+                  self.value = value
+
+              def __repr__(self):
+                  return f"Stamp({self.country!r}, {self.value})"
+
+              def __eq__(self, other):
+                  return self.country == other.country and self.value == other.value
+
+
+          def album(entries):
+              guardados = []
+              for country, value in entries:
+                  selo = Stamp(country, value)
+                  if selo not in guardados:
+                      guardados.append(selo)
+              return [repr(selo) for selo in guardados]
+
+      A sua guarda caixotes, e as palavras dentro do repr são outras.
+
+solution: |
+  class Crate:
+      def __init__(self, name, weight):
+          self.name = name
+          self.weight = weight
+
+      def __repr__(self):
+          return f"Crate({self.name!r}, {self.weight})"
+
+      def __eq__(self, other):
+          return self.name == other.name and self.weight == other.weight
+
+
+  def distinct(entries):
+      seen = []
+
+      for name, weight in entries:
+          crate = Crate(name, weight)
+          if crate not in seen:
+              seen.append(crate)
+
+      return [repr(crate) for crate in seen]

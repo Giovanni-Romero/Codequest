@@ -1,0 +1,225 @@
+# Mission 1 of Objects. Introduces: classes, instances.
+#
+# Two concepts in one mission, which the syllabus argues for at length: a class with no
+# instance is a definition nobody ran, and an instance with no class is impossible.
+#
+# The engine cannot prove a class was written - it only sees the return value, and a
+# two-line comprehension returns the same list. The brief says so out loud rather than
+# pretending otherwise, which is the same choice Island 6 made for print-debugging. What
+# the tests *can* do is make independence observable: case 2 builds two crates from
+# identical arguments and changes only one.
+#
+# forbidden_imports blocks dataclasses. It arrives in mission 8, and the whole point of
+# that mission is that the player has already typed __init__ by hand.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-01
+title: The crate that knows itself
+track: python
+island: objects
+order: 1
+difficulty: moderate
+tags: [objects, classes, instances]
+xp: 30
+
+concepts:
+  - classes
+  - instances
+
+teaching:
+  analogy: |
+    A blank form at the harbour office is not a cargo record. It is the shape of one: two
+    lines, one saying "contents" and one saying "weight". Nobody can look at the blank and
+    tell you what is in the hold.
+
+    Fill one in and you have a record. Fill in a second and you have another, sitting next
+    to the first, with its own two answers. Crossing out the weight on one changes nothing
+    on the other, and that is true no matter how alike they looked when you started. The
+    blank is the class. Each filled-in sheet is an instance.
+
+  explanation: |
+    A class defines a type of value, and the values themselves are called instances. You
+    build one by calling the class like a function:
+
+        crate = Crate("rope", 12)
+
+    That call runs `__init__`, whose job is to store the arguments on the instance being
+    built. The first parameter of `__init__` is that instance, and by convention it is
+    called `self`:
+
+        class Crate:
+            def __init__(self, name, weight):
+                self.name = name
+                self.weight = weight
+
+    `self` is not a keyword. It is an ordinary parameter that Python fills in for you when
+    you write `Crate("rope", 12)` - which is why the call passes two arguments and the
+    definition lists three.
+
+    Everything stored with `self.something = ...` belongs to that one instance. Two crates
+    built from identical arguments are still two separate records, and changing one leaves
+    the other exactly as it was.
+
+  worked_example: |
+    # A lamp, which is not what this mission asks for
+    class Lamp:
+        def __init__(self, room, lit):
+            self.room = room
+            self.lit = lit
+
+
+    kitchen = Lamp("kitchen", False)
+    hall = Lamp("hall", False)
+
+    kitchen.lit = True
+
+    print(kitchen.lit)   # True
+    print(hall.lit)      # False - the two were never connected
+
+  key_points:
+    - "`self` is the first parameter of every method, and Python passes it for you. Leaving it out is the error every beginner meets once."
+    - "`self.name = name` stores a value on this instance only. Nothing you assign there is visible from another instance."
+    - "`Crate` is the blank form and `Crate(...)` is a filled-in copy. The parentheses are what make the difference."
+    - "Two instances built from the same arguments are two objects, not one. `==` says they differ, and it is right until you teach it otherwise."
+    - "`__init__` stores values. It must not return anything - Python is already handing the new instance back to you."
+
+brief: |
+  The harbour office needs two cargo records and one correction.
+
+  First define a class called Crate. Its `__init__` takes a name and a weight, and stores
+  both on the instance as `self.name` and `self.weight`.
+
+  Then write a function called relabel that takes five arguments:
+
+    - name_a, weight_a - for the first crate
+    - name_b, weight_b - for the second crate
+    - new_weight - the corrected weight of the *first* crate only
+
+  Build both crates, change the first crate's weight to new_weight, and return a list of
+  two dicts, in that order:
+
+      [{"name": ..., "weight": ...}, {"name": ..., "weight": ...}]
+
+  Read the values back off the instances when you build those dicts.
+
+  You cannot import dataclasses here - writing `__init__` by hand is the mission.
+
+  One thing worth saying plainly: a two-line answer that skips the class entirely returns
+  the right list, and the tests cannot tell. Write the class anyway. Everything on this
+  island is built on it, and mission 2 hands you nothing to stand on if you skipped this.
+
+signature:
+  entrypoint: relabel
+  stub: |
+    class Crate:
+        def __init__(self, name, weight):
+            # Store both on self.
+            # your code here
+            pass
+
+
+    def relabel(name_a, weight_a, name_b, weight_b, new_weight):
+        # Build two crates, correct the first one, report both.
+        # your code here
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", 12, "sail", 30, 20]
+      expect:
+        - {name: rope, weight: 20}
+        - {name: sail, weight: 30}
+    # Identical arguments for both crates. If the two share anything, this case says so.
+    - args: ["anchor", 45, "anchor", 45, 50]
+      expect:
+        - {name: anchor, weight: 50}
+        - {name: anchor, weight: 45}
+  hidden:
+    # The independence case again. It is the one that matters most, so it is graded twice.
+    - args: ["barrel", 8, "barrel", 8, 9]
+      expect:
+        - {name: barrel, weight: 9}
+        - {name: barrel, weight: 8}
+    # The correction changes nothing. The crate is still relabelled to the same number.
+    - args: ["rope", 12, "sail", 30, 12]
+      expect:
+        - {name: rope, weight: 12}
+        - {name: sail, weight: 30}
+    # Zero is a weight. Nothing here justifies treating it as missing.
+    - args: ["letters", 0, "post", 0, 0]
+      expect:
+        - {name: letters, weight: 0}
+        - {name: post, weight: 0}
+    # A negative correction. No validation has been taught yet, so it is stored as given.
+    - args: ["ballast", 100, "rope", 12, -5]
+      expect:
+        - {name: ballast, weight: -5}
+        - {name: rope, weight: 12}
+    # An empty name is a name.
+    - args: ["", 3, "sail", 30, 4]
+      expect:
+        - {name: "", weight: 4}
+        - {name: sail, weight: 30}
+    # Order is part of the answer: the corrected crate comes first, always.
+    - args: ["sail", 30, "rope", 12, 31]
+      expect:
+        - {name: sail, weight: 31}
+        - {name: rope, weight: 12}
+
+hints:
+  - level: 1
+    text: |
+      How many parameters does `__init__` list, and how many arguments does `Crate("rope", 12)`
+      pass? The difference between those two numbers has a name, and it is the first one.
+  - level: 2
+    text: |
+      Inside `__init__`, two assignments: `self.name = name` and `self.weight = weight`.
+
+      Inside `relabel`, build both crates first. Then change the first one with a plain
+      assignment - `crate_a.weight = new_weight` - and build the two dicts by reading the
+      attributes back off each instance.
+  - level: 3
+    text: |
+      The same shape, for lamps rather than crates:
+
+          class Lamp:
+              def __init__(self, room, lit):
+                  self.room = room
+                  self.lit = lit
+
+
+          def switch(room_a, lit_a, room_b, lit_b, new_state):
+              first = Lamp(room_a, lit_a)
+              second = Lamp(room_b, lit_b)
+
+              first.lit = new_state
+
+              return [
+                  {"room": first.room, "lit": first.lit},
+                  {"room": second.room, "lit": second.lit},
+              ]
+
+      Yours carries a weight instead of a switch, and the keys are different.
+
+solution: |
+  class Crate:
+      def __init__(self, name, weight):
+          self.name = name
+          self.weight = weight
+
+
+  def relabel(name_a, weight_a, name_b, weight_b, new_weight):
+      first = Crate(name_a, weight_a)
+      second = Crate(name_b, weight_b)
+
+      first.weight = new_weight
+
+      return [
+          {"name": first.name, "weight": first.weight},
+          {"name": second.name, "weight": second.weight},
+      ]

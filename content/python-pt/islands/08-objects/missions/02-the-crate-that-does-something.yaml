@@ -1,0 +1,235 @@
+# Missão 2 de Objetos. Introduz: methods.
+# Reforça: classes, instances.
+#
+# A missão é montada em torno da única coisa que um método faz e uma função comum não faz
+# com a mesma elegância: mudar a instância em que foi chamado. Chamar `load` duas vezes tem
+# de dar uma resposta diferente na segunda, que é o que torna o estado real em vez de
+# decorativo - e o caso 2 é exatamente essa chamada, feita duas vezes.
+#
+# A segunda metade é o pure-vs-side-effects da Ilha 3, visto do outro lado: `remaining`
+# reporta e `load` muda, e o enunciado faz o jogador escrever um de cada.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-02
+title: O caixote que faz alguma coisa
+track: python
+island: objects
+order: 2
+difficulty: moderate
+tags: [objects, methods, state]
+xp: 30
+
+concepts:
+  - methods
+
+teaching:
+  analogy: |
+    Um registro de carga com um peso escrito nele é um papel. Um registro de carga com um
+    escriturário do lado é outra coisa: você pode dizer "some trinta quilos" e o número muda,
+    e você nunca encosta na folha.
+
+    A parte útil não é que o escriturário te poupa uma caneta. É que ele é o único que tem
+    uma. Ninguém consegue escrever um peso de menos quatro naquela folha esticando o braço
+    por cima da mesa, porque o único jeito de entrar é pedindo, e o escriturário conhece as
+    regras.
+
+  explanation: |
+    Um método é uma função definida dentro de uma classe. Ele recebe `self` primeiro, igual
+    ao `__init__`, e pode ler e mudar o que aquela instância estiver guardando:
+
+        class Crate:
+            def __init__(self, capacity):
+                self.capacity = capacity
+                self.load = 0
+
+            def add(self, weight):
+                self.load = self.load + weight
+
+    Você chama através de uma instância, e a instância entra como `self` automaticamente:
+
+        caixote = Crate(100)
+        caixote.add(30)
+
+    Vale separar dois tipos de método desde o primeiro dia. Um deles **muda** a instância -
+    o `add` acima, que deixa `self.load` diferente de como o encontrou. O outro apenas
+    **reporta** sobre ela, calculando uma resposta a partir do que já está lá e sem mudar
+    nada.
+
+    Essa diferença é a regra de puro-versus-efeito-colateral da Ilha 3, agora com um nome
+    colado na coisa que está sendo mudada. Um método que reporta pode ser chamado dez vezes
+    seguidas e dar a mesma resposta em todas. Um método que muda não pode, e esse é o
+    sentido dele.
+
+  worked_example: |
+    # Uma chaleira, que não é o que esta missão pede
+    class Kettle:
+        def __init__(self, litres):
+            self.litres = litres
+            self.poured = 0
+
+        def pour(self, amount):        # muda a chaleira
+            self.poured = self.poured + amount
+
+        def left(self):                # apenas reporta
+            return self.litres - self.poured
+
+
+    chaleira = Kettle(2)
+    chaleira.pour(0.5)
+    chaleira.pour(0.5)
+
+    print(chaleira.left())   # 1.0
+    print(chaleira.left())   # 1.0 - reportar duas vezes não muda nada
+
+  key_points:
+    - "Um método é uma função cujo primeiro parâmetro é `self`. Esquecer o `self` produz \"takes 1 positional argument but 2 were given\", que é o Python avisando que passou a instância e você não tinha onde colocá-la."
+    - "`self.load` e `load` são nomes diferentes. O que está sem `self.` desaparece quando o método termina."
+    - "Um método que muda a instância não deveria também devolvê-la. Devolva `None` e deixe quem chamou ler o atributo - misturar os dois é como se produz código que só funciona se for chamado exatamente uma vez."
+    - "Um método que reporta calcula a partir do que está guardado e não guarda nada. Chamar duas vezes tem de dar a mesma resposta, e se não der ele é um método que muda usando o nome errado."
+    - "Comportamento que pertence aos dados mora do lado deles. Esse é o argumento inteiro a favor de classes, e vale mais do que a sintaxe."
+
+brief: |
+  Um caixote tem uma capacidade e começa vazio.
+
+  Defina uma classe chamada Crate:
+
+    - `__init__` recebe uma capacidade e guarda como `self.capacity`. Ele também coloca
+      `self.load` em 0 - um caixote novo está vazio, e quem chama não tem direito de dizer
+      o contrário.
+    - um método chamado `add` recebe um peso e soma ao `self.load`. Ele não devolve nada.
+    - um método chamado `remaining` devolve quanto espaço sobrou: capacidade menos carga.
+      Ele não muda nada.
+
+  Depois escreva uma função chamada stow que recebe uma capacidade e uma lista de pesos:
+
+    - construa um caixote com aquela capacidade
+    - adicione todos os pesos da lista, na ordem
+    - devolva um dicionário no formato {"load": ..., "remaining": ...}, lendo `load` da
+      instância e chamando `remaining` para o outro valor
+
+  Nada aqui valida nada. Um caixote pode ficar sobrecarregado, e aí `remaining` fica
+  negativo - isso é uma resposta de verdade, e a missão 5 é onde recusar vira o trabalho.
+
+  Você não pode importar dataclasses aqui.
+
+signature:
+  entrypoint: stow
+  stub: |
+    class Crate:
+        def __init__(self, capacity):
+            # A capacidade vem de quem chama. A carga sempre começa em 0.
+            # seu código aqui
+            pass
+
+        def add(self, weight):
+            # Muda o caixote. Não devolve nada.
+            # seu código aqui
+            pass
+
+        def remaining(self):
+            # Reporta sobre o caixote. Não muda nada.
+            # seu código aqui
+            pass
+
+
+    def stow(capacity, weights):
+        # Um caixote, todos os pesos na ordem, depois o relatório.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, [30, 20]]
+      expect: {load: 50, remaining: 50}
+    # O mesmo peso duas vezes. Se `add` substituísse em vez de acumular, isto daria 30.
+    - args: [100, [30, 30]]
+      expect: {load: 60, remaining: 40}
+  hidden:
+    # Nenhum peso. Um caixote novo reporta a capacidade inteira como livre.
+    - args: [100, []]
+      expect: {load: 0, remaining: 100}
+    # Um peso só, enchendo o caixote exatamente.
+    - args: [50, [50]]
+      expect: {load: 50, remaining: 0}
+    # Sobrecarregado. `remaining` fica negativo e nada impede.
+    - args: [10, [8, 8]]
+      expect: {load: 16, remaining: -6}
+    # Um peso zero continua sendo um add. Não pode ser pulado ou a conta desanda.
+    - args: [20, [0, 0, 5]]
+      expect: {load: 5, remaining: 15}
+    # Floats sobrevivem. Nada no enunciado diz que os pesos são inteiros.
+    - args: [10, [2.5, 2.5]]
+      expect: {load: 5.0, remaining: 5.0}
+    # Capacidade zero. Todo caixote começa vazio, inclusive este.
+    - args: [0, []]
+      expect: {load: 0, remaining: 0}
+    # Longo o bastante para uma resposta chumbada não ter onde se esconder.
+    - args: [1000, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]]
+      expect: {load: 55, remaining: 945}
+
+hints:
+  - level: 1
+    text: |
+      `add` tem de deixar o caixote diferente de como o encontrou, e `remaining` não pode.
+      Qual dos dois escreve em `self`, e qual apenas lê de lá?
+  - level: 2
+    text: |
+      `__init__` recebe `self` e `capacity` - dois parâmetros, e o `self.load = 0` é escrito
+      por você, não recebido.
+
+      `add` é `self.load = self.load + weight`. `remaining` é um único `return` com uma
+      subtração dentro e nenhuma atribuição em lugar nenhum.
+
+      No `stow`, um laço sobre `weights` chamando `caixote.add(...)` a cada volta. Depois
+      leia `caixote.load` e chame `caixote.remaining()`.
+  - level: 3
+    text: |
+      Os mesmos dois formatos, em uma caixa d'água:
+
+          class Tank:
+              def __init__(self, size):
+                  self.size = size
+                  self.filled = 0
+
+              def pour(self, litres):
+                  self.filled = self.filled + litres
+
+              def headroom(self):
+                  return self.size - self.filled
+
+
+          def fill(size, pours):
+              tanque = Tank(size)
+              for litres in pours:
+                  tanque.pour(litres)
+              return {"filled": tanque.filled, "headroom": tanque.headroom()}
+
+      A sua usa outras palavras, e um dos dois valores do dicionário vem de uma chamada de
+      método em vez de um atributo.
+
+solution: |
+  class Crate:
+      def __init__(self, capacity):
+          self.capacity = capacity
+          self.load = 0
+
+      def add(self, weight):
+          self.load = self.load + weight
+
+      def remaining(self):
+          return self.capacity - self.load
+
+
+  def stow(capacity, weights):
+      crate = Crate(capacity)
+
+      for weight in weights:
+          crate.add(weight)
+
+      return {"load": crate.load, "remaining": crate.remaining()}

@@ -1,0 +1,222 @@
+# Missão 3 de Objetos. Não introduz nada.
+# Reforça: classes, instances, methods, for-loop.
+#
+# Missão de alívio. Tudo aqui foi ensinado nas missões 1 e 2 - o único formato realmente
+# novo é uma lista guardando instâncias em vez de números, e isso vale uma missão inteira
+# porque é assim que todo programa de verdade usa objetos.
+#
+# O método que reporta devolve um bool, o que faz a decisão "está sobrecarregado?" morar na
+# classe em vez de ser refeita em cada lugar que chama. É o argumento a favor de métodos
+# recontado em uma sala menor.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-03
+title: A escala da tripulação
+track: python
+island: objects
+order: 3
+difficulty: simple
+tags: [objects, classes, methods, relief]
+xp: 20
+
+concepts:
+  - classes
+  - methods
+
+teaching:
+  analogy: |
+    A capitania guarda uma folha por marinheiro em uma única gaveta. Ninguém decora a
+    gaveta. Quando a escala de turnos vence, o escriturário passa por ela uma folha de cada
+    vez, lê o que está escrito ali, e acrescenta uma linha ao resumo.
+
+    A gaveta não sabe nada sobre turnos. Ela só guarda folhas, em ordem. Todo o saber está
+    nas folhas.
+
+  explanation: |
+    Uma lista pode guardar qualquer coisa, e isso inclui as suas próprias instâncias:
+
+        tripulacao = [Sailor("Ada", 3), Sailor("Bo", 1)]
+
+    Uma vez dentro de uma lista, tudo que você já sabe sobre listas continua valendo sem
+    mudança nenhuma. Você percorre com um laço, e a variável do laço é uma instância por
+    volta:
+
+        for sailor in tripulacao:
+            print(sailor.name)
+
+    Nada de novo acontece aqui. `sailor` é um `Sailor` do mesmo jeito que `n` era um `int`
+    na Ilha 1, e você entra nele com um ponto em vez de um índice.
+
+    O hábito que vale formar agora: quando uma pergunta tem resposta que depende só de uma
+    instância, coloque-a na classe como método. O laço passa a se ler como uma frase -
+    `if sailor.is_busy()` - e a regra por trás dela mora em exatamente um lugar. Mudar a
+    regra depois vira mudar uma linha, em vez de caçar todo mundo que escreveu
+    `sailor.watches > 2` na mão.
+
+  worked_example: |
+    # Livros numa estante, que não é o que esta missão pede
+    class Book:
+        def __init__(self, title, pages):
+            self.title = title
+            self.pages = pages
+
+        def is_long(self):
+            return self.pages > 400
+
+
+    def shelf_report(entries):
+        livros = [Book(title, pages) for title, pages in entries]
+
+        total = 0
+        longos = []
+        for livro in livros:
+            total = total + livro.pages
+            if livro.is_long():
+                longos.append(livro.title)
+
+        return {"pages": total, "long": longos}
+
+  key_points:
+    - "Uma lista de instâncias é uma lista comum. Todo laço, todo append, todo índice que você já conhece continua funcionando."
+    - "A variável do laço é uma instância por volta, então você entra nela com um ponto: `sailor.name`, não `sailor[\"name\"]`."
+    - "Um método que responde sim ou não devolve um bool e é chamado com parênteses. `sailor.is_busy` sem eles é o próprio método, que é sempre verdadeiro - um bug que nunca levanta erro."
+    - "Coloque a regra na classe uma vez em vez de escrever `sailor.watches > 2` em quatro lugares. Quando a regra mudar, você quer editar uma linha."
+
+brief: |
+  A escala de turnos venceu.
+
+  Defina uma classe chamada Sailor:
+
+    - `__init__` recebe um nome e um número de turnos, guardados como `self.name` e
+      `self.watches`
+    - um método chamado `is_busy` devolve True quando o marinheiro tem **mais de dois**
+      turnos, e False caso contrário
+
+  Depois escreva uma função chamada roster que recebe uma lista de pares [nome, turnos]:
+
+    - construa um Sailor por par, mantendo a ordem
+    - devolva um dicionário no formato {"total": ..., "busy": [...]}
+
+  `total` é a soma dos turnos de todos. `busy` é uma lista com os nomes dos marinheiros cujo
+  `is_busy` diz True, na ordem da escala.
+
+  Uma escala vazia é uma escala de verdade: ela soma 0 e ninguém está sobrecarregado.
+
+  Você não pode usar sum, e não pode importar dataclasses.
+
+signature:
+  entrypoint: roster
+  stub: |
+    class Sailor:
+        def __init__(self, name, watches):
+            # seu código aqui
+            pass
+
+        def is_busy(self):
+            # Mais de dois. Não dois.
+            # seu código aqui
+            pass
+
+
+    def roster(entries):
+        # Construa os marinheiros, depois percorra uma vez.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["Ada", 3], ["Bo", 1]]]
+      expect: {total: 4, busy: ["Ada"]}
+    - args: [[["Ada", 1], ["Bo", 1]]]
+      expect: {total: 2, busy: []}
+  hidden:
+    # Escala vazia. As duas metades da resposta têm de sobreviver a isso.
+    - args: [[]]
+      expect: {total: 0, busy: []}
+    # Exatamente dois turnos não é sobrecarga. "Mais de dois" é a fronteira inteira.
+    - args: [[["Ada", 2]]]
+      expect: {total: 2, busy: []}
+    # Três é.
+    - args: [[["Ada", 3]]]
+      expect: {total: 3, busy: ["Ada"]}
+    # A ordem de `busy` segue a escala, não a contagem de turnos.
+    - args: [[["Ada", 9], ["Bo", 4], ["Cai", 1]]]
+      expect: {total: 14, busy: ["Ada", "Bo"]}
+    # Zero turnos. Continua sendo marinheiro, continua sendo contado, nunca sobrecarregado.
+    - args: [[["Ada", 0], ["Bo", 0]]]
+      expect: {total: 0, busy: []}
+    # Dois marinheiros com o mesmo nome. Os dois aparecem - nada aqui remove duplicatas.
+    - args: [[["Ada", 5], ["Ada", 5]]]
+      expect: {total: 10, busy: ["Ada", "Ada"]}
+    # Todo mundo sobrecarregado, então uma solução que devolve [] em `busy` não tem mais
+    # onde se esconder.
+    - args: [[["Ada", 4], ["Bo", 5], ["Cai", 6]]]
+      expect: {total: 15, busy: ["Ada", "Bo", "Cai"]}
+
+hints:
+  - level: 1
+    text: |
+      Uma vez que um Sailor está na lista, como você tira o nome dele de lá - com um ponto ou
+      com colchetes? E o que `sailor.is_busy` te dá se você esquecer os parênteses?
+  - level: 2
+    text: |
+      Construa a lista primeiro, num laço próprio ou numa compreensão sobre `entries`.
+      Desempacotar cada par como `for name, watches in entries` te poupa dois acessos por
+      índice.
+
+      Depois um laço sobre os marinheiros, com um total corrente e uma lista em que você dá
+      append. O `if` dentro desse laço chama o método - com parênteses.
+  - level: 3
+    text: |
+      A mesma passagem, sobre luminárias:
+
+          class Lamp:
+              def __init__(self, room, watts):
+                  self.room = room
+                  self.watts = watts
+
+              def is_bright(self):
+                  return self.watts > 60
+
+
+          def survey(entries):
+              luminarias = [Lamp(room, watts) for room, watts in entries]
+
+              total = 0
+              fortes = []
+              for luminaria in luminarias:
+                  total = total + luminaria.watts
+                  if luminaria.is_bright():
+                      fortes.append(luminaria.room)
+
+              return {"watts": total, "bright": fortes}
+
+      A sua conta turnos e as chaves do dicionário são outras.
+
+solution: |
+  class Sailor:
+      def __init__(self, name, watches):
+          self.name = name
+          self.watches = watches
+
+      def is_busy(self):
+          return self.watches > 2
+
+
+  def roster(entries):
+      sailors = [Sailor(name, watches) for name, watches in entries]
+
+      total = 0
+      busy = []
+      for sailor in sailors:
+          total = total + sailor.watches
+          if sailor.is_busy():
+              busy.append(sailor.name)
+
+      return {"total": total, "busy": busy}

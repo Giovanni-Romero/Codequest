@@ -1,0 +1,225 @@
+# Mission 6 of Objects. Introduces nothing.
+# Reinforces: dunder-methods, instances, classes.
+#
+# Relief mission, and it earns its place by showing something mission 4 could only assert:
+# `in` is built on `==`, so writing `__eq__` quietly changed what `x in seen` means. The
+# player writes no comparison at all in the loop and the deduplication still works.
+#
+# A set would be the obvious tool and is forbidden, because defining __eq__ without
+# __hash__ makes the instances unhashable - the misconception is in the syllabus, and
+# meeting it as a TypeError is more convincing than reading about it.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-06
+title: Two of a kind
+track: python
+island: objects
+order: 6
+difficulty: simple
+tags: [objects, dunder, equality, relief]
+xp: 20
+
+concepts:
+  - dunder-methods
+
+teaching:
+  analogy: |
+    A clerk sorting the day's crates into piles does not compare serial numbers. Two crates
+    of twelve kilos of rope go on the same pile, because for the purposes of the pile they
+    are the same crate. The serial numbers still differ and nobody cares.
+
+    Change what "the same" means - say the pile is now by supplier - and the clerk sorts
+    differently without learning a new skill. The rule moved, the sorting did not.
+
+  explanation: |
+    Once a class has `__eq__`, everything in Python that asks "are these the same?" starts
+    using your answer. Not just `==`:
+
+        crate in crates        # walks the list calling ==
+        crates.count(crate)    # the same
+        crates.index(crate)    # the same
+
+    So a deduplication loop contains no comparison you wrote. You append to a list of ones
+    you have already seen, and `if crate not in seen` does the work with the rule you
+    defined in the class.
+
+    What does not come along for free is a set. A set finds duplicates by hashing, and
+    defining `__eq__` removes the `__hash__` your class inherited - because two objects
+    that compare equal must hash the same, and Python cannot guess how. Putting your
+    instances in a set raises `TypeError: unhashable type`. You can add `__hash__` yourself
+    when you need it. This mission does not.
+
+    Keeping the first of each pair rather than the last matters more than it looks. Both
+    are one line, and only one of them keeps the order the harbour actually received.
+
+  worked_example: |
+    # Colours, which is not what this mission asks for
+    class Colour:
+        def __init__(self, name, hexcode):
+            self.name = name
+            self.hexcode = hexcode
+
+        def __repr__(self):
+            return f"Colour({self.name!r})"
+
+        def __eq__(self, other):
+            return self.hexcode == other.hexcode
+
+
+    def palette(entries):
+        seen = []
+        for name, hexcode in entries:
+            colour = Colour(name, hexcode)
+            if colour not in seen:
+                seen.append(colour)
+        return [repr(colour) for colour in seen]
+
+
+    print(palette([["red", "#f00"], ["crimson", "#f00"], ["blue", "#00f"]]))
+    # ["Colour('red')", "Colour('blue')"] - crimson lost, because the rule is the hexcode
+
+  key_points:
+    - "`in`, `.count()` and `.index()` all call `__eq__`. Define it once and every one of them starts using your definition of sameness."
+    - "`__eq__` decides what \"the same\" means for your type. It does not have to compare every attribute, and choosing which ones it compares is a design decision."
+    - "A set cannot hold your instances once `__eq__` exists, because defining it removes `__hash__`. The `TypeError` is Python refusing to guess, not a bug."
+    - "Keeping the first of each duplicate preserves the order things arrived in. Keeping the last does not, and the difference only shows up in the output."
+
+brief: |
+  The day's crates arrive with duplicates in the list. Reduce it to one of each.
+
+  Define a class called Crate:
+
+    - `__init__` takes a name and a weight
+    - `__repr__` returns exactly `Crate('rope', 12)` - the name in quotes, then the weight
+    - `__eq__` returns True when the other crate has the same name and the same weight
+
+  Then write a function called distinct that takes a list of [name, weight] pairs:
+
+    - build one Crate per pair, in order
+    - keep only the first crate of each kind, dropping any later crate equal to one you
+      have already kept
+    - return a list of the `repr` of each kept crate, in the order they were kept
+
+  Use `in` to decide whether you have seen a crate before. You wrote the rule in `__eq__`,
+  so let it do the work - no comparing names and weights by hand in the loop.
+
+  You cannot use set, and you cannot import dataclasses.
+
+signature:
+  entrypoint: distinct
+  stub: |
+    class Crate:
+        def __init__(self, name, weight):
+            self.name = name
+            self.weight = weight
+
+        def __repr__(self):
+            # your code here
+            pass
+
+        def __eq__(self, other):
+            # your code here
+            pass
+
+
+    def distinct(entries):
+        # Keep the first of each. Let `in` ask the question.
+        # your code here
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [set, frozenset]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["rope", 12], ["sail", 30], ["rope", 12]]]
+      expect: ["Crate('rope', 12)", "Crate('sail', 30)"]
+    - args: [[["rope", 12], ["rope", 30]]]
+      expect: ["Crate('rope', 12)", "Crate('rope', 30)"]
+  hidden:
+    # Nothing arrived. An empty list is a real answer.
+    - args: [[]]
+      expect: []
+    # One crate, nothing to compare it against.
+    - args: [[["rope", 12]]]
+      expect: ["Crate('rope', 12)"]
+    # Every crate identical. Only the first survives.
+    - args: [[["rope", 12], ["rope", 12], ["rope", 12]]]
+      expect: ["Crate('rope', 12)"]
+    # Same weight, different names. The rule compares both, so both stay.
+    - args: [[["rope", 12], ["chain", 12]]]
+      expect: ["Crate('rope', 12)", "Crate('chain', 12)"]
+    # The duplicate is not adjacent. A solution comparing only with the previous crate
+    # fails here and nowhere else.
+    - args: [[["rope", 12], ["sail", 30], ["rope", 12], ["chain", 5]]]
+      expect: ["Crate('rope', 12)", "Crate('sail', 30)", "Crate('chain', 5)"]
+    # First of each, not last. If the order comes out reversed, this is the case that says so.
+    - args: [[["sail", 30], ["rope", 12], ["sail", 30]]]
+      expect: ["Crate('sail', 30)", "Crate('rope', 12)"]
+    # Zero and an empty name, both still values.
+    - args: [[["", 0], ["", 0], ["rope", 0]]]
+      expect: ["Crate('', 0)", "Crate('rope', 0)"]
+
+hints:
+  - level: 1
+    text: |
+      What does `crate in seen` actually do, one item at a time? If you know that, you know
+      why this loop needs no comparison of names or weights in it.
+  - level: 2
+    text: |
+      One list called `seen`, starting empty. One loop over `entries`, building a Crate from
+      each pair. One `if ... not in seen` guarding a single `append`.
+
+      Then a second pass - or a comprehension - turning `seen` into a list of `repr` strings.
+      The list you build in the loop holds crates, not text.
+  - level: 3
+    text: |
+      The same loop, on stamps:
+
+          class Stamp:
+              def __init__(self, country, value):
+                  self.country = country
+                  self.value = value
+
+              def __repr__(self):
+                  return f"Stamp({self.country!r}, {self.value})"
+
+              def __eq__(self, other):
+                  return self.country == other.country and self.value == other.value
+
+
+          def album(entries):
+              kept = []
+              for country, value in entries:
+                  stamp = Stamp(country, value)
+                  if stamp not in kept:
+                      kept.append(stamp)
+              return [repr(stamp) for stamp in kept]
+
+      Yours holds crates, and the words inside the repr are different.
+
+solution: |
+  class Crate:
+      def __init__(self, name, weight):
+          self.name = name
+          self.weight = weight
+
+      def __repr__(self):
+          return f"Crate({self.name!r}, {self.weight})"
+
+      def __eq__(self, other):
+          return self.name == other.name and self.weight == other.weight
+
+
+  def distinct(entries):
+      seen = []
+
+      for name, weight in entries:
+          crate = Crate(name, weight)
+          if crate not in seen:
+              seen.append(crate)
+
+      return [repr(crate) for crate in seen]

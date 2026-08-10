@@ -1,0 +1,289 @@
+# Missão 10 de Objetos. Não introduz nada.
+# Reforça: dataclasses, properties, composition-over-inheritance.
+#
+# Missão de alívio. Três das ideias mais duras da ilha no formato mais amigável possível:
+# nenhum setter, nenhuma exceção, nenhuma armadilha de ordem no __init__ porque o @dataclass
+# escreve o __init__.
+#
+# O que está sendo dito baixinho é que as três se combinam. Uma dataclass pode carregar uma
+# property, uma property pode percorrer uma lista de outras dataclasses, e nenhuma das três
+# precisou saber das outras.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-10
+title: A frota gerada
+track: python
+island: objects
+order: 10
+difficulty: simple
+tags: [objects, dataclasses, properties, relief]
+xp: 20
+
+concepts:
+  - dataclasses
+  - properties
+  - composition-over-inheritance
+
+teaching:
+  analogy: |
+    Um estaleiro guarda uma ficha por embarcação. A ficha lista as peças, e não lista o peso
+    total - isso é calculado somando as peças toda vez que alguém pergunta.
+
+    Ninguém se importa de fazer a soma. O que incomodaria seria um total anotado que
+    discordasse das peças depois de uma reforma, e uma ficha sem total anotado não tem como
+    discordar de nada.
+
+  explanation: |
+    Nada de novo aqui. Três coisas que você já tem, usadas juntas.
+
+    Uma dataclass pode guardar uma lista de outras dataclasses:
+
+        @dataclass
+        class Vessel:
+            name: str
+            parts: list = field(default_factory=list)
+
+    Uma dataclass pode carregar uma property no corpo, embaixo dos campos:
+
+        @property
+        def weight(self):
+            total = 0
+            for part in self.parts:
+                total = total + part.weight
+            return total
+
+    Uma property pode ter o nome de algo que não é um campo, e muitas vezes deve ter. Não
+    existe campo `weight` na embarcação - existe um `weight` que você lê, calculado a partir
+    das peças toda vez. Acrescente uma peça e o número anda sozinho.
+
+    Isso é composição e cálculo trabalhando juntos. A embarcação não sabe como uma peça
+    decide o peso dela, e não lembra o que as peças disseram da última vez.
+
+  worked_example: |
+    # Uma refeição, que não é o que esta missão pede
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Ingredient:
+        name: str
+        calories: int
+
+
+    @dataclass
+    class Meal:
+        name: str
+        items: list = field(default_factory=list)
+
+        @property
+        def calories(self):
+            total = 0
+            for item in self.items:
+                total = total + item.calories
+            return total
+
+
+    almoco = Meal("almoço", [Ingredient("pão", 200)])
+    print(almoco.calories)     # 200
+
+    almoco.items.append(Ingredient("queijo", 150))
+    print(almoco.calories)     # 350 - nada foi recalculado à mão
+
+  key_points:
+    - "Um campo de dataclass que guarda uma lista precisa de `field(default_factory=list)`. A regra não muda porque a lista guarda os seus próprios objetos."
+    - "Uma property pode não compartilhar o nome com nada. O `weight` aqui é calculado a partir de `parts`, e nenhum campo chamado `weight` existe."
+    - "Acrescentar à lista muda a resposta da property na hora, porque a resposta nunca foi guardada."
+    - "Seus métodos e properties vão embaixo dos campos, no corpo da classe. O `@dataclass` lê as linhas anotadas e não encosta no resto."
+
+brief: |
+  O estaleiro quer um peso para cada embarcação do pátio, calculado a partir das peças dela.
+
+  Usando `@dataclass`, defina uma classe chamada Part com dois campos: `name`, um str, e
+  `weight`, um int.
+
+  Usando `@dataclass`, defina uma classe chamada Vessel com dois campos: `name`, um str, e
+  `parts`, uma lista com padrão vazio. Dê a ela uma property chamada `weight`, somando o peso
+  de cada peça que ela guarda. Não existe campo de peso - só a property.
+
+  Depois escreva uma função chamada yard que recebe uma lista de entradas. Cada entrada é um
+  par:
+
+      ["Aurora", [["hull", 800], ["engine", 400]]]
+
+  Para cada entrada, construa as Parts, e depois uma Vessel que as guarda. Devolva um
+  dicionário no formato:
+
+      {"vessels": [{"name": ..., "weight": ...}, ...], "total": ...}
+
+  `vessels` mantém a ordem em que as entradas chegaram. `total` é o peso de todas as
+  embarcações somado.
+
+  Uma embarcação sem peças pesa 0 e continua aparecendo na lista.
+
+  Você não pode usar sum.
+
+signature:
+  entrypoint: yard
+  stub: |
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Part:
+        # seu código aqui
+        pass
+
+
+    @dataclass
+    class Vessel:
+        # Dois campos. O da lista precisa de uma fábrica.
+        # seu código aqui
+
+        @property
+        def weight(self):
+            # Some as peças.
+            # seu código aqui
+            pass
+
+
+    def yard(entries):
+        # Peças, depois embarcações, depois um relatório.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["Aurora", [["hull", 800], ["engine", 400]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 1200}]
+        total: 1200
+    - args: [[["Aurora", [["hull", 800]]], ["Petrel", [["hull", 300]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 800}, {name: Petrel, weight: 300}]
+        total: 1100
+  hidden:
+    # Um pátio vazio. As duas metades da resposta sobrevivem a isso.
+    - args: [[]]
+      expect: {vessels: [], total: 0}
+    # Uma embarcação sem peças. Ela ainda aparece, pesando nada.
+    - args: [[["Skiff", []]]]
+      expect:
+        vessels: [{name: Skiff, weight: 0}]
+        total: 0
+    # Uma vazia e uma carregada. Uma solução que pula as vazias falha aqui.
+    - args: [[["Skiff", []], ["Aurora", [["hull", 500]]]]]
+      expect:
+        vessels: [{name: Skiff, weight: 0}, {name: Aurora, weight: 500}]
+        total: 500
+    # Peças de peso zero. Continuam sendo peças, continuam sendo somadas.
+    - args: [[["Aurora", [["flag", 0], ["flag", 0]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 0}]
+        total: 0
+    # Duas embarcações com o mesmo nome. Nada aqui as funde.
+    - args: [[["Aurora", [["hull", 100]]], ["Aurora", [["hull", 200]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 100}, {name: Aurora, weight: 200}]
+        total: 300
+    # Muitas peças numa embarcação só, então uma solução que lê apenas a primeira é pega.
+    - args: [[["Leviathan", [["a", 1], ["b", 2], ["c", 3], ["d", 4]]]]]
+      expect:
+        vessels: [{name: Leviathan, weight: 10}]
+        total: 10
+    # Um nome vazio é um nome, e a ordem é a de chegada, não alfabética.
+    - args: [[["Zephyr", [["hull", 1]]], ["", [["hull", 2]]]]]
+      expect:
+        vessels: [{name: Zephyr, weight: 1}, {name: "", weight: 2}]
+        total: 3
+
+hints:
+  - level: 1
+    text: |
+      A Vessel não tem campo de peso. Então quando você monta o dicionário de uma embarcação,
+      de onde vem o número - e aquela expressão tem parênteses no fim?
+  - level: 2
+    text: |
+      Dois laços, ou um laço com uma compreensão dentro. Para cada entrada, desempacote como
+      `for name, part_entries in entries`, construa as peças a partir de `part_entries`, e
+      depois `Vessel(name, parts)`.
+
+      A property é o mesmo acumulador que você escreveu a ilha inteira: um total começando em
+      0, uma passada sobre `self.parts`, um `return`.
+
+      O total geral é uma segunda passada sobre as embarcações que você construiu, lendo
+      `vessel.weight` sem parênteses.
+  - level: 3
+    text: |
+      O mesmo aninhamento, para shows:
+
+          @dataclass
+          class Act:
+              name: str
+              minutes: int
+
+
+          @dataclass
+          class Concert:
+              venue: str
+              acts: list = field(default_factory=list)
+
+              @property
+              def minutes(self):
+                  total = 0
+                  for act in self.acts:
+                      total = total + act.minutes
+                  return total
+
+
+          def season(entries):
+              shows = []
+              for venue, act_entries in entries:
+                  acts = [Act(name, minutes) for name, minutes in act_entries]
+                  shows.append(Concert(venue, acts))
+              return [{"venue": c.venue, "minutes": c.minutes} for c in shows]
+
+      A sua pesa peças em vez de cronometrar atrações, e a resposta leva um total geral ao
+      lado da lista.
+
+solution: |
+  from dataclasses import dataclass, field
+
+
+  @dataclass
+  class Part:
+      name: str
+      weight: int
+
+
+  @dataclass
+  class Vessel:
+      name: str
+      parts: list = field(default_factory=list)
+
+      @property
+      def weight(self):
+          total = 0
+          for part in self.parts:
+              total = total + part.weight
+          return total
+
+
+  def yard(entries):
+      vessels = []
+      for name, part_entries in entries:
+          parts = [Part(part_name, weight) for part_name, weight in part_entries]
+          vessels.append(Vessel(name, parts))
+
+      total = 0
+      for vessel in vessels:
+          total = total + vessel.weight
+
+      return {
+          "vessels": [{"name": vessel.name, "weight": vessel.weight} for vessel in vessels],
+          "total": total,
+      }

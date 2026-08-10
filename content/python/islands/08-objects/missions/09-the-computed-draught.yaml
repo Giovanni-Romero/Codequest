@@ -1,0 +1,355 @@
+# Mission 9 of Objects. Introduces: properties.
+# Reinforces: methods, dataclasses, custom-exceptions, composition-over-inheritance.
+#
+# Two properties doing different jobs: `load` is computed and read-only, `capacity` is
+# stored and guarded. Teaching only the computed kind leaves the player thinking @property
+# is a way to avoid parentheses; teaching only the guarded kind leaves them thinking it is
+# a validator.
+#
+# The ordering trap in __init__ is deliberate and is the mission's sharpest edge: setting
+# self.capacity runs a setter that reads self.crates, so the list has to exist first. It
+# fails with AttributeError, which is a genuinely confusing message the first time.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-09
+title: The computed draught
+track: python
+island: objects
+order: 9
+difficulty: moderate
+tags: [objects, properties, validation]
+xp: 30
+
+concepts:
+  - properties
+
+teaching:
+  analogy: |
+    The harbour board shows a ship's draught - how deep it sits in the water. Nobody writes
+    that number on the board. Somebody reads it off the hull each time, because a number
+    written down this morning is a lie by the afternoon.
+
+    Next to it is the licensed capacity, which *is* written down. That one can be changed,
+    but not by anybody with a pen: you take it to the harbour master, who refuses to license
+    a hold for less than what is already sitting in it.
+
+    One number is always recalculated. The other is stored behind someone who says no.
+
+  explanation: |
+    A property is a method you read like an attribute. No parentheses at the call site:
+
+        class Hold:
+            @property
+            def free(self):
+                return self.capacity - self.load
+
+        hold.free      # runs the method, gives a number
+
+    That buys two different things, and they are worth separating.
+
+    **Computed.** `free` is not stored anywhere, so it cannot go stale. Store it instead
+    and you now have two facts that have to be kept in step, and one day they will not be.
+    The cost is that it runs every time you read it - fine for a subtraction, a problem if
+    you hide a database query behind one.
+
+    **Guarded.** A property can also have a setter, which runs on assignment:
+
+        @property
+        def capacity(self):
+            return self._capacity
+
+        @capacity.setter
+        def capacity(self, value):
+            if value < 0:
+                raise ValueError("a capacity cannot be negative")
+            self._capacity = value
+
+    The stored value moves to `self._capacity` - a different name, by convention with a
+    leading underscore - because `self.capacity = value` inside the setter would call the
+    setter again, forever.
+
+    What this is really for: `hold.capacity = 50` was already written all over the codebase,
+    and adding the property changes what that line does without changing a single caller.
+
+    One sharp edge. If `__init__` assigns `self.capacity = capacity`, that assignment runs
+    the setter, and whatever the setter reads has to exist already. Order the lines in
+    `__init__` accordingly, or you will meet an `AttributeError` about an attribute you can
+    see on the screen.
+
+  worked_example: |
+    # A thermostat, which is not what this mission asks for
+    class Thermostat:
+        def __init__(self, readings, target):
+            self.readings = readings      # first: the setter below reads it
+            self.target = target
+
+        @property
+        def average(self):                # computed, read-only, never stale
+            return sum(self.readings) / len(self.readings)
+
+        @property
+        def target(self):
+            return self._target
+
+        @target.setter
+        def target(self, value):
+            if value < min(self.readings):
+                raise ValueError("target below anything the room has ever been")
+            self._target = value
+
+
+    t = Thermostat([18, 20, 22], 21)
+    print(t.average)      # 20.0 - no parentheses
+    t.target = 19         # runs the setter, which allows it
+    t.readings.append(30)
+    print(t.average)      # 22.5 - recalculated, because it was never stored
+
+  key_points:
+    - "A property is read without parentheses. `hold.free` runs the method; `hold.free()` tries to call whatever it returned."
+    - "A computed property cannot go stale, because there is nothing stored to fall out of date. That is worth more than the microseconds it costs."
+    - "The setter must store under a different name - `self._capacity`. Assigning to `self.capacity` inside the `capacity` setter calls the setter again, forever."
+    - "Adding a property is invisible to callers. `hold.capacity = 50` keeps working and starts being checked, which is why you can add the guard later without touching anything else."
+    - "If `__init__` assigns through a setter, everything that setter reads must be set up on the line before. The error is an `AttributeError` far from the cause."
+
+brief: |
+  A hold reports what it is carrying and refuses to be licensed for less than that.
+
+  Define an exception called OverloadError, inheriting from Exception.
+
+  Using `@dataclass`, define a class called Crate with two fields: `name`, a str, and
+  `weight`, an int. Write no methods on it.
+
+  Define a plain class called Hold:
+
+    - `__init__` takes a capacity. It sets `self.crates` to an empty list **first**, then
+      assigns `self.capacity` - and that assignment goes through the setter below, so the
+      order is not optional.
+    - `load` is a **property**, computed by adding up the weight of every crate. Nothing is
+      stored.
+    - `free` is a **property**, returning capacity minus load.
+    - `capacity` is a **property** with a setter. The setter raises ValueError when the new
+      value is negative, raises OverloadError when it is below the current load, and
+      otherwise stores it as `self._capacity`.
+    - a method called `add` takes a Crate. It raises OverloadError when the crate would take
+      the load above the capacity, and otherwise appends it to `self.crates`.
+
+  A capacity equal to the current load is allowed. Only going below it is not.
+
+  Then write a function called retrim that takes a starting capacity, a list of
+  [name, weight] pairs, and a new capacity:
+
+    - build the hold
+    - build a Crate for each pair and add it, in order
+    - assign the new capacity to `hold.capacity`
+    - return a dict shaped {"load": ..., "free": ..., "capacity": ...}
+
+  Catch nothing. Every refusal travels out of retrim.
+
+  You cannot use sum - `load` adds the weights itself.
+
+signature:
+  entrypoint: retrim
+  stub: |
+    from dataclasses import dataclass
+
+
+    class OverloadError(Exception):
+        pass
+
+
+    @dataclass
+    class Crate:
+        # Two fields, no methods.
+        # your code here
+        pass
+
+
+    class Hold:
+        def __init__(self, capacity):
+            # The list first. The assignment below runs the setter.
+            # your code here
+            pass
+
+        @property
+        def load(self):
+            # Computed from the crates. Stored nowhere.
+            # your code here
+            pass
+
+        @property
+        def free(self):
+            # your code here
+            pass
+
+        @property
+        def capacity(self):
+            # your code here
+            pass
+
+        @capacity.setter
+        def capacity(self, value):
+            # Negative is a ValueError. Below the load is an OverloadError.
+            # your code here
+            pass
+
+        def add(self, crate):
+            # your code here
+            pass
+
+
+    def retrim(start_capacity, entries, new_capacity):
+        # Build, load, relicense, report.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, [["rope", 12], ["sail", 30]], 80]
+      expect: {load: 42, free: 38, capacity: 80}
+    - args: [100, [], 50]
+      expect: {load: 0, free: 50, capacity: 50}
+  hidden:
+    # Relicensing below what is already aboard. The setter's own rule.
+    - args: [100, [["rope", 60]], 50]
+      raises: OverloadError
+    # Exactly at the load is allowed, and leaves no room.
+    - args: [100, [["rope", 60]], 60]
+      expect: {load: 60, free: 0, capacity: 60}
+    # A negative capacity is a ValueError, not an OverloadError. Two rules, two names.
+    - args: [100, [], -1]
+      raises: ValueError
+    # The starting capacity goes through the same setter, so this fails before any crate
+    # is built. It is what proves __init__ assigned rather than stored directly.
+    - args: [-5, [], 10]
+      raises: ValueError
+    # A crate that does not fit. `add` refuses, and retrim does not catch it.
+    - args: [10, [["rope", 12]], 10]
+      raises: OverloadError
+    # Growing the licence. `free` follows without anything being recomputed by hand.
+    - args: [100, [["rope", 12]], 500]
+      expect: {load: 12, free: 488, capacity: 500}
+    # A zero-weight crate is still a crate, and it moves nothing.
+    - args: [10, [["letters", 0]], 10]
+      expect: {load: 0, free: 10, capacity: 10}
+    # Nothing anywhere. Every property still has to answer.
+    - args: [0, [], 0]
+      expect: {load: 0, free: 0, capacity: 0}
+    # Several crates, added one at a time, each checked against the running load.
+    - args: [50, [["a", 10], ["b", 10], ["c", 10]], 30]
+      expect: {load: 30, free: 0, capacity: 30}
+
+hints:
+  - level: 1
+    text: |
+      `load` is not stored anywhere. So when `add` asks "would this crate fit?", where does
+      the number it compares against come from?
+
+      And in `__init__`: the capacity setter needs to know the current load. What does the
+      load need to exist before it can be computed?
+  - level: 2
+    text: |
+      `load` is a loop over `self.crates` with a running total, returned. `free` is one
+      subtraction using `self.load` - no parentheses, because it is a property.
+
+      The `capacity` getter returns `self._capacity`. The setter checks `value < 0` first,
+      then `value < self.load`, then assigns `self._capacity = value`. Never
+      `self.capacity = value` in there.
+
+      `__init__` is two lines and the empty list comes first.
+  - level: 3
+    text: |
+      The same two kinds of property, on a car park:
+
+          class FullError(Exception):
+              pass
+
+
+          class CarPark:
+              def __init__(self, spaces):
+                  self.cars = []
+                  self.spaces = spaces
+
+              @property
+              def taken(self):
+                  total = 0
+                  for car in self.cars:
+                      total = total + 1
+                  return total
+
+              @property
+              def spaces(self):
+                  return self._spaces
+
+              @spaces.setter
+              def spaces(self, value):
+                  if value < 0:
+                      raise ValueError("a car park cannot have negative spaces")
+                  if value < self.taken:
+                      raise FullError(f"{self.taken} cars are already parked")
+                  self._spaces = value
+
+      Yours adds weights rather than counting cars, and it has a third property that
+      subtracts.
+
+solution: |
+  from dataclasses import dataclass
+
+
+  class OverloadError(Exception):
+      pass
+
+
+  @dataclass
+  class Crate:
+      name: str
+      weight: int
+
+
+  class Hold:
+      def __init__(self, capacity):
+          self.crates = []
+          self.capacity = capacity
+
+      @property
+      def load(self):
+          total = 0
+          for crate in self.crates:
+              total = total + crate.weight
+          return total
+
+      @property
+      def free(self):
+          return self.capacity - self.load
+
+      @property
+      def capacity(self):
+          return self._capacity
+
+      @capacity.setter
+      def capacity(self, value):
+          if value < 0:
+              raise ValueError(f"{value} is not a capacity")
+          if value < self.load:
+              raise OverloadError(f"{self.load} is already aboard")
+          self._capacity = value
+
+      def add(self, crate):
+          if self.load + crate.weight > self.capacity:
+              raise OverloadError(f"{crate.weight} would take the load past {self.capacity}")
+          self.crates.append(crate)
+
+
+  def retrim(start_capacity, entries, new_capacity):
+      hold = Hold(start_capacity)
+
+      for name, weight in entries:
+          hold.add(Crate(name, weight))
+
+      hold.capacity = new_capacity
+
+      return {"load": hold.load, "free": hold.free, "capacity": hold.capacity}

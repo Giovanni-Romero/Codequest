@@ -1,0 +1,327 @@
+# Mission 11 of Objects. Introduces nothing. Closing mission.
+# Reinforces: all eight concepts of the island.
+#
+# Combine, do not learn. Every piece here was taught in an earlier mission and nothing is
+# introduced: a dataclass part, a composed vessel, a computed property, a guarded setter, a
+# custom exception, a __repr__ and an __eq__.
+#
+# The one thing this mission asks that no earlier one did is to pick the right tool without
+# being told which. The brief states behaviour and leaves the choice between a method, a
+# property and a dunder to the player, which is what `moderate` means on this island.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-11
+title: The whole shipyard
+track: python
+island: objects
+order: 11
+difficulty: moderate
+tags: [objects, closing, composition, dataclasses]
+xp: 30
+
+concepts:
+  - classes
+  - instances
+  - methods
+  - dunder-methods
+  - custom-exceptions
+  - composition-over-inheritance
+  - dataclasses
+  - properties
+
+teaching:
+  analogy: |
+    The shipyard is finished. The forms are printed, the clerk knows the rules, the harbour
+    master refuses what should be refused, and every sheet says on its face what it is.
+
+    Nothing new is being built today. Today the yard runs.
+
+  explanation: |
+    This mission introduces nothing. It asks you to choose, which is the part nobody can
+    teach in a panel.
+
+    Three of the decisions come up again and again, and here is the short version of each.
+
+    **Method or property?** If reading it should look like reading a fact - `hold.load` -
+    make it a property. If it changes something, or if it takes an argument, or if it is
+    expensive enough that a caller deserves to see the parentheses and think twice, make it
+    a method.
+
+    **Dataclass or plain class?** If the class is mostly fields and you want the three
+    generated methods, `@dataclass`. If most of its body is behaviour, or you need a
+    `__repr__` in a shape the decorator does not write, a plain class costs you four lines
+    and gives you the shape you wanted.
+
+    **Built-in exception or your own?** If a caller might reasonably want to catch this
+    failure and not the others, it needs a name. If it is just a bad value, `ValueError`
+    already has one.
+
+    None of these has a right answer that survives every situation. They have a right answer
+    for *this* situation, and being able to say why is the whole skill.
+
+  worked_example: |
+    # A small system of the same shape, for a theatre
+    from dataclasses import dataclass
+
+
+    class SoldOutError(Exception):
+        pass
+
+
+    @dataclass
+    class Seat:
+        row: str
+        price: int
+
+
+    class Show:
+        def __init__(self, title, capacity):
+            self.title = title
+            self.capacity = capacity
+            self.seats = []
+
+        @property
+        def takings(self):                        # a fact: property
+            total = 0
+            for seat in self.seats:
+                total = total + seat.price
+            return total
+
+        def sell(self, seat):                     # changes things: method
+            if len(self.seats) + 1 > self.capacity:
+                raise SoldOutError(self.title)
+            self.seats.append(seat)
+
+        def __repr__(self):
+            return f"Show({self.title!r}, {self.takings})"
+
+  key_points:
+    - "A property reads like a fact and a method reads like an action. Choose by how the call site should read, not by what is easier to write."
+    - "`@dataclass` when the class is mostly fields, a plain class when it is mostly behaviour or needs a `__repr__` in your own shape."
+    - "Give a failure its own name when a caller would want to catch that one alone. Otherwise the built-in is already correct."
+    - "Composition first. Two attributes beat two parents, and you will not have to explain which parent won."
+    - "Everything on this island exists so that a caller cannot put your object into a state you said was impossible. That is the whole point, and the syntax was only ever the means."
+
+brief: |
+  Run the whole yard.
+
+  Define an exception called BerthFullError, inheriting from Exception.
+
+  Using `@dataclass`, define a class called Vessel with two fields: `name`, a str, and
+  `tonnage`, an int.
+
+  Define a plain class called Berth:
+
+    - `__init__` takes a berth code and a tonnage limit. It sets `self.vessels` to an empty
+      list first, then assigns the limit through a property setter.
+    - `code` is a plain attribute.
+    - `used` is a **property**, adding up the tonnage of every vessel moored there.
+    - `limit` is a **property** with a setter. The setter raises ValueError when the new
+      value is negative, raises BerthFullError when it is below `used`, and otherwise stores
+      it as `self._limit`.
+    - `moor` is a **method** taking a Vessel. It raises BerthFullError when the vessel would
+      take `used` above `limit`, and otherwise appends it.
+    - `__repr__` returns exactly `Berth('A1', 1200/5000)` - the code in quotes, then used,
+      a slash, then the limit.
+    - `__eq__` returns True when the other berth has the same code and the same limit. The
+      vessels do not count.
+
+  Then write a function called harbour that takes a berth code, a limit, a list of
+  [name, tonnage] pairs, and a new limit:
+
+    - build the berth
+    - build a Vessel for each pair and moor it, in order
+    - assign the new limit
+    - build a second berth from the same code and the **new** limit, with nothing moored
+    - return a dict shaped {"berth": ..., "used": ..., "same": ...}
+
+  `berth` is `repr` of the first berth. `used` is its `used`. `same` is whether the two
+  berths are equal.
+
+  Catch nothing. You cannot use sum.
+
+signature:
+  entrypoint: harbour
+  stub: |
+    from dataclasses import dataclass
+
+
+    class BerthFullError(Exception):
+        pass
+
+
+    @dataclass
+    class Vessel:
+        # your code here
+        pass
+
+
+    class Berth:
+        def __init__(self, code, limit):
+            # The list first, then the code, then the limit through its setter.
+            # your code here
+            pass
+
+        # used, limit, moor, __repr__, __eq__ - you have written every one of these before.
+        # your code here
+
+
+    def harbour(code, limit, entries, new_limit):
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["A1", 5000, [["Aurora", 800], ["Petrel", 400]], 5000]
+      expect:
+        berth: "Berth('A1', 1200/5000)"
+        used: 1200
+        same: true
+    - args: ["A1", 5000, [["Aurora", 800]], 4000]
+      expect:
+        berth: "Berth('A1', 800/4000)"
+        used: 800
+        same: true
+  hidden:
+    # Nothing moored anywhere. Every property still answers.
+    - args: ["B2", 100, [], 100]
+      expect:
+        berth: "Berth('B2', 0/100)"
+        used: 0
+        same: true
+    # The new limit lands exactly on what is moored. Allowed, and it leaves no room.
+    - args: ["A1", 5000, [["Aurora", 800]], 800]
+      expect:
+        berth: "Berth('A1', 800/800)"
+        used: 800
+        same: true
+    # One tonne below what is already moored.
+    - args: ["A1", 5000, [["Aurora", 800]], 799]
+      raises: BerthFullError
+    # A negative limit is a ValueError, not a BerthFullError. Two failures, two names.
+    - args: ["A1", 5000, [], -1]
+      raises: ValueError
+    # The starting limit goes through the same setter, so this fails before any vessel exists.
+    - args: ["A1", -5, [], 10]
+      raises: ValueError
+    # A vessel that does not fit. `moor` refuses and harbour does not catch it.
+    - args: ["A1", 500, [["Leviathan", 900]], 500]
+      raises: BerthFullError
+    # Moored one at a time, each checked against the running total. The third is one over.
+    - args: ["A1", 1000, [["a", 400], ["b", 400], ["c", 400]], 1000]
+      raises: BerthFullError
+    # A zero-tonnage vessel is still a vessel, and it moves nothing.
+    - args: ["A1", 10, [["Raft", 0]], 10]
+      expect:
+        berth: "Berth('A1', 0/10)"
+        used: 0
+        same: true
+    # An empty code still gets its quotes.
+    - args: ["", 50, [["Skiff", 10]], 50]
+      expect:
+        berth: "Berth('', 10/50)"
+        used: 10
+        same: true
+
+hints:
+  - level: 1
+    text: |
+      Go through the brief one line at a time and label each item before you write anything:
+      is this a fact you read, an action you take, or a question the language asks?
+
+      Three labels, and each one tells you whether it is a property, a method or a dunder.
+  - level: 2
+    text: |
+      `used` and `limit` are properties, `moor` is a method, `__repr__` and `__eq__` are
+      dunders. The setter stores under `self._limit`, and `__init__` sets `self.vessels = []`
+      before it touches `self.limit`.
+
+      `__eq__` compares `self.code == other.code and self.limit == other.limit` - two
+      attributes, not three, because the brief says the vessels do not count.
+
+      That is why `same` is True even when the first berth is loaded: the second berth is
+      built with the *new* limit, which is what the first one now has.
+  - level: 3
+    text: |
+      You have written every one of these pieces in missions 4, 5, 7, 8, 9 and 10. Open the
+      teaching panel of mission 9 for the property-with-a-setter shape, and mission 4 for
+      the two dunders.
+
+      The only genuinely new line is the repr, and it is one f-string:
+
+          def __repr__(self):
+              return f"Locker({self.code!r}, {self.taken}/{self.slots})"
+
+      Yours says Berth, and its two numbers come from a property and a property.
+
+solution: |
+  from dataclasses import dataclass
+
+
+  class BerthFullError(Exception):
+      pass
+
+
+  @dataclass
+  class Vessel:
+      name: str
+      tonnage: int
+
+
+  class Berth:
+      def __init__(self, code, limit):
+          self.vessels = []
+          self.code = code
+          self.limit = limit
+
+      @property
+      def used(self):
+          total = 0
+          for vessel in self.vessels:
+              total = total + vessel.tonnage
+          return total
+
+      @property
+      def limit(self):
+          return self._limit
+
+      @limit.setter
+      def limit(self, value):
+          if value < 0:
+              raise ValueError(f"{value} is not a limit")
+          if value < self.used:
+              raise BerthFullError(f"{self.used} is already moored")
+          self._limit = value
+
+      def moor(self, vessel):
+          if self.used + vessel.tonnage > self.limit:
+              raise BerthFullError(f"{vessel.tonnage} would take the berth past {self.limit}")
+          self.vessels.append(vessel)
+
+      def __repr__(self):
+          return f"Berth({self.code!r}, {self.used}/{self.limit})"
+
+      def __eq__(self, other):
+          return self.code == other.code and self.limit == other.limit
+
+
+  def harbour(code, limit, entries, new_limit):
+      berth = Berth(code, limit)
+
+      for name, tonnage in entries:
+          berth.moor(Vessel(name, tonnage))
+
+      berth.limit = new_limit
+
+      other = Berth(code, new_limit)
+
+      return {
+          "berth": repr(berth),
+          "used": berth.used,
+          "same": berth == other,
+      }

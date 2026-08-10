@@ -1,0 +1,28 @@
+id: objects
+name: Objects
+track: python
+order: 8
+theme: Data and the behaviour that belongs to it
+description: |
+  Every island so far kept data and behaviour apart. A dict held the values, a function
+  did something to it, and nothing stopped a caller from handing that function a dict
+  shaped wrong.
+
+  Here the two move in together. The crate knows its own weight, and the only code
+  allowed to change it lives beside it. Nothing on this island is new capability - it is
+  the same work you already do, with a boundary drawn around it.
+
+concepts:
+  - classes
+  - instances
+  - methods
+  - dunder-methods
+  - custom-exceptions
+  - composition-over-inheritance
+  - dataclasses
+  - properties
+
+unlock_requires:
+  missions_completed: 74
+
+completion_reward_xp: 260

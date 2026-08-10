@@ -1,0 +1,249 @@
+# Missão 4 de Objetos. Introduz: dunder-methods.
+# Reforça: methods, f-strings, instances.
+#
+# A primeira missão desta ilha cuja saída o motor lê diretamente em vez de através de um
+# dicionário montado à mão: `__repr__` devolve uma string e `__eq__` devolve um bool, então
+# o teste consegue cobrar o dunder em si em vez de um resumo dele.
+#
+# Os três dunders em uma missão é proposital. Eles são uma ideia só - responder a uma
+# pergunta que a linguagem já sabe fazer - e ensinar um por missão seriam três missões sobre
+# sintaxe. O mapa chama isso de um conceito, e é.
+# Referência do schema: docs/mission-schema.md
+
+id: py-objects-04
+title: Escrito com todas as letras
+track: python
+island: objects
+order: 4
+difficulty: moderate
+tags: [objects, dunder, repr, equality]
+xp: 30
+
+concepts:
+  - dunder-methods
+
+teaching:
+  analogy: |
+    Todo caixote do porto chega com um número de série estampado na lateral. Ele é único, é
+    correto, e é completamente inútil para o escriturário de prancheta na mão: `0x7f3a91c4`.
+    Dois caixotes de corda idênticos têm números diferentes, então os números também não
+    respondem "essas duas cargas são a mesma?".
+
+    O que o escriturário quer é uma etiqueta. Conteúdo, quantidade, num formato que dá para
+    ler em voz alta. E uma regra dizendo que dois caixotes contam como o mesmo quando
+    guardam as mesmas coisas - não quando são a mesma caixa física.
+
+    As duas coisas são decisões que alguém tem de tomar. Nada no caixote as toma por você.
+
+  explanation: |
+    Alguns nomes de método têm dois sublinhados de cada lado. O Python os chama por você
+    quando algo na linguagem precisa de uma resposta sobre o seu objeto - por isso eles são
+    conhecidos como métodos dunder, de **d**ouble **under**score.
+
+    Três deles valem a pena em quase toda classe que você construir:
+
+        class Crate:
+            def __repr__(self):
+                return f"Crate({self.name!r}, {len(self.items)} items)"
+
+            def __eq__(self, other):
+                return self.name == other.name and self.items == other.items
+
+            def __len__(self):
+                return len(self.items)
+
+    Você nunca chama esses métodos diretamente. `repr(caixote)` chama `__repr__`,
+    `caixote_a == caixote_b` chama `__eq__`, e `len(caixote)` chama `__len__`. Imprimir um
+    objeto também chama `__repr__`, quando não existe um `__str__` para preferir.
+
+    Sem `__repr__`, imprimir te dá `<Crate object at 0x7f3a91c4>` - verdadeiro, inútil, e
+    diferente a cada execução. Sem `__eq__`, o `==` compara identidade: dois caixotes
+    construídos com argumentos idênticos saem como diferentes, porque são dois objetos.
+
+    O `!r` dentro daquela f-string pede o *repr* do valor em vez do texto puro, que é o que
+    coloca as aspas em volta de uma string. `Crate('rope', 2 items)` te diz que o nome é
+    texto; `Crate(rope, 2 items)` te deixa adivinhando.
+
+  worked_example: |
+    # Uma carta de baralho, que não é o que esta missão pede
+    class Card:
+        def __init__(self, rank, suit):
+            self.rank = rank
+            self.suit = suit
+
+        def __repr__(self):
+            return f"Card({self.rank!r} of {self.suit!r})"
+
+        def __eq__(self, other):
+            return self.rank == other.rank and self.suit == other.suit
+
+
+    a = Card("ace", "spades")
+    b = Card("ace", "spades")
+
+    print(repr(a))    # Card('ace' of 'spades')
+    print(a == b)     # True  - porque o __eq__ diz que sim
+    print(a is b)     # False - eles continuam sendo dois objetos
+
+  key_points:
+    - "Você nunca chama um dunder na mão. `repr(x)`, `x == y` e `len(x)` são as chamadas; os dunders são o que responde a elas."
+    - "`__repr__` tem de devolver uma string. Devolver outra coisa levanta TypeError no momento em que algo tenta imprimir o seu objeto, que costuma ser longe da classe."
+    - "Sem `__eq__`, o `==` pergunta \"é o mesmo objeto?\". Com ele, você decide o que \"o mesmo\" significa - e as duas respostas diferem para todo par construído com argumentos idênticos."
+    - "Definir `__eq__` remove silenciosamente o `__hash__` que a sua classe tinha, então as instâncias param de funcionar em um set ou como chave de dicionário. Adicione `__hash__` quando precisar disso; esta missão não precisa."
+    - "`__len__` tem de devolver um inteiro não negativo. É também o que faz `if caixote:` ser falso para um caixote vazio, o que surpreende quem nunca escreveu esse método."
+
+brief: |
+  Dê ao caixote uma etiqueta legível e uma definição de igualdade.
+
+  Defina uma classe chamada Crate:
+
+    - `__init__` recebe um nome e uma lista de itens, guardados como `self.name` e
+      `self.items`
+    - `__repr__` devolve exatamente este formato, com o nome entre aspas:
+
+          Crate('rope', 2 items)
+
+      Não pluralize. Um item continua sendo escrito `1 items`.
+    - `__eq__` devolve True quando o outro caixote tem o mesmo nome **e** os mesmos itens,
+      na mesma ordem
+    - `__len__` devolve quantos itens o caixote guarda
+
+  Depois escreva uma função chamada inspect_pair que recebe quatro argumentos - name_a,
+  items_a, name_b, items_b - constrói os dois caixotes e devolve um dicionário:
+
+      {"label": ..., "same": ..., "size": ...}
+
+  `label` é o `repr` do primeiro caixote. `same` é o resultado de comparar os dois com `==`.
+  `size` é o `len` do primeiro.
+
+  Monte os três chamando `repr`, `==` e `len` nas instâncias. Montar a string na mão é a
+  única coisa que esta missão existe para te impedir de fazer.
+
+  Você não pode importar dataclasses aqui.
+
+signature:
+  entrypoint: inspect_pair
+  stub: |
+    class Crate:
+        def __init__(self, name, items):
+            self.name = name
+            self.items = items
+
+        def __repr__(self):
+            # Tem de devolver uma string.
+            # seu código aqui
+            pass
+
+        def __eq__(self, other):
+            # Mesmo nome e mesmos itens.
+            # seu código aqui
+            pass
+
+        def __len__(self):
+            # seu código aqui
+            pass
+
+
+    def inspect_pair(name_a, items_a, name_b, items_b):
+        # repr, ==, len. Três chamadas, três respostas.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["rope", ["coil", "coil"], "rope", ["coil", "coil"]]
+      expect: {label: "Crate('rope', 2 items)", same: true, size: 2}
+    - args: ["rope", ["coil"], "sail", ["coil"]]
+      expect: {label: "Crate('rope', 1 items)", same: false, size: 1}
+  hidden:
+    # Caixote vazio. A etiqueta ainda reporta uma contagem e o len é 0, não ausente.
+    - args: ["rope", [], "rope", []]
+      expect: {label: "Crate('rope', 0 items)", same: true, size: 0}
+    # Mesmo nome, conteúdo diferente. As duas metades do __eq__ têm de ser checadas.
+    - args: ["rope", ["coil"], "rope", ["coil", "coil"]]
+      expect: {label: "Crate('rope', 1 items)", same: false, size: 1}
+    # Mesmo conteúdo, outra ordem. Listas comparam em ordem, então não é o mesmo caixote.
+    - args: ["rope", ["a", "b"], "rope", ["b", "a"]]
+      expect: {label: "Crate('rope', 2 items)", same: false, size: 2}
+    # Um nome vazio é um nome, e continua ganhando as aspas dele.
+    - args: ["", ["coil"], "", ["coil"]]
+      expect: {label: "Crate('', 1 items)", same: true, size: 1}
+    # Um nome que contém uma aspa. É por isso que o !r existe em vez do str().
+    - args: ["o'brien", [], "o'brien", []]
+      expect: {label: "Crate(\"o'brien\", 0 items)", same: true, size: 0}
+    # O primeiro caixote está vazio e o segundo não. `size` reporta o primeiro, sempre.
+    - args: ["rope", [], "sail", ["coil", "coil", "coil"]]
+      expect: {label: "Crate('rope', 0 items)", same: false, size: 0}
+
+hints:
+  - level: 1
+    text: |
+      `repr(caixote)`, `caixote_a == caixote_b` e `len(caixote)` são três chamadas que você
+      já sabe escrever. O que tem de existir na classe antes de cada uma delas dar uma
+      resposta útil em vez de um endereço, um False, ou um TypeError?
+  - level: 2
+    text: |
+      `__repr__` é um `return` só, com uma f-string dentro. A contagem dentro dessa string é
+      o número de itens - o mesmo número que `__len__` devolve, então você pode chamar
+      `len(self.items)` nos dois lugares.
+
+      `__eq__` recebe `self` e `other` e devolve uma expressão booleana ligada por `and`.
+      `__len__` recebe só `self`.
+
+      Depois o `inspect_pair` constrói os dois caixotes e chama as três funções embutidas.
+  - level: 3
+    text: |
+      Os mesmos três, numa sacola de compras:
+
+          class Bag:
+              def __init__(self, shop, goods):
+                  self.shop = shop
+                  self.goods = goods
+
+              def __repr__(self):
+                  return f"Bag({self.shop!r}, {len(self.goods)} things)"
+
+              def __eq__(self, other):
+                  return self.shop == other.shop and self.goods == other.goods
+
+              def __len__(self):
+                  return len(self.goods)
+
+
+          def compare(shop_a, goods_a, shop_b, goods_b):
+              primeira = Bag(shop_a, goods_a)
+              segunda = Bag(shop_b, goods_b)
+              return {"text": repr(primeira), "match": primeira == segunda, "count": len(primeira)}
+
+      A sua diz `items` onde esta diz `things`, e as chaves do dicionário são outras.
+
+solution: |
+  class Crate:
+      def __init__(self, name, items):
+          self.name = name
+          self.items = items
+
+      def __repr__(self):
+          return f"Crate({self.name!r}, {len(self.items)} items)"
+
+      def __eq__(self, other):
+          return self.name == other.name and self.items == other.items
+
+      def __len__(self):
+          return len(self.items)
+
+
+  def inspect_pair(name_a, items_a, name_b, items_b):
+      first = Crate(name_a, items_a)
+      second = Crate(name_b, items_b)
+
+      return {
+          "label": repr(first),
+          "same": first == second,
+          "size": len(first),
+      }

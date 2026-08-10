@@ -1,0 +1,219 @@
+# Mission 3 of Objects. Introduces nothing.
+# Reinforces: classes, instances, methods, for-loop.
+#
+# Relief mission. Everything here was taught in missions 1 and 2 - the only genuinely new
+# shape is a list holding instances rather than numbers, which is worth one mission on its
+# own because it is how every real program uses objects.
+#
+# The reporting method returns a bool, which makes the "is it busy" decision live on the
+# class instead of being re-derived at every call site. That is the argument for methods
+# restated in a smaller room.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-03
+title: The crew roster
+track: python
+island: objects
+order: 3
+difficulty: simple
+tags: [objects, classes, methods, relief]
+xp: 20
+
+concepts:
+  - classes
+  - methods
+
+teaching:
+  analogy: |
+    The harbour office keeps one sheet per sailor in a single drawer. Nobody memorises the
+    drawer. When the watch bill is due, the clerk goes through it one sheet at a time,
+    reads what is written there, and adds a line to the summary.
+
+    The drawer does not know anything about watches. It just holds sheets, in order. All
+    the knowing is on the sheets.
+
+  explanation: |
+    A list can hold anything, and that includes your own instances:
+
+        crew = [Sailor("Ada", 3), Sailor("Bo", 1)]
+
+    Once they are in a list, everything you already know about lists applies unchanged. You
+    loop over it, and the loop variable is one instance per pass:
+
+        for sailor in crew:
+            print(sailor.name)
+
+    Nothing new happens here. `sailor` is a `Sailor` the same way `n` was an `int` in
+    Island 1, and you reach into it with a dot instead of an index.
+
+    The one habit worth forming now: when a question has an answer that depends only on one
+    instance, put it on the class as a method. The loop then reads as a sentence -
+    `if sailor.is_busy()` - and the rule behind it lives in exactly one place, so changing
+    it later means changing one line rather than hunting for every caller who wrote
+    `sailor.watches > 2` by hand.
+
+  worked_example: |
+    # Books on a shelf, which is not what this mission asks for
+    class Book:
+        def __init__(self, title, pages):
+            self.title = title
+            self.pages = pages
+
+        def is_long(self):
+            return self.pages > 400
+
+
+    def shelf_report(entries):
+        books = [Book(title, pages) for title, pages in entries]
+
+        total = 0
+        long_ones = []
+        for book in books:
+            total = total + book.pages
+            if book.is_long():
+                long_ones.append(book.title)
+
+        return {"pages": total, "long": long_ones}
+
+  key_points:
+    - "A list of instances is an ordinary list. Every loop, every append, every index you already know still works."
+    - "The loop variable is one instance per pass, so you reach into it with a dot: `sailor.name`, not `sailor[\"name\"]`."
+    - "A method that answers a yes-or-no question returns a bool and is called with parentheses. `sailor.is_busy` without them is the method itself, which is always truthy - a bug that never raises."
+    - "Put the rule on the class once instead of writing `sailor.watches > 2` at four call sites. When the rule changes, you want one line to edit."
+
+brief: |
+  The watch bill is due.
+
+  Define a class called Sailor:
+
+    - `__init__` takes a name and a number of watches, stored as `self.name` and
+      `self.watches`
+    - a method called `is_busy` returns True when the sailor has **more than two** watches,
+      and False otherwise
+
+  Then write a function called roster that takes a list of [name, watches] pairs:
+
+    - build one Sailor per pair, keeping the order
+    - return a dict shaped {"total": ..., "busy": [...]}
+
+  `total` is every sailor's watches added up. `busy` is a list of the names of the sailors
+  whose `is_busy` says True, in roster order.
+
+  An empty roster is a real roster: it totals 0 and nobody is busy.
+
+  You cannot use sum, and you cannot import dataclasses.
+
+signature:
+  entrypoint: roster
+  stub: |
+    class Sailor:
+        def __init__(self, name, watches):
+            # your code here
+            pass
+
+        def is_busy(self):
+            # More than two. Not two.
+            # your code here
+            pass
+
+
+    def roster(entries):
+        # Build the sailors, then walk them once.
+        # your code here
+        pass
+
+constraints:
+  forbidden_imports: [dataclasses]
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["Ada", 3], ["Bo", 1]]]
+      expect: {total: 4, busy: ["Ada"]}
+    - args: [[["Ada", 1], ["Bo", 1]]]
+      expect: {total: 2, busy: []}
+  hidden:
+    # Empty roster. Both halves of the answer have to survive it.
+    - args: [[]]
+      expect: {total: 0, busy: []}
+    # Exactly two watches is not busy. "More than two" is the whole boundary.
+    - args: [[["Ada", 2]]]
+      expect: {total: 2, busy: []}
+    # Three is.
+    - args: [[["Ada", 3]]]
+      expect: {total: 3, busy: ["Ada"]}
+    # Order of `busy` follows the roster, not the watch count.
+    - args: [[["Ada", 9], ["Bo", 4], ["Cai", 1]]]
+      expect: {total: 14, busy: ["Ada", "Bo"]}
+    # Zero watches. Still a sailor, still counted, never busy.
+    - args: [[["Ada", 0], ["Bo", 0]]]
+      expect: {total: 0, busy: []}
+    # Two sailors with the same name. Both appear - nothing here deduplicates.
+    - args: [[["Ada", 5], ["Ada", 5]]]
+      expect: {total: 10, busy: ["Ada", "Ada"]}
+    # Everyone busy, so a solution that returns [] for `busy` has nowhere left to hide.
+    - args: [[["Ada", 4], ["Bo", 5], ["Cai", 6]]]
+      expect: {total: 15, busy: ["Ada", "Bo", "Cai"]}
+
+hints:
+  - level: 1
+    text: |
+      Once a Sailor is in the list, how do you get their name out of it - with a dot or with
+      square brackets? And what does `sailor.is_busy` give you if you forget the parentheses?
+  - level: 2
+    text: |
+      Build the list first, in its own loop or a comprehension over `entries`. Unpacking each
+      pair as `for name, watches in entries` saves you two index lookups.
+
+      Then one loop over the sailors, with a running total and a list you append to. The
+      `if` inside that loop calls the method - with parentheses.
+  - level: 3
+    text: |
+      The same walk, over lamps:
+
+          class Lamp:
+              def __init__(self, room, watts):
+                  self.room = room
+                  self.watts = watts
+
+              def is_bright(self):
+                  return self.watts > 60
+
+
+          def survey(entries):
+              lamps = [Lamp(room, watts) for room, watts in entries]
+
+              total = 0
+              bright = []
+              for lamp in lamps:
+                  total = total + lamp.watts
+                  if lamp.is_bright():
+                      bright.append(lamp.room)
+
+              return {"watts": total, "bright": bright}
+
+      Yours counts watches and the keys of the dict are different.
+
+solution: |
+  class Sailor:
+      def __init__(self, name, watches):
+          self.name = name
+          self.watches = watches
+
+      def is_busy(self):
+          return self.watches > 2
+
+
+  def roster(entries):
+      sailors = [Sailor(name, watches) for name, watches in entries]
+
+      total = 0
+      busy = []
+      for sailor in sailors:
+          total = total + sailor.watches
+          if sailor.is_busy():
+              busy.append(sailor.name)
+
+      return {"total": total, "busy": busy}

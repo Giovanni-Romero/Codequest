@@ -1,0 +1,286 @@
+# Mission 10 of Objects. Introduces nothing.
+# Reinforces: dataclasses, properties, composition-over-inheritance.
+#
+# Relief mission. Three of the island's harder ideas in their friendliest possible shape:
+# no setters, no exceptions, no ordering trap in __init__ because @dataclass writes it.
+#
+# The point being made quietly is that they compose. A dataclass can carry a property, a
+# property can walk a list of other dataclasses, and none of the three had to know about
+# the others.
+# Schema reference: docs/mission-schema.md
+
+id: py-objects-10
+title: The generated fleet
+track: python
+island: objects
+order: 10
+difficulty: simple
+tags: [objects, dataclasses, properties, relief]
+xp: 20
+
+concepts:
+  - dataclasses
+  - properties
+  - composition-over-inheritance
+
+teaching:
+  analogy: |
+    A shipyard keeps one card per vessel. The card lists the parts, and it does not list the
+    total weight - that is worked out by adding the parts up whenever somebody asks.
+
+    Nobody minds doing the addition. What they would mind is a written-down total that
+    disagreed with the parts after a refit, and a card with no total on it cannot disagree
+    with anything.
+
+  explanation: |
+    Nothing new here. Three things you already have, used together.
+
+    A dataclass can hold a list of other dataclasses:
+
+        @dataclass
+        class Vessel:
+            name: str
+            parts: list = field(default_factory=list)
+
+    A dataclass can carry a property in its body, under the fields:
+
+        @property
+        def weight(self):
+            total = 0
+            for part in self.parts:
+                total = total + part.weight
+            return total
+
+    A property may be named after something that is not a field, and often should be. There
+    is no `weight` field on the vessel - there is a `weight` you can read, computed from the
+    parts every time. Add a part and the number moves on its own.
+
+    That is composition and computation working together. The vessel does not know how a
+    part decides its weight, and it does not remember what the parts said last time.
+
+  worked_example: |
+    # A meal, which is not what this mission asks for
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Ingredient:
+        name: str
+        calories: int
+
+
+    @dataclass
+    class Meal:
+        name: str
+        items: list = field(default_factory=list)
+
+        @property
+        def calories(self):
+            total = 0
+            for item in self.items:
+                total = total + item.calories
+            return total
+
+
+    lunch = Meal("lunch", [Ingredient("bread", 200)])
+    print(lunch.calories)     # 200
+
+    lunch.items.append(Ingredient("cheese", 150))
+    print(lunch.calories)     # 350 - nothing was recalculated by hand
+
+  key_points:
+    - "A dataclass field holding a list needs `field(default_factory=list)`. The rule does not change because the list holds your own objects."
+    - "A property may share its name with nothing at all. `weight` here is computed from `parts`, and no field called `weight` exists."
+    - "Adding to the list changes the property's answer immediately, because the answer was never stored."
+    - "Your own methods and properties go under the fields in the class body. `@dataclass` reads the annotated lines and leaves the rest alone."
+
+brief: |
+  The shipyard wants a weight for every vessel in the yard, worked out from its parts.
+
+  Using `@dataclass`, define a class called Part with two fields: `name`, a str, and
+  `weight`, an int.
+
+  Using `@dataclass`, define a class called Vessel with two fields: `name`, a str, and
+  `parts`, a list defaulting to empty. Give it one property called `weight`, adding up the
+  weight of every part it holds. There is no weight field - only the property.
+
+  Then write a function called yard that takes a list of entries. Each entry is a pair:
+
+      ["Aurora", [["hull", 800], ["engine", 400]]]
+
+  For each entry, build the Parts, then a Vessel holding them. Return a dict shaped:
+
+      {"vessels": [{"name": ..., "weight": ...}, ...], "total": ...}
+
+  `vessels` keeps the order the entries arrived in. `total` is every vessel's weight added
+  together.
+
+  A vessel with no parts weighs 0 and still appears in the list.
+
+  You cannot use sum.
+
+signature:
+  entrypoint: yard
+  stub: |
+    from dataclasses import dataclass, field
+
+
+    @dataclass
+    class Part:
+        # your code here
+        pass
+
+
+    @dataclass
+    class Vessel:
+        # Two fields. The list one needs a factory.
+        # your code here
+
+        @property
+        def weight(self):
+            # Add up the parts.
+            # your code here
+            pass
+
+
+    def yard(entries):
+        # Parts, then vessels, then one report.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [sum]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["Aurora", [["hull", 800], ["engine", 400]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 1200}]
+        total: 1200
+    - args: [[["Aurora", [["hull", 800]]], ["Petrel", [["hull", 300]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 800}, {name: Petrel, weight: 300}]
+        total: 1100
+  hidden:
+    # An empty yard. Both halves of the answer survive it.
+    - args: [[]]
+      expect: {vessels: [], total: 0}
+    # A vessel with no parts. It still appears, weighing nothing.
+    - args: [[["Skiff", []]]]
+      expect:
+        vessels: [{name: Skiff, weight: 0}]
+        total: 0
+    # One vessel empty, one loaded. A solution that skips empty vessels fails here.
+    - args: [[["Skiff", []], ["Aurora", [["hull", 500]]]]]
+      expect:
+        vessels: [{name: Skiff, weight: 0}, {name: Aurora, weight: 500}]
+        total: 500
+    # Parts of zero weight. Still parts, still added.
+    - args: [[["Aurora", [["flag", 0], ["flag", 0]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 0}]
+        total: 0
+    # Two vessels with the same name. Nothing here merges them.
+    - args: [[["Aurora", [["hull", 100]]], ["Aurora", [["hull", 200]]]]]
+      expect:
+        vessels: [{name: Aurora, weight: 100}, {name: Aurora, weight: 200}]
+        total: 300
+    # Many parts on one vessel, so a solution that reads only the first part is caught.
+    - args: [[["Leviathan", [["a", 1], ["b", 2], ["c", 3], ["d", 4]]]]]
+      expect:
+        vessels: [{name: Leviathan, weight: 10}]
+        total: 10
+    # An empty name is a name, and order is by arrival, not alphabetical.
+    - args: [[["Zephyr", [["hull", 1]]], ["", [["hull", 2]]]]]
+      expect:
+        vessels: [{name: Zephyr, weight: 1}, {name: "", weight: 2}]
+        total: 3
+
+hints:
+  - level: 1
+    text: |
+      The Vessel has no weight field. So when you build the dict for one vessel, where does
+      the number come from - and does that expression have parentheses on the end?
+  - level: 2
+    text: |
+      Two loops, or one loop with a comprehension inside it. For each entry, unpack it as
+      `for name, part_entries in entries`, build the parts from `part_entries`, then
+      `Vessel(name, parts)`.
+
+      The property is the same accumulator you have written all island: a total starting at
+      0, one pass over `self.parts`, one `return`.
+
+      The grand total is a second pass over the vessels you built, reading `vessel.weight`
+      with no parentheses.
+  - level: 3
+    text: |
+      The same nesting, for concerts:
+
+          @dataclass
+          class Act:
+              name: str
+              minutes: int
+
+
+          @dataclass
+          class Concert:
+              venue: str
+              acts: list = field(default_factory=list)
+
+              @property
+              def minutes(self):
+                  total = 0
+                  for act in self.acts:
+                      total = total + act.minutes
+                  return total
+
+
+          def season(entries):
+              concerts = []
+              for venue, act_entries in entries:
+                  acts = [Act(name, minutes) for name, minutes in act_entries]
+                  concerts.append(Concert(venue, acts))
+              return [{"venue": c.venue, "minutes": c.minutes} for c in concerts]
+
+      Yours weighs parts instead of timing acts, and the answer carries a grand total
+      alongside the list.
+
+solution: |
+  from dataclasses import dataclass, field
+
+
+  @dataclass
+  class Part:
+      name: str
+      weight: int
+
+
+  @dataclass
+  class Vessel:
+      name: str
+      parts: list = field(default_factory=list)
+
+      @property
+      def weight(self):
+          total = 0
+          for part in self.parts:
+              total = total + part.weight
+          return total
+
+
+  def yard(entries):
+      vessels = []
+      for name, part_entries in entries:
+          parts = [Part(part_name, weight) for part_name, weight in part_entries]
+          vessels.append(Vessel(name, parts))
+
+      total = 0
+      for vessel in vessels:
+          total = total + vessel.weight
+
+      return {
+          "vessels": [{"name": vessel.name, "weight": vessel.weight} for vessel in vessels],
+          "total": total,
+      }
