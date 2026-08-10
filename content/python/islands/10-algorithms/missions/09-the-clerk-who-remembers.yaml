@@ -1,0 +1,239 @@
+# Mission 9 of Algorithms. Introduces: memoization.
+# Reinforces: recursion, dictionaries, big-o.
+#
+# The only mission on the island whose grade depends on finishing in time, and the margin
+# is not marginal: memoised fib(70) is a few microseconds, naive fib(70) is roughly 2 x 10^14
+# calls - longer than the game will exist. The syllabus rule (naive >= 5x the budget,
+# intended <= a fifth of it) is satisfied by many orders of magnitude, which is the only
+# safe way to grade by the wall clock on a cold Windows filesystem (CLAUDE.md section 5).
+# max_runtime_ms is raised to 3000 explicitly so the margin is visible in the file.
+#
+# `computed` is len(memo) rather than a call counter, because len(memo) is implementation
+# independent: any correct cache ends holding exactly the distinct values worked out.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-09
+title: The clerk who remembers
+track: python
+island: algorithms
+order: 9
+difficulty: challenging
+tags: [algorithms, memoization, recursion]
+xp: 45
+
+concepts:
+  - memoization
+
+teaching:
+  analogy: |
+    A clerk is asked what the harbour took last Friday. He goes to the archive, counts the
+    receipts, and comes back with a number. Asked again an hour later, he goes back to the
+    archive and counts them all over again.
+
+    The fix is a sheet of paper on his desk. Before walking to the archive, he looks at the
+    sheet. After counting, he writes the answer down. The archive has not changed and
+    neither has his method - he has just stopped answering the same question twice.
+
+    The saving is not small when the same question is asked a great many times, and in a
+    recursion it is asked an unimaginable number of times.
+
+  explanation: |
+    **Memoization** is caching the result of a function against its arguments, so a repeated
+    call is a dictionary lookup rather than the work again.
+
+    The classic case is a recursion that recomputes. `fib(n) = fib(n-1) + fib(n-2)` looks
+    harmless and is catastrophic: `fib(30)` calls `fib(28)` twice, `fib(27)` three times,
+    `fib(5)` about eight hundred thousand times. The call count grows like `2^n`. At
+    `fib(70)` it is around 200,000,000,000,000 calls, which no amount of waiting fixes.
+
+    Memoized, the same function computes each distinct `n` **once**. Seventy-one values,
+    and it returns instantly:
+
+        def fib(n, memo):
+            if n in memo:
+                return memo[n]
+
+            if n < 2:
+                memo[n] = n
+            else:
+                memo[n] = fib(n - 1, memo) + fib(n - 2, memo)
+
+            return memo[n]
+
+    Read what changed: the algorithm did not. The recursion is the same recursion. What
+    changed is O(2^n) to O(n), by refusing to answer a question twice.
+
+    Four things to know before reaching for it:
+
+    - **It only helps when arguments repeat.** If every call is unique, the cache is memory
+      spent for nothing.
+    - **The key must be hashable.** A list argument cannot be a dict key; a tuple can.
+    - **Never memoize a function with side effects.** The side effect happens on the first
+      call and silently stops happening, which is a bug nobody finds by reading the caller.
+    - **`functools.cache` does exactly this** and is what you would use in real code. It is
+      a dict keyed on the arguments, not magic - which is why writing the dict once is
+      worth the twenty minutes.
+
+  worked_example: |
+    # Counting paths across a grid, which is not what this mission asks for
+    def paths(rows, columns, seen):
+        key = (rows, columns)
+        if key in seen:
+            return seen[key]
+
+        if rows == 0 or columns == 0:
+            seen[key] = 1
+        else:
+            seen[key] = paths(rows - 1, columns, seen) + paths(rows, columns - 1, seen)
+
+        return seen[key]
+
+
+    seen = {}
+    print(paths(10, 10, seen), len(seen))     # 184756 121
+    # A hundred and twenty-one distinct questions answered, out of a search that would
+    # otherwise branch into hundreds of thousands of calls.
+
+  key_points:
+    - "Memoization changes the cost, not the algorithm. The same recursion goes from O(2^n) to O(n) by refusing to answer a question twice."
+    - "The cache check goes first, before anything else in the function. A check after the work saves nothing."
+    - "It only pays when arguments repeat. Unique arguments every time means a cache that is pure memory cost."
+    - "The key must be hashable. Lists cannot be dict keys; convert to a tuple."
+    - "Never cache a function with side effects. The effect happens once and the caller never learns it stopped."
+
+brief: |
+  Answer a question that is unanswerable without a cache.
+
+  The Fibonacci numbers start 0, 1, and after that each is the sum of the two before it:
+  0, 1, 1, 2, 3, 5, 8, 13, and so on.
+
+  Write a function called fib_report that takes a number `n` and returns a dict:
+
+      {"value": ..., "computed": ...}
+
+  `value` is the nth Fibonacci number, counting from 0, so `fib_report(0)` has value 0 and
+  `fib_report(10)` has value 55.
+
+  `computed` is how many distinct values you worked out and kept - in other words, the
+  number of entries in your cache when you are done. Store every value you work out,
+  including 0 and 1 when you reach them. So `n = 2` ends with three entries (0, 1 and 2),
+  and `n = 10` ends with eleven. `n = 0` and `n = 1` each end with one, because neither
+  needs anything below it.
+
+  **Write it recursively, and cache the results.** One hidden case asks for `n = 70`. The
+  plain recursion needs roughly two hundred trillion calls for that, which is not slow, it
+  is never. With a cache it is seventy-one.
+
+signature:
+  entrypoint: fib_report
+  stub: |
+    def fib_report(n):
+        # One dict that outlives the recursion, and a lookup before any work.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 3000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10]
+      expect:
+        value: 55
+        computed: 11
+    # Impossible without the cache, instant with it.
+    - args: [70]
+      expect:
+        value: 190392490709135
+        computed: 71
+  hidden:
+    # The two base cases. Neither needs anything below it, so each keeps one entry.
+    - args: [0]
+      expect:
+        value: 0
+        computed: 1
+    - args: [1]
+      expect:
+        value: 1
+        computed: 1
+    # The first n that recurses at all. Three entries: 0, 1 and 2.
+    - args: [2]
+      expect:
+        value: 1
+        computed: 3
+    - args: [3]
+      expect:
+        value: 2
+        computed: 4
+    # Far past what plain recursion finishes in a lifetime, and still instant.
+    - args: [35]
+      expect:
+        value: 9227465
+        computed: 36
+    - args: [50]
+      expect:
+        value: 12586269025
+        computed: 51
+
+hints:
+  - level: 1
+    text: |
+      The cache has to survive across the recursive calls. A dict created inside the
+      recursive function is a fresh empty dict on every call, and caches nothing.
+
+      Where can it live so that every call sees the same one?
+  - level: 2
+    text: |
+      Create the dict in `fib_report`, and write a recursive helper that takes it as a
+      second argument - or define the helper inside `fib_report` so it closes over the dict.
+
+      The helper's first two lines are the lookup:
+
+          if n in memo:
+              return memo[n]
+
+      Everything else goes below it, and every branch writes to `memo` before returning.
+
+      `computed` is `len(memo)` after the top-level call returns.
+  - level: 3
+    text: |
+      The same cache, for a different recursion - the number of ways to write a number as a
+      sum of 1s and 2s:
+
+          def ways(n, seen):
+              if n in seen:
+                  return seen[n]
+
+              if n < 2:
+                  seen[n] = 1
+              else:
+                  seen[n] = ways(n - 1, seen) + ways(n - 2, seen)
+
+              return seen[n]
+
+
+          def report(n):
+              seen = {}
+              return {"answer": ways(n, seen), "kept": len(seen)}
+
+      Yours has different base values - Fibonacci's are 0 and 1, not 1 and 1 - and the two
+      keys are named differently.
+
+solution: |
+  def fib_report(n):
+      memo = {}
+
+      def fib(k):
+          if k in memo:
+              return memo[k]
+
+          if k < 2:
+              memo[k] = k
+          else:
+              memo[k] = fib(k - 1) + fib(k - 2)
+
+          return memo[k]
+
+      value = fib(n)
+      return {"value": value, "computed": len(memo)}

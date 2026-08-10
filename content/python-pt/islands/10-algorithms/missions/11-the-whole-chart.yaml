@@ -1,0 +1,298 @@
+# Missão 11 de Algoritmos. Não introduz nada. Missão de fechamento.
+# Reforça: todos os sete conceitos da ilha.
+#
+# Combine, não aprenda. Cada peça foi ensinada antes: ordene uma vez, corte a busca ao
+# meio, caminhe com dois ponteiros para dentro, e uma recursão que só termina porque lembra.
+#
+# A ordem é a única pergunta de verdade e não é dita: a caminhada de dois ponteiros e a
+# busca binária precisam da lista ordenada, então a ordenação tem de vir primeiro, e `ways`
+# é contado sobre o tamanho da lista ordenada - que é o mesmo tamanho da entrada, então quem
+# errar a ordem acerta esse campo do mesmo jeito. Isso é proposital. Nem toda restrição de
+# ordem em código real é estrutural, e perceber quais são é a habilidade.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-11
+title: A carta inteira
+track: python
+island: algorithms
+order: 11
+difficulty: challenging
+tags: [algorithms, closing, search, recursion]
+xp: 45
+
+concepts:
+  - linear-search
+  - big-o
+  - binary-search
+  - two-pointer
+  - sorting
+  - recursion
+  - memoization
+
+teaching:
+  analogy: |
+    A sala de cartas, no fim de uma semana longa. O livro é ordenado, um lançamento é
+    encontrado, dois engradados são combinados, e alguém calcula de quantas formas a
+    tripulação pode subir a escada do porto.
+
+    Nada de hoje é novo. Hoje a sala de cartas roda.
+
+  explanation: |
+    Esta missão não introduz nada. Ela pede que você ponha quatro algoritmos em fila sem
+    dizer qual vem onde, que é a parte que nenhum painel consegue ensinar.
+
+    A versão curta de cada decisão, para a próxima vez que você encontrá-la.
+
+    **Percorrer ou cortar ao meio?** Cortar ao meio exige dados ordenados, e ordenar custa
+    mais que uma caminhada. Uma consulta em dados desordenados: percorra. Muitas consultas:
+    ordene uma vez e corte ao meio. O número de consultas é o argumento inteiro.
+
+    **Laço aninhado ou dois ponteiros?** Se os dados estão em ordem e você procura um par com
+    uma propriedade, dois ponteiros transformam O(n^2) em O(n). Se os dados estão
+    desordenados e ordenar não é opção, o laço aninhado é honesto.
+
+    **Recursão ou laço?** Se o formato tem profundidade desconhecida ou se ramifica, recursão.
+    Se é uma caminhada reta, um laço é mais rápido e não esbarra em limite de profundidade.
+
+    **Cache ou não?** Só quando os mesmos argumentos voltam. Uma recursão que se ramifica
+    repetidamente no mesmo subproblema é o caso que transforma impossível em instantâneo;
+    todo o resto é memória à toa.
+
+    Nenhuma das quatro tem resposta que valha em todo lugar. Elas têm uma resposta aqui, e
+    conseguir dizer por quê é para o que a ilha serviu.
+
+  worked_example: |
+    # As mesmas quatro peças, no catálogo de uma biblioteca
+    def catalogue(years, wanted):
+        shelf = sorted(years)
+
+        low, high = 0, len(shelf) - 1
+        at = -1
+        while low <= high:
+            middle = (low + high) // 2
+            if shelf[middle] == wanted:
+                at = middle
+                break
+            if shelf[middle] < wanted:
+                low = middle + 1
+            else:
+                high = middle - 1
+
+        return {"shelf": shelf, "at": at}
+
+
+    print(catalogue([1990, 1971, 2004], 1990))     # {'shelf': [1971, 1990, 2004], 'at': 1}
+    # Ordenado uma vez, depois cortado ao meio. A caminhada de dois ponteiros e a recursão
+    # com cache são suas.
+
+  key_points:
+    - "Ordene uma vez, no topo, quando mais de um passo seguinte precisa da ordem. Aqui tanto a busca quanto a caminhada de ponteiros dependem dela."
+    - "Dois ponteiros só funcionam em dados ordenados, e o argumento para descartar um valor é o que quebra sem isso."
+    - "Guarde uma recursão em cache quando os mesmos argumentos voltam. Ramificação em formato de Fibonacci é o caso; uma caminhada reta não é."
+    - "Contar comparações é como esta ilha provou cada afirmação que fez. Uma contagem é a mesma em qualquer máquina, e um segundo medido não é."
+    - "A classe importa quando a entrada cresce. Em quatro itens todo algoritmo desta ilha é instantâneo, e escolher entre eles é sobre o dia em que quatro virar quarenta mil."
+
+brief: |
+  Rode a sala de cartas inteira.
+
+  Escreva uma função chamada chart que recebe uma lista de números - **em ordem nenhuma** -
+  uma agulha e um alvo, e devolve um dict:
+
+      {"order": ..., "index": ..., "comparisons": ..., "pair": ..., "ways": ...}
+
+  `order` são os números ordenados do menor para o maior. Use `sorted`.
+
+  `index` é a posição da agulha em `order`, encontrada com **busca binária**, ou `-1` quando
+  ela não está lá. Use a regra da missão 4: `low = 0`, `high = len(order) - 1`, laço enquanto
+  `low <= high`, meio em `(low + high) // 2`, ir para `middle + 1` ou `middle - 1`.
+
+  `comparisons` é quantos valores do meio essa busca olhou.
+
+  `pair` é uma lista de dois itens `[mais_leve, mais_pesado]` de `order` que somam o alvo,
+  encontrada com a caminhada de **dois ponteiros** da missão 5, ou `None` quando não existe
+  esse par. Esta não é contada.
+
+  `ways` é de quantas formas uma tripulação pode subir uma escada de `len(order)` degraus,
+  dando passos de 1 ou de 2 degraus. Uma escada de 0 degraus tem 1 forma - ficar parado. Uma
+  de 1 tem 1. Uma de 2 tem 2, e depois disso cada número é a soma dos dois anteriores.
+  **Calcule com uma recursão em cache**, do jeito que você escreveu na missão 9.
+
+  Uma lista vazia dá `[]`, -1, 0 comparações, `None` e 1 forma.
+
+signature:
+  entrypoint: chart
+  stub: |
+    def chart(values, needle, target):
+        # Ordene primeiro - dois dos quatro passos abaixo não rodam sem isso.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 3000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[7, 2, 5, 1], 5, 8]
+      expect:
+        order: [1, 2, 5, 7]
+        index: 2
+        comparisons: 2
+        pair: [1, 7]
+        ways: 5
+    # Agulha ausente e nenhum par alcança o alvo. Os outros três campos não se importam.
+    - args: [[7, 2, 5, 1], 4, 100]
+      expect:
+        order: [1, 2, 5, 7]
+        index: -1
+        comparisons: 2
+        pair: null
+        ways: 5
+  hidden:
+    # Vazia. Toda condição de laço falha de cara, e uma escada sem degraus ainda tem uma
+    # forma.
+    - args: [[], 1, 0]
+      expect:
+        order: []
+        index: -1
+        comparisons: 0
+        pair: null
+        ways: 1
+    # Um valor: achado em uma comparação, e ele não faz par consigo mesmo.
+    - args: [[3], 3, 6]
+      expect:
+        order: [3]
+        index: 0
+        comparisons: 1
+        pair: null
+        ways: 1
+    # Dez valores. Três comparações para a busca, e 89 formas de subir a escada.
+    - args: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 1, 11]
+      expect:
+        order: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        index: 0
+        comparisons: 3
+        pair: [1, 10]
+        ways: 89
+    # Duplicatas fazem par entre si, por serem duas posições diferentes.
+    - args: [[4, 4], 4, 8]
+      expect:
+        order: [4, 4]
+        index: 0
+        comparisons: 1
+        pair: [4, 4]
+        ways: 2
+    # Negativos, e um alvo zero que não é a mesma coisa que alvo nenhum.
+    - args: [[-5, 0, 5], 0, 0]
+      expect:
+        order: [-5, 0, 5]
+        index: 1
+        comparisons: 1
+        pair: [-5, 5]
+        ways: 3
+    # Entrada invertida, então a ordenação faz trabalho real antes de qualquer outra coisa.
+    - args: [[9, 8, 7, 6, 5, 4, 3, 2, 1], 9, 10]
+      expect:
+        order: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        index: 8
+        comparisons: 4
+        pair: [1, 9]
+        ways: 55
+
+hints:
+  - level: 1
+    text: |
+      Descubra a ordem das operações antes de escrever qualquer coisa. Quais dos quatro
+      passos rodam sobre a lista como ela chegou, e quais não rodam?
+
+      Depois confira `ways` contra os casos visíveis. Quatro valores, cinco formas. Onde você
+      já viu 1, 1, 2, 3, 5 nesta ilha?
+  - level: 2
+    text: |
+      Quatro peças, e cada uma delas é copiada de uma missão anterior com outros nomes.
+
+      `sorted` primeiro. Depois o laço da missão 4 sobre `order`, guardando a contagem de
+      comparações. Depois os dois ponteiros da missão 5 sobre `order`, contagem descartada
+      desta vez. Depois a recursão em cache da missão 9, chamada sobre `len(order)`.
+
+      `ways` é Fibonacci com os casos base deslocados: `ways(0)` e `ways(1)` são ambos 1.
+  - level: 3
+    text: |
+      A última peça, já que as outras três estão nas missões 4, 5 e 9:
+
+          def climb(steps):
+              seen = {}
+
+              def count(remaining):
+                  if remaining in seen:
+                      return seen[remaining]
+                  if remaining < 2:
+                      seen[remaining] = 1
+                  else:
+                      seen[remaining] = count(remaining - 1) + count(remaining - 2)
+                  return seen[remaining]
+
+              return count(steps)
+
+
+          print(climb(4))     # 5
+
+      A sua é chamada sobre o tamanho da lista ordenada, e a resposta dela é um de cinco
+      campos em vez do retorno inteiro.
+
+solution: |
+  def chart(values, needle, target):
+      order = sorted(values)
+
+      low = 0
+      high = len(order) - 1
+      index = -1
+      comparisons = 0
+
+      while low <= high:
+          middle = (low + high) // 2
+          comparisons = comparisons + 1
+
+          if order[middle] == needle:
+              index = middle
+              break
+
+          if order[middle] < needle:
+              low = middle + 1
+          else:
+              high = middle - 1
+
+      left = 0
+      right = len(order) - 1
+      pair = None
+
+      while left < right:
+          total = order[left] + order[right]
+          if total == target:
+              pair = [order[left], order[right]]
+              break
+          if total < target:
+              left = left + 1
+          else:
+              right = right - 1
+
+      seen = {}
+
+      def ways(steps):
+          if steps in seen:
+              return seen[steps]
+
+          if steps < 2:
+              seen[steps] = 1
+          else:
+              seen[steps] = ways(steps - 1) + ways(steps - 2)
+
+          return seen[steps]
+
+      return {
+          "order": order,
+          "index": index,
+          "comparisons": comparisons,
+          "pair": pair,
+          "ways": ways(len(order)),
+      }

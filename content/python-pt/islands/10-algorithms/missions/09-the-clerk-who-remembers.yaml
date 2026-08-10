@@ -1,0 +1,243 @@
+# Missão 9 de Algoritmos. Introduz: memoization.
+# Reforça: recursion, dictionaries, big-o.
+#
+# A única missão da ilha cuja nota depende de terminar a tempo, e a margem não é apertada:
+# fib(70) memoizado leva microssegundos, fib(70) ingênuo são cerca de 2 x 10^14 chamadas -
+# mais tempo do que o jogo vai existir. A regra do syllabus (ingênuo >= 5x o orçamento,
+# pretendido <= um quinto dele) é satisfeita por muitas ordens de grandeza, que é o único
+# jeito seguro de avaliar por relógio de parede num sistema de arquivos Windows frio
+# (CLAUDE.md seção 5). max_runtime_ms é elevado a 3000 explicitamente para a margem ficar
+# visível no arquivo.
+#
+# `computed` é len(memo) e não um contador de chamadas, porque len(memo) independe de
+# implementação: qualquer cache correto termina guardando exatamente os valores distintos
+# calculados.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-09
+title: O escriturário que lembra
+track: python
+island: algorithms
+order: 9
+difficulty: challenging
+tags: [algorithms, memoization, recursion]
+xp: 45
+
+concepts:
+  - memoization
+
+teaching:
+  analogy: |
+    Perguntam a um escriturário quanto o porto arrecadou na sexta passada. Ele vai ao
+    arquivo, conta os recibos, e volta com um número. Perguntam de novo uma hora depois, e
+    ele volta ao arquivo e conta tudo outra vez.
+
+    A correção é uma folha de papel sobre a mesa dele. Antes de caminhar até o arquivo, ele
+    olha a folha. Depois de contar, ele anota a resposta. O arquivo não mudou e o método dele
+    também não - ele só parou de responder a mesma pergunta duas vezes.
+
+    A economia não é pequena quando a mesma pergunta é feita muitas vezes, e numa recursão
+    ela é feita um número inimaginável de vezes.
+
+  explanation: |
+    **Memoização** é guardar o resultado de uma função associado aos seus argumentos, para
+    que uma chamada repetida seja uma consulta em dicionário e não o trabalho de novo.
+
+    O caso clássico é uma recursão que recalcula. `fib(n) = fib(n-1) + fib(n-2)` parece
+    inofensiva e é catastrófica: `fib(30)` chama `fib(28)` duas vezes, `fib(27)` três vezes,
+    `fib(5)` cerca de oitocentas mil vezes. A contagem de chamadas cresce como `2^n`. Em
+    `fib(70)` são por volta de 200.000.000.000.000 de chamadas, que nenhuma quantidade de
+    espera resolve.
+
+    Memoizada, a mesma função calcula cada `n` distinto **uma vez**. Setenta e um valores, e
+    ela devolve instantaneamente:
+
+        def fib(n, memo):
+            if n in memo:
+                return memo[n]
+
+            if n < 2:
+                memo[n] = n
+            else:
+                memo[n] = fib(n - 1, memo) + fib(n - 2, memo)
+
+            return memo[n]
+
+    Leia o que mudou: o algoritmo não mudou. A recursão é a mesma recursão. O que mudou foi
+    O(2^n) para O(n), por se recusar a responder uma pergunta duas vezes.
+
+    Quatro coisas para saber antes de recorrer a isso:
+
+    - **Só ajuda quando os argumentos se repetem.** Se toda chamada é única, o cache é
+      memória gasta à toa.
+    - **A chave precisa ser hasheável.** Uma lista não pode ser chave de dict; uma tupla pode.
+    - **Nunca memoize uma função com efeito colateral.** O efeito acontece na primeira
+      chamada e para de acontecer em silêncio, o que é um bug que ninguém acha lendo quem
+      chama.
+    - **`functools.cache` faz exatamente isso** e é o que você usaria em código real. É um
+      dict indexado pelos argumentos, não é mágica - e é por isso que escrever o dict uma vez
+      vale os vinte minutos.
+
+  worked_example: |
+    # Contar caminhos numa grade, que não é o que esta missão pede
+    def paths(rows, columns, seen):
+        key = (rows, columns)
+        if key in seen:
+            return seen[key]
+
+        if rows == 0 or columns == 0:
+            seen[key] = 1
+        else:
+            seen[key] = paths(rows - 1, columns, seen) + paths(rows, columns - 1, seen)
+
+        return seen[key]
+
+
+    seen = {}
+    print(paths(10, 10, seen), len(seen))     # 184756 121
+    # Cento e vinte e uma perguntas distintas respondidas, de uma busca que de outro modo se
+    # ramificaria em centenas de milhares de chamadas.
+
+  key_points:
+    - "Memoização muda o custo, não o algoritmo. A mesma recursão vai de O(2^n) a O(n) por se recusar a responder uma pergunta duas vezes."
+    - "A consulta ao cache vem primeiro, antes de qualquer outra coisa na função. Uma consulta depois do trabalho não poupa nada."
+    - "Só compensa quando os argumentos se repetem. Argumentos sempre únicos significam um cache que é puro custo de memória."
+    - "A chave precisa ser hasheável. Listas não podem ser chave de dict; converta para tupla."
+    - "Nunca guarde em cache uma função com efeito colateral. O efeito acontece uma vez e quem chama nunca fica sabendo que parou."
+
+brief: |
+  Responda uma pergunta que é irrespondível sem cache.
+
+  Os números de Fibonacci começam em 0, 1, e depois disso cada um é a soma dos dois
+  anteriores: 0, 1, 1, 2, 3, 5, 8, 13, e assim por diante.
+
+  Escreva uma função chamada fib_report que recebe um número `n` e devolve um dict:
+
+      {"value": ..., "computed": ...}
+
+  `value` é o n-ésimo número de Fibonacci, contando de 0, então `fib_report(0)` tem valor 0
+  e `fib_report(10)` tem valor 55.
+
+  `computed` é quantos valores distintos você calculou e guardou - em outras palavras, o
+  número de entradas no seu cache ao terminar. Guarde todo valor que calcular, inclusive 0 e
+  1 quando chegar neles. Assim `n = 2` termina com três entradas (0, 1 e 2), e `n = 10`
+  termina com onze. `n = 0` e `n = 1` terminam cada um com uma, porque nenhum dos dois
+  precisa de nada abaixo de si.
+
+  **Escreva recursivamente, e guarde os resultados em cache.** Um caso oculto pede `n = 70`.
+  A recursão simples precisa de cerca de duzentos trilhões de chamadas para isso, o que não é
+  lento, é nunca. Com cache são setenta e uma.
+
+signature:
+  entrypoint: fib_report
+  stub: |
+    def fib_report(n):
+        # Um dict que sobrevive à recursão, e uma consulta antes de qualquer trabalho.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 3000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10]
+      expect:
+        value: 55
+        computed: 11
+    # Impossível sem o cache, instantâneo com ele.
+    - args: [70]
+      expect:
+        value: 190392490709135
+        computed: 71
+  hidden:
+    # Os dois casos base. Nenhum precisa de nada abaixo, então cada um guarda uma entrada.
+    - args: [0]
+      expect:
+        value: 0
+        computed: 1
+    - args: [1]
+      expect:
+        value: 1
+        computed: 1
+    # O primeiro n que de fato recorre. Três entradas: 0, 1 e 2.
+    - args: [2]
+      expect:
+        value: 1
+        computed: 3
+    - args: [3]
+      expect:
+        value: 2
+        computed: 4
+    # Muito além do que a recursão simples termina numa vida, e ainda instantâneo.
+    - args: [35]
+      expect:
+        value: 9227465
+        computed: 36
+    - args: [50]
+      expect:
+        value: 12586269025
+        computed: 51
+
+hints:
+  - level: 1
+    text: |
+      O cache precisa sobreviver entre as chamadas recursivas. Um dict criado dentro da
+      função recursiva é um dict vazio novo a cada chamada, e não guarda nada.
+
+      Onde ele pode morar para que todas as chamadas vejam o mesmo?
+  - level: 2
+    text: |
+      Crie o dict em `fib_report`, e escreva uma auxiliar recursiva que o recebe como segundo
+      argumento - ou defina a auxiliar dentro de `fib_report` para ela fechar sobre o dict.
+
+      As duas primeiras linhas da auxiliar são a consulta:
+
+          if n in memo:
+              return memo[n]
+
+      Todo o resto vem abaixo, e todo ramo escreve em `memo` antes de devolver.
+
+      `computed` é `len(memo)` depois que a chamada de topo devolve.
+  - level: 3
+    text: |
+      O mesmo cache, para outra recursão - o número de formas de escrever um número como soma
+      de 1s e 2s:
+
+          def ways(n, seen):
+              if n in seen:
+                  return seen[n]
+
+              if n < 2:
+                  seen[n] = 1
+              else:
+                  seen[n] = ways(n - 1, seen) + ways(n - 2, seen)
+
+              return seen[n]
+
+
+          def report(n):
+              seen = {}
+              return {"answer": ways(n, seen), "kept": len(seen)}
+
+      A sua tem valores base diferentes - os de Fibonacci são 0 e 1, não 1 e 1 - e as duas
+      chaves têm outros nomes.
+
+solution: |
+  def fib_report(n):
+      memo = {}
+
+      def fib(k):
+          if k in memo:
+              return memo[k]
+
+          if k < 2:
+              memo[k] = k
+          else:
+              memo[k] = fib(k - 1) + fib(k - 2)
+
+          return memo[k]
+
+      value = fib(n)
+      return {"value": value, "computed": len(memo)}

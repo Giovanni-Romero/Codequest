@@ -1,0 +1,232 @@
+# Mission 2 of Algorithms. Introduces: big-o.
+# Reinforces: linear-search, accumulator-pattern.
+#
+# `big-o` looked like the third unverifiable concept, after print-debugging and
+# interactive-debugger in Island 6. It is not, and this mission is why: the player returns
+# the step counts and the hidden cases are chosen so the growth is visible in the numbers.
+# size 10 -> 45 pairs; size 100 -> 4950; size 1000 -> 499500. Ten times the input, a
+# hundred times the work, and no clock anywhere.
+#
+# The input is a size rather than a list, so a thousand-element case fits in one line of
+# YAML and stays readable in the brief.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-02
+title: Count the steps
+track: python
+island: algorithms
+order: 2
+difficulty: challenging
+tags: [algorithms, complexity, counting]
+xp: 45
+
+concepts:
+  - big-o
+
+teaching:
+  analogy: |
+    A harbour hires two clerks and asks each what happens if the fleet doubles.
+
+    The first reads every ship's papers once. "Twice the ships, twice the morning." The
+    second checks every ship against every other ship for a scheduling clash. "Twice the
+    ships, four times the morning."
+
+    Neither answer mentions how fast they read, and that is the point. How fast they read
+    changes with the clerk, the coffee and the weather. How the work *grows* is a property
+    of the job, and it is the same on any morning.
+
+  explanation: |
+    **Big-O** describes how the work grows as the input grows. It is a shape, not a
+    stopwatch, and it deliberately throws away everything that is not the shape.
+
+        O(1)        the size does not matter at all
+        O(log n)    doubling the input adds one step
+        O(n)        doubling the input doubles the work
+        O(n^2)      doubling the input quadruples the work
+
+    Three habits make this readable:
+
+    **Constants are dropped.** A loop doing three things per item is O(n), not O(3n). Three
+    times a straight line is still a straight line, and the 3 changes with the machine.
+
+    **Only the fastest-growing term survives.** `n^2 + n` is O(n^2), because past a certain
+    size the `n` stops mattering. That "past a certain size" is the whole idea: big-O says
+    nothing about small inputs, and it is often wrong about them.
+
+    **A loop inside a loop is not automatically O(n^2).** Look at what the inner one ranges
+    over. When the second loop starts where the first one is, the count is
+    `n * (n - 1) / 2` - which *is* O(n^2), since the halving is a constant. But an inner
+    loop over a fixed 5 items is O(n), no matter how it is nested.
+
+    The class is not a verdict. O(n^2) on ten items is instant, and choosing a harder
+    algorithm to avoid it is a bad trade. The class tells you what happens when the number
+    stops being ten.
+
+  worked_example: |
+    # Counting the work of two ways to spot a duplicate letter
+    def once(word):
+        steps = 0
+        for _ in word:
+            steps = steps + 1
+        return steps
+
+
+    def every_pair(word):
+        steps = 0
+        for i in range(len(word)):
+            for j in range(i + 1, len(word)):
+                steps = steps + 1
+        return steps
+
+
+    print(once("harbour"), every_pair("harbour"))          # 7 21
+    print(once("harbourharbour"), every_pair("harbourharbour"))    # 14 91
+    # The word doubled. The first number doubled. The second went up four-and-a-bit times,
+    # and it gets closer to exactly four as the word gets longer.
+
+  key_points:
+    - "Big-O measures growth, not speed. It answers \"what if the input doubles\", never \"how many milliseconds\"."
+    - "Constants are dropped because they change with the machine. O(3n) is written O(n), and the 3 is real but not the point."
+    - "Only the fastest-growing term survives: `n^2 + 500n` is O(n^2), because past some size the `n` term stops mattering."
+    - "Nested loops are not automatically O(n^2). Read what the inner loop ranges over - a fixed five items keeps the whole thing O(n)."
+    - "A worse class can be the better choice on small input. Big-O is silent about small n, and small n is most of the code you write."
+
+brief: |
+  Count what three different jobs cost on the same shore.
+
+  The shore has `size` markers, numbered 1, 2, 3 and so on up to `size`.
+
+  Write a function called steps that takes a size and a needle, and returns a dict:
+
+      {"walk": ..., "search": ..., "pairs": ...}
+
+    - `walk` - you read every marker, with no early exit. Count one per marker.
+    - `search` - you read markers from the start and stop at the first one equal to the
+      needle. Count one per marker you read, including the match. If the needle is not on
+      the shore you read them all.
+    - `pairs` - you compare every marker against every marker that comes **after** it, so
+      each pair is checked exactly once. Count one per pair.
+
+  A size of 0 gives 0, 0 and 0.
+
+  You may work these out with loops or with arithmetic - both are correct, and one of them
+  is the point of the island. What matters is what the three numbers do to each other when
+  the size grows: at size 10 the third is four times the first, and at size 1000 it is five
+  hundred times.
+
+signature:
+  entrypoint: steps
+  stub: |
+    def steps(size, needle):
+        # Three counts over the same shore of `size` markers, numbered 1 upward.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 3]
+      expect:
+        walk: 10
+        search: 3
+        pairs: 45
+    # The needle is not on the shore, so the search costs the full walk.
+    - args: [20, 25]
+      expect:
+        walk: 20
+        search: 20
+        pairs: 190
+  hidden:
+    # Nothing at all. Every count is zero, including pairs.
+    - args: [0, 1]
+      expect:
+        walk: 0
+        search: 0
+        pairs: 0
+    # One marker pairs with nothing.
+    - args: [1, 1]
+      expect:
+        walk: 1
+        search: 1
+        pairs: 0
+    # Two markers make exactly one pair, not two.
+    - args: [2, 2]
+      expect:
+        walk: 2
+        search: 2
+        pairs: 1
+    - args: [5, 6]
+      expect:
+        walk: 5
+        search: 5
+        pairs: 10
+    # Ten times the size of the first visible case. Note pairs: 45 -> 4950.
+    - args: [100, 100]
+      expect:
+        walk: 100
+        search: 100
+        pairs: 4950
+    # Ten times again, and the same hundredfold jump. That ratio is what O(n^2) means.
+    - args: [1000, 1]
+      expect:
+        walk: 1000
+        search: 1
+        pairs: 499500
+
+hints:
+  - level: 1
+    text: |
+      `pairs` is the only one that needs thought. Each pair is counted once, so when you
+      compare marker 3 against marker 7, you must not also compare 7 against 3.
+
+      If the outer loop is sitting at position `i`, where should the inner loop start?
+  - level: 2
+    text: |
+      Build the markers first: `markers = list(range(1, size + 1))`.
+
+      `walk` is a loop with a counter and no `break`. `search` is mission 1's loop with a
+      `break` on the match. `pairs` is a loop over positions with an inner loop starting at
+      `i + 1`.
+
+      If you would rather do it with arithmetic, `pairs` is `size * (size - 1) // 2` - and
+      working out why that is the same number is the better use of the mission.
+  - level: 3
+    text: |
+      The nested shape, counting pairs of days in a week:
+
+          def clashes(days):
+              count = 0
+              for i in range(len(days)):
+                  for j in range(i + 1, len(days)):
+                      count = count + 1
+              return count
+
+
+          print(clashes(["mon", "tue", "wed"]))     # 3
+
+      Yours counts over the markers rather than over day names, and it returns two more
+      numbers alongside.
+
+solution: |
+  def steps(size, needle):
+      markers = list(range(1, size + 1))
+
+      walk = 0
+      for _ in markers:
+          walk = walk + 1
+
+      search = 0
+      for marker in markers:
+          search = search + 1
+          if marker == needle:
+              break
+
+      pairs = 0
+      for i in range(len(markers)):
+          for j in range(i + 1, len(markers)):
+              pairs = pairs + 1
+
+      return {"walk": walk, "search": search, "pairs": pairs}

@@ -1,0 +1,193 @@
+# Missão 3 de Algoritmos. Não introduz nada.
+# Reforça: linear-search, big-o.
+#
+# Missão de alívio. Código curto, uma ideia: a saída antecipada muda o melhor caso e deixa
+# a classe onde estava. Os casos ocultos são arranjados para que o mesmo formato de oito
+# itens custe 1 comparação em um caso e 8 em outro, que é a distinção entre melhor caso e
+# classe de complexidade transformada em dois números lado a lado.
+#
+# Ela também traz o primeiro retorno `null` da ilha, o que importa depois - a missão 5
+# devolve null para "sem par" e a 11 herda isso.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-03
+title: O primeiro que serve
+track: python
+island: algorithms
+order: 3
+difficulty: moderate
+tags: [algorithms, search, relief]
+xp: 30
+
+concepts:
+  - linear-search
+  - big-o
+
+teaching:
+  analogy: |
+    Você precisa de um engradado com mais de cinquenta quilos - qualquer um deles, não está
+    exigente.
+
+    Se o primeiro que você levantar pesar sessenta, acabou. Você não teve sorte com o
+    *armazém*, teve sorte com *este* armazém *nesta* manhã. Amanhã os pesados podem estar no
+    fundo, e aí você levanta todos.
+
+    A saída antecipada é real e vale a pena ter. Ela só não é uma promessa.
+
+  explanation: |
+    Uma saída antecipada é a diferença entre o melhor caso e o pior caso, e deixa a classe
+    de complexidade exatamente onde estava.
+
+        melhor caso   O(1)     o primeiro item serve
+        pior caso     O(n)     nenhum serve, ou o último serve
+        a classe      O(n)     que leva o nome do pior caso
+
+    Big-O é convencionalmente o pior caso, e essa convenção existe porque o pior caso é o
+    que estraga uma tarde. Uma busca que costuma ser instantânea e às vezes percorre um
+    milhão de linhas é uma busca que vai percorrer um milhão de linhas na frente de um
+    cliente.
+
+    Então não conclua que a saída antecipada é inútil. Ela é quase de graça, muitas vezes
+    poupa a caminhada inteira, e não há motivo para pulá-la. Só não deixe que ela mude o que
+    você escreve no plano de capacidade.
+
+    Mais uma coisa sobre a qual esta missão pede precisão: o que você devolve quando nada
+    serve? `None` diz "não houve resposta" e é honesto. Um `0` ou um `-1` diz o mesmo só se
+    quem chamou por acaso souber disso, e um dia um valor de verdade vai ser `-1`.
+
+  worked_example: |
+    # A primeira palavra mais longa que um limite, que não é o que esta missão pede
+    def first_long(words, limit):
+        looks = 0
+
+        for word in words:
+            looks = looks + 1
+            if len(word) > limit:
+                return {"word": word, "looks": looks}
+
+        return {"word": None, "looks": looks}
+
+
+    print(first_long(["a", "bb", "cccc"], 2))     # {'word': 'cccc', 'looks': 3}
+    print(first_long(["cccc", "a", "bb"], 2))     # {'word': 'cccc', 'looks': 1}
+    # As mesmas três palavras, o mesmo limite, um terço do trabalho. A ordem decidiu, não o
+    # algoritmo.
+
+  key_points:
+    - "Uma saída antecipada melhora o melhor caso e deixa a classe intacta. O(n) leva o nome do pior caso, e o pior caso ainda percorre tudo."
+    - "O melhor caso depende dos dados, não do seu código. Não dá para planejar contando com sorte."
+    - "Devolva `None` quando não há resposta. Um sentinela como -1 é uma mentira esperando o dia em que -1 for um valor de verdade."
+    - "\"Nada serviu\" sempre custa a caminhada inteira, exatamente como \"não encontrado\" na missão 1. Ausência só se sabe no fim."
+
+brief: |
+  Ache o primeiro engradado acima de um peso, e diga quanto a olhada custou.
+
+  Escreva uma função chamada first_over que recebe uma lista de números e um limite, e
+  devolve um dict:
+
+      {"value": ..., "comparisons": ...}
+
+  `value` é o primeiro número da lista **estritamente maior** que o limite, ou `None` quando
+  nenhum número é.
+
+  `comparisons` é quantos números você olhou, contando o que serviu. Pare assim que tiver
+  uma resposta.
+
+  Uma lista vazia dá `None` e 0 comparações.
+
+  Cuidado com a fronteira: um número *igual* ao limite não serve.
+
+signature:
+  entrypoint: first_over
+  stub: |
+    def first_over(values, limit):
+        # Percorra, conte, e saia no instante em que um servir.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 5, 9], 4]
+      expect:
+        value: 5
+        comparisons: 2
+    # Nada serve, então a caminhada foi até o fim e a resposta é None.
+    - args: [[1, 2, 3], 10]
+      expect:
+        value: null
+        comparisons: 3
+  hidden:
+    - args: [[], 0]
+      expect:
+        value: null
+        comparisons: 0
+    - args: [[7], 0]
+      expect:
+        value: 7
+        comparisons: 1
+    # Estritamente maior: 7 não passa de um limite 7.
+    - args: [[7], 7]
+      expect:
+        value: null
+        comparisons: 1
+    # O que serve é o último, que é o pior caso ainda bem-sucedido.
+    - args: [[0, 0, 1], 0]
+      expect:
+        value: 1
+        comparisons: 3
+    # O melhor caso. Quatro números, uma comparação - e o código é o mesmo.
+    - args: [[9, 1, 1, 1], 5]
+      expect:
+        value: 9
+        comparisons: 1
+    # Negativos comparam como qualquer outro. -1 é maior que -2.
+    - args: [[-3, -1], -2]
+      expect:
+        value: -1
+        comparisons: 2
+
+hints:
+  - level: 1
+    text: |
+      Este é o laço da missão 1 com a comparação trocada e o valor devolvido no lugar da
+      posição.
+
+      A única decisão nova é o que vai em `value` quando o laço termina sem resposta. O
+      enunciado dá o nome.
+  - level: 2
+    text: |
+      Contador começa em 0. Incremente na primeira linha do corpo do laço. Compare com `>`,
+      não com `>=`.
+
+      No acerto, devolva o dict de dentro do laço. Depois do laço, devolva um dict com
+      `None` e o contador, que a essa altura vale o tamanho da lista.
+  - level: 3
+    text: |
+      O mesmo formato, para o primeiro número par:
+
+          def first_even(numbers):
+              looks = 0
+
+              for number in numbers:
+                  looks = looks + 1
+                  if number % 2 == 0:
+                      return {"found": number, "looks": looks}
+
+              return {"found": None, "looks": looks}
+
+      A sua compara contra um limite em vez de testar paridade, e as chaves têm outros nomes.
+
+solution: |
+  def first_over(values, limit):
+      comparisons = 0
+
+      for value in values:
+          comparisons = comparisons + 1
+          if value > limit:
+              return {"value": value, "comparisons": comparisons}
+
+      return {"value": None, "comparisons": comparisons}

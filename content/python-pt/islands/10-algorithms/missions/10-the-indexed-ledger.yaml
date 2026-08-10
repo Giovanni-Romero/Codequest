@@ -1,0 +1,252 @@
+# Missão 10 de Algoritmos. Não introduz nada.
+# Reforça: sorting, binary-search, big-o.
+#
+# Missão de alívio, e a resposta à armadilha plantada na missão 4: ordenar primeiro é
+# prejuízo para uma consulta e lucro em muitas. Aqui o "muitas" é a lista de argumentos,
+# então o jogador monta a troca com as próprias mãos.
+#
+# `sorted` finalmente pode ser usado para valer, uma missão depois de terem escrito uma
+# ordenação à mão - a mesma ordem que a Ilha 8 usou para @dataclass e a Ilha 9 para
+# @contextmanager.
+#
+# O caso [3, 3, 3] é proposital: a busca binária devolve *um* índice de duplicata, não o
+# primeiro. A busca linear da missão 1 prometia o primeiro, e as duas promessas diferem.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-10
+title: O livro indexado
+track: python
+island: algorithms
+order: 10
+difficulty: moderate
+tags: [algorithms, sorting, binary-search, relief]
+xp: 30
+
+concepts:
+  - sorting
+  - binary-search
+  - big-o
+
+teaching:
+  analogy: |
+    Um escriturário do porto recebe uma caixa de sapatos com recibos fora de ordem e um nome
+    para consultar. Ele despeja a caixa e lê até achar. Ordenar antes teria levado mais tempo
+    que a leitura levou.
+
+    Na manhã seguinte ele recebe a mesma caixa e quarenta nomes. Agora ele ordena uma vez,
+    no café da manhã, e cada uma das quarenta consultas custa segundos.
+
+    Nada mudou nos recibos. O que mudou foi quantas vezes a pergunta é feita, e esse é o
+    único número que decide.
+
+  explanation: |
+    Ordenar é um investimento. Custa O(n log n) uma vez e faz cada consulta posterior ser
+    O(log n) em vez de O(n).
+
+    Faça a conta com mil itens e `k` consultas:
+
+        sem ordenar     k * 1000            as buscas percorrem a lista inteira toda vez
+        ordenando       10.000 + k * 10     pago uma vez, depois barato para sempre
+
+    Em `k = 1` ordenar perde feio - 10.010 contra 1000. Em `k = 11` empata. Em `k = 1000` são
+    20.000 contra um milhão. O ponto de equilíbrio é real, ele se move com os tamanhos, e
+    "devo ordenar primeiro?" não tem resposta que não mencione `k`.
+
+    Este é o formato por trás de todo índice de todo banco de dados. Um índice é uma
+    estrutura ordenada construída uma vez, mantida em dia a um custo nas escritas, e paga de
+    volta nas leituras. Uma tabela que você escreve constantemente e lê raramente é uma
+    tabela onde o índice é prejuízo - a mesma troca, em outra escala.
+
+    Uma coisa para notar já que você está aqui: a busca binária numa lista com duplicatas
+    devolve **um** índice de um valor que bate, não o primeiro. A busca linear da missão 1
+    prometia o primeiro. Se a posição importa e há duplicatas, as duas não são
+    intercambiáveis e a mais rápida não é a que você quer.
+
+  worked_example: |
+    # Consultar várias palavras numa lista de palavras, que não é o que esta missão pede
+    def spellcheck(dictionary, words):
+        known = sorted(dictionary)
+        results = []
+
+        for word in words:
+            low, high = 0, len(known) - 1
+            found = False
+            while low <= high:
+                middle = (low + high) // 2
+                if known[middle] == word:
+                    found = True
+                    break
+                if known[middle] < word:
+                    low = middle + 1
+                else:
+                    high = middle - 1
+            results.append(found)
+
+        return results
+
+
+    print(spellcheck(["sea", "ship", "anchor"], ["ship", "sky"]))     # [True, False]
+    # Ordenado uma vez, fora do laço. Ordenar dentro dele seria o erro que a missão 7 nomeou.
+
+  key_points:
+    - "Ordenar é investimento: O(n log n) uma vez, depois O(log n) por consulta em vez de O(n)."
+    - "Uma consulta não paga uma ordenação. Muitas pagam. O ponto de equilíbrio é um número real e depende de quantas vezes você pergunta."
+    - "Ordene uma vez, fora do laço. Uma ordenação dentro do laço paga o custo de preparo a cada iteração e é uma lentidão acidental clássica."
+    - "É isto que um índice de banco de dados é: uma estrutura ordenada paga nas escritas e recuperada nas leituras."
+    - "Busca binária em duplicatas devolve um índice que bate, não o primeiro. A busca linear promete o primeiro. Não são intercambiáveis."
+
+brief: |
+  Ordene o livro uma vez, depois consulte vários lançamentos nele.
+
+  Escreva uma função chamada lookup que recebe uma lista de números - **em ordem nenhuma** -
+  e uma lista de agulhas, e devolve um dict:
+
+      {"order": ..., "found": ..., "comparisons": ...}
+
+  `order` são os números ordenados do menor para o maior. Use `sorted` desta vez - você
+  escreveu uma ordenação à mão na missão passada, e daqui em diante a embutida é a resposta
+  certa.
+
+  `found` é uma lista com uma entrada por agulha, na mesma ordem: o índice daquela agulha em
+  `order`, ou `-1` quando ela não está lá.
+
+  `comparisons` é o número **total** de comparações com valores do meio somando todas as
+  buscas binárias. Use a regra da missão 4 para cada uma.
+
+  A ordenação não é contada. Só as buscas.
+
+  Uma lista de agulhas vazia dá um `found` vazio e 0 comparações - a ordenação aconteceu, e
+  não comprou nada. É a missão inteira em um caso de teste.
+
+signature:
+  entrypoint: lookup
+  stub: |
+    def lookup(values, needles):
+        # Ordene uma vez. Depois uma busca binária por agulha, somando o que custaram.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[5, 1, 9, 3], [3, 9]]
+      expect:
+        order: [1, 3, 5, 9]
+        found: [1, 3]
+        comparisons: 4
+    - args: [[5, 1, 9, 3], [4]]
+      expect:
+        order: [1, 3, 5, 9]
+        found: [-1]
+        comparisons: 2
+  hidden:
+    # Nada onde buscar. A condição do laço falha de cara, então nenhuma comparação acontece.
+    - args: [[], [1]]
+      expect:
+        order: []
+        found: [-1]
+        comparisons: 0
+    # Nada perguntado. A ordenação foi paga e não comprou absolutamente nada.
+    - args: [[], []]
+      expect:
+        order: []
+        found: []
+        comparisons: 0
+    - args: [[7], [7, 8]]
+      expect:
+        order: [7]
+        found: [0, -1]
+        comparisons: 2
+    # Duas agulhas, e a segunda é mais barata que a primeira. A posição decide o custo.
+    - args: [[2, 1], [1, 2]]
+      expect:
+        order: [1, 2]
+        found: [0, 1]
+        comparisons: 3
+    # Sete lançamentos, três consultas, sete comparações no total. Percorrer custaria 21.
+    - args: [[10, 20, 30, 40, 50, 60, 70], [10, 70, 40]]
+      expect:
+        order: [10, 20, 30, 40, 50, 60, 70]
+        found: [0, 6, 3]
+        comparisons: 7
+    # Duplicatas. A busca binária cai no índice 1, não no primeiro 3.
+    - args: [[3, 3, 3], [3]]
+      expect:
+        order: [3, 3, 3]
+        found: [1]
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Onde a ordenação vai - dentro do laço sobre as agulhas, ou antes dele? As duas dão a
+      resposta certa e só uma é o ponto da missão.
+
+      E o que `comparisons` significa quando há três agulhas: três números separados, ou um?
+  - level: 2
+    text: |
+      `order = sorted(values)` na primeira linha, uma vez.
+
+      Escreva a busca binária da missão 4 como uma auxiliar que recebe a lista ordenada e uma
+      agulha, e devolve o índice e a contagem de comparações dela.
+
+      Depois um laço sobre as agulhas, acrescentando cada índice a `found` e somando cada
+      contagem a um total corrente.
+  - level: 3
+    text: |
+      O mesmo formato, conferindo vários nomes contra uma lista ordenada:
+
+          def roll_call(names, wanted):
+              roster = sorted(names)
+              places = []
+              looks = 0
+
+              for name in wanted:
+                  low, high = 0, len(roster) - 1
+                  where = -1
+                  while low <= high:
+                      middle = (low + high) // 2
+                      looks = looks + 1
+                      if roster[middle] == name:
+                          where = middle
+                          break
+                      if roster[middle] < name:
+                          low = middle + 1
+                      else:
+                          high = middle - 1
+                  places.append(where)
+
+              return {"roster": roster, "places": places, "looks": looks}
+
+      A sua trabalha com números em vez de nomes, e as três chaves têm outros nomes.
+
+solution: |
+  def lookup(values, needles):
+      order = sorted(values)
+      found = []
+      comparisons = 0
+
+      for needle in needles:
+          low = 0
+          high = len(order) - 1
+          where = -1
+
+          while low <= high:
+              middle = (low + high) // 2
+              comparisons = comparisons + 1
+
+              if order[middle] == needle:
+                  where = middle
+                  break
+
+              if order[middle] < needle:
+                  low = middle + 1
+              else:
+                  high = middle - 1
+
+          found.append(where)
+
+      return {"order": order, "found": found, "comparisons": comparisons}

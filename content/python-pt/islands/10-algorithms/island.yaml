@@ -1,0 +1,29 @@
+id: algorithms
+name: Algoritmos
+track: python
+order: 10
+theme: A mesma resposta, por um custo que você escolheu
+description: |
+  Todas as ilhas até aqui avaliaram você por estar certo. Aqui estar certo é o preço da
+  entrada.
+
+  Você já sabe encontrar algo em uma lista. Aqui você descobre que o seu jeito leva mil
+  passos onde outro leva dez, e que essa diferença deixa de ser acadêmica por volta do
+  tamanho de um diário de bordo de verdade.
+
+  Nada aqui é medido com cronômetro. Cada missão conta o próprio trabalho e devolve o
+  número, porque uma contagem é a mesma em qualquer máquina e um segundo não é.
+
+concepts:
+  - linear-search
+  - big-o
+  - binary-search
+  - two-pointer
+  - sorting
+  - recursion
+  - memoization
+
+unlock_requires:
+  missions_completed: 96
+
+completion_reward_xp: 300

@@ -1,0 +1,251 @@
+# Mission 10 of Algorithms. Introduces nothing.
+# Reinforces: sorting, binary-search, big-o.
+#
+# Relief mission, and the answer to the trap planted in mission 4: sorting first is a loss
+# for one lookup and a win across many. Here the many is the argument list, so the player
+# sets up the trade with their own hands.
+#
+# `sorted` is finally allowed to be used for real, one mission after they wrote a sort by
+# hand - the same order Island 8 used for @dataclass and Island 9 for @contextmanager.
+#
+# The [3, 3, 3] case is deliberate: binary search returns *an* index of a duplicate, not
+# the first. Mission 1's linear search promised the first, and the two promises differ.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-10
+title: The indexed ledger
+track: python
+island: algorithms
+order: 10
+difficulty: moderate
+tags: [algorithms, sorting, binary-search, relief]
+xp: 30
+
+concepts:
+  - sorting
+  - binary-search
+  - big-o
+
+teaching:
+  analogy: |
+    A harbour clerk is handed a shoebox of unsorted receipts and one name to look up. He
+    tips the box out and reads until he finds it. Sorting first would have taken longer
+    than the reading did.
+
+    The next morning he is handed the same shoebox and forty names. Now he sorts it once,
+    over breakfast, and each of the forty looks costs him seconds.
+
+    Nothing about either receipt changed. What changed is how many times the question gets
+    asked, and that is the only number that decides.
+
+  explanation: |
+    Sorting is an investment. It costs O(n log n) once and it makes every later lookup
+    O(log n) instead of O(n).
+
+    Do the arithmetic on a thousand items and `k` lookups:
+
+        no sort      k * 1000            searches walk the whole list every time
+        sort first   10,000 + k * 10     paid once, then cheap forever
+
+    At `k = 1` sorting loses badly - 10,010 against 1000. At `k = 11` it breaks even. At
+    `k = 1000` it is 20,000 against a million. The break-even point is real, it moves with
+    the sizes, and "should I sort first" has no answer that does not mention `k`.
+
+    This is the shape behind every index in every database. An index is a sorted structure
+    built once, kept up to date at a cost on writes, and paid back on reads. A table you
+    write constantly and read rarely is a table where an index is a loss - the same trade,
+    at a larger scale.
+
+    One thing to notice while you are here: binary search on a list with duplicates returns
+    **an** index of a matching value, not the first one. Mission 1's linear search promised
+    the first. If the position matters and duplicates exist, the two are not interchangeable
+    and the faster one is not the one you want.
+
+  worked_example: |
+    # Looking up several words in a word list, which is not what this mission asks for
+    def spellcheck(dictionary, words):
+        known = sorted(dictionary)
+        results = []
+
+        for word in words:
+            low, high = 0, len(known) - 1
+            found = False
+            while low <= high:
+                middle = (low + high) // 2
+                if known[middle] == word:
+                    found = True
+                    break
+                if known[middle] < word:
+                    low = middle + 1
+                else:
+                    high = middle - 1
+            results.append(found)
+
+        return results
+
+
+    print(spellcheck(["sea", "ship", "anchor"], ["ship", "sky"]))     # [True, False]
+    # Sorted once, outside the loop. Sorting inside it would be the mistake mission 7 named.
+
+  key_points:
+    - "Sorting is an investment: O(n log n) once, then O(log n) per lookup instead of O(n)."
+    - "One lookup does not repay a sort. Many do. The break-even point is a real number and it depends on how many times you ask."
+    - "Sort once, outside the loop. A sort inside the loop pays the setup cost on every iteration and is a classic accidental slowdown."
+    - "This is what a database index is: a sorted structure paid for on writes and repaid on reads."
+    - "Binary search on duplicates returns an index of a match, not the first one. Linear search promises the first. They are not interchangeable."
+
+brief: |
+  Sort the ledger once, then look up several entries in it.
+
+  Write a function called lookup that takes a list of numbers - **in no particular order** -
+  and a list of needles, and returns a dict:
+
+      {"order": ..., "found": ..., "comparisons": ...}
+
+  `order` is the numbers sorted from smallest to largest. Use `sorted` this time - you
+  wrote one by hand last mission, and from here on the built-in is the right answer.
+
+  `found` is a list with one entry per needle, in the same order: the index of that needle
+  in `order`, or `-1` when it is not there.
+
+  `comparisons` is the **total** number of middle-value comparisons across all the binary
+  searches. Use mission 4's rule for each one.
+
+  Sorting is not counted. Only the searches are.
+
+  An empty needle list gives an empty `found` and 0 comparisons - the sort still happened,
+  and it bought nothing. That is the mission in one test case.
+
+signature:
+  entrypoint: lookup
+  stub: |
+    def lookup(values, needles):
+        # Sort once. Then one binary search per needle, adding up what they cost.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[5, 1, 9, 3], [3, 9]]
+      expect:
+        order: [1, 3, 5, 9]
+        found: [1, 3]
+        comparisons: 4
+    - args: [[5, 1, 9, 3], [4]]
+      expect:
+        order: [1, 3, 5, 9]
+        found: [-1]
+        comparisons: 2
+  hidden:
+    # Nothing to search in. The loop condition fails at once, so no comparison happens.
+    - args: [[], [1]]
+      expect:
+        order: []
+        found: [-1]
+        comparisons: 0
+    # Nothing asked. The sort was paid for and bought nothing at all.
+    - args: [[], []]
+      expect:
+        order: []
+        found: []
+        comparisons: 0
+    - args: [[7], [7, 8]]
+      expect:
+        order: [7]
+        found: [0, -1]
+        comparisons: 2
+    # Two needles, and the second is cheaper than the first. Position decides the cost.
+    - args: [[2, 1], [1, 2]]
+      expect:
+        order: [1, 2]
+        found: [0, 1]
+        comparisons: 3
+    # Seven entries, three lookups, seven comparisons total. Walking would have cost 21.
+    - args: [[10, 20, 30, 40, 50, 60, 70], [10, 70, 40]]
+      expect:
+        order: [10, 20, 30, 40, 50, 60, 70]
+        found: [0, 6, 3]
+        comparisons: 7
+    # Duplicates. Binary search lands on index 1, not on the first 3.
+    - args: [[3, 3, 3], [3]]
+      expect:
+        order: [3, 3, 3]
+        found: [1]
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Where does the sort go - inside the loop over the needles, or before it? Both give the
+      right answer and only one of them is the point of the mission.
+
+      And what does `comparisons` mean when there are three needles: three separate numbers,
+      or one?
+  - level: 2
+    text: |
+      `order = sorted(values)` on the first line, once.
+
+      Write mission 4's binary search as a helper that takes the sorted list and one needle,
+      and returns the index and its comparison count.
+
+      Then a loop over the needles, appending each index to `found` and adding each count to
+      a running total.
+  - level: 3
+    text: |
+      The same shape, checking several names against a sorted roster:
+
+          def roll_call(names, wanted):
+              roster = sorted(names)
+              places = []
+              looks = 0
+
+              for name in wanted:
+                  low, high = 0, len(roster) - 1
+                  where = -1
+                  while low <= high:
+                      middle = (low + high) // 2
+                      looks = looks + 1
+                      if roster[middle] == name:
+                          where = middle
+                          break
+                      if roster[middle] < name:
+                          low = middle + 1
+                      else:
+                          high = middle - 1
+                  places.append(where)
+
+              return {"roster": roster, "places": places, "looks": looks}
+
+      Yours works on numbers rather than names, and the three keys are named differently.
+
+solution: |
+  def lookup(values, needles):
+      order = sorted(values)
+      found = []
+      comparisons = 0
+
+      for needle in needles:
+          low = 0
+          high = len(order) - 1
+          where = -1
+
+          while low <= high:
+              middle = (low + high) // 2
+              comparisons = comparisons + 1
+
+              if order[middle] == needle:
+                  where = middle
+                  break
+
+              if order[middle] < needle:
+                  low = middle + 1
+              else:
+                  high = middle - 1
+
+          found.append(where)
+
+      return {"order": order, "found": found, "comparisons": comparisons}

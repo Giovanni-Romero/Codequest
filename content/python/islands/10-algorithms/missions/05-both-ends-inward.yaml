@@ -1,0 +1,242 @@
+# Mission 5 of Algorithms. Introduces: two-pointer.
+# Reinforces: binary-search, unpacking, big-o.
+#
+# The second algorithm that buys its speed with the sortedness precondition, which sets up
+# mission 6 - one relief mission can then break both of them with the same input.
+#
+# The obvious solution is a loop inside a loop: n^2 comparisons. The intended one is a
+# single pass: at most n. The counts are graded, so a nested solution fails on the numbers
+# rather than on style, and it fails on the small visible cases where the player can still
+# see why.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-05
+title: Both ends inward
+track: python
+island: algorithms
+order: 5
+difficulty: challenging
+tags: [algorithms, two-pointer, one-pass]
+xp: 45
+
+concepts:
+  - two-pointer
+
+teaching:
+  analogy: |
+    Two crates have to weigh exactly a tonne together. They are lined up along the quay,
+    lightest to heaviest.
+
+    You put a hand on the lightest and a hand on the heaviest. Too much? The heavy hand
+    steps down - no lighter crate could have saved that pairing. Too little? The light hand
+    steps up, for the mirror reason.
+
+    Neither hand ever goes back. Between them they walk the quay once, and the answer is
+    found or the hands meet.
+
+  explanation: |
+    The **two-pointer** technique replaces a nested loop with a single pass, on data that
+    is in order.
+
+        low, high = 0, len(values) - 1
+
+        while low < high:
+            total = values[low] + values[high]
+            if total == target:      found
+            elif total < target:     low = low + 1
+            else:                    high = high - 1
+
+    The reasoning that makes it correct is worth having in words, because the code looks
+    like a guess otherwise. When the total is too small, `values[low]` is the smallest
+    number left - it cannot be paired with anything smaller than `values[high]`, and
+    `values[high]` is already the largest available. So no pair using `values[low]` can
+    reach the target, and discarding it discards nothing real. The mirror argument holds on
+    the other side.
+
+    That is O(n): each step moves one pointer, and the pointers only travel toward each
+    other. The obvious alternative - every value against every later value - is O(n^2),
+    which mission 2 already counted for you.
+
+    Two details:
+
+    **`low < high`, not `<=`.** With `<=` a value can pair with itself, which is not two
+    crates.
+
+    **Exactly one pointer moves per step.** Moving both skips pairs, and skipping the right
+    pair is a wrong answer rather than a crash.
+
+    And the same precondition as binary search: this needs sorted input, and it does not
+    check.
+
+  worked_example: |
+    # Checking whether a word reads the same backwards, which is not what this asks for
+    def mirrored(word):
+        low = 0
+        high = len(word) - 1
+        looks = 0
+
+        while low < high:
+            looks = looks + 1
+            if word[low] != word[high]:
+                return {"same": False, "looks": looks}
+            low = low + 1
+            high = high - 1
+
+        return {"same": True, "looks": looks}
+
+
+    print(mirrored("radar"))     # {'same': True, 'looks': 2}
+    print(mirrored("harbour"))   # {'same': False, 'looks': 1}
+    # Five letters, two comparisons. Both hands move here, which is what this problem
+    # wants - the sum problem moves one.
+
+  key_points:
+    - "Two pointers turn a nested loop into one pass: O(n^2) becomes O(n), and the comparison count shows it."
+    - "It needs sorted data. The argument for discarding a value depends entirely on nothing smaller or larger being left."
+    - "Move exactly one pointer per step for a sum problem. Moving both skips pairs."
+    - "`while low < high`, not `<=`, or a value pairs with itself."
+    - "Fewer than two values means no pair is possible and no comparison happens. The loop condition already handles it."
+
+brief: |
+  Find two crates that weigh a target together.
+
+  Write a function called pair_sum that takes a list of numbers, **already sorted from
+  smallest to largest**, and a target, and returns a dict:
+
+      {"pair": ..., "comparisons": ...}
+
+  `pair` is a two-item list `[lighter, heavier]` whose sum is the target, or `None` when no
+  such pair exists.
+
+  `comparisons` is how many times you added two values together and checked the total.
+
+  Use exactly this rule, because the count is graded:
+
+    - `low = 0`, `high = len(values) - 1`
+    - the loop runs while `low < high`
+    - count one comparison, then add `values[low]` and `values[high]`
+    - equal to the target: stop, that is the pair
+    - less than the target: `low = low + 1`
+    - more than the target: `high = high - 1`
+
+  A list with fewer than two values gives `None` and 0 comparisons.
+
+  One pass. A loop inside a loop gives the right pair and the wrong count, and the count is
+  what this mission is about.
+
+signature:
+  entrypoint: pair_sum
+  stub: |
+    def pair_sum(values, target):
+        # Two indices, moving toward each other. Only one of them moves per step.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 4, 7, 11], 9]
+      expect:
+        pair: [2, 7]
+        comparisons: 3
+    # No pair. The pointers met, having walked the list once between them.
+    - args: [[1, 2, 4, 7, 11], 100]
+      expect:
+        pair: null
+        comparisons: 4
+  hidden:
+    # Empty: high is -1, low is 0, the loop condition is false at once.
+    - args: [[], 0]
+      expect:
+        pair: null
+        comparisons: 0
+    # One value cannot pair with itself. This is the case `<=` gets wrong.
+    - args: [[5], 5]
+      expect:
+        pair: null
+        comparisons: 0
+    - args: [[2, 3], 5]
+      expect:
+        pair: [2, 3]
+        comparisons: 1
+    - args: [[2, 3], 6]
+      expect:
+        pair: null
+        comparisons: 1
+    # The ends match immediately: one comparison over six values.
+    - args: [[1, 2, 3, 4, 5, 6], 7]
+      expect:
+        pair: [1, 6]
+        comparisons: 1
+    # Negatives, because the reasoning is about order and not about sign.
+    - args: [[-4, -1, 0, 3], -1]
+      expect:
+        pair: [-4, 3]
+        comparisons: 1
+    # Repeats. Two different positions holding the same value is a real pair.
+    - args: [[1, 1, 1, 1], 2]
+      expect:
+        pair: [1, 1]
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      When the total is too small, which of the two values can you prove is in no valid pair
+      at all - and therefore drop?
+
+      Answer that and the two `if` branches write themselves.
+  - level: 2
+    text: |
+      `low = 0`, `high = len(values) - 1`, `comparisons = 0`.
+
+      Inside `while low < high`: increment the counter, compute the total, then three
+      branches - return, `low = low + 1`, `high = high - 1`.
+
+      The `None` return is after the loop. Do not touch the counter there.
+  - level: 3
+    text: |
+      The same two hands, looking for a pair that differs by a gap:
+
+          def pair_gap(values, gap):
+              low = 0
+              high = len(values) - 1
+              looks = 0
+
+              while low < high:
+                  looks = looks + 1
+                  spread = values[high] - values[low]
+                  if spread == gap:
+                      return {"both": [values[low], values[high]], "looks": looks}
+                  if spread > gap:
+                      low = low + 1
+                  else:
+                      high = high - 1
+
+              return {"both": None, "looks": looks}
+
+      Yours adds rather than subtracts, so the two branches move the opposite pointers, and
+      the keys are named differently.
+
+solution: |
+  def pair_sum(values, target):
+      low = 0
+      high = len(values) - 1
+      comparisons = 0
+
+      while low < high:
+          comparisons = comparisons + 1
+          total = values[low] + values[high]
+
+          if total == target:
+              return {"pair": [values[low], values[high]], "comparisons": comparisons}
+
+          if total < target:
+              low = low + 1
+          else:
+              high = high - 1
+
+      return {"pair": None, "comparisons": comparisons}

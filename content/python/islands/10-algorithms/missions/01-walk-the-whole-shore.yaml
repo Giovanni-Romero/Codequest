@@ -1,0 +1,200 @@
+# Mission 1 of Algorithms. Introduces: linear-search.
+# Reinforces: for-loop, enumerate-zip.
+#
+# The honest baseline. The player already writes this loop; what is new is the second
+# return value, and the second return value is the whole island. A count is deterministic
+# on every machine and in CI, where a stopwatch is not - so from here on, every claim this
+# island makes about cost is graded as an integer.
+#
+# `values.index(needle)` would pass with a try/except and a hand-set count. That is not
+# hidden from the player; the brief says so, because a mission that pretends a shortcut
+# does not exist teaches the player to distrust the brief.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-01
+title: Walk the whole shore
+track: python
+island: algorithms
+order: 1
+difficulty: challenging
+tags: [algorithms, search, counting]
+xp: 45
+
+concepts:
+  - linear-search
+
+teaching:
+  analogy: |
+    You are looking for one particular crate on a beach, and the crates are in no order at
+    all. There is no clever move available. You start at one end and read the labels until
+    the name matches.
+
+    Two people can do this identically and one of them still learns more, because he also
+    counted how many labels he read. When somebody asks next week whether the beach is
+    getting too long to search by hand, he is the one with an answer.
+
+  explanation: |
+    A **linear search** walks a sequence from the start and stops at the first match. It is
+    the only search that works on unordered data, and it is what `x in values` and
+    `values.index(x)` do underneath - one character of Python, and a full walk of the list.
+
+    Two numbers describe it, and they are not the same number:
+
+    - **Best case:** the item is first. One comparison, whatever the list's length.
+    - **Worst case:** the item is last, or absent. One comparison per item.
+
+    The worst case is the one to design around, because it is also the *absent* case, and
+    absent is common. Note what that means: a failed search always costs the full walk. It
+    can never stop early, because "not here" is only knowable at the end.
+
+    From this mission on you will return the count alongside the answer. Counting is how
+    this island grades cost, and it works because the number is the same on your machine,
+    on mine, and on a server - which a measured second never is.
+
+  worked_example: |
+    # Finding a letter in a word, which is not what this mission asks for
+    def find_letter(word, letter):
+        looks = 0
+
+        for position, character in enumerate(word):
+            looks = looks + 1
+            if character == letter:
+                return {"at": position, "looks": looks}
+
+        return {"at": -1, "looks": looks}
+
+
+    print(find_letter("harbour", "b"))     # {'at': 3, 'looks': 4}
+    print(find_letter("harbour", "z"))     # {'at': -1, 'looks': 7}
+    # Absent cost the whole word. It always does.
+
+  key_points:
+    - "A linear search stops at the first match. Everything after it is work you did not have to do, so the `return` goes inside the loop."
+    - "The count goes up *before* the comparison, not after a match. You paid for the look whether or not it succeeded."
+    - "An absent item always costs a full walk. There is no early exit from \"not here\"."
+    - "`in` and `.index()` are linear searches wearing one character. They are not free because they are short."
+    - "On an empty list the answer is \"absent\" and the cost is zero. No loop body runs, so no comparison happens."
+
+brief: |
+  Search the shore, and say what the search cost.
+
+  Write a function called find that takes a list of values and a needle, and returns a
+  dict:
+
+      {"index": ..., "comparisons": ...}
+
+  `index` is the position of the **first** value equal to the needle, counting from 0, or
+  `-1` when the needle is not in the list.
+
+  `comparisons` is how many values you looked at. Count one for every value you compare
+  against the needle, including the one that matches. Stop the moment you find it - a
+  comparison you make after the answer is a comparison you should not have paid for.
+
+  An empty list returns -1 and 0 comparisons.
+
+  A note, so you are not guessing: `values.index(needle)` inside a `try` would give the
+  right index, and the engine cannot tell. Write the loop anyway. The loop is the thing
+  every later mission on this island is measured against.
+
+signature:
+  entrypoint: find
+  stub: |
+    def find(values, needle):
+        # One walk, one counter, and a return that does not wait for the end.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["north", "east", "south"], "east"]
+      expect:
+        index: 1
+        comparisons: 2
+    # Absent, so the walk ran to the end. This is the cost that matters.
+    - args: [["north", "east", "south"], "west"]
+      expect:
+        index: -1
+        comparisons: 3
+  hidden:
+    # Nothing to search. No comparison happens because the loop body never runs.
+    - args: [[], "a"]
+      expect:
+        index: -1
+        comparisons: 0
+    - args: [["a"], "a"]
+      expect:
+        index: 0
+        comparisons: 1
+    - args: [["a"], "b"]
+      expect:
+        index: -1
+        comparisons: 1
+    # Duplicates. The first one wins, and the walk stops there.
+    - args: [["a", "b", "a"], "a"]
+      expect:
+        index: 0
+        comparisons: 1
+    # The worst case that still succeeds: last position, full cost.
+    - args: [["a", "b", "c", "d"], "d"]
+      expect:
+        index: 3
+        comparisons: 4
+    # Numbers, because nothing in the loop cares what the values are.
+    - args: [[1, 2, 3], 3]
+      expect:
+        index: 2
+        comparisons: 3
+    # The best case: first position, one comparison, however long the list is.
+    - args: [[0, 0, 0], 0]
+      expect:
+        index: 0
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Where does the counter go up - before you compare, or after? Think about what the
+      count means for the value that does not match.
+
+      And when you find the needle, what stops the loop from carrying on?
+  - level: 2
+    text: |
+      `enumerate(values)` gives you the position and the value together, which is exactly
+      the two things you need.
+
+      Increment the counter as the first line of the body. Then compare, and `return`
+      immediately on a match - a `break` would work too, but the return is shorter.
+
+      The `-1` case is a `return` after the loop, using the same counter, which by then has
+      reached the length of the list.
+  - level: 3
+    text: |
+      The same walk, looking for the first negative number:
+
+          def first_negative(numbers):
+              looks = 0
+
+              for position, number in enumerate(numbers):
+                  looks = looks + 1
+                  if number < 0:
+                      return {"where": position, "looks": looks}
+
+              return {"where": -1, "looks": looks}
+
+      Yours compares against a needle rather than against zero, and the two keys in the dict
+      are named differently.
+
+solution: |
+  def find(values, needle):
+      comparisons = 0
+
+      for position, value in enumerate(values):
+          comparisons = comparisons + 1
+          if value == needle:
+              return {"index": position, "comparisons": comparisons}
+
+      return {"index": -1, "comparisons": comparisons}

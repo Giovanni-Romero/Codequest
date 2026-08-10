@@ -1,0 +1,242 @@
+# Missão 7 de Algoritmos. Introduz: sorting.
+# Reforça: big-o, linear-search.
+#
+# O jogador escreve uma ordenação e em seguida é orientado a não usá-la. Não é pegadinha:
+# `sorted` é C, estável e melhor que qualquer primeira tentativa - mas quem nunca escreveu
+# uma não sabe dizer o que "estável" significa, e não vai reconhecer um O(n^2) acidental
+# quando aninhar um `.index()` dentro de um laço no ano que vem.
+#
+# Selection sort foi escolhido em vez de bubble sort porque sua contagem de comparações é
+# n(n-1)/2 independentemente dos dados. Uma contagem independente dos dados é uma contagem
+# avaliável sem discussão, e é o mesmo número que a missão 2 já produziu para `pairs`.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-07
+title: Ponha em ordem
+track: python
+island: algorithms
+order: 7
+difficulty: challenging
+tags: [algorithms, sorting, complexity]
+xp: 45
+
+concepts:
+  - sorting
+
+teaching:
+  analogy: |
+    Você tem dez engradados para enfileirar por peso, e uma balança que compara dois por vez.
+
+    O método honesto mais simples: olhe os dez, ache o mais leve, ponha em primeiro. Olhe os
+    nove restantes, ache o mais leve deles, ponha em segundo. Nove comparações, depois oito,
+    depois sete - quarenta e cinco no total antes de a fila estar certa.
+
+    Quarenta e cinco para dez engradados. Cem engradados não é dez vezes isso, é cem vezes:
+    4950. Este é o número `pairs` da missão 2 chegando por outro caminho, e é o motivo de
+    ninguém ordenar um armazém assim.
+
+  explanation: |
+    A **ordenação por seleção** repetidamente acha o menor do que sobrou e o põe no lugar:
+
+        for i in range(len(values)):
+            lowest = i
+            for j in range(i + 1, len(values)):
+                if values[j] < values[lowest]:
+                    lowest = j
+            values[i], values[lowest] = values[lowest], values[i]
+
+    A contagem de comparações é `n * (n - 1) / 2` - **a mesma para qualquer entrada**.
+    Ordenada, invertida ou embaralhada, a ordenação por seleção faz trabalho idêntico,
+    porque nunca para antes. Isso faz dela uma coisa limpa de contar e uma coisa ruim de
+    usar em produção.
+
+    A ordenação do próprio Python é O(n log n): 10 itens em cerca de 33 comparações em vez de
+    45, 1000 em cerca de 10.000 em vez de 500.000. Ela também é escrita em C e é **estável** -
+    itens que comparam iguais mantêm a ordem em que chegaram. Estabilidade é o que permite
+    ordenar por duas chaves em duas passadas: ordene por nome, depois por data, e dentro de
+    cada data os nomes continuam em ordem.
+
+    Duas coisas da biblioteca padrão que as pessoas erram:
+
+        values.sort()       ordena no lugar, devolve None
+        sorted(values)      devolve uma lista nova, deixa a original em paz
+
+    `x = values.sort()` é um jeito comum de acabar segurando `None`.
+
+    E o hábito que vale tirar da contagem: ordenar não é de graça, então ordenar **dentro**
+    de um laço costuma ser erro. Ordene uma vez, fora.
+
+  worked_example: |
+    # Ordenação por seleção sobre letras, que não é o que esta missão pede
+    def ordered_letters(word):
+        letters = list(word)
+        looks = 0
+
+        for i in range(len(letters)):
+            smallest = i
+            for j in range(i + 1, len(letters)):
+                looks = looks + 1
+                if letters[j] < letters[smallest]:
+                    smallest = j
+            letters[i], letters[smallest] = letters[smallest], letters[i]
+
+        return {"letters": letters, "looks": looks}
+
+
+    print(ordered_letters("dab"))     # {'letters': ['a', 'b', 'd'], 'looks': 3}
+    print(ordered_letters("abd"))     # {'letters': ['a', 'b', 'd'], 'looks': 3}
+    # Já estava ordenada, e fez as mesmas três comparações. Ela nunca confere.
+
+  key_points:
+    - "A ordenação por seleção faz n(n-1)/2 comparações em qualquer entrada, ordenada ou não. Ela não tem melhor caso porque nunca para antes."
+    - "`sorted(values)` devolve uma lista nova; `values.sort()` devolve None e altera. `x = values.sort()` deixa x com None."
+    - "A ordenação do Python é O(n log n) e escrita em C. Ordenações à mão são para aprender, não para produção."
+    - "Uma ordenação estável mantém itens iguais na ordem original, e é isso que permite ordenar por duas chaves em duas passadas."
+    - "Ordenar dentro de um laço transforma um custo O(n log n) em O(n^2 log n). Ordene uma vez, fora do laço."
+
+brief: |
+  Ordene à mão, conte quanto custou, e depois confira contra a biblioteca padrão.
+
+  Escreva uma função chamada order que recebe uma lista de números e devolve um dict:
+
+      {"order": ..., "comparisons": ..., "same": ...}
+
+  `order` são os números ordenados do menor para o maior, como uma lista nova. Não modifique
+  a lista que você recebeu.
+
+  Ordene com **ordenação por seleção**, exatamente assim, porque a contagem é avaliada:
+
+    - para cada posição `i` do começo ao fim, suponha que o valor em `i` é o menor do que
+      resta
+    - olhe cada posição `j` depois de `i`; conte uma comparação para cada; se o valor de lá
+      for menor, ele passa a ser o novo menor
+    - quando a varredura interna terminar, troque o valor em `i` com o menor encontrado
+
+  `comparisons` é essa contagem.
+
+  `same` é `True` quando a sua lista ordenada é igual a `sorted(values)`. Você pode usar
+  `sorted` para este único campo, e só para ele - ele está aí para você ver que a embutida
+  concorda com você, antes de ser orientado a usá-la daqui em diante.
+
+  Uma lista vazia dá `[]`, 0 comparações e `True`.
+
+signature:
+  entrypoint: order
+  stub: |
+    def order(values):
+        # Copie a lista primeiro. Depois: posição externa, busca interna, troca.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # Quatro números: 3 + 2 + 1 = 6 comparações.
+    - args: [[5, 2, 9, 1]]
+      expect:
+        order: [1, 2, 5, 9]
+        comparisons: 6
+        same: true
+    # Já ordenada, e a contagem não muda. A ordenação por seleção não tem melhor caso.
+    - args: [[1, 2, 3]]
+      expect:
+        order: [1, 2, 3]
+        comparisons: 3
+        same: true
+  hidden:
+    # Vazia. O laço externo nunca roda.
+    - args: [[]]
+      expect:
+        order: []
+        comparisons: 0
+        same: true
+    # Um item. O laço externo roda uma vez e o interno nenhuma.
+    - args: [[4]]
+      expect:
+        order: [4]
+        comparisons: 0
+        same: true
+    # Todos iguais. Três comparações, nenhuma troca que mude algo.
+    - args: [[3, 3, 3]]
+      expect:
+        order: [3, 3, 3]
+        comparisons: 3
+        same: true
+    - args: [[2, 1]]
+      expect:
+        order: [1, 2]
+        comparisons: 1
+        same: true
+    # Negativos e um zero, porque a comparação é só `<`.
+    - args: [[-1, 5, -9, 0]]
+      expect:
+        order: [-9, -1, 0, 5]
+        comparisons: 6
+        same: true
+    # Seis itens invertidos: o pior arranjo, e ainda 15 - o mesmo de qualquer outro.
+    - args: [[10, 9, 8, 7, 6, 5]]
+      expect:
+        order: [5, 6, 7, 8, 9, 10]
+        comparisons: 15
+        same: true
+
+hints:
+  - level: 1
+    text: |
+      A contagem é a mesma para uma lista ordenada e para uma embaralhada. Se a sua difere
+      entre os dois casos visíveis, você acrescentou uma saída antecipada que o enunciado não
+      pediu.
+
+      E antes de tudo: como ordenar uma cópia sem tocar na original?
+  - level: 2
+    text: |
+      `order = list(values)` te dá a cópia.
+
+      Externo: `for i in range(len(order))`. Guarde `lowest = i`. Interno:
+      `for j in range(i + 1, len(order))`, conte, compare `order[j] < order[lowest]`,
+      atualize `lowest`.
+
+      A troca é uma linha: `order[i], order[lowest] = order[lowest], order[i]`.
+      Desempacotamento, da Ilha 9.
+  - level: 3
+    text: |
+      Os mesmos dois laços, achando o maior primeiro em vez do menor:
+
+          def descending(numbers):
+              result = list(numbers)
+              looks = 0
+
+              for i in range(len(result)):
+                  biggest = i
+                  for j in range(i + 1, len(result)):
+                      looks = looks + 1
+                      if result[j] > result[biggest]:
+                          biggest = j
+                  result[i], result[biggest] = result[biggest], result[i]
+
+              return {"result": result, "looks": looks}
+
+      A sua vai no sentido contrário, e devolve um terceiro campo comparando-se com a
+      embutida.
+
+solution: |
+  def order(values):
+      result = list(values)
+      comparisons = 0
+
+      for i in range(len(result)):
+          lowest = i
+          for j in range(i + 1, len(result)):
+              comparisons = comparisons + 1
+              if result[j] < result[lowest]:
+                  lowest = j
+          result[i], result[lowest] = result[lowest], result[i]
+
+      return {
+          "order": result,
+          "comparisons": comparisons,
+          "same": result == sorted(values),
+      }

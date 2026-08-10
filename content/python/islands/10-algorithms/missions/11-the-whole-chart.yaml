@@ -1,0 +1,298 @@
+# Mission 11 of Algorithms. Introduces nothing. Closing mission.
+# Reinforces: all seven concepts of the island.
+#
+# Combine, do not learn. Every piece was taught earlier: sort once, halve the search,
+# walk two pointers inward, and a recursion that only finishes because it remembers.
+#
+# The ordering is the only real question and it is not stated: the two-pointer walk and
+# the binary search both need the sorted list, so the sort has to come first, and `ways`
+# is counted over the sorted list's length - which is the same length as the input, so a
+# player who gets the order wrong gets the right answer anyway on that field. That is
+# deliberate. Not every ordering constraint in real code is load-bearing, and noticing
+# which ones are is the skill.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-11
+title: The whole chart
+track: python
+island: algorithms
+order: 11
+difficulty: challenging
+tags: [algorithms, closing, search, recursion]
+xp: 45
+
+concepts:
+  - linear-search
+  - big-o
+  - binary-search
+  - two-pointer
+  - sorting
+  - recursion
+  - memoization
+
+teaching:
+  analogy: |
+    The chart room, at the end of a long week. The ledger gets sorted, one entry gets
+    found, two crates get matched, and somebody works out how many ways the crew can climb
+    the harbour stair.
+
+    Nothing about today is new. Today the chart room runs.
+
+  explanation: |
+    This mission introduces nothing. It asks you to put four algorithms in a row without
+    being told which order they go in, which is the part no panel can teach.
+
+    The short version of each decision, for the next time you meet it.
+
+    **Walk or halve?** Halving needs sorted data, and sorting costs more than one walk. One
+    lookup on unsorted data: walk. Many lookups: sort once and halve. The number of lookups
+    is the whole argument.
+
+    **Nested loop or two pointers?** If the data is ordered and you are looking for a pair
+    with a property, two pointers turn O(n^2) into O(n). If the data is unordered and
+    sorting is not available, the nested loop is honest.
+
+    **Recursion or a loop?** If the shape has unknown depth or branches, recursion. If it is
+    a straight walk, a loop is faster and cannot hit a depth limit.
+
+    **Cache or not?** Only when the same arguments come back. A recursion that branches into
+    the same subproblem repeatedly is the case that turns impossible into instant;
+    everything else is memory for nothing.
+
+    None of the four has an answer that holds everywhere. They have an answer here, and
+    being able to say why is what the island was for.
+
+  worked_example: |
+    # The same four pieces, on a library's catalogue
+    def catalogue(years, wanted):
+        shelf = sorted(years)
+
+        low, high = 0, len(shelf) - 1
+        at = -1
+        while low <= high:
+            middle = (low + high) // 2
+            if shelf[middle] == wanted:
+                at = middle
+                break
+            if shelf[middle] < wanted:
+                low = middle + 1
+            else:
+                high = middle - 1
+
+        return {"shelf": shelf, "at": at}
+
+
+    print(catalogue([1990, 1971, 2004], 1990))     # {'shelf': [1971, 1990, 2004], 'at': 1}
+    # Sorted once, then halved. The two-pointer walk and the cached recursion are yours.
+
+  key_points:
+    - "Sort once, at the top, when more than one later step needs the order. Both the search and the pointer walk depend on it here."
+    - "Two pointers only work on ordered data, and the argument for discarding a value is what breaks without it."
+    - "Cache a recursion when the same arguments come back. Fibonacci-shaped branching is the case; a straight walk is not."
+    - "Counting comparisons is how this island proved every claim it made. A count is the same on every machine, and a measured second is not."
+    - "The class matters when the input grows. On four items every algorithm on this island is instant, and choosing between them is about the day the four becomes forty thousand."
+
+brief: |
+  Run the whole chart room.
+
+  Write a function called chart that takes a list of numbers - **in no particular order** -
+  a needle and a target, and returns a dict:
+
+      {"order": ..., "index": ..., "comparisons": ..., "pair": ..., "ways": ...}
+
+  `order` is the numbers sorted from smallest to largest. Use `sorted`.
+
+  `index` is the position of the needle in `order`, found with a **binary search**, or `-1`
+  when it is not there. Use mission 4's rule: `low = 0`, `high = len(order) - 1`, loop while
+  `low <= high`, middle at `(low + high) // 2`, move to `middle + 1` or `middle - 1`.
+
+  `comparisons` is how many middle values that search looked at.
+
+  `pair` is a two-item list `[lighter, heavier]` from `order` that sums to the target, found
+  with the **two-pointer** walk from mission 5, or `None` when there is no such pair. This
+  one is not counted.
+
+  `ways` is how many ways a crew can climb a stair of `len(order)` steps, taking either 1
+  or 2 steps at a time. A stair of 0 steps has 1 way - stay put. A stair of 1 has 1. A
+  stair of 2 has 2, and after that each number is the sum of the two before it. **Work it
+  out with a cached recursion**, the way you wrote mission 9.
+
+  An empty list gives `[]`, -1, 0 comparisons, `None`, and 1 way.
+
+signature:
+  entrypoint: chart
+  stub: |
+    def chart(values, needle, target):
+        # Sort first - two of the four steps below cannot run without it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 3000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[7, 2, 5, 1], 5, 8]
+      expect:
+        order: [1, 2, 5, 7]
+        index: 2
+        comparisons: 2
+        pair: [1, 7]
+        ways: 5
+    # Needle absent and no pair reaches the target. The other three fields do not care.
+    - args: [[7, 2, 5, 1], 4, 100]
+      expect:
+        order: [1, 2, 5, 7]
+        index: -1
+        comparisons: 2
+        pair: null
+        ways: 5
+  hidden:
+    # Empty. Every loop condition fails at once, and a stair of no steps still has one way.
+    - args: [[], 1, 0]
+      expect:
+        order: []
+        index: -1
+        comparisons: 0
+        pair: null
+        ways: 1
+    # One value: found in one comparison, and it cannot pair with itself.
+    - args: [[3], 3, 6]
+      expect:
+        order: [3]
+        index: 0
+        comparisons: 1
+        pair: null
+        ways: 1
+    # Ten values. Three comparisons for the search, and 89 ways up the stair.
+    - args: [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 1, 11]
+      expect:
+        order: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        index: 0
+        comparisons: 3
+        pair: [1, 10]
+        ways: 89
+    # Duplicates pair with each other, being two different positions.
+    - args: [[4, 4], 4, 8]
+      expect:
+        order: [4, 4]
+        index: 0
+        comparisons: 1
+        pair: [4, 4]
+        ways: 2
+    # Negatives, and a target of zero that is not the same thing as no target.
+    - args: [[-5, 0, 5], 0, 0]
+      expect:
+        order: [-5, 0, 5]
+        index: 1
+        comparisons: 1
+        pair: [-5, 5]
+        ways: 3
+    # Reversed input, so the sort is doing real work before anything else can run.
+    - args: [[9, 8, 7, 6, 5, 4, 3, 2, 1], 9, 10]
+      expect:
+        order: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        index: 8
+        comparisons: 4
+        pair: [1, 9]
+        ways: 55
+
+hints:
+  - level: 1
+    text: |
+      Work out the order of operations before writing anything. Which of the four steps can
+      run on the list as it arrived, and which cannot?
+
+      Then check `ways` against the visible cases. Four values, five ways. Where have you
+      seen 1, 1, 2, 3, 5 before on this island?
+  - level: 2
+    text: |
+      Four pieces, and every one of them is copied from an earlier mission with different
+      names.
+
+      `sorted` first. Then mission 4's loop over `order`, keeping its comparison count.
+      Then mission 5's two pointers over `order`, count discarded this time. Then mission
+      9's cached recursion, called on `len(order)`.
+
+      `ways` is Fibonacci with the base cases moved: `ways(0)` and `ways(1)` are both 1.
+  - level: 3
+    text: |
+      The last piece, since the other three are in missions 4, 5 and 9:
+
+          def climb(steps):
+              seen = {}
+
+              def count(remaining):
+                  if remaining in seen:
+                      return seen[remaining]
+                  if remaining < 2:
+                      seen[remaining] = 1
+                  else:
+                      seen[remaining] = count(remaining - 1) + count(remaining - 2)
+                  return seen[remaining]
+
+              return count(steps)
+
+
+          print(climb(4))     # 5
+
+      Yours is called on the length of the sorted list, and its answer is one of five fields
+      rather than the whole return.
+
+solution: |
+  def chart(values, needle, target):
+      order = sorted(values)
+
+      low = 0
+      high = len(order) - 1
+      index = -1
+      comparisons = 0
+
+      while low <= high:
+          middle = (low + high) // 2
+          comparisons = comparisons + 1
+
+          if order[middle] == needle:
+              index = middle
+              break
+
+          if order[middle] < needle:
+              low = middle + 1
+          else:
+              high = middle - 1
+
+      left = 0
+      right = len(order) - 1
+      pair = None
+
+      while left < right:
+          total = order[left] + order[right]
+          if total == target:
+              pair = [order[left], order[right]]
+              break
+          if total < target:
+              left = left + 1
+          else:
+              right = right - 1
+
+      seen = {}
+
+      def ways(steps):
+          if steps in seen:
+              return seen[steps]
+
+          if steps < 2:
+              seen[steps] = 1
+          else:
+              seen[steps] = ways(steps - 1) + ways(steps - 2)
+
+          return seen[steps]
+
+      return {
+          "order": order,
+          "index": index,
+          "comparisons": comparisons,
+          "pair": pair,
+          "ways": ways(len(order)),
+      }

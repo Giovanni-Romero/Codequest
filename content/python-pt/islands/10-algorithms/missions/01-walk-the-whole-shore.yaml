@@ -1,0 +1,200 @@
+# Missão 1 de Algoritmos. Introduz: linear-search.
+# Reforça: for-loop, enumerate-zip.
+#
+# A linha de base honesta. O jogador já escreve esse laço; o que é novo é o segundo valor
+# de retorno, e o segundo valor de retorno é a ilha inteira. Uma contagem é determinística
+# em qualquer máquina e no CI, um cronômetro não é - então daqui em diante toda afirmação
+# sobre custo é avaliada como um inteiro.
+#
+# `values.index(needle)` passaria com um try/except e uma contagem posta à mão. Isso não é
+# escondido do jogador; o enunciado diz, porque uma missão que finge que o atalho não
+# existe ensina o jogador a desconfiar do enunciado.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-01
+title: Percorra a praia inteira
+track: python
+island: algorithms
+order: 1
+difficulty: challenging
+tags: [algorithms, search, counting]
+xp: 45
+
+concepts:
+  - linear-search
+
+teaching:
+  analogy: |
+    Você procura um engradado específico numa praia, e os engradados não estão em ordem
+    nenhuma. Não há jogada esperta disponível. Você começa por uma ponta e lê os rótulos
+    até o nome bater.
+
+    Duas pessoas fazem isso de forma idêntica e uma delas ainda assim aprende mais, porque
+    também contou quantos rótulos leu. Quando alguém perguntar semana que vem se a praia
+    está ficando comprida demais para busca à mão, é ela quem tem resposta.
+
+  explanation: |
+    Uma **busca linear** percorre uma sequência do começo e para no primeiro acerto. É a
+    única busca que funciona em dados sem ordem, e é o que `x in values` e `values.index(x)`
+    fazem por baixo - um caractere de Python, e uma caminhada completa pela lista.
+
+    Dois números a descrevem, e não são o mesmo número:
+
+    - **Melhor caso:** o item é o primeiro. Uma comparação, seja qual for o tamanho.
+    - **Pior caso:** o item é o último, ou não está. Uma comparação por item.
+
+    O pior caso é aquele em torno do qual se projeta, porque ele também é o caso *ausente*,
+    e ausente é comum. Repare no que isso significa: uma busca que falha sempre custa a
+    caminhada inteira. Ela nunca pode parar antes, porque "não está aqui" só se sabe no fim.
+
+    Desta missão em diante você devolve a contagem junto da resposta. Contar é como esta
+    ilha avalia custo, e funciona porque o número é o mesmo na sua máquina, na minha e num
+    servidor - o que um segundo medido nunca é.
+
+  worked_example: |
+    # Achar uma letra numa palavra, que não é o que esta missão pede
+    def find_letter(word, letter):
+        looks = 0
+
+        for position, character in enumerate(word):
+            looks = looks + 1
+            if character == letter:
+                return {"at": position, "looks": looks}
+
+        return {"at": -1, "looks": looks}
+
+
+    print(find_letter("harbour", "b"))     # {'at': 3, 'looks': 4}
+    print(find_letter("harbour", "z"))     # {'at': -1, 'looks': 7}
+    # A ausência custou a palavra inteira. Ela sempre custa.
+
+  key_points:
+    - "Uma busca linear para no primeiro acerto. Tudo depois dele é trabalho que você não precisava fazer, então o `return` vai dentro do laço."
+    - "A contagem sobe *antes* da comparação, não depois de um acerto. Você pagou pela olhada tendo ela dado certo ou não."
+    - "Um item ausente sempre custa a caminhada inteira. Não existe saída antecipada de \"não está aqui\"."
+    - "`in` e `.index()` são buscas lineares vestidas de um caractere. Não são de graça por serem curtas."
+    - "Numa lista vazia a resposta é \"ausente\" e o custo é zero. O corpo do laço não roda, então nenhuma comparação acontece."
+
+brief: |
+  Busque na praia, e diga quanto a busca custou.
+
+  Escreva uma função chamada find que recebe uma lista de valores e uma agulha, e devolve
+  um dict:
+
+      {"index": ..., "comparisons": ...}
+
+  `index` é a posição do **primeiro** valor igual à agulha, contando de 0, ou `-1` quando a
+  agulha não está na lista.
+
+  `comparisons` é quantos valores você olhou. Conte um para cada valor comparado com a
+  agulha, inclusive o que bateu. Pare no instante em que achar - uma comparação feita
+  depois da resposta é uma comparação que você não devia ter pago.
+
+  Uma lista vazia devolve -1 e 0 comparações.
+
+  Um aviso, para você não ficar adivinhando: `values.index(needle)` dentro de um `try`
+  daria o índice certo, e o motor não tem como perceber. Escreva o laço assim mesmo. O laço
+  é aquilo contra o qual todas as missões seguintes desta ilha são medidas.
+
+signature:
+  entrypoint: find
+  stub: |
+    def find(values, needle):
+        # Uma caminhada, um contador, e um return que não espera o fim.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["north", "east", "south"], "east"]
+      expect:
+        index: 1
+        comparisons: 2
+    # Ausente, então a caminhada foi até o fim. Este é o custo que importa.
+    - args: [["north", "east", "south"], "west"]
+      expect:
+        index: -1
+        comparisons: 3
+  hidden:
+    # Nada a buscar. Nenhuma comparação acontece porque o corpo do laço não roda.
+    - args: [[], "a"]
+      expect:
+        index: -1
+        comparisons: 0
+    - args: [["a"], "a"]
+      expect:
+        index: 0
+        comparisons: 1
+    - args: [["a"], "b"]
+      expect:
+        index: -1
+        comparisons: 1
+    # Duplicatas. O primeiro vence, e a caminhada para ali.
+    - args: [["a", "b", "a"], "a"]
+      expect:
+        index: 0
+        comparisons: 1
+    # O pior caso que ainda dá certo: última posição, custo cheio.
+    - args: [["a", "b", "c", "d"], "d"]
+      expect:
+        index: 3
+        comparisons: 4
+    # Números, porque nada no laço se importa com o que os valores são.
+    - args: [[1, 2, 3], 3]
+      expect:
+        index: 2
+        comparisons: 3
+    # O melhor caso: primeira posição, uma comparação, por mais longa que a lista seja.
+    - args: [[0, 0, 0], 0]
+      expect:
+        index: 0
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Onde o contador sobe - antes de comparar, ou depois? Pense no que a contagem significa
+      para o valor que não bate.
+
+      E quando você acha a agulha, o que impede o laço de seguir em frente?
+  - level: 2
+    text: |
+      `enumerate(values)` te dá a posição e o valor juntos, que é exatamente as duas coisas
+      de que você precisa.
+
+      Incremente o contador na primeira linha do corpo. Depois compare, e dê `return` na
+      hora em que bater - um `break` também funcionaria, mas o return é mais curto.
+
+      O caso `-1` é um `return` depois do laço, usando o mesmo contador, que a essa altura
+      chegou ao tamanho da lista.
+  - level: 3
+    text: |
+      A mesma caminhada, procurando o primeiro número negativo:
+
+          def first_negative(numbers):
+              looks = 0
+
+              for position, number in enumerate(numbers):
+                  looks = looks + 1
+                  if number < 0:
+                      return {"where": position, "looks": looks}
+
+              return {"where": -1, "looks": looks}
+
+      A sua compara contra uma agulha em vez de contra zero, e as duas chaves do dict têm
+      nomes diferentes.
+
+solution: |
+  def find(values, needle):
+      comparisons = 0
+
+      for position, value in enumerate(values):
+          comparisons = comparisons + 1
+          if value == needle:
+              return {"index": position, "comparisons": comparisons}
+
+      return {"index": -1, "comparisons": comparisons}

@@ -1,0 +1,243 @@
+# Missão 6 de Algoritmos. Não introduz nada.
+# Reforça: binary-search, linear-search, big-o.
+#
+# Missão de alívio que ensina quebrando algo. As duas buscas das missões 1 e 4, lado a
+# lado, sobre entrada às vezes desordenada - e a falha é o ponto: a busca binária não
+# levanta erro, ela responde errado e com confiança.
+#
+# O caso [3, 1, 2] com agulha 2 é proposital. A busca binária acerta em entrada
+# desordenada, por sorte. "Às vezes correto" é pior que "sempre errado" e o jogador deve
+# encontrar isso aqui e não num sistema em produção.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-06
+title: A suposição de ordem
+track: python
+island: algorithms
+order: 6
+difficulty: moderate
+tags: [algorithms, preconditions, relief]
+xp: 30
+
+concepts:
+  - binary-search
+  - linear-search
+
+teaching:
+  analogy: |
+    O truque do livro-razão da missão 4 só funcionou porque o livro estava em ordem de data.
+    Abra um livro embaralhado no meio, veja uma data de março, e conclua que tudo antes dela
+    é anterior - e você acabou de jogar fora meio livro à toa.
+
+    Você não vai perceber. O livro não reclama. Você simplesmente vai voltar e dizer que o
+    lançamento não está lá.
+
+    Uma ferramenta com pré-condição e sem como verificá-la é uma ferramenta que mente
+    baixinho.
+
+  explanation: |
+    A busca binária tem uma **pré-condição**: os dados precisam estar ordenados. Nada impõe
+    isso.
+
+    Rode-a em dados desordenados e não há exceção, não há aviso, não há pista. Ela devolve
+    `-1` para algo que está na lista, ou um índice que por acaso está certo, e os dois são
+    idênticos para quem chamou.
+
+    Verificar a pré-condição custaria O(n) - uma caminhada completa - que é mais do que a
+    busca O(log n) que ela protegeria. Então a verificação não é feita, e a responsabilidade
+    passa para você. Essa troca aparece o tempo todo: a operação rápida supõe alguma coisa, e
+    a suposição custa mais para verificar do que a operação custa para rodar.
+
+    Repare no desfecho pior desta missão: às vezes a busca desordenada está **certa**. Isso
+    não é tranquilizador, é o caso perigoso. Um bug que falha sempre é corrigido na primeira
+    tarde. Um bug que falha em algumas entradas vai para produção, e volta seis meses depois
+    como "só acontece com o arquivo grande".
+
+    A busca linear não tem pré-condição. Ela é mais lenta e está sempre certa, e há dias em
+    que essa é a troca melhor. Correção sobre dados desconhecidos vale mais que velocidade
+    sobre dados a respeito dos quais você estava errado.
+
+  worked_example: |
+    # A mesma falha com outro par de ferramentas
+    def halved(values, needle):
+        low, high = 0, len(values) - 1
+        while low <= high:
+            middle = (low + high) // 2
+            if values[middle] == needle:
+                return middle
+            if values[middle] < needle:
+                low = middle + 1
+            else:
+                high = middle - 1
+        return -1
+
+
+    print(halved([10, 20, 30], 10))     # 0    ordenada, correto
+    print(halved([30, 20, 10], 10))     # -1   desordenada, e o 10 está bem ali no índice 2
+    # Sem erro. Sem aviso. Só uma resposta errada de cara séria.
+
+  key_points:
+    - "A busca binária tem uma pré-condição e nenhum jeito de impô-la. Entrada desordenada dá resposta errada, nunca exceção."
+    - "Verificar a ordenação custa O(n), mais que a busca O(log n). Por isso ninguém verifica, e por isso a conta é sua."
+    - "Entrada desordenada às vezes dá a resposta certa por acaso. Correção intermitente é mais difícil de achar que falha constante, não mais fácil."
+    - "A busca linear não tem pré-condição. Mais lenta e sempre certa é uma troca real, e às vezes a correta."
+    - "Quando duas implementações da mesma pergunta discordam, pelo menos uma quebrou uma regra que nunca anunciou."
+
+brief: |
+  Rode as duas buscas lado a lado e veja se elas concordam.
+
+  Escreva uma função chamada check que recebe uma lista de valores - que pode ou não estar
+  ordenada - e uma agulha, e devolve um dict:
+
+      {"binary": ..., "linear": ..., "agree": ...}
+
+  `binary` é o resultado de uma busca binária sobre a lista exatamente como veio: o índice
+  da agulha ou `-1`. Use a regra da missão 4 - `low = 0`, `high = len(values) - 1`, laço
+  enquanto `low <= high`, meio em `(low + high) // 2`, ir para `middle + 1` ou `middle - 1`.
+  **Não** ordene a lista antes, e não verifique se ela está ordenada.
+
+  `linear` é o resultado de uma busca linear sobre a mesma lista: o índice do **primeiro**
+  valor igual à agulha, ou `-1`.
+
+  `agree` é `True` quando os dois são o mesmo número, e `False` quando não são.
+
+  Sem contagem de comparações desta vez. O número interessante é se as duas respostas batem.
+
+  Entrada ordenada sempre concorda. Entrada desordenada às vezes concorda, e é essa parte
+  que vale sentar e pensar.
+
+signature:
+  entrypoint: check
+  stub: |
+    def check(values, needle):
+        # Duas buscas sobre a mesma lista, nenhuma consertando o problema da outra.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # Ordenada. As duas acham, as duas concordam, está tudo bem.
+    - args: [[1, 3, 5, 7, 9], 7]
+      expect:
+        binary: 3
+        linear: 3
+        agree: true
+    # Os mesmos cinco números, invertidos. O 7 está no índice 1 e a binária diz que sumiu.
+    - args: [[9, 7, 5, 3, 1], 7]
+      expect:
+        binary: -1
+        linear: 1
+        agree: false
+  hidden:
+    # Vazia. As duas dizem ausente, e concordam nisso.
+    - args: [[], 1]
+      expect:
+        binary: -1
+        linear: -1
+        agree: true
+    - args: [[5], 5]
+      expect:
+        binary: 0
+        linear: 0
+        agree: true
+    - args: [[5], 4]
+      expect:
+        binary: -1
+        linear: -1
+        agree: true
+    # Dois valores na ordem errada já bastam para quebrar.
+    - args: [[2, 1], 1]
+      expect:
+        binary: -1
+        linear: 1
+        agree: false
+    # Um valor fora de lugar no fim, e a busca nunca olha lá.
+    - args: [[10, 20, 30, 1], 1]
+      expect:
+        binary: -1
+        linear: 3
+        agree: false
+    # Desordenada, e a binária acerta assim mesmo. Este é o perigoso.
+    - args: [[3, 1, 2], 2]
+      expect:
+        binary: 2
+        linear: 2
+        agree: true
+    # Ordenada, pior caso para as duas. Ainda concordando.
+    - args: [[1, 2, 3, 4, 5, 6, 7, 8], 8]
+      expect:
+        binary: 7
+        linear: 7
+        agree: true
+
+hints:
+  - level: 1
+    text: |
+      Nada novo a inventar. O laço da missão 4 e o laço da missão 1, os dois devolvendo só um
+      índice desta vez, e uma comparação entre as duas respostas.
+
+      A tentação é ordenar a lista antes da busca binária. Não ordene - a missão existe para
+      te mostrar o que acontece quando ninguém ordena.
+  - level: 2
+    text: |
+      Escreva as duas buscas dentro de `check`, ou como duas funções auxiliares acima dela -
+      tanto faz.
+
+      Tire os contadores de comparação; aqui só o índice importa.
+
+      `agree` é `binary == linear`, que já é um bool. Não precisa de `if`.
+  - level: 3
+    text: |
+      O mesmo par, sobre palavras em vez de números:
+
+          def compare_ways(words, wanted):
+              low, high = 0, len(words) - 1
+              fast = -1
+              while low <= high:
+                  middle = (low + high) // 2
+                  if words[middle] == wanted:
+                      fast = middle
+                      break
+                  if words[middle] < wanted:
+                      low = middle + 1
+                  else:
+                      high = middle - 1
+
+              slow = -1
+              for position, word in enumerate(words):
+                  if word == wanted:
+                      slow = position
+                      break
+
+              return {"fast": fast, "slow": slow, "match": fast == slow}
+
+      A sua funciona com quaisquer valores em vez de palavras, e as três chaves têm outros
+      nomes.
+
+solution: |
+  def check(values, needle):
+      low = 0
+      high = len(values) - 1
+      binary = -1
+
+      while low <= high:
+          middle = (low + high) // 2
+          if values[middle] == needle:
+              binary = middle
+              break
+          if values[middle] < needle:
+              low = middle + 1
+          else:
+              high = middle - 1
+
+      linear = -1
+      for position, value in enumerate(values):
+          if value == needle:
+              linear = position
+              break
+
+      return {"binary": binary, "linear": linear, "agree": binary == linear}

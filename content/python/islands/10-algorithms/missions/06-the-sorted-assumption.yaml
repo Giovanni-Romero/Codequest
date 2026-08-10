@@ -1,0 +1,240 @@
+# Mission 6 of Algorithms. Introduces nothing.
+# Reinforces: binary-search, linear-search, big-o.
+#
+# Relief mission that teaches by breaking something. Both searches from missions 1 and 4,
+# side by side, on input that is sometimes unsorted - and the failure is the point:
+# binary search does not raise, it answers wrongly and confidently.
+#
+# The case [3, 1, 2] with needle 2 is deliberate. Binary search gets it right on unsorted
+# input, by luck. "Sometimes correct" is worse than "always wrong" and the player should
+# meet that here rather than in a live system.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-06
+title: The sorted assumption
+track: python
+island: algorithms
+order: 6
+difficulty: moderate
+tags: [algorithms, preconditions, relief]
+xp: 30
+
+concepts:
+  - binary-search
+  - linear-search
+
+teaching:
+  analogy: |
+    The ledger trick from mission 4 only worked because the ledger was in date order. Open
+    a shuffled ledger in the middle, see a date from March, and conclude that everything
+    before it is earlier - and you have just thrown away half a book for no reason at all.
+
+    You will not notice. The book does not object. You will simply come back and say the
+    entry is not there.
+
+    A tool with a precondition and no way to check it is a tool that lies quietly.
+
+  explanation: |
+    Binary search has a **precondition**: the data must be sorted. Nothing enforces it.
+
+    Run it on unsorted data and there is no exception, no warning, no clue. It returns
+    `-1` for something that is in the list, or an index that happens to be right, and both
+    look identical to a caller.
+
+    Verifying the precondition would cost O(n) - a full walk - which is more than the
+    O(log n) search it protects. So the check is not done, and the responsibility moves to
+    you. This trade appears constantly: the fast operation assumes something, and the
+    assumption costs more to verify than the operation costs to run.
+
+    Watch for the worse outcome in this mission: sometimes the unsorted search is
+    **right**. That is not reassuring, it is the dangerous case. A bug that fails every
+    time gets fixed on the first afternoon. A bug that fails on some inputs ships, and
+    comes back six months later as "it only happens with the big file".
+
+    The linear search has no precondition. It is slower and it is always right, and there
+    are days when that is the better trade. Correctness on unknown data beats speed on data
+    you were wrong about.
+
+  worked_example: |
+    # The same failure with a different pair of tools
+    def halved(values, needle):
+        low, high = 0, len(values) - 1
+        while low <= high:
+            middle = (low + high) // 2
+            if values[middle] == needle:
+                return middle
+            if values[middle] < needle:
+                low = middle + 1
+            else:
+                high = middle - 1
+        return -1
+
+
+    print(halved([10, 20, 30], 10))     # 0    sorted, correct
+    print(halved([30, 20, 10], 10))     # -1   unsorted, and 10 is right there at index 2
+    # No error. No warning. Just a wrong answer with a straight face.
+
+  key_points:
+    - "Binary search has a precondition and no way to enforce it. Unsorted input gives a wrong answer, never an exception."
+    - "Checking sortedness costs O(n), more than the O(log n) search. That is why nobody checks, and why it is on you."
+    - "Unsorted input sometimes gives the right answer by accident. Intermittent correctness is harder to find than consistent failure, not easier."
+    - "Linear search has no precondition. Slower and always right is a real trade, and sometimes the right one."
+    - "When two implementations of the same question disagree, at least one broke a rule it never announced."
+
+brief: |
+  Run both searches side by side and see whether they agree.
+
+  Write a function called check that takes a list of values - which may or may not be
+  sorted - and a needle, and returns a dict:
+
+      {"binary": ..., "linear": ..., "agree": ...}
+
+  `binary` is the result of a binary search over the list exactly as given: the index of
+  the needle or `-1`. Use mission 4's rule - `low = 0`, `high = len(values) - 1`, loop
+  while `low <= high`, middle at `(low + high) // 2`, move to `middle + 1` or `middle - 1`.
+  Do **not** sort the list first, and do not check whether it is sorted.
+
+  `linear` is the result of a linear search over the same list: the index of the **first**
+  value equal to the needle, or `-1`.
+
+  `agree` is `True` when the two are the same number, and `False` when they are not.
+
+  No comparison counts this time. The interesting number is whether the two answers match.
+
+  Sorted input always agrees. Unsorted input sometimes does, and that is the part worth
+  sitting with.
+
+signature:
+  entrypoint: check
+  stub: |
+    def check(values, needle):
+        # Two searches over the same list, neither one fixing the other's problem.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # Sorted. Both find it, both agree, all is well.
+    - args: [[1, 3, 5, 7, 9], 7]
+      expect:
+        binary: 3
+        linear: 3
+        agree: true
+    # The same five numbers, reversed. 7 is at index 1 and binary search says it is absent.
+    - args: [[9, 7, 5, 3, 1], 7]
+      expect:
+        binary: -1
+        linear: 1
+        agree: false
+  hidden:
+    # Empty. Both say absent, and they agree about it.
+    - args: [[], 1]
+      expect:
+        binary: -1
+        linear: -1
+        agree: true
+    - args: [[5], 5]
+      expect:
+        binary: 0
+        linear: 0
+        agree: true
+    - args: [[5], 4]
+      expect:
+        binary: -1
+        linear: -1
+        agree: true
+    # Two values in the wrong order is already enough to break it.
+    - args: [[2, 1], 1]
+      expect:
+        binary: -1
+        linear: 1
+        agree: false
+    # One value out of place at the end, and the search never looks there.
+    - args: [[10, 20, 30, 1], 1]
+      expect:
+        binary: -1
+        linear: 3
+        agree: false
+    # Unsorted, and binary search is right anyway. This is the dangerous one.
+    - args: [[3, 1, 2], 2]
+      expect:
+        binary: 2
+        linear: 2
+        agree: true
+    # Sorted, worst case for both. Still agreeing.
+    - args: [[1, 2, 3, 4, 5, 6, 7, 8], 8]
+      expect:
+        binary: 7
+        linear: 7
+        agree: true
+
+hints:
+  - level: 1
+    text: |
+      Nothing new to invent. Mission 4's loop and mission 1's loop, both returning just an
+      index this time, then one comparison between the two answers.
+
+      The temptation is to sort the list before the binary search. Do not - the mission
+      exists to show you what happens when nobody does.
+  - level: 2
+    text: |
+      Write both searches inside `check`, or as two helper functions above it - either is
+      fine.
+
+      Strip the comparison counters out; only the index matters here.
+
+      `agree` is `binary == linear`, which is already a bool. It does not need an `if`.
+  - level: 3
+    text: |
+      The same pairing, over words instead of numbers:
+
+          def compare_ways(words, wanted):
+              low, high = 0, len(words) - 1
+              fast = -1
+              while low <= high:
+                  middle = (low + high) // 2
+                  if words[middle] == wanted:
+                      fast = middle
+                      break
+                  if words[middle] < wanted:
+                      low = middle + 1
+                  else:
+                      high = middle - 1
+
+              slow = -1
+              for position, word in enumerate(words):
+                  if word == wanted:
+                      slow = position
+                      break
+
+              return {"fast": fast, "slow": slow, "match": fast == slow}
+
+      Yours works on any values rather than words, and the three keys are named differently.
+
+solution: |
+  def check(values, needle):
+      low = 0
+      high = len(values) - 1
+      binary = -1
+
+      while low <= high:
+          middle = (low + high) // 2
+          if values[middle] == needle:
+              binary = middle
+              break
+          if values[middle] < needle:
+              low = middle + 1
+          else:
+              high = middle - 1
+
+      linear = -1
+      for position, value in enumerate(values):
+          if value == needle:
+              linear = position
+              break
+
+      return {"binary": binary, "linear": linear, "agree": binary == linear}

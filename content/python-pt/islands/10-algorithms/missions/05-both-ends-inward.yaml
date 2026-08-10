@@ -1,0 +1,241 @@
+# Missão 5 de Algoritmos. Introduz: two-pointer.
+# Reforça: binary-search, unpacking, big-o.
+#
+# O segundo algoritmo que compra sua velocidade com a pré-condição de ordenação, o que
+# prepara a missão 6 - uma missão de alívio pode então quebrar os dois com a mesma entrada.
+#
+# A solução óbvia é um laço dentro de outro: n^2 comparações. A pretendida é uma única
+# passada: no máximo n. As contagens são avaliadas, então uma solução aninhada falha nos
+# números e não no estilo, e falha nos casos visíveis pequenos, onde o jogador ainda
+# consegue ver por quê.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-05
+title: Das duas pontas para dentro
+track: python
+island: algorithms
+order: 5
+difficulty: challenging
+tags: [algorithms, two-pointer, one-pass]
+xp: 45
+
+concepts:
+  - two-pointer
+
+teaching:
+  analogy: |
+    Dois engradados têm de pesar exatamente uma tonelada juntos. Eles estão enfileirados no
+    cais, do mais leve ao mais pesado.
+
+    Você põe uma mão no mais leve e outra no mais pesado. Passou do peso? A mão pesada desce
+    um - nenhum engradado mais leve salvaria aquela combinação. Faltou peso? A mão leve sobe
+    um, pelo motivo espelhado.
+
+    Nenhuma das mãos volta atrás. Entre as duas elas percorrem o cais uma vez, e ou a
+    resposta aparece ou as mãos se encontram.
+
+  explanation: |
+    A técnica dos **dois ponteiros** substitui um laço aninhado por uma única passada, em
+    dados que estão em ordem.
+
+        low, high = 0, len(values) - 1
+
+        while low < high:
+            total = values[low] + values[high]
+            if total == target:      achou
+            elif total < target:     low = low + 1
+            else:                    high = high - 1
+
+    O raciocínio que torna isso correto vale ser dito em palavras, senão o código parece um
+    chute. Quando o total é pequeno demais, `values[low]` é o menor número que restou - ele
+    não pode ser combinado com nada menor que `values[high]`, e `values[high]` já é o maior
+    disponível. Então nenhum par usando `values[low]` alcança o alvo, e descartá-lo não
+    descarta nada real. O argumento espelhado vale do outro lado.
+
+    Isso é O(n): cada passo move um ponteiro, e os ponteiros só viajam um em direção ao
+    outro. A alternativa óbvia - cada valor contra cada valor posterior - é O(n^2), que a
+    missão 2 já contou para você.
+
+    Dois detalhes:
+
+    **`low < high`, não `<=`.** Com `<=` um valor pode fazer par consigo mesmo, o que não é
+    dois engradados.
+
+    **Exatamente um ponteiro se move por passo.** Mover os dois pula pares, e pular o par
+    certo é uma resposta errada e não um erro.
+
+    E a mesma pré-condição da busca binária: isto precisa de entrada ordenada, e não
+    verifica.
+
+  worked_example: |
+    # Ver se uma palavra é a mesma de trás para frente, que não é o que esta missão pede
+    def mirrored(word):
+        low = 0
+        high = len(word) - 1
+        looks = 0
+
+        while low < high:
+            looks = looks + 1
+            if word[low] != word[high]:
+                return {"same": False, "looks": looks}
+            low = low + 1
+            high = high - 1
+
+        return {"same": True, "looks": looks}
+
+
+    print(mirrored("radar"))     # {'same': True, 'looks': 2}
+    print(mirrored("harbour"))   # {'same': False, 'looks': 1}
+    # Cinco letras, duas comparações. Aqui as duas mãos se movem, que é o que este problema
+    # quer - o problema da soma move uma.
+
+  key_points:
+    - "Dois ponteiros transformam um laço aninhado em uma passada: O(n^2) vira O(n), e a contagem de comparações mostra isso."
+    - "Precisa de dados ordenados. O argumento para descartar um valor depende inteiramente de não restar nada menor ou maior."
+    - "Mova exatamente um ponteiro por passo num problema de soma. Mover os dois pula pares."
+    - "`while low < high`, não `<=`, ou um valor faz par consigo mesmo."
+    - "Menos de dois valores significa que nenhum par é possível e nenhuma comparação acontece. A condição do laço já cobre isso."
+
+brief: |
+  Ache dois engradados que juntos pesem um alvo.
+
+  Escreva uma função chamada pair_sum que recebe uma lista de números **já ordenada do menor
+  para o maior** e um alvo, e devolve um dict:
+
+      {"pair": ..., "comparisons": ...}
+
+  `pair` é uma lista de dois itens `[mais_leve, mais_pesado]` cuja soma é o alvo, ou `None`
+  quando não existe tal par.
+
+  `comparisons` é quantas vezes você somou dois valores e conferiu o total.
+
+  Use exatamente esta regra, porque a contagem é avaliada:
+
+    - `low = 0`, `high = len(values) - 1`
+    - o laço roda enquanto `low < high`
+    - conte uma comparação, depois some `values[low]` e `values[high]`
+    - igual ao alvo: pare, esse é o par
+    - menor que o alvo: `low = low + 1`
+    - maior que o alvo: `high = high - 1`
+
+  Uma lista com menos de dois valores dá `None` e 0 comparações.
+
+  Uma passada. Um laço dentro de outro dá o par certo e a contagem errada, e a contagem é o
+  assunto desta missão.
+
+signature:
+  entrypoint: pair_sum
+  stub: |
+    def pair_sum(values, target):
+        # Dois índices, indo um em direção ao outro. Só um deles se move por passo.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 4, 7, 11], 9]
+      expect:
+        pair: [2, 7]
+        comparisons: 3
+    # Sem par. Os ponteiros se encontraram, tendo percorrido a lista uma vez entre os dois.
+    - args: [[1, 2, 4, 7, 11], 100]
+      expect:
+        pair: null
+        comparisons: 4
+  hidden:
+    # Vazia: high é -1, low é 0, a condição do laço já é falsa.
+    - args: [[], 0]
+      expect:
+        pair: null
+        comparisons: 0
+    # Um valor não faz par consigo mesmo. Este é o caso que `<=` erra.
+    - args: [[5], 5]
+      expect:
+        pair: null
+        comparisons: 0
+    - args: [[2, 3], 5]
+      expect:
+        pair: [2, 3]
+        comparisons: 1
+    - args: [[2, 3], 6]
+      expect:
+        pair: null
+        comparisons: 1
+    # As pontas batem de cara: uma comparação sobre seis valores.
+    - args: [[1, 2, 3, 4, 5, 6], 7]
+      expect:
+        pair: [1, 6]
+        comparisons: 1
+    # Negativos, porque o raciocínio é sobre ordem e não sobre sinal.
+    - args: [[-4, -1, 0, 3], -1]
+      expect:
+        pair: [-4, 3]
+        comparisons: 1
+    # Repetidos. Duas posições diferentes com o mesmo valor são um par de verdade.
+    - args: [[1, 1, 1, 1], 2]
+      expect:
+        pair: [1, 1]
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Quando o total é pequeno demais, qual dos dois valores você consegue provar que não
+      está em nenhum par válido - e portanto pode descartar?
+
+      Responda isso e os dois ramos do `if` se escrevem sozinhos.
+  - level: 2
+    text: |
+      `low = 0`, `high = len(values) - 1`, `comparisons = 0`.
+
+      Dentro do `while low < high`: incremente o contador, calcule o total, e três ramos -
+      return, `low = low + 1`, `high = high - 1`.
+
+      O retorno `None` fica depois do laço. Não mexa no contador ali.
+  - level: 3
+    text: |
+      As mesmas duas mãos, procurando um par cuja diferença seja um vão:
+
+          def pair_gap(values, gap):
+              low = 0
+              high = len(values) - 1
+              looks = 0
+
+              while low < high:
+                  looks = looks + 1
+                  spread = values[high] - values[low]
+                  if spread == gap:
+                      return {"both": [values[low], values[high]], "looks": looks}
+                  if spread > gap:
+                      low = low + 1
+                  else:
+                      high = high - 1
+
+              return {"both": None, "looks": looks}
+
+      A sua soma em vez de subtrair, então os dois ramos movem os ponteiros opostos, e as
+      chaves têm outros nomes.
+
+solution: |
+  def pair_sum(values, target):
+      low = 0
+      high = len(values) - 1
+      comparisons = 0
+
+      while low < high:
+          comparisons = comparisons + 1
+          total = values[low] + values[high]
+
+          if total == target:
+              return {"pair": [values[low], values[high]], "comparisons": comparisons}
+
+          if total < target:
+              low = low + 1
+          else:
+              high = high - 1
+
+      return {"pair": None, "comparisons": comparisons}

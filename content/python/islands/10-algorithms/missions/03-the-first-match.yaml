@@ -1,0 +1,194 @@
+# Mission 3 of Algorithms. Introduces nothing.
+# Reinforces: linear-search, big-o.
+#
+# Relief mission. Short code, one idea: the early return changes the best case and leaves
+# the class alone. The hidden cases are arranged so the same eight-item shape costs 1
+# comparison in one case and 8 in another, which is the distinction between best case and
+# complexity class turned into two numbers the player can see next to each other.
+#
+# It also carries the first `null` return on the island, which matters later - mission 5
+# returns null for "no pair" and mission 11 inherits it.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-03
+title: The first match
+track: python
+island: algorithms
+order: 3
+difficulty: moderate
+tags: [algorithms, search, relief]
+xp: 30
+
+concepts:
+  - linear-search
+  - big-o
+
+teaching:
+  analogy: |
+    You need one crate heavier than fifty kilos - any one of them, you are not fussy.
+
+    If the first crate you lift weighs sixty, you are done. You did not get lucky about the
+    *warehouse*, you got lucky about *this* warehouse on *this* morning. Tomorrow the heavy
+    ones might be at the back, and then you lift all of them.
+
+    The early exit is real and it is worth having. It just is not a promise.
+
+  explanation: |
+    An early return is the difference between the best case and the worst case, and it
+    leaves the complexity class exactly where it was.
+
+        best case     O(1)     the first item qualifies
+        worst case    O(n)     none of them do, or the last one does
+        the class     O(n)     which is named after the worst case
+
+    Big-O is conventionally the worst case, and that convention exists because the worst
+    case is the one that ruins an afternoon. A search that is usually instant and
+    occasionally walks a million rows is a search that will walk a million rows in front of
+    a customer.
+
+    So do not conclude the early return is worthless. It is nearly free, it often saves the
+    whole walk, and there is no reason to skip it. Just do not let it change what you write
+    in the capacity plan.
+
+    One more thing this mission asks you to be precise about: what do you return when
+    nothing qualifies? `None` says "there was no answer" and is honest. A `0` or a `-1`
+    says the same thing only if the caller happens to know that, and one day a real value
+    will be `-1`.
+
+  worked_example: |
+    # The first word longer than a limit, which is not what this mission asks for
+    def first_long(words, limit):
+        looks = 0
+
+        for word in words:
+            looks = looks + 1
+            if len(word) > limit:
+                return {"word": word, "looks": looks}
+
+        return {"word": None, "looks": looks}
+
+
+    print(first_long(["a", "bb", "cccc"], 2))     # {'word': 'cccc', 'looks': 3}
+    print(first_long(["cccc", "a", "bb"], 2))     # {'word': 'cccc', 'looks': 1}
+    # Same three words, same limit, one third of the work. The order decided it, not the
+    # algorithm.
+
+  key_points:
+    - "An early return improves the best case and leaves the class alone. O(n) is named after the worst case, and the worst case still walks everything."
+    - "The best case depends on the data, not on your code. You cannot plan around being lucky."
+    - "Return `None` when there is no answer. A sentinel like -1 is a lie waiting for the day -1 is a real value."
+    - "\"Nothing qualified\" always costs the full walk, exactly like \"not found\" in mission 1. Absence is only knowable at the end."
+
+brief: |
+  Find the first crate over a weight, and say what the look cost.
+
+  Write a function called first_over that takes a list of numbers and a limit, and returns
+  a dict:
+
+      {"value": ..., "comparisons": ...}
+
+  `value` is the first number in the list that is **strictly greater** than the limit, or
+  `None` when no number is.
+
+  `comparisons` is how many numbers you looked at, counting the one that qualified. Stop
+  as soon as you have an answer.
+
+  An empty list gives `None` and 0 comparisons.
+
+  Watch the boundary: a number *equal* to the limit does not qualify.
+
+signature:
+  entrypoint: first_over
+  stub: |
+    def first_over(values, limit):
+        # Walk, count, and leave the moment one qualifies.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 5, 9], 4]
+      expect:
+        value: 5
+        comparisons: 2
+    # Nothing qualifies, so the walk ran to the end and the answer is None.
+    - args: [[1, 2, 3], 10]
+      expect:
+        value: null
+        comparisons: 3
+  hidden:
+    - args: [[], 0]
+      expect:
+        value: null
+        comparisons: 0
+    - args: [[7], 0]
+      expect:
+        value: 7
+        comparisons: 1
+    # Strictly greater: 7 does not clear a limit of 7.
+    - args: [[7], 7]
+      expect:
+        value: null
+        comparisons: 1
+    # The qualifier is last, which is the worst case that still succeeds.
+    - args: [[0, 0, 1], 0]
+      expect:
+        value: 1
+        comparisons: 3
+    # The best case. Four numbers, one comparison - and the code is unchanged.
+    - args: [[9, 1, 1, 1], 5]
+      expect:
+        value: 9
+        comparisons: 1
+    # Negatives compare like anything else. -1 is greater than -2.
+    - args: [[-3, -1], -2]
+      expect:
+        value: -1
+        comparisons: 2
+
+hints:
+  - level: 1
+    text: |
+      This is mission 1's loop with the comparison changed and the value returned instead of
+      the position.
+
+      The only new decision is what goes in `value` when the loop finishes without an
+      answer. The brief names it.
+  - level: 2
+    text: |
+      Counter starts at 0. Increment as the first line of the loop body. Compare with `>`,
+      not `>=`.
+
+      On a match, return the dict from inside the loop. After the loop, return a dict with
+      `None` and the counter, which by then equals the length of the list.
+  - level: 3
+    text: |
+      The same shape, for the first even number:
+
+          def first_even(numbers):
+              looks = 0
+
+              for number in numbers:
+                  looks = looks + 1
+                  if number % 2 == 0:
+                      return {"found": number, "looks": looks}
+
+              return {"found": None, "looks": looks}
+
+      Yours compares against a limit rather than testing for evenness, and the keys are
+      named differently.
+
+solution: |
+  def first_over(values, limit):
+      comparisons = 0
+
+      for value in values:
+          comparisons = comparisons + 1
+          if value > limit:
+              return {"value": value, "comparisons": comparisons}
+
+      return {"value": None, "comparisons": comparisons}

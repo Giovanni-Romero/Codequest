@@ -1,0 +1,244 @@
+# Mission 8 of Algorithms. Introduces: recursion.
+# Reinforces: functions, conditionals, big-o.
+#
+# Nested lists rather than factorial or fibonacci, deliberately. A factorial has an obvious
+# loop and the player writes the loop; a tree of unknown shape does not, so recursion is
+# the honest tool rather than the assigned one.
+#
+# Two answers from one walk - a total and a depth - because they need different shapes of
+# recursion. The total combines the children's answers; the depth takes the largest and
+# adds one. A player who writes both has met the two patterns that cover most tree work.
+#
+# RecursionError is already a first-class outcome (engine/harness.py:135), so a missing
+# base case gives a readable failure rather than a sandbox crash.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-08
+title: The mirror and the mirror
+track: python
+island: algorithms
+order: 8
+difficulty: challenging
+tags: [algorithms, recursion, trees]
+xp: 45
+
+concepts:
+  - recursion
+
+teaching:
+  analogy: |
+    A crate arrives, and inside it are smaller crates, and inside some of those are smaller
+    crates again. Nobody told you how deep it goes.
+
+    You do not need a plan for the whole thing. You need one rule: *if this is a crate,
+    open it and add up whatever the smaller ones come to; if it is a coin, that is its
+    value.* Hand that rule to yourself for every crate you open, and the pile counts itself.
+
+    The rule only terminates because coins exist. If every crate contained crates forever,
+    you would still be opening them.
+
+  explanation: |
+    **Recursion** is a function that solves a problem by calling itself on a smaller piece.
+
+    Every recursive function has two parts, and the order you write them in matters:
+
+    **The base case, first.** The input small enough to answer without recursing. Write it
+    first, physically at the top of the function, because a recursive case written first is
+    a function that never stops - and in Python that is `RecursionError` at about a
+    thousand frames deep.
+
+    **The recursive case.** Call yourself on something *strictly smaller*, and combine the
+    answers. "Strictly smaller" is the obligation: if the piece is not smaller, the base
+    case is never reached.
+
+        def total(node):
+            if not isinstance(node, list):
+                return node                       # base: a number answers itself
+            return sum(total(child) for child in node)   # recursive: smaller each time
+
+    The mistake that costs the most time is forgetting the `return` on the recursive call.
+    The work happens, the answer is computed, and it is thrown away - and there is no error,
+    just `None` where a number should be.
+
+    Recursion is not faster than a loop. In CPython it is slower - each call is a stack
+    frame - and it has a depth limit a loop does not. What it buys is that some shapes have
+    no natural loop. Walking a tree of unknown depth is one of them; you would end up
+    hand-rolling a stack, which is the recursion with more typing.
+
+  worked_example: |
+    # Counting the leaves of a nested structure, which is not what this mission asks for
+    def leaves(node):
+        if not isinstance(node, list):
+            return 1
+
+        found = 0
+        for child in node:
+            found = found + leaves(child)
+        return found
+
+
+    print(leaves([1, 2, 3]))            # 3
+    print(leaves([1, [2, [3, 4]]]))     # 4
+    print(leaves([]))                   # 0
+    # The base case is "not a list". The empty list never reaches it and answers 0 from the
+    # loop that does not run.
+
+  key_points:
+    - "Write the base case first, at the top of the function. A recursive case that runs before any base case is a RecursionError."
+    - "`return` the recursive call. Forgetting it computes the answer and discards it, with no error - you just get None."
+    - "Each call must be on something strictly smaller, or the base case is never reached."
+    - "Recursion is slower than a loop in CPython and has a depth limit. It is for shapes that have no natural loop, not for speed."
+    - "RecursionError is a normal outcome here, not a crash. It means the base case is missing or unreachable."
+
+brief: |
+  Open the nested crates and report two things about them.
+
+  Write a function called unwrap that takes a list. Its items are numbers, or lists whose
+  items are numbers or lists, nested to any depth. Return a dict:
+
+      {"total": ..., "depth": ...}
+
+  `total` is the sum of every number anywhere inside, at any depth. An empty structure
+  totals 0.
+
+  `depth` is how many levels of list there are:
+
+    - `[1, 2, 3]` is depth 1 - one list, no nesting
+    - `[1, [2]]` is depth 2
+    - `[[[1]]]` is depth 3
+    - `[]` is depth 1, because it is still a list
+    - `[[]]` is depth 2, for the same reason
+
+  When a list holds several lists of different depths, the depth is the deepest of them.
+
+  Use recursion for both. `isinstance(item, list)` tells you whether an item is a list or a
+  number.
+
+signature:
+  entrypoint: unwrap
+  stub: |
+    def unwrap(values):
+        # Two recursive walks, or one that returns two things. Base case at the top of each.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3]]
+      expect:
+        total: 6
+        depth: 1
+    - args: [[1, [2, [3]]]]
+      expect:
+        total: 6
+        depth: 3
+  hidden:
+    # Empty, and still a list: depth 1, total 0.
+    - args: [[]]
+      expect:
+        total: 0
+        depth: 1
+    # A list holding an empty list. Nothing to add, two levels to count.
+    - args: [[[]]]
+      expect:
+        total: 0
+        depth: 2
+    - args: [[[[1]]]]
+      expect:
+        total: 1
+        depth: 3
+    # A number and a list side by side. Depth is the deepest branch, not the last one.
+    - args: [[1, [2], 3]]
+      expect:
+        total: 6
+        depth: 2
+    # Two branches of different depths. The deeper one decides.
+    - args: [[[1, 2], [3, [4, 5]]]]
+      expect:
+        total: 15
+        depth: 3
+    # Negatives cancel to zero, which no hardcoded total would produce here.
+    - args: [[-1, [1]]]
+      expect:
+        total: 0
+        depth: 2
+    # Deep and thin. The recursion goes down five levels to find one number.
+    - args: [[[[[[7]]]]]]
+      expect:
+        total: 7
+        depth: 5
+
+hints:
+  - level: 1
+    text: |
+      Two different questions, two different shapes of answer.
+
+      For the total, what do the children's totals do together? For the depth, what does the
+      deepest child's depth have to do with this list's depth?
+
+      One of them adds. The other takes the largest and adds one.
+  - level: 2
+    text: |
+      Write two helper functions inside `unwrap`, and have `unwrap` return their results.
+
+      `total(node)`: if it is not a list, return the node. Otherwise add up `total(child)`
+      for every child, starting from 0.
+
+      `depth(node)`: if it is not a list, return 0. Otherwise find the largest
+      `depth(child)`, starting from 0, and return that plus 1. That starting 0 is what makes
+      an empty list come out as depth 1.
+  - level: 3
+    text: |
+      The same two shapes, over nested strings:
+
+          def longest(node):
+              if not isinstance(node, list):
+                  return len(node)
+
+              best = 0
+              for child in node:
+                  reach = longest(child)
+                  if reach > best:
+                      best = reach
+              return best
+
+
+          def joined(node):
+              if not isinstance(node, list):
+                  return node
+
+              text = ""
+              for child in node:
+                  text = text + joined(child)
+              return text
+
+      Yours adds numbers rather than joining text, and the "largest" one has to add a level
+      of its own on the way back up.
+
+solution: |
+  def unwrap(values):
+      def total(node):
+          if not isinstance(node, list):
+              return node
+
+          running = 0
+          for child in node:
+              running = running + total(child)
+          return running
+
+      def depth(node):
+          if not isinstance(node, list):
+              return 0
+
+          deepest = 0
+          for child in node:
+              reach = depth(child)
+              if reach > deepest:
+                  deepest = reach
+          return deepest + 1
+
+      return {"total": total(values), "depth": depth(values)}

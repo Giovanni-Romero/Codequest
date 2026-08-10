@@ -1,0 +1,250 @@
+# Missão 8 de Algoritmos. Introduz: recursion.
+# Reforça: functions, conditionals, big-o.
+#
+# Listas aninhadas em vez de fatorial ou fibonacci, de propósito. Um fatorial tem um laço
+# óbvio e o jogador escreve o laço; uma árvore de formato desconhecido não tem, então a
+# recursão é a ferramenta honesta e não a ferramenta imposta.
+#
+# Duas respostas de uma caminhada - um total e uma profundidade - porque exigem formatos
+# diferentes de recursão. O total combina as respostas dos filhos; a profundidade pega a
+# maior e soma um. Quem escreve as duas conheceu os dois padrões que cobrem quase todo
+# trabalho com árvores.
+#
+# RecursionError já é um desfecho de primeira classe (engine/harness.py:135), então um caso
+# base ausente dá uma falha legível e não um estouro do sandbox.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-08
+title: O espelho e o espelho
+track: python
+island: algorithms
+order: 8
+difficulty: challenging
+tags: [algorithms, recursion, trees]
+xp: 45
+
+concepts:
+  - recursion
+
+teaching:
+  analogy: |
+    Chega um engradado, e dentro dele há engradados menores, e dentro de alguns deles há
+    engradados menores ainda. Ninguém te disse até onde vai.
+
+    Você não precisa de um plano para a coisa toda. Você precisa de uma regra: *se isto é um
+    engradado, abra e some o que os menores derem; se é uma moeda, esse é o valor dela.*
+    Entregue essa regra a si mesmo para cada engradado que abrir, e a pilha se conta sozinha.
+
+    A regra só termina porque moedas existem. Se todo engradado contivesse engradados para
+    sempre, você ainda estaria abrindo.
+
+  explanation: |
+    **Recursão** é uma função que resolve um problema chamando a si mesma sobre um pedaço
+    menor.
+
+    Toda função recursiva tem duas partes, e a ordem em que você as escreve importa:
+
+    **O caso base, primeiro.** A entrada pequena o bastante para responder sem recorrer.
+    Escreva-o primeiro, fisicamente no topo da função, porque um caso recursivo escrito antes
+    é uma função que nunca para - e em Python isso é `RecursionError` por volta de mil
+    quadros de profundidade.
+
+    **O caso recursivo.** Chame a si mesmo sobre algo *estritamente menor*, e combine as
+    respostas. "Estritamente menor" é a obrigação: se o pedaço não é menor, o caso base nunca
+    é alcançado.
+
+        def total(node):
+            if not isinstance(node, list):
+                return node                       # base: um número responde por si
+            return sum(total(child) for child in node)   # recursivo: menor a cada vez
+
+    O erro que custa mais tempo é esquecer o `return` na chamada recursiva. O trabalho
+    acontece, a resposta é calculada, e ela é jogada fora - e não há erro nenhum, só um
+    `None` onde devia haver um número.
+
+    Recursão não é mais rápida que um laço. Em CPython é mais lenta - cada chamada é um
+    quadro de pilha - e tem um limite de profundidade que um laço não tem. O que ela compra é
+    que alguns formatos não têm laço natural. Percorrer uma árvore de profundidade
+    desconhecida é um deles; você acabaria montando uma pilha à mão, que é a recursão com
+    mais digitação.
+
+  worked_example: |
+    # Contar as folhas de uma estrutura aninhada, que não é o que esta missão pede
+    def leaves(node):
+        if not isinstance(node, list):
+            return 1
+
+        found = 0
+        for child in node:
+            found = found + leaves(child)
+        return found
+
+
+    print(leaves([1, 2, 3]))            # 3
+    print(leaves([1, [2, [3, 4]]]))     # 4
+    print(leaves([]))                   # 0
+    # O caso base é "não é lista". A lista vazia nunca chega nele e responde 0 pelo laço que
+    # não roda.
+
+  key_points:
+    - "Escreva o caso base primeiro, no topo da função. Um caso recursivo que roda antes de qualquer caso base é um RecursionError."
+    - "Dê `return` na chamada recursiva. Esquecer isso calcula a resposta e a descarta, sem erro nenhum - você só recebe None."
+    - "Cada chamada precisa ser sobre algo estritamente menor, ou o caso base nunca é alcançado."
+    - "Recursão é mais lenta que um laço em CPython e tem limite de profundidade. Ela é para formatos sem laço natural, não para velocidade."
+    - "RecursionError é um desfecho normal aqui, não um estouro. Significa que o caso base está ausente ou inalcançável."
+
+brief: |
+  Abra os engradados aninhados e relate duas coisas sobre eles.
+
+  Escreva uma função chamada unwrap que recebe uma lista. Seus itens são números, ou listas
+  cujos itens são números ou listas, aninhadas a qualquer profundidade. Devolva um dict:
+
+      {"total": ..., "depth": ...}
+
+  `total` é a soma de todo número em qualquer lugar lá dentro, em qualquer profundidade. Uma
+  estrutura vazia totaliza 0.
+
+  `depth` é quantos níveis de lista existem:
+
+    - `[1, 2, 3]` é profundidade 1 - uma lista, sem aninhamento
+    - `[1, [2]]` é profundidade 2
+    - `[[[1]]]` é profundidade 3
+    - `[]` é profundidade 1, porque continua sendo uma lista
+    - `[[]]` é profundidade 2, pelo mesmo motivo
+
+  Quando uma lista guarda várias listas de profundidades diferentes, a profundidade é a da
+  mais funda.
+
+  Use recursão nas duas. `isinstance(item, list)` diz se um item é lista ou número.
+
+signature:
+  entrypoint: unwrap
+  stub: |
+    def unwrap(values):
+        # Duas caminhadas recursivas, ou uma que devolve duas coisas. Caso base no topo de
+        # cada uma.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 3]]
+      expect:
+        total: 6
+        depth: 1
+    - args: [[1, [2, [3]]]]
+      expect:
+        total: 6
+        depth: 3
+  hidden:
+    # Vazia, e ainda assim uma lista: profundidade 1, total 0.
+    - args: [[]]
+      expect:
+        total: 0
+        depth: 1
+    # Uma lista guardando uma lista vazia. Nada a somar, dois níveis a contar.
+    - args: [[[]]]
+      expect:
+        total: 0
+        depth: 2
+    - args: [[[[1]]]]
+      expect:
+        total: 1
+        depth: 3
+    # Um número e uma lista lado a lado. A profundidade é a do ramo mais fundo, não a do
+    # último.
+    - args: [[1, [2], 3]]
+      expect:
+        total: 6
+        depth: 2
+    # Dois ramos de profundidades diferentes. O mais fundo decide.
+    - args: [[[1, 2], [3, [4, 5]]]]
+      expect:
+        total: 15
+        depth: 3
+    # Negativos que se cancelam em zero, que nenhum total chumbado produziria aqui.
+    - args: [[-1, [1]]]
+      expect:
+        total: 0
+        depth: 2
+    # Fundo e fino. A recursão desce cinco níveis para achar um número.
+    - args: [[[[[[7]]]]]]
+      expect:
+        total: 7
+        depth: 5
+
+hints:
+  - level: 1
+    text: |
+      Duas perguntas diferentes, dois formatos de resposta diferentes.
+
+      Para o total, o que os totais dos filhos fazem juntos? Para a profundidade, o que a
+      profundidade do filho mais fundo tem a ver com a profundidade desta lista?
+
+      Um deles soma. O outro pega a maior e acrescenta um.
+  - level: 2
+    text: |
+      Escreva duas funções auxiliares dentro de `unwrap`, e faça `unwrap` devolver os
+      resultados delas.
+
+      `total(node)`: se não for lista, devolva o nó. Caso contrário some `total(child)` para
+      cada filho, começando de 0.
+
+      `depth(node)`: se não for lista, devolva 0. Caso contrário ache o maior `depth(child)`,
+      começando de 0, e devolva isso mais 1. Esse 0 inicial é o que faz uma lista vazia sair
+      como profundidade 1.
+  - level: 3
+    text: |
+      Os mesmos dois formatos, sobre strings aninhadas:
+
+          def longest(node):
+              if not isinstance(node, list):
+                  return len(node)
+
+              best = 0
+              for child in node:
+                  reach = longest(child)
+                  if reach > best:
+                      best = reach
+              return best
+
+
+          def joined(node):
+              if not isinstance(node, list):
+                  return node
+
+              text = ""
+              for child in node:
+                  text = text + joined(child)
+              return text
+
+      A sua soma números em vez de juntar texto, e a do "maior" tem de acrescentar um nível
+      próprio na volta.
+
+solution: |
+  def unwrap(values):
+      def total(node):
+          if not isinstance(node, list):
+              return node
+
+          running = 0
+          for child in node:
+              running = running + total(child)
+          return running
+
+      def depth(node):
+          if not isinstance(node, list):
+              return 0
+
+          deepest = 0
+          for child in node:
+              reach = depth(child)
+              if reach > deepest:
+                  deepest = reach
+          return deepest + 1
+
+      return {"total": total(values), "depth": depth(values)}

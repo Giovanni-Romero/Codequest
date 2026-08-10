@@ -1,0 +1,231 @@
+# Missão 2 de Algoritmos. Introduz: big-o.
+# Reforça: linear-search, accumulator-pattern.
+#
+# `big-o` parecia o terceiro conceito inverificável, depois de print-debugging e
+# interactive-debugger na Ilha 6. Não é, e esta missão é o motivo: o jogador devolve as
+# contagens de passos e os casos ocultos são escolhidos para que o crescimento apareça nos
+# números. tamanho 10 -> 45 pares; tamanho 100 -> 4950; tamanho 1000 -> 499500. Dez vezes a
+# entrada, cem vezes o trabalho, e nenhum relógio em lugar nenhum.
+#
+# A entrada é um tamanho e não uma lista, então um caso de mil elementos cabe em uma linha
+# de YAML e continua legível no enunciado.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-02
+title: Conte os passos
+track: python
+island: algorithms
+order: 2
+difficulty: challenging
+tags: [algorithms, complexity, counting]
+xp: 45
+
+concepts:
+  - big-o
+
+teaching:
+  analogy: |
+    Um porto contrata dois escriturários e pergunta a cada um o que acontece se a frota
+    dobrar.
+
+    O primeiro lê os papéis de cada navio uma vez. "O dobro de navios, o dobro da manhã." O
+    segundo confere cada navio contra cada outro navio procurando choque de horário. "O
+    dobro de navios, quatro vezes a manhã."
+
+    Nenhuma das respostas menciona a velocidade de leitura deles, e esse é o ponto. A
+    velocidade muda com o escriturário, com o café e com o tempo. Como o trabalho *cresce* é
+    uma propriedade do serviço, e é a mesma em qualquer manhã.
+
+  explanation: |
+    **Big-O** descreve como o trabalho cresce conforme a entrada cresce. É um formato, não
+    um cronômetro, e ele joga fora de propósito tudo que não é o formato.
+
+        O(1)        o tamanho não importa em nada
+        O(log n)    dobrar a entrada acrescenta um passo
+        O(n)        dobrar a entrada dobra o trabalho
+        O(n^2)      dobrar a entrada quadruplica o trabalho
+
+    Três hábitos deixam isso legível:
+
+    **Constantes são descartadas.** Um laço que faz três coisas por item é O(n), não O(3n).
+    Três vezes uma reta continua sendo uma reta, e o 3 muda com a máquina.
+
+    **Só o termo que cresce mais rápido sobrevive.** `n^2 + n` é O(n^2), porque a partir de
+    certo tamanho o `n` deixa de importar. Esse "a partir de certo tamanho" é a ideia
+    inteira: big-O não diz nada sobre entradas pequenas, e frequentemente erra sobre elas.
+
+    **Um laço dentro de outro não é automaticamente O(n^2).** Olhe sobre o que o de dentro
+    percorre. Quando o segundo laço começa onde o primeiro está, a contagem é
+    `n * (n - 1) / 2` - que *é* O(n^2), já que a divisão pela metade é uma constante. Mas um
+    laço interno sobre 5 itens fixos é O(n), não importa como esteja aninhado.
+
+    A classe não é um veredito. O(n^2) sobre dez itens é instantâneo, e escolher um
+    algoritmo mais difícil para evitá-lo é uma troca ruim. A classe diz o que acontece
+    quando o número deixar de ser dez.
+
+  worked_example: |
+    # Contando o trabalho de duas formas de achar uma letra repetida
+    def once(word):
+        steps = 0
+        for _ in word:
+            steps = steps + 1
+        return steps
+
+
+    def every_pair(word):
+        steps = 0
+        for i in range(len(word)):
+            for j in range(i + 1, len(word)):
+                steps = steps + 1
+        return steps
+
+
+    print(once("harbour"), every_pair("harbour"))          # 7 21
+    print(once("harbourharbour"), every_pair("harbourharbour"))    # 14 91
+    # A palavra dobrou. O primeiro número dobrou. O segundo subiu quatro vezes e pouco, e
+    # chega mais perto de exatamente quatro conforme a palavra cresce.
+
+  key_points:
+    - "Big-O mede crescimento, não velocidade. Responde \"e se a entrada dobrar\", nunca \"quantos milissegundos\"."
+    - "Constantes são descartadas porque mudam com a máquina. O(3n) se escreve O(n), e o 3 é real mas não é o ponto."
+    - "Só o termo que cresce mais rápido sobrevive: `n^2 + 500n` é O(n^2), porque a partir de certo tamanho o termo `n` deixa de pesar."
+    - "Laços aninhados não são automaticamente O(n^2). Leia sobre o que o laço interno percorre - cinco itens fixos mantêm tudo em O(n)."
+    - "Uma classe pior pode ser a escolha melhor em entrada pequena. Big-O é mudo sobre n pequeno, e n pequeno é a maior parte do código que você escreve."
+
+brief: |
+  Conte quanto custam três serviços diferentes na mesma praia.
+
+  A praia tem `size` marcos, numerados 1, 2, 3 e assim por diante até `size`.
+
+  Escreva uma função chamada steps que recebe um tamanho e uma agulha, e devolve um dict:
+
+      {"walk": ..., "search": ..., "pairs": ...}
+
+    - `walk` - você lê todos os marcos, sem saída antecipada. Conte um por marco.
+    - `search` - você lê marcos do começo e para no primeiro igual à agulha. Conte um por
+      marco lido, inclusive o que bateu. Se a agulha não está na praia, você lê todos.
+    - `pairs` - você compara cada marco contra cada marco que vem **depois** dele, de modo
+      que cada par é conferido exatamente uma vez. Conte um por par.
+
+  Um tamanho 0 dá 0, 0 e 0.
+
+  Você pode chegar nesses números com laços ou com aritmética - os dois estão certos, e um
+  deles é o ponto da ilha. O que importa é o que os três números fazem entre si quando o
+  tamanho cresce: em tamanho 10 o terceiro é quatro vezes o primeiro, e em tamanho 1000 ele
+  é quinhentas vezes.
+
+signature:
+  entrypoint: steps
+  stub: |
+    def steps(size, needle):
+        # Três contagens sobre a mesma praia de `size` marcos, numerados a partir de 1.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 5000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [10, 3]
+      expect:
+        walk: 10
+        search: 3
+        pairs: 45
+    # A agulha não está na praia, então a busca custa a caminhada inteira.
+    - args: [20, 25]
+      expect:
+        walk: 20
+        search: 20
+        pairs: 190
+  hidden:
+    # Nada. Toda contagem é zero, inclusive pairs.
+    - args: [0, 1]
+      expect:
+        walk: 0
+        search: 0
+        pairs: 0
+    # Um marco não faz par com nada.
+    - args: [1, 1]
+      expect:
+        walk: 1
+        search: 1
+        pairs: 0
+    # Dois marcos fazem exatamente um par, não dois.
+    - args: [2, 2]
+      expect:
+        walk: 2
+        search: 2
+        pairs: 1
+    - args: [5, 6]
+      expect:
+        walk: 5
+        search: 5
+        pairs: 10
+    # Dez vezes o tamanho do primeiro caso visível. Repare em pairs: 45 -> 4950.
+    - args: [100, 100]
+      expect:
+        walk: 100
+        search: 100
+        pairs: 4950
+    # Dez vezes de novo, e o mesmo salto de cem vezes. Essa razão é o que O(n^2) significa.
+    - args: [1000, 1]
+      expect:
+        walk: 1000
+        search: 1
+        pairs: 499500
+
+hints:
+  - level: 1
+    text: |
+      `pairs` é o único que exige pensar. Cada par é contado uma vez, então quando você
+      compara o marco 3 contra o marco 7, não pode também comparar o 7 contra o 3.
+
+      Se o laço externo está na posição `i`, onde o laço interno deve começar?
+  - level: 2
+    text: |
+      Construa os marcos primeiro: `markers = list(range(1, size + 1))`.
+
+      `walk` é um laço com contador e sem `break`. `search` é o laço da missão 1 com um
+      `break` no acerto. `pairs` é um laço sobre posições com um laço interno começando em
+      `i + 1`.
+
+      Se preferir fazer por aritmética, `pairs` é `size * (size - 1) // 2` - e entender por
+      que esse é o mesmo número é o melhor uso da missão.
+  - level: 3
+    text: |
+      O formato aninhado, contando pares de dias de uma semana:
+
+          def clashes(days):
+              count = 0
+              for i in range(len(days)):
+                  for j in range(i + 1, len(days)):
+                      count = count + 1
+              return count
+
+
+          print(clashes(["seg", "ter", "qua"]))     # 3
+
+      A sua conta sobre os marcos em vez de nomes de dias, e devolve mais dois números junto.
+
+solution: |
+  def steps(size, needle):
+      markers = list(range(1, size + 1))
+
+      walk = 0
+      for _ in markers:
+          walk = walk + 1
+
+      search = 0
+      for marker in markers:
+          search = search + 1
+          if marker == needle:
+              break
+
+      pairs = 0
+      for i in range(len(markers)):
+          for j in range(i + 1, len(markers)):
+              pairs = pairs + 1
+
+      return {"walk": walk, "search": search, "pairs": pairs}

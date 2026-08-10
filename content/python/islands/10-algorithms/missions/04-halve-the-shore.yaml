@@ -1,0 +1,250 @@
+# Mission 4 of Algorithms. Introduces: binary-search.
+# Reinforces: big-o, while-loop.
+#
+# Island 6 taught bisection as a debugging habit - halve the suspects. This is the same
+# move as an algorithm on data, and the payoff is a number the player can put next to
+# mission 2's: 1000 markers, 10 comparisons instead of 1000.
+#
+# The midpoint rule is stated exactly in the brief, because the comparison count is graded
+# and `(low + high) // 2` and `low + (high - low + 1) // 2` produce different counts on the
+# same input. A graded count needs a specified algorithm, not just a correct one.
+# Schema reference: docs/mission-schema.md
+
+id: py-algorithms-04
+title: Halve the shore
+track: python
+island: algorithms
+order: 4
+difficulty: challenging
+tags: [algorithms, search, binary-search]
+xp: 45
+
+concepts:
+  - binary-search
+
+teaching:
+  analogy: |
+    You are looking for a page in a thousand-page ledger, and the ledger is in order by
+    date.
+
+    Nobody reads it from page one. You open it in the middle, see you are too late, and
+    now half the ledger is gone - not searched, *gone*, because it cannot possibly hold the
+    answer. Then you do it again on what is left.
+
+    Ten of those and a thousand pages are down to one. The trick is not that you read
+    faster. It is that every look throws away half of what remains, and it only works
+    because the ledger is in order.
+
+  explanation: |
+    **Binary search** finds an item in **sorted** data by keeping a range and halving it.
+
+        low, high = 0, len(values) - 1
+
+        while low <= high:
+            middle = (low + high) // 2
+            if values[middle] == needle:      found
+            elif values[middle] < needle:     low = middle + 1
+            else:                             high = middle - 1
+
+    Each pass discards half the remaining range, so the count is about `log2(n)`: 1000
+    items in 10 comparisons, a million in 20, a billion in 30. Compare that with mission 2,
+    where 1000 items cost 1000.
+
+    Three details do all the damage when people write this from memory.
+
+    **`low <= high`, not `<`.** With `<`, the loop stops while one candidate is still
+    unchecked, and single-item ranges are silently missed.
+
+    **`middle + 1` and `middle - 1`, not `middle`.** The middle has just been compared and
+    ruled out. Leaving it in the range means a range that stops shrinking, which is an
+    infinite loop rather than a wrong answer - and an infinite loop here is a timeout, not
+    a traceback.
+
+    **The data must already be sorted.** Nothing checks this. Binary search on unsorted
+    input does not raise; it returns a confident wrong answer, which is mission 6.
+
+    And the trap that catches people who see the count: it is *not* worth sorting first to
+    do one lookup. Sorting costs more than the walk it would have saved. Sorting pays when
+    you search many times, which is mission 10.
+
+  worked_example: |
+    # Guessing a number, which is not what this mission asks for
+    def guess(secret, top):
+        low = 1
+        high = top
+        tries = 0
+
+        while low <= high:
+            middle = (low + high) // 2
+            tries = tries + 1
+            if middle == secret:
+                return tries
+            if middle < secret:
+                low = middle + 1
+            else:
+                high = middle - 1
+
+        return -1
+
+
+    print(guess(73, 100))      # 6
+    print(guess(1, 1000))      # 10
+    # One in a thousand, in ten guesses. Halving is the whole reason.
+
+  key_points:
+    - "Binary search needs sorted data. It does not check, and on unsorted input it returns a wrong answer rather than an error."
+    - "`while low <= high`, with the equals. Using `<` skips ranges that have shrunk to a single item."
+    - "Move to `middle + 1` or `middle - 1`. Keeping the middle in the range makes a loop that never ends, which shows up as a timeout."
+    - "The count grows like log2(n): 1000 items in 10 comparisons, a million in 20. Doubling the data adds one step."
+    - "Sorting first to do one lookup is a loss. It pays back only across many lookups."
+
+brief: |
+  Halve the shore instead of walking it.
+
+  The shore has `size` markers, in order: 1, 2, 3 and so on up to `size`. Build that list.
+
+  Write a function called hunt that takes a size and a needle, and returns a dict:
+
+      {"index": ..., "comparisons": ...}
+
+  `index` is the position of the needle in the list, counting from 0, or `-1` when it is
+  not there.
+
+  `comparisons` is how many times you looked at a middle marker.
+
+  Use exactly this rule, because the count is graded and a different midpoint gives a
+  different count:
+
+    - the range starts at `low = 0` and `high = size - 1`
+    - the loop runs while `low <= high`
+    - the middle is `(low + high) // 2`
+    - count one comparison each time you look at a middle marker
+    - if it is the needle, stop
+    - if it is smaller than the needle, `low = middle + 1`
+    - otherwise `high = middle - 1`
+
+  A size of 0 gives -1 and 0 comparisons - the loop never runs.
+
+  You cannot use the `in` operator here, and there would be no point: it walks.
+
+signature:
+  entrypoint: hunt
+  stub: |
+    def hunt(size, needle):
+        # Build the sorted markers, then keep a range and halve it.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # A thousand markers. Mission 2 charged 1000 for this shore; this charges 9.
+    - args: [1000, 1]
+      expect:
+        index: 0
+        comparisons: 9
+    # The best case: the needle is the first middle looked at.
+    - args: [1000, 500]
+      expect:
+        index: 499
+        comparisons: 1
+  hidden:
+    # Empty. `low <= high` is false immediately, so nothing is compared.
+    - args: [0, 1]
+      expect:
+        index: -1
+        comparisons: 0
+    # A single marker. This is the case a `<` instead of `<=` gets wrong.
+    - args: [1, 1]
+      expect:
+        index: 0
+        comparisons: 1
+    - args: [1, 2]
+      expect:
+        index: -1
+        comparisons: 1
+    # Last position on an odd-length shore.
+    - args: [7, 7]
+      expect:
+        index: 6
+        comparisons: 3
+    # Absent and past the end, so the range shrinks all the way down.
+    - args: [10, 11]
+      expect:
+        index: -1
+        comparisons: 4
+    # A thousand again, worst case this time. Still ten.
+    - args: [1000, 1000]
+      expect:
+        index: 999
+        comparisons: 10
+    # An exact midpoint on a 63-marker shore: one look.
+    - args: [63, 32]
+      expect:
+        index: 31
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Three variables change during the loop: `low`, `high` and the counter. Nothing else
+      does - the list is never modified.
+
+      When the middle marker is not the needle, which half of the range can you prove does
+      not contain it?
+  - level: 2
+    text: |
+      `markers = list(range(1, size + 1))` builds the shore.
+
+      Then `low = 0`, `high = len(markers) - 1`, `comparisons = 0`, and a
+      `while low <= high` with the four steps the brief lists in that order.
+
+      Return from inside the loop on a match. The `-1` return is after the loop, when the
+      range has closed.
+  - level: 3
+    text: |
+      The same halving, over a sorted list of names:
+
+          def locate(names, wanted):
+              low = 0
+              high = len(names) - 1
+              looks = 0
+
+              while low <= high:
+                  middle = (low + high) // 2
+                  looks = looks + 1
+                  if names[middle] == wanted:
+                      return {"at": middle, "looks": looks}
+                  if names[middle] < wanted:
+                      low = middle + 1
+                  else:
+                      high = middle - 1
+
+              return {"at": -1, "looks": looks}
+
+      Yours builds its own list of numbers first, and the two keys are named differently.
+
+solution: |
+  def hunt(size, needle):
+      markers = list(range(1, size + 1))
+
+      low = 0
+      high = len(markers) - 1
+      comparisons = 0
+
+      while low <= high:
+          middle = (low + high) // 2
+          comparisons = comparisons + 1
+
+          if markers[middle] == needle:
+              return {"index": middle, "comparisons": comparisons}
+
+          if markers[middle] < needle:
+              low = middle + 1
+          else:
+              high = middle - 1
+
+      return {"index": -1, "comparisons": comparisons}

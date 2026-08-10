@@ -1,0 +1,249 @@
+# Missão 4 de Algoritmos. Introduz: binary-search.
+# Reforça: big-o, while-loop.
+#
+# A Ilha 6 ensinou bisseção como hábito de depuração - divida os suspeitos ao meio. Esta é
+# a mesma jogada como algoritmo sobre dados, e o retorno é um número que o jogador pode pôr
+# ao lado do da missão 2: 1000 marcos, 10 comparações em vez de 1000.
+#
+# A regra do meio é dita exatamente no enunciado, porque a contagem é avaliada e
+# `(low + high) // 2` e `low + (high - low + 1) // 2` produzem contagens diferentes sobre a
+# mesma entrada. Uma contagem avaliada precisa de um algoritmo especificado, não só correto.
+# Referência do schema: docs/mission-schema.md
+
+id: py-algorithms-04
+title: Corte a praia ao meio
+track: python
+island: algorithms
+order: 4
+difficulty: challenging
+tags: [algorithms, search, binary-search]
+xp: 45
+
+concepts:
+  - binary-search
+
+teaching:
+  analogy: |
+    Você procura uma página num livro-razão de mil páginas, e o livro está em ordem de data.
+
+    Ninguém lê a partir da página um. Você abre no meio, vê que passou da data, e agora
+    metade do livro sumiu - não foi buscada, *sumiu*, porque ela não pode conter a resposta.
+    Aí você faz de novo com o que sobrou.
+
+    Dez dessas e mil páginas viram uma. O truque não é que você lê mais rápido. É que cada
+    olhada joga fora metade do que resta, e só funciona porque o livro está em ordem.
+
+  explanation: |
+    A **busca binária** encontra um item em dados **ordenados** mantendo uma faixa e
+    cortando-a ao meio.
+
+        low, high = 0, len(values) - 1
+
+        while low <= high:
+            middle = (low + high) // 2
+            if values[middle] == needle:      achou
+            elif values[middle] < needle:     low = middle + 1
+            else:                             high = middle - 1
+
+    Cada passada descarta metade da faixa restante, então a contagem é cerca de `log2(n)`:
+    1000 itens em 10 comparações, um milhão em 20, um bilhão em 30. Compare com a missão 2,
+    onde 1000 itens custaram 1000.
+
+    Três detalhes causam todo o estrago em quem escreve isso de memória.
+
+    **`low <= high`, não `<`.** Com `<`, o laço para enquanto ainda há um candidato não
+    conferido, e faixas de um item são perdidas em silêncio.
+
+    **`middle + 1` e `middle - 1`, não `middle`.** O meio acabou de ser comparado e
+    descartado. Deixá-lo na faixa significa uma faixa que para de encolher, o que é um laço
+    infinito e não uma resposta errada - e um laço infinito aqui é timeout, não traceback.
+
+    **Os dados precisam já estar ordenados.** Nada verifica isso. Busca binária em entrada
+    desordenada não levanta erro; ela devolve uma resposta errada e confiante, que é a
+    missão 6.
+
+    E a armadilha que pega quem vê a contagem: *não* compensa ordenar primeiro para fazer
+    uma consulta. Ordenar custa mais do que a caminhada que teria poupado. Ordenar compensa
+    quando você busca muitas vezes, que é a missão 10.
+
+  worked_example: |
+    # Adivinhar um número, que não é o que esta missão pede
+    def guess(secret, top):
+        low = 1
+        high = top
+        tries = 0
+
+        while low <= high:
+            middle = (low + high) // 2
+            tries = tries + 1
+            if middle == secret:
+                return tries
+            if middle < secret:
+                low = middle + 1
+            else:
+                high = middle - 1
+
+        return -1
+
+
+    print(guess(73, 100))      # 6
+    print(guess(1, 1000))      # 10
+    # Um em mil, em dez palpites. Cortar ao meio é a razão inteira.
+
+  key_points:
+    - "Busca binária exige dados ordenados. Ela não verifica, e em entrada desordenada devolve resposta errada em vez de erro."
+    - "`while low <= high`, com o igual. Usar `<` pula faixas que encolheram até um único item."
+    - "Vá para `middle + 1` ou `middle - 1`. Manter o meio na faixa faz um laço que nunca termina, e isso aparece como timeout."
+    - "A contagem cresce como log2(n): 1000 itens em 10 comparações, um milhão em 20. Dobrar os dados acrescenta um passo."
+    - "Ordenar primeiro para fazer uma consulta é prejuízo. Só compensa distribuído por muitas consultas."
+
+brief: |
+  Corte a praia ao meio em vez de percorrê-la.
+
+  A praia tem `size` marcos, em ordem: 1, 2, 3 e assim por diante até `size`. Construa essa
+  lista.
+
+  Escreva uma função chamada hunt que recebe um tamanho e uma agulha, e devolve um dict:
+
+      {"index": ..., "comparisons": ...}
+
+  `index` é a posição da agulha na lista, contando de 0, ou `-1` quando ela não está lá.
+
+  `comparisons` é quantas vezes você olhou para um marco do meio.
+
+  Use exatamente esta regra, porque a contagem é avaliada e um meio diferente dá uma
+  contagem diferente:
+
+    - a faixa começa em `low = 0` e `high = size - 1`
+    - o laço roda enquanto `low <= high`
+    - o meio é `(low + high) // 2`
+    - conte uma comparação a cada vez que olhar um marco do meio
+    - se for a agulha, pare
+    - se for menor que a agulha, `low = middle + 1`
+    - caso contrário `high = middle - 1`
+
+  Um tamanho 0 dá -1 e 0 comparações - o laço nunca roda.
+
+  Você não pode usar o operador `in` aqui, e não faria sentido: ele percorre.
+
+signature:
+  entrypoint: hunt
+  stub: |
+    def hunt(size, needle):
+        # Construa os marcos ordenados, depois mantenha uma faixa e corte-a ao meio.
+        # seu código aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    # Mil marcos. A missão 2 cobrou 1000 por esta praia; esta cobra 9.
+    - args: [1000, 1]
+      expect:
+        index: 0
+        comparisons: 9
+    # O melhor caso: a agulha é o primeiro meio olhado.
+    - args: [1000, 500]
+      expect:
+        index: 499
+        comparisons: 1
+  hidden:
+    # Vazia. `low <= high` é falso de imediato, então nada é comparado.
+    - args: [0, 1]
+      expect:
+        index: -1
+        comparisons: 0
+    # Um único marco. Este é o caso que um `<` no lugar de `<=` erra.
+    - args: [1, 1]
+      expect:
+        index: 0
+        comparisons: 1
+    - args: [1, 2]
+      expect:
+        index: -1
+        comparisons: 1
+    # Última posição numa praia de tamanho ímpar.
+    - args: [7, 7]
+      expect:
+        index: 6
+        comparisons: 3
+    # Ausente e passando do fim, então a faixa encolhe até o fim.
+    - args: [10, 11]
+      expect:
+        index: -1
+        comparisons: 4
+    # Mil de novo, pior caso desta vez. Ainda dez.
+    - args: [1000, 1000]
+      expect:
+        index: 999
+        comparisons: 10
+    # Um meio exato numa praia de 63 marcos: uma olhada.
+    - args: [63, 32]
+      expect:
+        index: 31
+        comparisons: 1
+
+hints:
+  - level: 1
+    text: |
+      Três variáveis mudam durante o laço: `low`, `high` e o contador. Nada mais muda - a
+      lista nunca é modificada.
+
+      Quando o marco do meio não é a agulha, qual metade da faixa você consegue provar que
+      não a contém?
+  - level: 2
+    text: |
+      `markers = list(range(1, size + 1))` constrói a praia.
+
+      Depois `low = 0`, `high = len(markers) - 1`, `comparisons = 0`, e um
+      `while low <= high` com os quatro passos que o enunciado lista, nessa ordem.
+
+      Devolva de dentro do laço no acerto. O retorno `-1` fica depois do laço, quando a
+      faixa fechou.
+  - level: 3
+    text: |
+      O mesmo corte ao meio, sobre uma lista ordenada de nomes:
+
+          def locate(names, wanted):
+              low = 0
+              high = len(names) - 1
+              looks = 0
+
+              while low <= high:
+                  middle = (low + high) // 2
+                  looks = looks + 1
+                  if names[middle] == wanted:
+                      return {"at": middle, "looks": looks}
+                  if names[middle] < wanted:
+                      low = middle + 1
+                  else:
+                      high = middle - 1
+
+              return {"at": -1, "looks": looks}
+
+      A sua constrói a própria lista de números antes, e as duas chaves têm outros nomes.
+
+solution: |
+  def hunt(size, needle):
+      markers = list(range(1, size + 1))
+
+      low = 0
+      high = len(markers) - 1
+      comparisons = 0
+
+      while low <= high:
+          middle = (low + high) // 2
+          comparisons = comparisons + 1
+
+          if markers[middle] == needle:
+              return {"index": middle, "comparisons": comparisons}
+
+          if markers[middle] < needle:
+              low = middle + 1
+          else:
+              high = middle - 1
+
+      return {"index": -1, "comparisons": comparisons}

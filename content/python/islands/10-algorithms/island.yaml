@@ -1,0 +1,28 @@
+id: algorithms
+name: Algorithms
+track: python
+order: 10
+theme: The same answer, at a cost you chose
+description: |
+  Every island so far graded you on being right. Here being right is the entry fee.
+
+  You already know how to find something in a list. This is where you find out that your
+  way takes a thousand steps where another takes ten, and that the difference stops being
+  academic somewhere around the size of a real logbook.
+
+  Nothing here is measured with a stopwatch. Every mission counts its own work and hands
+  you the number, because a count is the same on every machine and a second is not.
+
+concepts:
+  - linear-search
+  - big-o
+  - binary-search
+  - two-pointer
+  - sorting
+  - recursion
+  - memoization
+
+unlock_requires:
+  missions_completed: 96
+
+completion_reward_xp: 300
