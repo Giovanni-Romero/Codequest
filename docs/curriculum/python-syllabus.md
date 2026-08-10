@@ -1030,8 +1030,21 @@ hand-rolled parsing. No new mechanism needed for this part.
 
 ## Island 8 — Objects
 
+**Theme:** data and the behaviour that belongs to it
 **Band:** moderate
-Concepts: `classes`, `instances`, `methods`, `dunder-methods`, `dataclasses`,
+**Missions:** 11
+
+Every island so far kept data and behaviour apart. A dict held the values, a function did
+something to it, and nothing stopped a caller from handing that function a dict shaped
+wrong. This island is where the two move in together: the crate knows its own weight, and
+the only code allowed to change it lives beside it.
+
+The player has already built everything a class does, by hand. Island 2's nested dicts are
+attributes, Island 3's functions are methods, Island 5's `raise` is what a bad state should
+do. Nothing here is new capability — it is the same work with a boundary drawn around it,
+and that framing is what keeps the island from reading as syntax for its own sake.
+
+**Concepts (8):** `classes`, `instances`, `methods`, `dunder-methods`, `dataclasses`,
 `composition-over-inheritance`, `properties`, `custom-exceptions`
 
 `custom-exceptions` **moved here from Island 5** while Island 5 was being designed.
@@ -1040,54 +1053,884 @@ runs long before classes exist. It lands naturally here: once `classes` is taugh
 custom exception is the smallest possible subclass and makes a good early mission for
 inheritance without needing a contrived example.
 
+### The rule that shapes every mission on this island
+
+**No mission may accept or return an instance.** Verified, not assumed: the harness
+serialises the return value with `json.dumps` and falls back to `repr` for anything it
+cannot carry (`engine/harness.py:78-89`), and the arguments in a test case arrive from
+JSON in the request file (`engine/runners/python.py:182-194`). A default instance
+`repr` is `<Crate object at 0x7f9c...>` — a different address on every run, so a mission
+expecting one is red forever.
+
+This is the same wall Island 3 hit with functions and Island 4 with `bytes`, and it gets
+the same treatment: reshape the mission, do not build around it. Every mission here builds
+its objects **inside** the submission and the entrypoint returns plain data derived from
+them — a dict, a list, a number, a bool, or a string.
+
+Far from a limitation, it hands `dunder-methods` its whole reason to exist. `__repr__`
+returns a string and `__eq__` returns a bool, so those two are the *first* things on this
+island whose output the engine can read directly. A player who writes `__repr__` because
+the test demands a readable string has learned exactly why the method exists.
+
+The one thing to watch when authoring: `signature.entrypoint` is always a function, never
+a class. The loader requires `^\s*def\s+<entrypoint>\s*\(` in both the stub and the
+solution (`engine/loader.py:107`), so a stub that only defines a class fails validation.
+Every stub here is `class X: ...` followed by `def <entrypoint>(...)`.
+
+### The honesty rule, found during authoring
+
+**The engine cannot prove that a class was written.** It sees the return value and nothing
+else, so a player who skips the class and hand-builds the dict passes every test. This was
+known in outline before authoring and turned out to be sharper than expected: for a pure
+data transformation, the class version is genuinely *more* code, so the shortcut is not
+only possible but shorter.
+
+Three responses were considered. Forbidding `dict` does not work — a `{...}` literal is
+not a `Name`, so the guard never sees it. Requiring `type(x).__name__` in the answer is
+faked with a string literal. Neither is a control, and pretending otherwise would be worse
+than the gap.
+
+**So mission 1's brief says it out loud**, in the same register Island 6 used for
+`print-debugging`: a two-line answer returns the right list, the tests cannot tell, write
+the class anyway because mission 2 gives you nothing to stand on otherwise. Later missions
+close the gap on their own — by mission 4 the answer *is* the output of `__repr__` and
+`__eq__`, and by mission 9 the state machine is complex enough that faking it is strictly
+more work than writing it.
+
+The transferable version, worth stating because it is the third time this project has hit
+it: when the check is impossible, say so in the brief and design the sequence so the
+shortcut stops paying. Do not invent a check that only looks like one.
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---|---|---|---|---|
+| 1 | `the-crate-that-knows-itself` | `classes`, `instances` | `dictionaries`, `parameters` | `__init__` and `self`. Returns a dict of the attributes, because an instance cannot cross back |
+| 2 | `the-crate-that-does-something` | `methods` | `classes`, `instances` | A method that changes its own state, and the same call twice giving a different answer |
+| 3 | `the-crew-roster` | — | `classes`, `methods`, `for-loop` | **Relief.** A list of instances, one loop, one total |
+| 4 | `printed-plainly` | `dunder-methods` | `methods`, `f-strings` | `__repr__` returns a string, so the test can finally read the object. `__eq__` and `__len__` alongside |
+| 5 | `the-harbour-refuses` | `custom-exceptions` | `raising`, `classes`, `input-validation` | The smallest subclass there is. Graded with `raises:` |
+| 6 | `two-of-a-kind` | — | `dunder-methods`, `instances` | **Relief.** Same three dunders, friendlier shape |
+| 7 | `the-hull-and-the-engine` | `composition-over-inheritance` | `classes`, `methods`, `dunder-methods` | Two classes, one holding the other. The inheritance version is shown in the panel and rejected with a reason |
+| 8 | `the-free-boilerplate` | `dataclasses` | `dunder-methods`, `classes` | Everything missions 1 to 6 wrote by hand, generated. Includes the mutable-default trap in its `@dataclass` form |
+| 9 | `the-computed-draught` | `properties` | `methods`, `dataclasses`, `custom-exceptions` | A value that reads as an attribute and is computed. The setter refuses bad input with mission 5's exception |
+| 10 | `the-generated-fleet` | — | `dataclasses`, `properties`, `composition-over-inheritance` | **Relief.** |
+| 11 | `the-whole-shipyard` | — | all eight | Closing mission. Combine, do not learn |
+
+Relief at 3, 6 and 10. The shift from the 3/6/9 pattern of Islands 4 to 7 is forced by
+arithmetic, not taste: the last concept introduced needs two later missions to be
+reinforced in, so with eight concepts in eleven missions the final introduction has to
+land at 9.
+
+Missions 1 introducing `classes` and `instances` **together** is the second exception to
+the one-new-concept rule, after Island 6 mission 3. The reason is different and weaker,
+and it is worth being honest about: unlike `print-debugging` and `interactive-debugger`,
+these two *could* be split. They are not, because a class with no instance is a definition
+nobody has run, and an instance with no class is impossible — every draft that separated
+them made mission 1 a mission about syntax and mission 2 a mission about the same syntax.
+The pair is one idea seen from two sides, and the teaching panel says so out loud.
+
+Mission 4 arriving before mission 8 is the load-bearing order of this island. A player who
+meets `@dataclass` first sees a decorator that does something invisible. A player who has
+written `__init__`, `__repr__` and `__eq__` by hand for six missions sees a decorator that
+deletes twenty lines they personally typed. Same feature, and only one of the two orders
+teaches what it is for.
+
+Reinforcement count:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `classes` | 1 | 2, 3, 5, 7, 8, 11 |
+| `instances` | 1 | 2, 3, 6, 7, 11 |
+| `methods` | 2 | 3, 4, 7, 9, 11 |
+| `dunder-methods` | 4 | 6, 7, 8, 11 |
+| `custom-exceptions` | 5 | 9, 11 |
+| `composition-over-inheritance` | 7 | 10, 11 |
+| `dataclasses` | 8 | 9, 10, 11 |
+| `properties` | 9 | 10, 11 |
+
+Every concept is reused at least twice. No orphans.
+
+### Engine work this island requires
+
+**None**, and the island shipped without any. Verified against the code before the map was
+written, and confirmed by 11 missions passing `codequest check` in both language trees:
+
+- `engine/guard.py:93` already visits `ClassDef`, so a class definition passes the guard
+  and `forbidden_builtins` still applies inside a method body.
+- `dataclasses` is a stdlib import and `forbidden_imports` defaults to empty
+  (`models/mission.py:96`), so mission 8 needs no new mechanism — and mission 4 can forbid
+  `dataclasses` by name to stop a player short-cutting the hand-written dunders.
+- `raises:` already exists (built for Island 5) and matches by **exact type name**
+  (`engine/evaluator.py:131`). A custom exception named `ShortfallError` is matched on
+  that string, so mission 5 must state the class name in its brief — the player cannot
+  invent their own name and pass.
+
+The single authoring rule that replaces engine work: **the entrypoint is a function and
+the return value is plain data.** Written here so the next island author inherits it
+instead of rediscovering it against a red test.
+
+### classes
+- **prereqs:** dictionaries, parameters, return-values
+- **objective:** define a type whose values carry their own data
+- **misconceptions:** believing `self` is a keyword the language passes magically rather
+  than the first parameter you are declaring; believing a variable set directly in the
+  class body is per-instance (it is shared by all of them, which is Island 3's mutable
+  default wearing a hat); believing `__init__` returns the object
+- **mastery:** writes a class whose two instances hold different values, and says which
+  line made them independent
+
+### instances
+- **prereqs:** classes
+- **objective:** build several values of your own type and keep their state apart
+- **misconceptions:** believing `Crate` and `Crate()` are the same thing; believing two
+  instances built from the same arguments are the same object; expecting `==` to compare
+  contents before `__eq__` exists (it compares identity)
+- **mastery:** predicts the output after mutating one of two instances built the same way
+
+### methods
+- **prereqs:** instances, pure-vs-side-effects
+- **objective:** put the behaviour that changes a value next to the value itself
+- **misconceptions:** forgetting `self` in the definition and being told the call got one
+  argument too many; reading `self.total` and `total` as the same name; believing a method
+  that mutates should also return the object
+- **mastery:** writes a method that changes its own state and one that only reports it,
+  and says which of the two is safe to call twice
+
+### dunder-methods
+- **prereqs:** methods, f-strings
+- **objective:** make your type answer the questions the language already knows how to ask
+- **misconceptions:** believing you call `__repr__` directly rather than through `repr()`
+  and `print()`; believing `__str__` and `__repr__` are interchangeable; defining `__eq__`
+  and expecting the object to still work in a set (it needs `__hash__`, and defining
+  `__eq__` alone removes the one it had)
+- **mastery:** makes two equal-by-value instances compare equal, and prints one in a form
+  that names its contents
+
+### custom-exceptions
+- **prereqs:** raising, classes, input-validation
+- **objective:** name a failure your program has, so a caller can catch that one and
+  nothing else
+- **misconceptions:** believing a custom exception needs a body beyond `pass`; inheriting
+  from `BaseException` instead of `Exception`, which catches things nobody meant to catch;
+  defining one and then raising `ValueError` anyway; believing the name alone documents
+  the failure without a message
+- **mastery:** raises a named exception a caller can catch by name while an unrelated
+  `ValueError` still travels past
+
+### composition-over-inheritance
+- **prereqs:** classes, methods, dunder-methods
+- **objective:** build a bigger type by holding smaller ones instead of inheriting from
+  them
+- **misconceptions:** reaching for inheritance because two types share a word in their
+  name; believing inheritance is about reuse rather than about substitutability;
+  believing composition means more code (it means more names, and fewer surprises)
+- **mastery:** given a type that "has a" relationship and one that "is a", picks the right
+  tool for each and says which question decided it
+
+### dataclasses
+- **prereqs:** dunder-methods, classes
+- **objective:** stop writing `__init__` and `__repr__` by hand for types that are mostly
+  data
+- **misconceptions:** believing `@dataclass` changes what the class *is* (it writes methods
+  you could have typed); giving a field a mutable default and meeting Island 3's trap in a
+  new costume, this time as a `ValueError` at class-definition time; believing `frozen=True`
+  makes the contents immutable rather than the bindings
+- **mastery:** replaces a hand-written class with a dataclass and names which methods
+  disappeared and which had to stay
+
+### properties
+- **prereqs:** methods, dataclasses, custom-exceptions
+- **objective:** expose a computed or guarded value with the plainness of an attribute
+- **misconceptions:** believing a property is stored (it runs every time it is read);
+  putting expensive work behind one, so `obj.total` quietly costs a second; writing a
+  setter that validates and then forgets to store; believing `@property` is required for
+  every attribute
+- **mastery:** turns a stored attribute into a computed one without any calling code
+  changing, and refuses an invalid assignment through the setter
+
 ---
 
 ## Island 9 — Pythonic Patterns
 
+**Theme:** the shapes the language was built for
 **Band:** challenging
-Concepts: `iterators`, `generators`, `yield`, `decorators`, `custom-context-managers`,
-`unpacking`, `enumerate-zip`
+**Missions:** 11
+
+The player can already solve anything on this island the long way — with an index counter,
+a list built up in full, a wrapper function called by hand. This island is about the
+shorter form being *better*, not just briefer: a generator that never builds the list can
+walk a sequence that does not fit in memory, and a decorator applied in one line is a
+change you cannot forget to make at the seventh call site.
+
+It is the first island where the wrong answer is a working one. Every mission has a
+solution the player already knows how to write, and the mission is only passed by the
+version the concept is about — which is what `forbidden_builtins` and
+`forbidden_imports` exist for.
+
+**Concepts (7):** `unpacking`, `enumerate-zip`, `iterators`, `yield`, `generators`,
+`decorators`, `custom-context-managers`
+
+### The rule that shapes every mission on this island
+
+**No mission may return a generator, an iterator, a function or a context manager.** The
+same `repr`-with-an-address problem as Island 8, from `engine/harness.py:78-89`:
+`<generator object walk at 0x7f...>` and `<function timed at 0x7f...>` change on every
+run. Every entrypoint here returns a list, a number, a string or a bool built from those
+objects.
+
+Proving laziness without returning the lazy thing is the interesting half, and there are
+two honest ways. Both are used:
+
+1. **Return a prefix of an infinite source.** A generator over an endless sequence, with
+   the mission taking the first five. The list-building version cannot finish, so the
+   mission is graded by the fact that it *returns at all* — no timing assertion, just a
+   wall-clock timeout that only the correct shape survives.
+2. **Return `[next(g), next(g)]`.** Two values pulled by hand, which is what makes
+   "produces on demand" observable rather than asserted.
+
+**Grading on `stdout` was considered and rejected**, consistently with Island 6. `stdout`
+is captured and shown to the player (`engine/evaluator.py:226`) but no test compares it,
+and the argument from Island 6 applies unchanged: any rule strict enough to grade printed
+output is grading formatting. Nothing on this island needs it — the two techniques above
+cover every case, which is why this island asks for no engine work.
+
+**A third technique appeared during authoring, and it is the best of the three.** Pass the
+generator a list, have it append to that list as it produces, and take a copy of the list
+before pulling anything. The copy is empty, because none of the body has run — which is the
+"nothing happens until the first `next`" rule turned into a value the engine can compare.
+Mission 5 is built on it. It needs no infinite source, no clock and no `stdout`, and it is
+the only one of the three that observes the *creation* of a generator rather than its
+consumption. Any future island teaching laziness should reach for this first.
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---|---|---|---|---|
+| 1 | `the-two-halves` | `unpacking` | `tuples`, `return-values` | `a, b = pair`, the starred middle, and the swap that needs no temporary |
+| 2 | `the-numbered-watch` | `enumerate-zip` | `unpacking`, `for-loop` | The index counter deleted. `range(len(...))` forbidden, or it is a loop mission again |
+| 3 | `the-paired-ledger` | — | `enumerate-zip`, `unpacking`, `dictionaries` | **Relief.** Two lists into one dict |
+| 4 | `one-at-a-time` | `iterators` | `for-loop`, `lists` | `iter` and `next`, and the exhaustion that makes a second pass empty |
+| 5 | `the-paused-function` | `yield` | `iterators`, `functions` | A function that stops and resumes. Graded with `[next(g), next(g)]` |
+| 6 | `the-endless-tide` | — | `yield`, `iterators` | **Relief.** First five of an infinite source. The eager version cannot finish |
+| 7 | `the-lazy-manifest` | `generators` | `yield`, `list-comprehension` | Generator expressions, and the memory argument. `list` forbidden where it would defeat the point |
+| 8 | `the-wrapped-order` | `decorators` | `first-class-functions`, `args-kwargs` | The player writes the decorator and applies it to a helper. The entrypoint returns what the wrapping made observable |
+| 9 | `open-and-shut` | `custom-context-managers` | `context-managers`, `classes`, `dunder-methods` | `__enter__`/`__exit__`, then `@contextmanager`. Island 7 used `with`; here you build one |
+| 10 | `the-pipeline` | — | `generators`, `decorators`, `custom-context-managers` | **Relief.** Three tools, one small job |
+| 11 | `the-whole-current` | — | all seven | Closing mission. Combine, do not learn |
+
+Relief at 3, 6 and 10, same arithmetic as Island 8.
+
+`unpacking` and `enumerate-zip` open the island rather than closing it, against the
+instinct that says the cheap tools are a footnote. They come first because they are the
+only two concepts here the player can use immediately in *every* later mission, and
+because the island's band is `challenging` — opening on the iterator protocol would put
+the hardest idea at the point where the player has the least momentum.
+
+Mission 4 introducing `iterators` before mission 5's `yield` is the same move Island 5
+made with `exceptions` before `try-except` and Island 7 with `open-and-read` before
+`context-managers`. A player has to watch an iterator run out before a function that
+produces values one at a time reads as anything other than a strange `return`.
+
+Reinforcement count:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `unpacking` | 1 | 2, 3, 8, 11 |
+| `enumerate-zip` | 2 | 3, 7, 10, 11 |
+| `iterators` | 4 | 5, 6, 7, 9, 11 |
+| `yield` | 5 | 6, 7, 11 |
+| `generators` | 7 | 10, 11 |
+| `decorators` | 8 | 10, 11 |
+| `custom-context-managers` | 9 | 10, 11 |
+
+Every concept is reused at least twice. No orphans.
+
+### Engine work this island requires
+
+**None**, and the island shipped without any. Verified before the map was written, and
+confirmed by 11 missions passing `codequest check` in both language trees:
+
+- `engine/guard.py:89-93` visits `AsyncFunctionDef` and `ClassDef`; a `yield` inside a
+  function body is an ordinary statement to the guard and needs no handling.
+- `contextlib` is stdlib and unrestricted by default (`models/mission.py:96`), so mission 9
+  can teach `@contextmanager` and mission 9's earlier half can forbid it to force the
+  class-based version first.
+- The infinite-generator missions rely on the wall-clock timeout already enforced by the
+  parent (`engine/runners/python.py:181`), which is the mechanism Island 10 leans on
+  harder. Nothing new.
+
+The authoring rule, in one line: **the lazy object stays inside the submission; only what
+was pulled out of it crosses back.**
+
+### unpacking
+- **prereqs:** tuples, return-values
+- **objective:** take a sequence apart into named values in one statement
+- **misconceptions:** believing the counts may differ (they may not, unless a `*name`
+  absorbs the rest); believing `*rest` gives a tuple (it gives a list, every time);
+  believing `a, b = b, a` needs a temporary variable somewhere out of sight
+- **mastery:** swaps two values and splits a head from a tail without an index anywhere
+
+### enumerate-zip
+- **prereqs:** unpacking, for-loop
+- **objective:** walk a sequence with its position, or two sequences together, without
+  managing an index
+- **misconceptions:** believing `enumerate` starts anywhere but 0 unless told; believing
+  `zip` pads the shorter sequence (it stops, silently, which is the bug); believing you can
+  reuse a `zip` object for a second pass
+- **mastery:** rewrites a `range(len(...))` loop with `enumerate`, and says what `zip`
+  does when the two inputs are different lengths
+
+### iterators
+- **prereqs:** for-loop, lists
+- **objective:** see the protocol a `for` loop has been using all along, and drive it by
+  hand
+- **misconceptions:** believing a list and its iterator are the same thing; expecting a
+  second `for` over the same iterator to start again (it is empty); believing `next` on an
+  exhausted iterator returns `None` rather than raising `StopIteration`
+- **mastery:** consumes half an iterator, hands it to a loop, and predicts what the loop
+  sees
+
+### yield
+- **prereqs:** iterators, return-values
+- **objective:** write a function that hands back one value and carries on from where it
+  stopped
+- **misconceptions:** believing the function body runs when it is called (nothing runs
+  until the first `next`); believing `yield` ends the function the way `return` does;
+  putting a `yield` in a function and being surprised the `return` value vanished into a
+  `StopIteration`
+- **mastery:** predicts how many lines of a generator body have run after exactly one
+  `next`
+
+### generators
+- **prereqs:** yield, list-comprehension
+- **objective:** produce a long or endless sequence without ever holding it all at once
+- **misconceptions:** believing a generator can be walked twice; believing
+  `(x for x in ...)` and `[x for x in ...]` differ only in punctuation; believing `len`
+  works on one; reaching for a generator where a list is genuinely cheaper and needed twice
+- **mastery:** takes the first five values of an endless sequence, and says why the list
+  version of the same code never returns
+
+### decorators
+- **prereqs:** first-class-functions, args-kwargs
+- **objective:** add the same behaviour to a function without editing the function
+- **misconceptions:** believing `@thing` calls the function (it replaces it); forgetting
+  `*args, **kwargs` in the wrapper and breaking every call with an argument; losing the
+  original function's `__name__` and not knowing `functools.wraps` exists; believing a
+  decorator runs once per call rather than once at definition
+- **mastery:** wraps a function so the behaviour is added at every call site at once, and
+  the wrapped function still accepts the arguments it always did
+
+### custom-context-managers
+- **prereqs:** context-managers, classes, dunder-methods
+- **objective:** guarantee that cleanup happens, for a resource the standard library never
+  heard of
+- **misconceptions:** believing `__exit__` is only for the happy path (it runs on the way
+  out of an exception too, which is the entire point); believing returning `True` from
+  `__exit__` is polite rather than a decision to swallow the exception; forgetting that
+  `__enter__`'s return value is what `as` binds
+- **mastery:** writes a manager whose cleanup still runs when the body raises, and says
+  which line proves it
 
 ---
 
 ## Island 10 — Algorithms
 
+**Theme:** the same answer, at a cost you chose
 **Band:** challenging
-Concepts: `big-o`, `linear-search`, `binary-search`, `sorting`, `recursion`,
-`memoization`, `two-pointer`
+**Missions:** 11
+
+Every mission so far was graded on being right. This is the first island where being right
+is the entry fee. The player already knows how to find an item in a list; here they find
+out that their way takes a thousand steps where another takes ten, and that the difference
+stops being academic somewhere around the size of a real logbook.
+
+This island is deliberately the one before `async`, because the most common reason a
+program is slow is not that it lacks concurrency — it is that it is doing far too much
+work. Learning to count the work first is what stops Island 11 from reading as a
+performance cure-all.
+
+**Concepts (7):** `linear-search`, `big-o`, `binary-search`, `two-pointer`, `sorting`,
+`recursion`, `memoization`
+
+### `big-o` is graded by counting, not by timing
+
+`big-o` looks like the third unverifiable concept in the curriculum, after
+`print-debugging` and `interactive-debugger` in Island 6. It is not, and the difference is
+worth stating because it decides the shape of half the island.
+
+**The missions return the step count.** A search that also reports how many comparisons it
+made returns an integer, deterministic on every machine, on every run, in CI and on
+Windows alike. `linear_search(haystack, needle) -> (index, comparisons)` is exactly
+gradable, and a hidden case on a thousand-element list distinguishes ten steps from a
+thousand with no clock involved. The *notion* of an asymptotic class lives in the teaching
+panel; what the tests grade is the count it predicts.
+
+**Timing is the backstop, never the primary grade.** Verified before this was decided: the
+wall-clock budget is `constraints.max_runtime_ms`, applied by the parent to a **fresh
+subprocess per test case** (`engine/runners/python.py:181` and `115`), so the measured
+interval includes interpreter start-up and the submission's import. That noise floor is
+tens of milliseconds and it is worse on a cold Windows filesystem, which is the author's
+machine (`CLAUDE.md` §5).
+
+So the rule for any mission that grades by time, and there is one — mission 9:
+
+> The naive solution must exceed `max_runtime_ms` by at least **5x**, and the intended
+> solution must come in under **a fifth** of it. A mission whose two solutions are within
+> an order of magnitude of the budget is a flaky test, not a lesson.
+
+The mission raises `max_runtime_ms` explicitly rather than relying on the 2000 ms default,
+so the margin is visible in the file instead of implied.
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---|---|---|---|---|
+| 1 | `walk-the-whole-shore` | `linear-search` | `for-loop`, `enumerate-zip` | The honest baseline. Returns the index *and* the comparison count |
+| 2 | `count-the-steps` | `big-o` | `linear-search`, `accumulator-pattern` | Same search, three input sizes, and the count as the deliverable |
+| 3 | `the-first-match` | — | `linear-search`, `big-o` | **Relief.** Early return, and why it changes the best case but not the class |
+| 4 | `halve-the-shore` | `binary-search` | `big-o`, `while-loop` | Island 6's `bisection` as an algorithm on data. The count drops from 1000 to 10 |
+| 5 | `both-ends-inward` | `two-pointer` | `binary-search`, `unpacking` | One pass, two indices, no nested loop |
+| 6 | `the-sorted-assumption` | — | `binary-search`, `two-pointer` | **Relief.** What binary search returns on unsorted input — a wrong answer, confidently |
+| 7 | `put-them-in-order` | `sorting` | `big-o`, `linear-search` | Write one sort by hand, count its comparisons, then meet `sorted` and the reason to use it |
+| 8 | `the-mirror-and-the-mirror` | `recursion` | `functions`, `conditionals` | Base case first. `RecursionError` is a normal outcome here, not a crash |
+| 9 | `the-clerk-who-remembers` | `memoization` | `recursion`, `dictionaries`, `big-o` | The only timing-graded mission on the island. Naive recursion cannot finish inside the budget |
+| 10 | `the-indexed-ledger` | — | `sorting`, `binary-search`, `memoization`, `recursion` | **Relief.** Sort once, search many times |
+| 11 | `the-whole-chart` | — | all seven | Closing mission. Combine, do not learn |
+
+Relief at 3, 6 and 10.
+
+Mission 6 is a relief mission that teaches by breaking something: binary search on an
+unsorted list returns a plausible wrong answer rather than raising. It is placed as relief
+because the code is short, and it exists because "this algorithm has a precondition" is a
+lesson nobody remembers from a sentence in a panel.
+
+Mission 7 asks the player to write a sort and then tells them not to. That is not a trick.
+`sorted` is C, stable, and better than anything they will write on their first try — but a
+player who has never written one cannot tell you what "stable" means or why the
+comparison count matters, and will not recognise an accidental O(n²) when they nest a
+`.index()` call inside a loop next year.
+
+Reinforcement count:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `linear-search` | 1 | 2, 3, 7, 11 |
+| `big-o` | 2 | 3, 4, 7, 9, 11 |
+| `binary-search` | 4 | 5, 6, 10, 11 |
+| `two-pointer` | 5 | 6, 11 |
+| `sorting` | 7 | 10, 11 |
+| `recursion` | 8 | 9, 10, 11 |
+| `memoization` | 9 | 10, 11 |
+
+Every concept is reused at least twice. No orphans.
+
+### Engine work this island requires
+
+**None**, and the check that mattered was the third item. Verified before the map was
+written:
+
+- **Big inputs need no new mechanism.** A thousand-element list can be planted with
+  `files:` (built for Island 7) or generated by the submission from a seed the test passes.
+  Generating is preferred where it works — the input stays visible in the brief, and no
+  case depends on a fixture the player cannot see.
+- **`RecursionError` is already a first-class outcome** (`engine/harness.py:135`), so a
+  missing base case produces a readable failure rather than a sandbox crash. Mission 8 can
+  rely on it.
+- **Timing is honest enough for exactly one mission.** See the 5x/one-fifth rule above.
+  This was the item that could have become engine work — a per-case CPU-time measurement
+  reported back from the harness would be more precise than the wall clock. It is **not**
+  being built, because the step-count framing makes it unnecessary for six of the seven
+  concepts, and building a measurement to grade one mission would be the tail wagging the
+  dog. Recorded here so the next author knows it was a decision and not an oversight.
+
+### The specification rule, found during authoring
+
+The step-count framing works, and it arrived with a condition the design had not stated: **a
+graded count needs a specified algorithm, not merely a correct one.**
+
+Binary search is the case that made it obvious. Every correct implementation finds the item,
+and they do not agree on how many comparisons that took. `(low + high) // 2` and
+`low + (high - low + 1) // 2` both work and produce different counts on the same list;
+counting the loop iterations and counting the `==` tests differ by one on a miss. A brief
+that says "count your comparisons" is therefore not a specification, and a player who wrote
+a perfectly good binary search would fail on a number nobody told them how to produce.
+
+So missions 4, 5, 6, 7, 10 and 11 write the loop rule out in the brief - the exact midpoint,
+the exact loop condition, where the counter increments. That is more prescriptive than
+anything earlier in the curriculum, and it is the price of grading cost instead of grading
+answers. It is worth stating why the trade is still good: the alternative is grading big-O
+by inspecting source code, which the engine cannot do, or grading it by the clock, which
+lies on a cold Windows filesystem.
+
+One consequence to keep in mind for Island 11: the same rule applies to anything graded on
+ordering or on interleaving. A brief that says "run them concurrently" is not a
+specification either.
+
+The timing mission also came out with far more margin than the design's 5x rule required.
+Mission 9 asks for `fib(70)`: memoised it is seventy-one dictionary writes, and naively it
+is on the order of 2 x 10^14 calls. The margin is not five times, it is astronomical, and
+that is the right shape for the one mission on the island whose grade depends on a clock.
+A mission needing a *carefully chosen* 5x margin would have been the warning sign.
+
+### linear-search
+- **prereqs:** for-loop, enumerate-zip
+- **objective:** find an item by looking at every candidate, and say how many you looked at
+- **misconceptions:** believing `in` is free because it is one character; continuing the
+  loop after the answer is found; believing the worst case is the average case
+- **mastery:** returns both the position and the number of comparisons, and says what the
+  count is when the item is absent
+
+### big-o
+- **prereqs:** linear-search, accumulator-pattern
+- **objective:** predict how the work grows when the input grows, before running anything
+- **misconceptions:** believing O(n) means "n steps" rather than "growth proportional to
+  n"; counting the constant and dropping the exponent; believing a faster class is always
+  the better choice regardless of input size; believing two nested loops are always O(n²)
+  without looking at what the inner one ranges over
+- **mastery:** given two implementations, predicts which comparison count grows faster and
+  is right when the counts are printed
+
+### binary-search
+- **prereqs:** big-o, while-loop, bisection
+- **objective:** find an item in sorted data by halving the range instead of walking it
+- **misconceptions:** the off-by-one in the midpoint that loops forever or skips the
+  answer; forgetting the input must already be sorted; believing it can be worth sorting
+  first for a single lookup (it is not — sorting costs more than the walk it saves)
+- **mastery:** finds an item in a thousand-element list in roughly ten comparisons, and
+  names the precondition that makes it legal
+
+### two-pointer
+- **prereqs:** binary-search, unpacking
+- **objective:** collapse a nested loop into one pass by moving two indices toward each
+  other
+- **misconceptions:** believing it works on unordered data; moving both pointers when only
+  one should move; believing the loop ends when the pointers are equal rather than when
+  they cross, or the reverse, depending on the problem
+- **mastery:** solves in one pass a problem whose obvious solution has a loop inside a loop
+
+### sorting
+- **prereqs:** big-o, linear-search
+- **objective:** put data in order, and know what it costs you to have done it
+- **misconceptions:** believing `.sort()` and `sorted()` are interchangeable (one returns
+  `None` and mutates, the other does not); believing sorting is cheap enough to do inside a
+  loop; not knowing that a stable sort lets you sort by two keys in two passes
+- **mastery:** hand-writes one O(n²) sort, states its comparison count on ten items, and
+  says why the standard library's version is still the one to ship
+
+### recursion
+- **prereqs:** functions, conditionals, scope
+- **objective:** solve a problem by solving a smaller copy of it
+- **misconceptions:** writing the recursive case before the base case and never returning;
+  forgetting to `return` the recursive call, so the answer is computed and discarded;
+  believing recursion is faster than a loop (in CPython it is slower and has a depth
+  limit); believing every recursion has an obvious loop equivalent
+- **mastery:** writes a function whose base case fires first, and says what its depth is
+  for a given input
+
+### memoization
+- **prereqs:** recursion, dictionaries, big-o
+- **objective:** stop recomputing an answer you already worked out
+- **misconceptions:** believing it helps when the arguments never repeat (it only costs
+  memory); caching on a mutable argument that cannot be a dict key; believing
+  `functools.cache` is magic rather than a dict keyed on the arguments; caching a function
+  with side effects, so the side effect happens once and the caller never learns
+- **mastery:** turns a recursion that cannot finish into one that returns instantly, and
+  says how many distinct calls actually ran
 
 ---
 
 ## Island 11 — Async and Concurrency
 
+**Theme:** waiting is not working
 **Band:** expert
-Concepts: `blocking-vs-nonblocking`, `async-await`, `event-loop`, `gather`, `threads`,
-`gil`, `when-concurrency-helps`
+**Missions:** 10
 
-Design note: at least one mission must show a case where async makes things **slower**.
-Knowing when not to reach for a tool is the harder half of the skill.
+The last island, and the only one whose main lesson is a refusal. Island 10 taught that a
+slow program is usually doing too much work. This one teaches the other case — the program
+doing almost nothing at all, and spending its life waiting for a disk, a network or a
+clock — and then spends its final third on the far more common situation where
+concurrency makes everything worse.
+
+The syllabus requirement is unchanged and load-bearing: **at least one mission must show a
+case where async is slower.** Knowing when not to reach for a tool is the harder half of
+the skill, and it is mission 8.
+
+**Concepts (7):** `blocking-vs-nonblocking`, `async-await`, `event-loop`, `gather`,
+`threads`, `gil`, `when-concurrency-helps`
+
+### Engine work this island requires — build before authoring
+
+This is an Island 5 case, not an Island 3 case: the missions cannot be reshaped around the
+gap, so the engine is built first, exactly as `raises:` was built before Island 5 and
+`files:` before Island 7. Both items were verified against the code.
+
+**1. The harness calls the entrypoint synchronously. This is the blocker.**
+`engine/harness.py:132` is `returned = function(*args, **kwargs)`. An `async def`
+entrypoint returns a coroutine, never a result — and `_jsonable` then falls back to
+`repr`, producing `<coroutine object solve at 0x7f...>` with a fresh address every run,
+plus a "coroutine was never awaited" warning. Every mission on this island fails, including
+its own shipped solution, which `tests/content/test_all_missions.py` would catch on the
+first commit.
+
+Proposed contract, to be built before authoring:
+
+```python
+returned = function(*args, **kwargs)
+if inspect.iscoroutine(returned):
+    returned = asyncio.run(returned)
+```
+
+Roughly five lines, with three constraints on how they are written:
+
+- `asyncio.run` creates and closes its own event loop, so it must be the outermost call —
+  a mission whose solution calls `asyncio.run` itself would then be nesting loops and
+  raising `RuntimeError`. The brief for every mission here must therefore say that the
+  entrypoint is awaited **for** them.
+- The `except BaseException` around the call (`harness.py:137`) has to keep covering the
+  `asyncio.run`, or an exception raised inside a coroutine escapes the harness and the
+  parent gets an empty result file. A `raises:` case on this island depends on it.
+- `harness.py` imports nothing from `codequest` by design (module docstring, lines 1-24).
+  `asyncio` and `inspect` are stdlib, so the rule holds.
+
+**2. The loader rejects `async def`.** `engine/loader.py:107` builds
+`rf"^\s*def\s+{re.escape(name)}\s*\("` and requires a match in both the stub and the
+solution. `async def fetch_all(...)` does not match, so every mission here fails validation
+before it is ever run. The fix is one character class:
+
+```python
+pattern = rf"^\s*(?:async\s+)?def\s+{re.escape(name)}\s*\("
+```
+
+This is exactly the pattern `src/codequest/mentor/policy.py:65` already uses to detect a
+leaked entrypoint — which is quietly reassuring: the anti-spoiler filter already assumed
+an async entrypoint was coming, and the loader is the half that was never updated.
+
+**3. No mission may assert on elapsed time.** Same reasoning as Island 10, harder:
+concurrency missions are where the temptation to grade a stopwatch is strongest and where
+it is least reliable. The mechanism instead is **completion order**. Given three sleeps of
+different lengths, a sequential implementation appends its results in argument order and a
+concurrent one appends in duration order — a list, deterministic, gradable with an
+ordinary `expect:`.
+
+**4. Sleeps must stay inside the wall-clock budget.** The parent's timeout covers a fresh
+subprocess including interpreter start-up (`engine/runners/python.py:115`, `181`). Rule:
+total sleeps per test case stay under **200 ms**, and any mission that sleeps raises
+`max_runtime_ms` to **5000** explicitly. A mission demonstrating a difference with 3 x 1 s
+sleeps is a mission whose own solution times out.
+
+### `gil` is a teaching-panel concept, and the third one
+
+`gil` joins `print-debugging` and `interactive-debugger` as a concept whose central claim
+is not directly assertable. Proving the GIL exists means timing CPU-bound threads, which is
+item 3 above under a different name. Proving it *by race condition* is worse: the outcome
+is non-deterministic by definition, so the test would be flaky in exactly the way that
+teaches a player to distrust the game.
+
+So mission 7 teaches the GIL in its panel and is graded on **the consequence**: given a
+workload, choose threads or something else, and the choice is visible in the returned
+result. This is Island 6's resolution applied a second time, and it is recorded here so
+the pattern reads as a policy rather than a series of one-off excuses.
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---|---|---|---|---|
+| 1 | `the-waiting-room` | `blocking-vs-nonblocking` | `functions`, `big-o` | Sync only. Three waits in a row, and the total is the sum. Nothing async yet — the problem before the tool |
+| 2 | `the-first-await` | `async-await`, `event-loop` | `blocking-vs-nonblocking`, `functions` | One coroutine, awaited by the engine. The loop is named because `await` outside one is the error everyone meets |
+| 3 | `the-patient-signal` | — | `async-await`, `return-values` | **Relief.** An async function that returns a value like any other |
+| 4 | `all-at-once` | `gather` | `async-await`, `event-loop`, `lists` | Three waits concurrently. Graded on completion order, not on the clock |
+| 5 | `the-second-hand` | `threads` | `blocking-vs-nonblocking`, `functions` | The other tool for the same waiting problem, and the shared state it exposes |
+| 6 | `the-shared-tally` | — | `threads`, `gather` | **Relief.** A `Lock`, and what it costs |
+| 7 | `one-at-a-time-after-all` | `gil` | `threads`, `event-loop`, `big-o` | Why four threads do not make arithmetic four times faster. Graded on the choice, not on a clock |
+| 8 | `the-slower-fleet` | `when-concurrency-helps` | `gil`, `gather`, `blocking-vs-nonblocking` | **The refusal mission.** The concurrent version is measurably worse and the correct answer is the plain loop |
+| 9 | `the-right-tool` | — | `when-concurrency-helps`, `gather`, `threads`, `gil` | **Relief.** Three workloads, pick the tool for each |
+| 10 | `the-whole-voyage` | — | all seven | Closing mission of the island and of the track |
+
+Relief at 3, 6 and 9.
+
+Mission 1 contains no async at all, and that is the island's most important placement. The
+same order Island 5 used for `exceptions` before `try-except` and Island 7 for
+`open-and-read` before `context-managers`: a player has to feel three seconds of pointless
+waiting add up before `await` is a solution rather than a fashion.
+
+Mission 2 introducing `async-await` and `event-loop` **together** is the third exception to
+the one-new-concept rule. It is the least avoidable of the three: `await` outside a running
+loop is a `SyntaxError` or a `RuntimeError` depending on where you put it, so a player who
+does not know a loop exists cannot read their own first error message.
+
+Reinforcement count:
+
+| Concept | Introduced | Reinforced in |
+|---|---:|---|
+| `blocking-vs-nonblocking` | 1 | 2, 5, 8, 10 |
+| `async-await` | 2 | 3, 4, 8, 10 |
+| `event-loop` | 2 | 4, 7, 10 |
+| `gather` | 4 | 6, 8, 9, 10 |
+| `threads` | 5 | 6, 7, 9, 10 |
+| `gil` | 7 | 8, 9, 10 |
+| `when-concurrency-helps` | 8 | 9, 10 |
+
+Every concept is reused at least twice. No orphans.
+
+### blocking-vs-nonblocking
+- **prereqs:** functions, big-o
+- **objective:** tell work apart from waiting, and say which one your program is doing
+- **misconceptions:** believing a slow program is always computing something; believing
+  `time.sleep` and a long loop cost the same kind of time; believing "asynchronous" means
+  "in parallel"; believing the CPU is busy while a network call is in flight
+- **mastery:** given two slow functions, says which one concurrency could help and why the
+  other one it cannot
+
+### async-await
+- **prereqs:** blocking-vs-nonblocking, functions
+- **objective:** write a function that can pause at a wait and let something else run
+- **misconceptions:** believing `async def` makes a function faster or parallel on its own;
+  calling a coroutine without awaiting it and getting an object instead of an answer;
+  believing `await` can appear anywhere; putting a blocking `time.sleep` inside a coroutine
+  and stalling every other task on the loop
+- **mastery:** writes a coroutine whose value comes back correctly, and says what calling
+  it without `await` produces
+
+### event-loop
+- **prereqs:** async-await
+- **objective:** name the thing that decides which paused coroutine runs next
+- **misconceptions:** believing there are threads underneath; believing the loop can
+  interrupt a coroutine that never awaits (it cannot — a tight loop freezes everything);
+  believing several loops can run in one thread; believing `asyncio.run` can be nested
+- **mastery:** explains what happens to every other task when one coroutine runs a
+  three-second calculation with no `await` in it
+
+### gather
+- **prereqs:** async-await, event-loop, lists
+- **objective:** start several waits at once and collect the results when they are all in
+- **misconceptions:** believing `gather` returns results in completion order (it returns
+  them in argument order, which is the useful guarantee); believing awaiting coroutines one
+  after another in a loop is the same thing (it is the sequential version); not knowing
+  that one exception cancels the collection unless `return_exceptions` says otherwise
+- **mastery:** turns three sequential awaits into one concurrent batch, and says which of
+  argument order and completion order the result preserves
+
+### threads
+- **prereqs:** blocking-vs-nonblocking, functions
+- **objective:** run waiting work in parallel without rewriting the functions as coroutines
+- **misconceptions:** believing threads make CPU-bound Python faster; forgetting a thread
+  needs joining before its result is read; believing shared state is safe because "it is
+  only one line"; believing a thread can be stopped from outside
+- **mastery:** runs three blocking calls at once and collects all three results, having
+  changed none of the three functions
+
+### gil
+- **prereqs:** threads, event-loop, big-o
+- **objective:** say why Python threads speed up waiting and not computing
+- **misconceptions:** believing the GIL makes threads useless; believing it makes shared
+  state safe (it does not — a lock is still needed); believing it is a bug rather than a
+  trade that makes the single-threaded case fast; believing every language has one
+- **mastery:** given a CPU-bound workload and an I/O-bound one, picks threads for exactly
+  one of them and says what would help the other
+
+### when-concurrency-helps
+- **prereqs:** gil, gather, blocking-vs-nonblocking
+- **objective:** decide not to use concurrency, on evidence, and say what it would have cost
+- **misconceptions:** believing more concurrency is always more speed; ignoring the
+  fixed cost of starting tasks or threads for work measured in microseconds; believing
+  concurrency reduces total work (it only overlaps waiting); reaching for it before
+  measuring, which Island 10 already warned about
+- **mastery:** given three workloads, ships the plain sequential loop for the one where it
+  wins and can say what the concurrent version would have added
+
+`[AI-ENG:concurrency-cost]` bridge, attached to mission 8 when it was written: an agent
+that fans out ten tool calls in parallel pays the same trade — overlap the waiting, never
+the work, and pay a fixed cost per branch. The reflex to parallelise a batch of LLM calls
+that each take 20 ms is the same reflex this mission refuses, at a different scale.
+
+### What authoring changed, and the two decisions it forced
+
+The island shipped on 2026-08-10 exactly as mapped — same slugs, same concept per slot,
+relief at 3, 6 and 9. Both engine items were built first, as an Island 5 case rather than
+an Island 3 one, and both were exactly the size the design predicted: `harness.py` gained
+an `inspect.iscoroutine` check and an `asyncio.run` inside the existing `try`, and
+`loader.py:107` gained `(?:async\s+)?`. Mission 2's own solution passed on the first run,
+which is what building the engine first buys.
+
+Two things the design left open, both settled here.
+
+**Mission 8 is graded by a declared cost model, not by a clock.** The refusal mission was
+the one the design could not resolve: an honest proof that concurrency is *slower* is a
+stopwatch, and this island forbids stopwatches. Completion order does not help either —
+it proves overlap happened, not that overlapping was a mistake.
+
+So the brief states the model and the player computes with it: the fixed cost per branch
+and each job's duration arrive as arguments, waiting collapses to the longest one because
+waits overlap, computing still sums because it does not, and every branch is paid for
+whether or not it was worth it. That is Island 10's specification rule applied to
+concurrency, which this document predicted would be needed here — *"a brief that says 'run
+them concurrently' is not a specification either."*
+
+The prediction was right and slightly wrong about where it would bite. Ordering was easy
+to specify (mission 4 just promises distinct durations, so there is never a tie to break).
+The *cost* was the part that needed a specification, because two correct concurrent
+programs disagree about what concurrency cost them.
+
+**The sleep budget came down from 200 ms to 120 ms, and the rule needed restating.** The
+design's "total sleeps per test case" is the wrong measure for half the island: a gathered
+or threaded case's wall clock is the *longest* wait, never the sum. The rule as it now
+stands, and as the missions were written against:
+
+> Sequential missions: the sum of a case's sleeps stays under 120 ms. Concurrent missions:
+> the longest single sleep stays under 120 ms. Distinct durations at least 20 ms apart
+> wherever completion order is graded, since Windows timer granularity is around 15 ms.
+> Any mission that sleeps raises `max_runtime_ms` to 5000 explicitly.
+
+Verified rather than assumed: the reference solutions were run fifteen times and every
+completion-order case came back byte-identical.
+
+One more finding worth recording, because it is the island's second honesty case after
+Island 8's and Island 10 mission 1's. **Mission 6's unlocked version passes.** In CPython
+an unguarded `counter += 1` in a short loop almost always produces the right total, and no
+test at this size can tell the two versions apart. The brief says so out loud. A test that
+went green only on the locked version would have to be flaky to exist, and a game that
+claimed to detect the missing lock would be lying about something the player can check.
 
 ---
 
 ## Coverage checklist
 
-Checked for **Islands 1 to 7**. Islands 8 to 11 are sketched, not designed — they get
-their own pass before their missions are written.
+Checked for **all eleven islands**, and all eleven have now shipped. Every table above
+describes missions that exist, not intent.
+
+Islands 8 to 11 all shipped on 2026-08-10 exactly as mapped - same slugs, same concept per
+slot, same relief points. Authoring added one finding to each: Island 8's honesty rule,
+Island 9's third laziness technique, Island 10's rule that a graded count needs a
+*specified* algorithm and not merely a correct one, and Island 11's cost-model grading for
+the refusal mission, each recorded in its own section.
+
+Island 11 is also the only one that needed engine work built before its first mission was
+written - the harness now awaits a coroutine entrypoint and the loader accepts `async def`.
+That was the design's call and it held: no mission had to be reshaped around a gap.
 
 - [x] Every concept has an explicit prereq list
 - [x] No concept appears in a mission before its prereqs — verified against the mission map
-- [x] Every concept is reused in at least two later missions — see the reinforcement tables. One named exception: `encoding-basics` in Island 4, argued there
+- [x] Every concept is reused in at least two later missions — see the reinforcement tables. Two named exceptions: `encoding-basics` in Island 4 and `interactive-debugger` in Island 6, both argued where they occur
 - [x] Objectives are verbs, never "understand"
 - [x] Misconceptions are written, so hints can target them
-- [x] The curve has relief missions after hard ones — Island 1: 3 and 9. Islands 2 and 3: 3, 7, 11. Islands 4 to 7: 3, 6, 9
-- [x] No mission introduces two new concepts — Island 6 mission 3 is the single exception, argued there: `print-debugging` and `interactive-debugger` share a mission because neither is verifiable and one is a hazard to run
+- [x] The curve has relief missions after hard ones — Island 1: 3 and 9. Islands 2 and 3: 3, 7, 11. Islands 4 to 7: 3, 6, 9. Islands 8 to 11: 3, 6, and 9 or 10 — the shift is arithmetic, since the last concept introduced needs two later missions to be reinforced in
+- [x] No mission introduces two new concepts — three exceptions, each argued where it occurs: Island 6 mission 3 (`print-debugging` + `interactive-debugger`, neither verifiable and one a hazard to run), Island 8 mission 1 (`classes` + `instances`, one idea seen from two sides), Island 11 mission 2 (`async-await` + `event-loop`, since a player who has not heard of the loop cannot read their own first error)
 
-### What this document does not yet cover
+### Islands 8 to 11 were designed in one pass, against an earlier note
 
-Islands 8 to 11 list concepts but have no mission map, no prereq graph and no
-misconceptions. That is deliberate: designing all of them now would freeze decisions
-that building the earlier islands is going to change. Each island gets a pass like the
-one above immediately before its content is written.
+An earlier version of this section said each of the last four islands would be designed
+immediately before its content was written, so that building the earlier ones could
+change the later decisions. They were designed together instead, on 2026-08-10.
+
+The reason is that three of the four share one constraint — what can and cannot cross the
+JSON boundary between the sandbox and the game — and designing them separately would have
+found it three times. Islands 8 and 9 are shaped by it (no instance, no generator, no
+decorated function ever returned) and Island 11 is blocked by it outright. That is one
+decision, not four, and it is cheaper to take once.
+
+The original caution still applies to the *missions*: they are authored one island at a
+time, playtested, and each island's tables are rewritten from what shipped.
 
 ### Engine limits found while designing, and where they bite
 
@@ -1112,10 +1955,29 @@ Each was verified against the code, not assumed:
   cases** (Island 7) — the second Island-5 case. `open-and-read` has nothing to open until
   a `files:` field exists, so that field is a prerequisite of the island's first mission
   rather than something to design around. Contract proposed in Island 7.
+- **Instances, generators and decorated functions do not cross the JSON boundary either**
+  (Islands 8 and 9) — the same wall as functions and `bytes`, now hit by the two islands
+  whose entire subject matter is objects that carry state. Their default `repr` contains a
+  memory address, so it changes on every run. Reshaped rather than built around: the object
+  is created and consumed inside the submission, and only plain data comes back. It cost
+  nothing pedagogically and it handed `dunder-methods` its motivation.
+- **The wall clock measures a whole subprocess, not an algorithm** (Island 10) — the
+  budget in `constraints.max_runtime_ms` covers interpreter start-up too
+  (`engine/runners/python.py:115`, `181`). So complexity is graded by **returning the step
+  count**, which is deterministic everywhere, and timing is used for exactly one mission
+  under a stated 5x margin. A CPU-time measurement in the harness would be more precise and
+  is deliberately not being built.
+- **The harness cannot await, and the loader rejects `async def`** (Island 11) — the third
+  Island-5 case, and the only remaining engine work in the curriculum.
+  `engine/harness.py:132` calls the entrypoint synchronously, so a coroutine is returned
+  and never run; `engine/loader.py:107` matches `^\s*def\s+` and fails the mission before it
+  runs. Both are small and both are prerequisites of the island's first mission. Contract
+  in Island 11.
 
-The pattern across four islands is worth naming, because it is the one transferable
+The pattern across seven islands is worth naming, because it is the one transferable
 lesson of this document: **design the island first, then find out what the engine cannot
-do.** Twice the answer was to reshape the missions (Islands 3 and 4), twice it was to
-build the missing capability (Islands 5 and 7), and once it was to accept that a concept
-is genuinely unassessable and say so (Island 6). Deciding which of the three *before*
-looking at the missions would have got it wrong.
+do.** Three times the answer was to reshape the missions (Islands 3, 4, and 8 with 9),
+three times it was to build the missing capability (Islands 5, 7 and 11), and twice it was
+to accept that a concept is genuinely unassessable and say so (Island 6, and `gil` in
+Island 11). Deciding which of the three *before* looking at the missions would have got it
+wrong every time.

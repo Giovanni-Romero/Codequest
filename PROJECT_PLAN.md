@@ -364,6 +364,37 @@ Small, isolated, optional.
 
 *Learn: LLM API integration, prompt design, context windows, graceful degradation.*
 
+#### F8 — ask the mentor to teach, not only to nudge
+
+Added 2026-08-10, from playtesting. Giovanni's report: the missions are enjoyable but the
+teaching panels are too shallow for a concept the player has never met. The panel is
+roughly a quarter of the screen (`tui/styles.tcss`), and `mission-author` caps
+`explanation` at three to six sentences, so depth has nowhere to go.
+
+The decision was **not** to change the teaching schema or the layout. Instead, a second
+keybinding asks the mentor for a longer explanation of the current concept:
+
+- `mentor/prompts.py` gains `build_explain_messages(...)`, taking the track language, the
+  island theme, the mission and the concept ids.
+- The system prompt is the current one **relaxed**: today it says "You are not the
+  teacher: the lesson, the analogy and the hints are already written"
+  (`mentor/policy.py:44`). The explain profile lifts that sentence and lifts the 120-word
+  cap, because a lecture is what is being asked for.
+- `policy.defines_entrypoint` still runs and still redacts. Relaxing the *guidance* while
+  keeping the *filter* is the whole point of the two-layer design already documented in
+  that module.
+
+Two costs to keep visible rather than discover later:
+
+1. Ollama is optional and not bundled (§7). A player who never installs it gets the shallow
+   version, which means the fix does not reach everyone the complaint came from.
+2. The written teaching is reviewed; model output is not. A small local model explaining
+   `dunder-methods` can be confidently wrong, and confidently wrong is worse than short and
+   right for someone meeting a concept for the first time.
+
+Sequenced after the game is complete, by Giovanni's decision. Retrofitting the shipped
+islands' teaching panels is a separate, later pass, island by island.
+
 ---
 
 ### Phase 5.1 — Complete the Python curriculum, island by island
@@ -373,10 +404,27 @@ islands now, not 10 — a **Debugging** island was inserted as island 6, right a
 Errors and Edge Cases, because reading a traceback usefully depends on already knowing
 what an exception is.
 
-**This phase is deliberately not designed all at once.** `docs/curriculum/
-python-syllabus.md` already states why: designing every remaining island's missions now
-would freeze decisions that playing the earlier islands should change. So the phase is
-one repeating cycle instead of one big task list:
+**Islands 1 to 7 were designed one at a time; 8 to 11 were designed together on
+2026-08-10.** The original rule was that designing every remaining island now would freeze
+decisions that playing the earlier ones should change. It was relaxed for the last four
+because three of them share a single constraint — what can cross the JSON boundary between
+the sandbox and the game — and finding that constraint four separate times would have been
+the same decision paid for four times. See the note at the end of `docs/curriculum/
+python-syllabus.md`.
+
+**Island 11 had engine work that shipped before its first mission was authored**, in the
+same way `raises:` preceded Island 5 and `files:` preceded Island 7. Both landed on
+2026-08-10 and both were the size the design predicted: `engine/harness.py` now detects a
+coroutine with `inspect.iscoroutine` and resolves it with `asyncio.run` inside the existing
+error handling (`[AI-ENG:deferred-results]`), and `engine/loader.py:107` accepts
+`async def`. Mission 2's own solution passed on the first run, which is what building the
+engine first buys.
+
+**Status, 2026-08-10: all eleven islands have shipped.** 117 missions per language, 234
+mission files, both trees at `codequest check` 117/117. What remains in this phase is the
+playtesting and the HTML lesson, not authoring.
+
+The authoring cycle is unchanged and still runs one island at a time:
 
 1. **Design** one island (`curriculum-designer`): concept graph, prerequisites,
    misconceptions, an 8-to-12-mission map, sawtooth difficulty curve.
