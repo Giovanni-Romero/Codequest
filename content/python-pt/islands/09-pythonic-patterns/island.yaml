@@ -1,0 +1,29 @@
+id: pythonic-patterns
+name: Padrões Pythônicos
+track: python
+order: 9
+theme: Os formatos para os quais a linguagem foi construída
+description: |
+  Você já resolve tudo nesta ilha pelo caminho longo - com um contador de índice, uma
+  lista construída inteira, um envoltório chamado à mão em cada lugar.
+
+  Aqui é onde a forma mais curta acaba sendo também a melhor. Um gerador que nunca
+  constrói a lista percorre uma sequência que não caberia na memória, e um decorador
+  aplicado em uma linha é uma mudança que você não tem como esquecer no sétimo lugar que
+  chama.
+
+  É também a primeira ilha onde a resposta errada é uma que funciona.
+
+concepts:
+  - unpacking
+  - enumerate-zip
+  - iterators
+  - yield
+  - generators
+  - decorators
+  - custom-context-managers
+
+unlock_requires:
+  missions_completed: 85
+
+completion_reward_xp: 280

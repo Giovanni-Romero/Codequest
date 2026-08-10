@@ -1,0 +1,28 @@
+id: pythonic-patterns
+name: Pythonic Patterns
+track: python
+order: 9
+theme: The shapes the language was built for
+description: |
+  You can already solve everything on this island the long way - with an index counter, a
+  list built up in full, a wrapper called by hand at every call site.
+
+  This is where the shorter form turns out to be the better one. A generator that never
+  builds the list can walk a sequence that would not fit in memory, and a decorator
+  applied in one line is a change you cannot forget to make at the seventh call site.
+
+  It is also the first island where the wrong answer is a working one.
+
+concepts:
+  - unpacking
+  - enumerate-zip
+  - iterators
+  - yield
+  - generators
+  - decorators
+  - custom-context-managers
+
+unlock_requires:
+  missions_completed: 85
+
+completion_reward_xp: 280

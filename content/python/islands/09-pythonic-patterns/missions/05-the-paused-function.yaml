@@ -1,0 +1,222 @@
+# Mission 5 of Pythonic Patterns. Introduces: yield.
+# Reinforces: iterators, functions, while-loop.
+#
+# Graded with two `next` calls rather than with `list(...)`, which is the only honest way to
+# show that a generator produces on demand. A mission that consumed the whole thing would be
+# indistinguishable from one that returned a list, and the concept would go untested.
+#
+# The `log` field is the sharpest part: it is empty at the moment the generator is created
+# and only fills as values are pulled, which is the "nothing runs until the first next"
+# rule made observable rather than asserted. No stdout involved - see the island notes.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-05
+title: The paused function
+track: python
+island: pythonic-patterns
+order: 5
+difficulty: challenging
+tags: [patterns, yield, generators, laziness]
+xp: 45
+
+concepts:
+  - yield
+
+teaching:
+  analogy: |
+    A lighthouse keeper writing his log does not write the night in advance. He writes one
+    line, puts the pen down, and waits. When the next hour comes he picks up exactly where he
+    stopped - the page remembers, and so does he.
+
+    Ask him at midnight how many lines the night will have and he cannot tell you. Ask him
+    for the next line and he has one. That is the entire difference between a log being
+    written and a log that was written.
+
+  explanation: |
+    Put `yield` anywhere in a function body and the function stops being a function that
+    returns. Calling it now builds a **generator** and runs none of the body:
+
+        def countdown(start):
+            while start > 0:
+                yield start
+                start = start - 1
+
+        counter = countdown(3)      # nothing has run yet
+
+    The body only moves when something pulls a value out. `next(counter)` runs until it
+    reaches a `yield`, hands that value back, and **freezes there** - local variables,
+    position in the loop, everything. The next `next` resumes on the line after the `yield`.
+
+    So the difference from `return` is not what comes back, it is what happens to the
+    function. `return` ends it. `yield` pauses it.
+
+    A generator is an iterator, so everything from mission 4 applies unchanged: `for` walks
+    it, it is spent after one pass, and when the body finally ends, `next` raises
+    `StopIteration`.
+
+    One consequence worth carrying: a generator can describe a sequence that never finishes,
+    because nothing forces the body to run to the end. `while True: yield x` is a perfectly
+    ordinary generator, and it is only dangerous if you ask for all of it.
+
+  worked_example: |
+    # Doubling, which is not what this mission asks for
+    def doubling(start, seen):
+        while True:
+            seen.append(start)      # only appended when this line is actually reached
+            yield start
+            start = start * 2
+
+
+    log = []
+    numbers = doubling(1, log)
+
+    print(log)              # [] - the body has not run at all yet
+    print(next(numbers))    # 1
+    print(next(numbers))    # 2
+    print(log)              # [1, 2] - two lines written, because two values were pulled
+
+    # The generator is endless. Nothing has gone wrong; nobody asked for all of it.
+
+  key_points:
+    - "A function containing `yield` runs none of its body when called. It hands back a generator, and the first `next` is what starts it."
+    - "`yield` pauses; `return` ends. After a `yield` the local variables and the position in the loop are still there, waiting."
+    - "A generator is an iterator, so it is spent after one pass and raises `StopIteration` when the body finishes."
+    - "`while True: yield ...` is a normal generator, not a hang. It only hangs if you ask for every value it could ever produce."
+    - "Because nothing runs early, side effects inside a generator happen when the values are pulled - not when the generator is created. That surprises people once."
+
+brief: |
+  The keeper writes his log one line at a time, and only when asked.
+
+  Write a **generator function** called countdown that takes a starting number and a list.
+  Each time it produces a value it must:
+
+    - append that value to the list it was given
+    - yield that same value
+
+  It counts down by one and stops after yielding 1. A start of 0 or less yields nothing at
+  all.
+
+  Then write a function called peek that takes a start and returns a dict:
+
+      {"before": [...], "first": ..., "second": ..., "after": [...]}
+
+  Build the log list and the generator. `before` is a **copy** of the log taken before you
+  pull anything - it must be empty, because none of the generator's body has run yet. Then
+  pull two values with `next`, into `first` and `second`. `after` is a copy of the log at
+  that point, which must hold exactly the two values you pulled.
+
+  Copy the log with `log[:]` so the two snapshots are separate lists rather than two names
+  for the same one.
+
+  A start below 2 cannot supply two values. Let the StopIteration travel out.
+
+  You cannot use list or range. The countdown is a `while` loop and a `yield`.
+
+signature:
+  entrypoint: peek
+  stub: |
+    def countdown(start, log):
+        # A generator: it appends, then yields, then carries on from there.
+        # your code here
+        pass
+
+
+    def peek(start):
+        # Build it, look at the log, pull twice, look again.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [list, range]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [5]
+      expect: {before: [], first: 5, second: 4, after: [5, 4]}
+    # Exactly two available. The generator is not finished, it is merely paused after 1.
+    - args: [2]
+      expect: {before: [], first: 2, second: 1, after: [2, 1]}
+  hidden:
+    # One value available. The second pull has nothing.
+    - args: [1]
+      raises: StopIteration
+    # Nothing at all: the while loop never runs, so the very first pull fails.
+    - args: [0]
+      raises: StopIteration
+    # A negative start is the same case, and must not count upwards.
+    - args: [-3]
+      raises: StopIteration
+    # A long countdown. Only two values are pulled, so only two lines are ever written -
+    # this is the case that catches a solution which built the whole sequence first.
+    - args: [100]
+      expect: {before: [], first: 100, second: 99, after: [100, 99]}
+    # Three available, and the third stays unwritten.
+    - args: [3]
+      expect: {before: [], first: 3, second: 2, after: [3, 2]}
+    # Large enough that building it all would be slow as well as wrong.
+    - args: [1000000]
+      expect: {before: [], first: 1000000, second: 999999, after: [1000000, 999999]}
+
+hints:
+  - level: 1
+    text: |
+      After `gen = countdown(5, log)` and before any `next`, how many lines has the body run?
+      The `before` field is asking you to prove your answer.
+
+      And if `before` and `after` come out as the same list, what did you forget to do when
+      you took the first snapshot?
+  - level: 2
+    text: |
+      `countdown` has no `return` at all. A `while start > 0` loop, an `append`, a `yield`,
+      and then `start = start - 1` on the line after the yield - that last line is the one
+      that runs when the generator is resumed.
+
+      `peek` makes the log first, then the generator, then takes `log[:]` before touching it.
+      Two `next` calls, then `log[:]` again.
+  - level: 3
+    text: |
+      The same pause-and-resume, counting up:
+
+          def climbing(top, seen):
+              step = 1
+              while step <= top:
+                  seen.append(step)
+                  yield step
+                  step = step + 1
+
+
+          def sample(top):
+              seen = []
+              rungs = climbing(top, seen)
+              empty = seen[:]
+              one = next(rungs)
+              two = next(rungs)
+              return {"empty": empty, "one": one, "two": two, "seen": seen[:]}
+
+      Yours counts down instead of up, and the four keys have different names.
+
+solution: |
+  def countdown(start, log):
+      while start > 0:
+          log.append(start)
+          yield start
+          start = start - 1
+
+
+  def peek(start):
+      log = []
+      counter = countdown(start, log)
+
+      before = log[:]
+
+      first = next(counter)
+      second = next(counter)
+
+      return {
+          "before": before,
+          "first": first,
+          "second": second,
+          "after": log[:],
+      }

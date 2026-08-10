@@ -1,0 +1,221 @@
+# Mission 7 of Pythonic Patterns. Introduces: generators.
+# Reinforces: yield, list-comprehension, enumerate-zip.
+#
+# Where mission 5 taught `yield` the keyword, this teaches the generator *expression* - the
+# comprehension with round brackets - and the memory argument behind it.
+#
+# The source is endless again, so the eager version of the same filter cannot return. That
+# is the mission's grader: a list comprehension over an infinite generator is a mission that
+# times out, and swapping one bracket for another is the entire fix. Nothing in the engine
+# is doing anything special.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-07
+title: The lazy manifest
+track: python
+island: pythonic-patterns
+order: 7
+difficulty: challenging
+tags: [patterns, generators, comprehensions, laziness]
+xp: 45
+
+concepts:
+  - generators
+
+teaching:
+  analogy: |
+    Two clerks are told to find the first three crates over a hundred kilos in a warehouse
+    that is still being filled.
+
+    The first copies out the whole inventory, marks every heavy crate, and hands you the top
+    three. He is still copying. The warehouse is still being filled.
+
+    The second walks the aisle, and the moment he has three he stops walking. Same answer,
+    and he is back before lunch. Neither of them is cleverer. One of them decided how much
+    work to do before knowing how much was needed.
+
+  explanation: |
+    You already know one comprehension:
+
+        heavy = [c for c in crates if c > 100]        # a list, built now
+
+    Change the brackets and you get a **generator expression**, which builds nothing:
+
+        heavy = (c for c in crates if c > 100)        # a recipe, run later
+
+    The two lines look almost identical and behave nothing alike. The first does all the
+    work immediately and hands you a list you can index, measure and walk twice. The second
+    does no work at all and hands you a generator: one pass, no `len`, no indexing, and it
+    only touches as much of `crates` as you actually ask for.
+
+    That last part is the whole argument. If the source is a file with ten million lines, the
+    list version needs ten million lines of memory and the generator version needs one at a
+    time. If the source has no end, the list version never returns and the generator version
+    is fine.
+
+    When a generator expression is the only argument to a function you can drop its
+    parentheses: `sum(c for c in crates)` rather than `sum((c for c in crates))`.
+
+    None of this makes lists obsolete. A list you need to walk twice, index into, or measure
+    should be a list. Reach for the generator when the sequence is large, endless, or thrown
+    away after one pass.
+
+  worked_example: |
+    # Words, which is not what this mission asks for
+    def counting():
+        n = 1
+        while True:
+            yield n
+            n = n + 1
+
+
+    def first_multiples(factor, wanted):
+        multiples = (n for n in counting() if n % factor == 0)
+
+        found = []
+        for value in multiples:
+            found.append(value)
+            if wanted == len(found):
+                break
+
+        return found
+
+
+    print(first_multiples(7, 3))    # [7, 14, 21]
+
+    # The same line with square brackets never returns: counting() has no end, and a list
+    # comprehension means "every one of them".
+
+  key_points:
+    - "Round brackets make a generator expression, square brackets make a list. The two lines differ by one character and by all of the work."
+    - "A generator expression can be walked once, has no `len`, and cannot be indexed. If you need any of those three, you wanted a list."
+    - "Over an endless source, the list version never returns. This is not a slow program, it is a program that has stopped."
+    - "The parentheses can be dropped when the expression is a function's only argument: `sum(x * 2 for x in values)`."
+    - "Lists are not the slow option. A short sequence you walk twice should be a list, and a generator you accidentally walk twice is a silent empty pass."
+
+brief: |
+  The warehouse is still being filled and you need the first few heavy crates.
+
+  Write a **generator function** called crates that yields weights forever: 1, 2, 3, 4, and
+  so on, counting up by one with no end.
+
+  Then write a function called first_heavy that takes a threshold and a count, and returns a
+  list of the first `count` weights that are **strictly greater** than the threshold, in
+  order.
+
+  Filter the endless source with a **generator expression** - round brackets - and stop as
+  soon as you have enough.
+
+  A count of 0 gives an empty list. The threshold may be 0, which lets everything through
+  from 1 onwards.
+
+  You cannot use list or range. A square-bracket comprehension over `crates()` does not fail
+  here, it simply never comes back.
+
+signature:
+  entrypoint: first_heavy
+  stub: |
+    def crates():
+        # 1, 2, 3, ... and it never stops.
+        # your code here
+        pass
+
+
+    def first_heavy(threshold, count):
+        # One generator expression, then stop the moment you have enough.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [list, range]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, 3]
+      expect: [101, 102, 103]
+    - args: [0, 4]
+      expect: [1, 2, 3, 4]
+  hidden:
+    # None wanted. The generator expression is built and never pulled.
+    - args: [100, 0]
+      expect: []
+    # One wanted, and it is the first weight past the threshold, not the threshold itself.
+    - args: [100, 1]
+      expect: [101]
+    # "Strictly greater" is the boundary: 5 does not qualify against a threshold of 5.
+    - args: [5, 2]
+      expect: [6, 7]
+    # A threshold well out in the sequence, so the filter really has to walk to it.
+    - args: [10000, 2]
+      expect: [10001, 10002]
+    # Nothing filtered out at all.
+    - args: [0, 1]
+      expect: [1]
+    # Long enough that a hardcoded answer would be conspicuous.
+    - args: [50, 8]
+      expect: [51, 52, 53, 54, 55, 56, 57, 58]
+
+hints:
+  - level: 1
+    text: |
+      Two comprehensions, one character apart, and only one of them can be written over a
+      source with no end. Which bracket goes round a recipe rather than round a result?
+
+      Then: what has to happen the moment you have enough values, given that the source will
+      happily keep going?
+  - level: 2
+    text: |
+      `crates` is the same three lines as mission 6's generator, counting up by one instead of
+      doubling.
+
+      In `first_heavy`, one line builds the filter:
+
+          heavy = (weight for weight in crates() if weight > threshold)
+
+      Then a `for` over `heavy`, appending, with a `break` when you have `count` of them. Or
+      a `while` with `next`. Either is fine; both must stop pulling.
+  - level: 3
+    text: |
+      The same filter over an endless source, for squares:
+
+          def squares():
+              n = 1
+              while True:
+                  yield n * n
+                  n = n + 1
+
+
+          def first_big_squares(floor, wanted):
+              big = (s for s in squares() if s > floor)
+
+              found = []
+              while wanted > 0:
+                  found.append(next(big))
+                  wanted = wanted - 1
+
+              return found
+
+
+          print(first_big_squares(50, 3))    # [64, 81, 100]
+
+      Yours counts up by one rather than squaring, and the comparison is the same shape.
+
+solution: |
+  def crates():
+      weight = 1
+      while True:
+          yield weight
+          weight = weight + 1
+
+
+  def first_heavy(threshold, count):
+      heavy = (weight for weight in crates() if weight > threshold)
+
+      found = []
+      while count > 0:
+          found.append(next(heavy))
+          count = count - 1
+
+      return found

@@ -1,0 +1,160 @@
+# Mission 3 of Pythonic Patterns. Introduces nothing.
+# Reinforces: enumerate-zip, unpacking, dictionaries.
+#
+# Relief mission. `dict(zip(a, b))` is the whole answer and it is one line, which is the
+# point: the two functions from mission 2 compose with something the player has had since
+# Island 2, and the reward for learning them is that a loop disappears entirely.
+#
+# The duplicate-key case is the one that is not obvious from the panel, so it is graded
+# twice - a later pair silently overwrites an earlier one, and that is a dict rule the zip
+# does nothing to soften.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-03
+title: The paired ledger
+track: python
+island: pythonic-patterns
+order: 3
+difficulty: moderate
+tags: [patterns, zip, dictionaries, relief]
+xp: 30
+
+concepts:
+  - enumerate-zip
+
+teaching:
+  analogy: |
+    Two columns, written on two sheets. The office wants one book where you look a name up
+    and read its number back.
+
+    Nobody copies the columns across one row at a time any more. You hold the sheets side by
+    side and the book writes itself - and if a name appears twice, the second entry lands on
+    top of the first, because a book with one page per name has nowhere to put a second
+    answer.
+
+  explanation: |
+    `zip` gives you pairs. `dict` accepts pairs. So the two of them together are a whole
+    loop, deleted:
+
+        lookup = dict(zip(names, values))
+
+    That works because `dict` will take any sequence of two-item things - a list of pairs, a
+    zip object, a list of two-item lists - and treat the first as the key and the second as
+    the value.
+
+    Two rules come along with it, and neither is new. `zip` still stops at the shorter
+    sequence, so a mismatch quietly gives you a shorter dict. And a repeated key still
+    overwrites, so the **last** pair for a given key is the one that survives.
+
+    The same trick runs backwards. `zip(*pairs)` takes a list of pairs apart into two
+    sequences, because the star hands each pair to `zip` as its own argument - mission 1's
+    unpacking used in a call rather than in an assignment.
+
+  worked_example: |
+    # A phone book, which is not what this mission asks for
+    def phone_book(names, numbers):
+        return dict(zip(names, numbers))
+
+
+    print(phone_book(["Ada", "Bo"], ["555-1", "555-2"]))
+    # {'Ada': '555-1', 'Bo': '555-2'}
+
+    print(phone_book(["Ada", "Ada"], ["555-1", "555-2"]))
+    # {'Ada': '555-2'}  - one page per name, and the last one wins
+
+    pairs = [("Ada", 1), ("Bo", 2)]
+    names, numbers = zip(*pairs)
+    print(names)      # ('Ada', 'Bo') - and it is a tuple, not a list
+
+  key_points:
+    - "`dict(zip(a, b))` replaces a loop, an append and a key assignment. It is one of the few one-liners that is genuinely clearer than what it replaces."
+    - "`zip` still truncates. A shorter dict than you expected is usually two lists that were not the same length."
+    - "A repeated key overwrites, so the last pair wins. This is a dict rule and no amount of zipping changes it."
+    - "`zip(*pairs)` unzips, and hands back tuples rather than lists. Wrap them in `list(...)` if you need to change them afterwards."
+
+brief: |
+  Two columns, one ledger.
+
+  Write a function called ledger that takes a list of names and a list of weights, and
+  returns a dict mapping each name to its weight.
+
+  When the two lists are different lengths, keep only the pairs you have both halves of.
+  When the same name appears twice, the later weight wins - a ledger has one line per name.
+
+  Build it without a loop. You cannot use range, len or slice, and there is no `for` in the
+  answer.
+
+  An empty pair of lists gives an empty dict.
+
+signature:
+  entrypoint: ledger
+  stub: |
+    def ledger(names, weights):
+        # One expression. Two functions you already have.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [range, len, slice]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope", "sail"], [12, 30]]
+      expect: {rope: 12, sail: 30}
+    # The same name twice. The later weight is the one that stays.
+    - args: [["rope", "rope"], [12, 30]]
+      expect: {rope: 30}
+  hidden:
+    # Both empty.
+    - args: [[], []]
+      expect: {}
+    # Names with no weights, and the mirror case.
+    - args: [["rope", "sail"], []]
+      expect: {}
+    - args: [[], [12, 30]]
+      expect: {}
+    # More weights than names. The extra weight is dropped in silence.
+    - args: [["rope"], [12, 30, 45]]
+      expect: {rope: 12}
+    # More names than weights.
+    - args: [["rope", "sail", "chain"], [12]]
+      expect: {rope: 12}
+    # An empty name is a usable key.
+    - args: [["", "sail"], [0, 30]]
+      expect: {"": 0, sail: 30}
+    # Three distinct names, so a solution that keeps only the first pair is caught.
+    - args: [["rope", "sail", "chain"], [12, 30, 45]]
+      expect: {rope: 12, sail: 30, chain: 45}
+    # The duplicate is not adjacent, and the winner is still the last one.
+    - args: [["rope", "sail", "rope"], [1, 2, 3]]
+      expect: {rope: 3, sail: 2}
+
+hints:
+  - level: 1
+    text: |
+      `zip` gives you something that yields pairs. What does `dict` do when you hand it a
+      sequence of pairs?
+  - level: 2
+    text: |
+      One `return`, two function calls, one nested inside the other. Nothing else in the body.
+
+      You do not have to do anything about the different-length case or the duplicate name -
+      both behaviours the brief asks for are already what these two functions do.
+  - level: 3
+    text: |
+      The same expression, for a scoreboard:
+
+          def scores(players, points):
+              return dict(zip(players, points))
+
+
+          print(scores(["Ada", "Bo"], [10, 7]))
+          # {'Ada': 10, 'Bo': 7}
+
+      Yours maps names to weights and the parameters are called something else.
+
+solution: |
+  def ledger(names, weights):
+      return dict(zip(names, weights))

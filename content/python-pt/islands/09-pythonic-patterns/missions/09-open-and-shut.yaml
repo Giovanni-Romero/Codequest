@@ -1,0 +1,249 @@
+# Missão 9 de Padrões Pythônicos. Introduz: custom-context-managers.
+# Reforça: context-managers, classes, dunder-methods, exceptions.
+#
+# A Ilha 7 ensinou o jogador a *usar* o `with`. Aqui ele constrói um, e a missão inteira é
+# arranjada em torno da metade fácil de perder: o __exit__ roda na saída por exceção também. O
+# caso que falha acrescenta "close" antes de "caught", e nenhuma leitura de painel convence
+# tanto quanto ver a ordem.
+#
+# contextlib está proibido para que a versão em classe venha primeiro. @contextmanager é
+# ensinado no painel e usado na missão 10, onde o jogador já viu do que ele é abreviação.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-09
+title: Abre e fecha
+track: python
+island: pythonic-patterns
+order: 9
+difficulty: challenging
+tags: [patterns, context-managers, cleanup]
+xp: 45
+
+concepts:
+  - custom-context-managers
+
+teaching:
+  analogy: |
+    O faroleiro assina o livro na entrada e na saída. Toda vez.
+
+    A cláusula interessante é o que acontece quando a noite corre mal. Se a lâmpada falha e ele
+    tem de correr para pedir ajuda, ele ainda assina a saída - o livro fica na porta e assinar
+    faz parte de sair, não faz parte de terminar. Um livro que só fosse assinado nas noites boas
+    não te contaria nada sobre as noites que importaram.
+
+  explanation: |
+    A Ilha 7 te deu o `with open(...)`. Um gerenciador de contexto é qualquer objeto com dois
+    métodos dunder, e escrever o seu é como você consegue aquela mesma garantia para um recurso
+    do qual a biblioteca padrão nunca ouviu falar:
+
+        class Watch:
+            def __enter__(self):
+                ...
+                return alguma_coisa       # é isto que o `as` liga
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                ...                       # roda na saída, sempre
+
+    O `__enter__` roda quando o bloco começa, e o que ele devolve é o que `as nome` liga.
+    Devolver `self` é comum; devolver algo mais útil costuma ser melhor.
+
+    O `__exit__` roda quando o bloco termina - **de qualquer jeito que ele termine**. Caindo do
+    fim, um `return`, um `break`, ou uma exceção rasgando através: os quatro passam pelo
+    `__exit__`. É esse o motivo inteiro de gerenciadores de contexto existirem, e é por isso
+    que existem os três parâmetros. Quando o bloco terminou normalmente eles são todos `None`;
+    quando uma exceção está a caminho da saída, eles a descrevem.
+
+    O que o `__exit__` devolve é uma decisão, não uma formalidade. Qualquer coisa falsa -
+    inclusive `None`, que é o que você recebe por não devolver nada - deixa a exceção seguir
+    para fora do bloco. Devolver **True** diz ao Python que você tratou dela e que ela deve
+    parar ali. Isso é um ato deliberado de engolir, e quase nunca é o que você quer por
+    acidente.
+
+    Existe um jeito mais curto para casos simples, usando `contextlib.contextmanager` e um
+    gerador com um `yield`. Vale conhecer, e é a próxima missão. Escreva os dois métodos
+    primeiro, porque a versão curta é abreviação exatamente destes.
+
+  worked_example: |
+    # Uma cortina de teatro, que não é o que esta missão pede
+    class Curtain:
+        def __init__(self, notes):
+            self.notes = notes
+
+        def __enter__(self):
+            self.notes.append("sobe")
+            return self.notes
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.notes.append("desce")
+            return False          # o espetáculo não pode engolir os próprios desastres
+
+
+    notas = []
+    try:
+        with Curtain(notas) as roteiro:
+            roteiro.append("primeiro ato")
+            raise RuntimeError("o protagonista sumiu")
+    except RuntimeError:
+        notas.append("desculpas")
+
+    print(notas)     # ['sobe', 'primeiro ato', 'desce', 'desculpas']
+    # A cortina desceu antes das desculpas. Essa ordem é o ponto inteiro.
+
+  key_points:
+    - "`__enter__` devolve o que o `as` deve ligar. Não precisa ser `self`, e muitas vezes a coisa útil não é."
+    - "`__exit__` roda de qualquer jeito que o bloco termine - normalmente, por return, por break, ou por exceção. Essa garantia é o único motivo de escrever um."
+    - "Os três parâmetros do `__exit__` descrevem a exceção a caminho da saída, e são todos None quando não houve nenhuma."
+    - "Devolver True do `__exit__` engole a exceção. Devolver None - que é o que acontece se você simplesmente não devolver - a deixa viajar, e esse é o padrão seguro."
+    - "A limpeza roda antes do `except` de fora. Se o seu log mostra o tratador primeiro, a limpeza não está no `__exit__`."
+
+brief: |
+  O faroleiro assina o livro na entrada e na saída, seja que tipo de noite for.
+
+  Defina uma classe chamada Watch:
+
+    - `__init__` recebe uma lista de log e um nome, e guarda os dois
+    - `__enter__` dá append de `"open <nome>"` no log e devolve o próprio log, para que o
+      bloco possa escrever nele através do `as`
+    - `__exit__` dá append de `"close <nome>"` no log e deixa qualquer exceção seguir adiante
+
+  Depois escreva uma função chamada keep_watch que recebe um nome e um booleano chamado fail, e
+  devolve o log:
+
+    - crie um log vazio
+    - dentro de um bloco `with Watch(log, name) as entries`, dê append de `"working"` em
+      `entries`, e então - só quando `fail` for verdadeiro - levante um ValueError
+    - capture esse ValueError **fora** do bloco with, e dê append de `"caught"` no log
+    - devolva o log
+
+  Quando `fail` é falso o log termina depois do close. Quando é verdadeiro, `"close <nome>"`
+  tem de aparecer **antes** de `"caught"` - essa ordem é o que prova que a limpeza aconteceu na
+  saída e não depois.
+
+  Você não pode importar contextlib. Dois métodos dunder, escritos à mão.
+
+signature:
+  entrypoint: keep_watch
+  stub: |
+    class Watch:
+        def __init__(self, log, name):
+            # seu código aqui
+            pass
+
+        def __enter__(self):
+            # Assine a entrada, e devolva aquilo em que o bloco deve escrever.
+            # seu código aqui
+            pass
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            # Assine a saída. Não engula nada.
+            # seu código aqui
+            pass
+
+
+    def keep_watch(name, fail):
+        # Um bloco with, um try em volta dele, um log que sobrevive aos dois.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_imports: [contextlib]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["north", false]
+      expect: ["open north", "working", "close north"]
+    # A noite que dá errado. O close vem antes do caught, e essa ordem é a missão.
+    - args: ["north", true]
+      expect: ["open north", "working", "close north", "caught"]
+  hidden:
+    # Um nome diferente, então as strings realmente são montadas a partir do argumento.
+    - args: ["south", false]
+      expect: ["open south", "working", "close south"]
+    - args: ["south", true]
+      expect: ["open south", "working", "close south", "caught"]
+    # Um nome vazio ainda produz as duas linhas, com o espaço final intacto.
+    - args: ["", false]
+      expect: ["open ", "working", "close "]
+    - args: ["", true]
+      expect: ["open ", "working", "close ", "caught"]
+    # Um nome com espaço dentro, porque nada aqui analisa o nome.
+    - args: ["east tower", true]
+      expect: ["open east tower", "working", "close east tower", "caught"]
+
+hints:
+  - level: 1
+    text: |
+      No caso que falha, o `"close"` cai no log antes do `"caught"`. Qual dos dois trechos que
+      poderiam colocá-lo lá - o método `__exit__`, ou uma linha depois do bloco with - roda
+      naquele momento?
+
+      E a que `entries` se refere, dado que o bloco escreve nele e o `keep_watch` devolve o log?
+  - level: 2
+    text: |
+      `__enter__` dá append e depois devolve `self.log`. Esse return é o que faz `as entries`
+      dar ao bloco algo em que escrever.
+
+      `__exit__` dá append e depois para. Não devolva True - não devolver nada é exatamente o
+      comportamento que o enunciado pede.
+
+      `keep_watch` é um `try` cujo corpo é o bloco `with` inteiro, e um `except ValueError`
+      depois dele.
+  - level: 3
+    text: |
+      Os mesmos dois métodos, num forno:
+
+          class Oven:
+              def __init__(self, log, dish):
+                  self.log = log
+                  self.dish = dish
+
+              def __enter__(self):
+                  self.log.append(f"aquecer {self.dish}")
+                  return self.log
+
+              def __exit__(self, exc_type, exc_value, traceback):
+                  self.log.append(f"esfriar {self.dish}")
+
+
+          def bake(dish, burnt):
+              log = []
+              try:
+                  with Oven(log, dish) as passos:
+                      passos.append("assando")
+                      if burnt:
+                          raise ValueError(dish)
+              except ValueError:
+                  log.append("no lixo")
+              return log
+
+      A sua abre e fecha em vez de aquecer e esfriar, e a palavra que ela acrescenta depois de
+      capturar é outra.
+
+solution: |
+  class Watch:
+      def __init__(self, log, name):
+          self.log = log
+          self.name = name
+
+      def __enter__(self):
+          self.log.append(f"open {self.name}")
+          return self.log
+
+      def __exit__(self, exc_type, exc_value, traceback):
+          self.log.append(f"close {self.name}")
+
+
+  def keep_watch(name, fail):
+      log = []
+
+      try:
+          with Watch(log, name) as entries:
+              entries.append("working")
+              if fail:
+                  raise ValueError(name)
+      except ValueError:
+          log.append("caught")
+
+      return log

@@ -1,0 +1,265 @@
+# Missão 10 de Padrões Pythônicos. Não introduz nada.
+# Reforça: generators, decorators, custom-context-managers, enumerate-zip.
+#
+# Missão de alívio. As três ideias mais difíceis da ilha no menor formato possível, e a
+# recompensa é o `@contextmanager` - que a missão 9 nomeou e proibiu. Encontrá-lo depois de
+# escrever __enter__ e __exit__ à mão é o mesmo movimento da missão 8 de Objetos com o
+# @dataclass, e pelo mesmo motivo.
+#
+# É também a única missão aqui onde um decorador e um gerenciador de contexto são o mesmo
+# objeto, o que vale ver uma vez: o @contextmanager constrói algo utilizável dos dois jeitos.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-10
+title: A esteira
+track: python
+island: pythonic-patterns
+order: 10
+difficulty: moderate
+tags: [patterns, contextmanager, generators, relief]
+xp: 30
+
+concepts:
+  - generators
+  - custom-context-managers
+  - enumerate-zip
+
+teaching:
+  analogy: |
+    A missão 9 te fez construir o livro do farol a partir de tábuas: uma dobradiça na entrada,
+    uma dobradiça na saída. Funcionou, e foi quatro vezes mais marcenaria do que o trabalho
+    exigia.
+
+    A loja do porto vende um livro com as dobradiças já instaladas. Você escreve as duas linhas
+    que são suas - o que fazer na entrada, o que fazer na saída - e entrega o meio.
+
+  explanation: |
+    Tudo aqui você já escreveu. Uma abreviação é nova.
+
+    O `contextlib.contextmanager` transforma um gerador em um gerenciador de contexto:
+
+        from contextlib import contextmanager
+
+        @contextmanager
+        def watch(log, name):
+            log.append(f"open {name}")
+            try:
+                yield log              # tudo antes do yield é o __enter__
+            finally:
+                log.append(f"close {name}")   # tudo depois dele é o __exit__
+
+    Um `yield`, exatamente um. O que ele produz é o que o `as` liga. O código antes dele é o
+    `__enter__` e o código depois é o `__exit__`, e é por isso que o `finally` importa: uma
+    exceção no bloco é jogada de volta para dentro **no yield**, e sem o `finally` as linhas
+    abaixo dele nunca rodam.
+
+    É esse o truque inteiro, e ele explica algo sobre a missão 9 em retrospecto. Os dois
+    métodos dunder nunca foram duas ideias - eram uma função com uma pausa no meio, que é
+    exatamente o que um gerador é.
+
+    Use a forma em classe quando o gerenciador precisa de estado, de vários métodos, ou do
+    próprio nome num traceback. Use esta forma para os muitos casos que são genuinamente "faça
+    isto, depois aquilo".
+
+  worked_example: |
+    # Uma barraca, que não é o que esta missão pede
+    from contextlib import contextmanager
+
+
+    @contextmanager
+    def camp(diary, place):
+        diary.append(f"montar {place}")
+        try:
+            yield diary
+        finally:
+            diary.append(f"desmontar {place}")
+
+
+    diario = []
+    try:
+        with camp(diario, "cume") as paginas:
+            paginas.append("dormindo")
+            raise ValueError("urso")
+    except ValueError:
+        diario.append("fugimos")
+
+    print(diario)     # ['montar cume', 'dormindo', 'desmontar cume', 'fugimos']
+    # Desmontou antes de fugir, igual à versão em classe, e com metade das linhas.
+
+  key_points:
+    - "`@contextmanager` quer um gerador com exatamente um `yield`. Antes dele é o `__enter__`, depois dele é o `__exit__`, e o que ele produz é o que o `as` liga."
+    - "O `try`/`finally` não é opcional. Uma exceção no bloco é levantada no `yield`, então sem o `finally` a limpeza é pulada - exatamente a falha que o gerenciador existia para evitar."
+    - "Dois yields levantam `RuntimeError`. O gerenciador tem uma entrada e uma saída, então o gerador ganha uma pausa."
+    - "Use a forma em classe quando há estado ou vários métodos a expor; use esta para \"faça isto, depois aquilo\", que é a maioria deles."
+
+brief: |
+  Rode uma esteira pequena e guarde um registro dela.
+
+  Escreva um gerenciador de contexto chamado stage, usando `@contextmanager`, que recebe uma
+  lista de log e um nome. Na entrada ele dá append de `"start <nome>"` e produz o log. Na saída
+  ele dá append de `"end <nome>"`, e tem de fazer isso mesmo quando o bloco levanta erro.
+
+  Escreva uma **função geradora** chamada doubled que recebe uma lista de números e produz cada
+  um dobrado.
+
+  Depois escreva uma função chamada pipeline que recebe um nome e uma lista de números, e
+  devolve um dicionário:
+
+      {"log": [...], "lines": [...]}
+
+  Dentro de um bloco `with stage(log, name) as record`, percorra `doubled(numbers)` com
+  `enumerate` começando em 1, e monte uma string por número:
+
+      "1: 20"
+
+  Dê append de `"ran <quantidade>"` no record antes de sair do bloco, onde a quantidade é
+  quantas linhas você montou.
+
+  `log` é o log depois de tudo. `lines` é a lista de strings.
+
+  Uma lista de números vazia não produz linha nenhuma e uma quantidade 0, e a etapa ainda abre
+  e fecha.
+
+signature:
+  entrypoint: pipeline
+  stub: |
+    from contextlib import contextmanager
+
+
+    @contextmanager
+    def stage(log, name):
+        # Antes do yield, depois o yield, depois a parte que tem de sempre rodar.
+        # seu código aqui
+        pass
+
+
+    def doubled(numbers):
+        # Um yield por número.
+        # seu código aqui
+        pass
+
+
+    def pipeline(name, numbers):
+        # Um bloco with. Uma passagem numerada. Um registro.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [map, range]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["loading", [10, 20]]
+      expect:
+        log: ["start loading", "ran 2", "end loading"]
+        lines: ["1: 20", "2: 40"]
+    - args: ["loading", []]
+      expect:
+        log: ["start loading", "ran 0", "end loading"]
+        lines: []
+  hidden:
+    # Um número. A numeração começa em 1, o que só aparece aqui e no caso vazio.
+    - args: ["weighing", [7]]
+      expect:
+        log: ["start weighing", "ran 1", "end weighing"]
+        lines: ["1: 14"]
+    # Zeros dobram para zero e continuam contando como linhas.
+    - args: ["weighing", [0, 0, 0]]
+      expect:
+        log: ["start weighing", "ran 3", "end weighing"]
+        lines: ["1: 0", "2: 0", "3: 0"]
+    # Negativos e floats passam pelo gerador intocados.
+    - args: ["mixed", [-4, 2.5]]
+      expect:
+        log: ["start mixed", "ran 2", "end mixed"]
+        lines: ["1: -8", "2: 5.0"]
+    # Um nome vazio ainda monta as duas linhas do log.
+    - args: ["", [1]]
+      expect:
+        log: ["start ", "ran 1", "end "]
+        lines: ["1: 2"]
+    # Mais longo, para que a numeração e a duplicação estejam cada uma fazendo o seu trabalho.
+    - args: ["long", [1, 2, 3, 4, 5]]
+      expect:
+        log: ["start long", "ran 5", "end long"]
+        lines: ["1: 2", "2: 4", "3: 6", "4: 8", "5: 10"]
+
+hints:
+  - level: 1
+    text: |
+      O `"ran <quantidade>"` fica entre o `"start"` e o `"end"` no log. Qual dos dois - o
+      gerenciador ou o bloco - tem de colocá-lo lá para ele cair nessa posição?
+
+      E no `stage`: o que acontece com as linhas abaixo do `yield` se o bloco levanta erro e
+      não há `finally`?
+  - level: 2
+    text: |
+      `stage` é: um append, depois `try: yield log`, depois `finally:` com o segundo append.
+
+      `doubled` é um gerador de duas linhas - um `for` e um `yield`. Nenhuma lista dentro dele.
+
+      Em `pipeline`, `for numero, valor in enumerate(doubled(numbers), 1)` te dá a posição e o
+      valor já dobrado num cabeçalho só. Monte a string, dê append, e guarde a última posição -
+      ou conte as linhas montadas - para a entrada `"ran ..."`.
+  - level: 3
+    text: |
+      As mesmas três peças, para uma impressora:
+
+          from contextlib import contextmanager
+
+
+          @contextmanager
+          def job(log, title):
+              log.append(f"comecar {title}")
+              try:
+                  yield log
+              finally:
+                  log.append(f"terminar {title}")
+
+
+          def upper(words):
+              for word in words:
+                  yield word.upper()
+
+
+          def printout(title, words):
+              log = []
+              paginas = []
+              with job(log, title) as registro:
+                  for numero, palavra in enumerate(upper(words), 1):
+                      paginas.append(f"{numero}: {palavra}")
+                  registro.append(f"impressas {len(paginas)}")
+              return {"log": log, "pages": paginas}
+
+      A sua dobra números em vez de gritar palavras, e as palavras do log são outras.
+
+solution: |
+  from contextlib import contextmanager
+
+
+  @contextmanager
+  def stage(log, name):
+      log.append(f"start {name}")
+      try:
+          yield log
+      finally:
+          log.append(f"end {name}")
+
+
+  def doubled(numbers):
+      for number in numbers:
+          yield number * 2
+
+
+  def pipeline(name, numbers):
+      log = []
+      lines = []
+
+      with stage(log, name) as record:
+          for position, value in enumerate(doubled(numbers), 1):
+              lines.append(f"{position}: {value}")
+          record.append(f"ran {len(lines)}")
+
+      return {"log": log, "lines": lines}

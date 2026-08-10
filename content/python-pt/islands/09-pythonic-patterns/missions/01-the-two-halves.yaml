@@ -1,0 +1,211 @@
+# Missão 1 de Padrões Pythônicos. Introduz: unpacking.
+#
+# A ilha abre nos seus dois conceitos mais baratos em vez de no protocolo de iteração,
+# porque a banda é `challenging` e a ideia mais difícil não deveria cair onde o jogador tem
+# menos embalo. Desempacotamento também rende em todas as missões seguintes da ilha.
+#
+# Os casos de ValueError são o ensino, não um detalhe: `head, *middle, tail` precisa de pelo
+# menos dois valores, e um jogador que só viu desempacotamento dar certo não sabe disso.
+# Cobrado com `raises:`, que a Ilha 5 construiu.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-01
+title: As duas metades
+track: python
+island: pythonic-patterns
+order: 1
+difficulty: challenging
+tags: [patterns, unpacking, tuples]
+xp: 45
+
+concepts:
+  - unpacking
+
+teaching:
+  analogy: |
+    A escala de turno é lida em voz alta na virada da hora: o primeiro nome é o oficial, o
+    último é o vigia, e todo mundo no meio é a guarda. O contramestre não fica contando até a
+    posição quatro. Ele diz "o primeiro, o último, e o resto", e o formato da frase faz a
+    separação.
+
+    Leia uma escala com um nome só e a frase desmonta, porque não há "no meio" e não há uma
+    segunda pessoa para ser a última. O contramestre não improvisa - ele diz que a escala
+    está errada.
+
+  explanation: |
+    A atribuição consegue desmontar uma sequência em um comando só:
+
+        primeiro, segundo = par
+
+    A contagem da esquerda tem de bater com a da direita, exatamente. Um nome a menos ou a
+    mais e o Python levanta `ValueError`, te dizendo os dois números.
+
+    A menos que um dos nomes tenha uma estrela, e aí esse nome absorve o que sobrar:
+
+        cabeca, *meio, cauda = nomes
+
+    `cabeca` pega o primeiro, `cauda` pega o último, e `meio` pega tudo entre os dois. Duas
+    regras valem antes de você usar isso. `meio` é sempre uma **lista**, mesmo que o que você
+    desempacotou fosse uma tupla ou uma string. E os nomes sem estrela ainda precisam ser
+    satisfeitos primeiro, então `nomes` tem de ter pelo menos dois valores - com menos, `meio`
+    não tem nada para dar e chega o mesmo `ValueError`.
+
+    O mesmo formato funciona do lado direito de uma atribuição, que é de onde vem a troca sem
+    variável temporária:
+
+        a, b = b, a
+
+    Os dois lados são avaliados antes de qualquer nome ser religado, então nada se perde no
+    meio do caminho.
+
+  worked_example: |
+    # Um endereço postal, que não é o que esta missão pede
+    def address_parts(lines):
+        nome, *rua, cep = lines
+        return {"name": nome, "street": rua, "postcode": cep}
+
+
+    print(address_parts(["Ada", "Rua do Cais, 12", "Fim do Porto", "01234-567"]))
+    # {'name': 'Ada', 'street': ['Rua do Cais, 12', 'Fim do Porto'], 'postcode': '01234-567'}
+
+    print(address_parts(["Ada", "01234-567"]))
+    # {'name': 'Ada', 'street': [], 'postcode': '01234-567'}  - a estrela pode absorver nada
+
+    esquerda, direita = "bombordo", "estibordo"
+    esquerda, direita = direita, esquerda
+    print(esquerda)     # estibordo
+
+  key_points:
+    - "As contagens têm de bater. `a, b = [1, 2, 3]` levanta ValueError e a mensagem te diz os dois números, que geralmente é o diagnóstico inteiro."
+    - "Um nome com estrela sempre produz uma **lista**, seja lá o que você desempacotou. `a, *b = (1, 2, 3)` deixa `b` como `[2, 3]`, não como tupla."
+    - "Um nome com estrela pode absorver nada, então `cabeca, *meio, cauda` precisa de dois valores, não de três. Com um só, levanta erro."
+    - "`a, b = b, a` não precisa de variável temporária. O lado direito é montado primeiro, e só então os dois nomes são religados."
+    - "Desempacotamento funciona no cabeçalho do `for` também: `for nome, horas in pares` poupa dois acessos por índice a cada volta e se lê como o que é."
+
+brief: |
+  O contramestre lê a escala de turno em voz alta.
+
+  Escreva uma função chamada split_watch que recebe uma lista de nomes e devolve um
+  dicionário:
+
+      {"first": ..., "middle": [...], "last": ..., "swapped": [...]}
+
+  `first` é o primeiro nome, `last` é o último, e `middle` é uma lista com tudo entre os dois
+  - vazia quando não há nada no meio. `swapped` é uma lista de dois itens com o último nome e
+  depois o primeiro, nessa ordem.
+
+  Desmonte a lista com **um único comando de desempacotamento**. Sem índice, sem fatiamento,
+  sem `len`.
+
+  Uma lista com menos de dois nomes não pode ser lida em voz alta. Deixe o ValueError que o
+  Python levanta viajar - não capture, e não cheque o tamanho antes. O sentido inteiro desta
+  missão é que o formato da atribuição já conhece a regra.
+
+  Você não pode usar len, list nem slice.
+
+signature:
+  entrypoint: split_watch
+  stub: |
+    def split_watch(names):
+        # Um comando desmonta. O resto é montar o dicionário.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [len, list, slice]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["Ada", "Bo", "Cai"]]
+      expect:
+        first: Ada
+        middle: ["Bo"]
+        last: Cai
+        swapped: ["Cai", "Ada"]
+    # Exatamente dois. A estrela absorve nada e devolve uma lista vazia, não None.
+    - args: [["Ada", "Bo"]]
+      expect:
+        first: Ada
+        middle: []
+        last: Bo
+        swapped: ["Bo", "Ada"]
+  hidden:
+    # Um nome. A atribuição com estrela não tem como ser satisfeita.
+    - args: [["Ada"]]
+      raises: ValueError
+    # Nenhum nome. Mesma falha, mesmo motivo.
+    - args: [[]]
+      raises: ValueError
+    # Uma escala longa. `middle` mantém a ordem em que chegou.
+    - args: [["Ada", "Bo", "Cai", "Dee", "Eli"]]
+      expect:
+        first: Ada
+        middle: ["Bo", "Cai", "Dee"]
+        last: Eli
+        swapped: ["Eli", "Ada"]
+    # O mesmo nome duas vezes. Nada aqui remove duplicatas, e o primeiro continua primeiro.
+    - args: [["Ada", "Ada"]]
+      expect:
+        first: Ada
+        middle: []
+        last: Ada
+        swapped: ["Ada", "Ada"]
+    # Strings vazias são nomes. Duas delas satisfazem o desempacotamento perfeitamente.
+    - args: [["", ""]]
+      expect:
+        first: ""
+        middle: []
+        last: ""
+        swapped: ["", ""]
+    # Quatro nomes, então uma solução que supôs exatamente um no meio é pega.
+    - args: [["Ada", "Bo", "Cai", "Dee"]]
+      expect:
+        first: Ada
+        middle: ["Bo", "Cai"]
+        last: Dee
+        swapped: ["Dee", "Ada"]
+
+hints:
+  - level: 1
+    text: |
+      Você precisa de três nomes ligados a partir de uma lista, e a quantidade de itens não é
+      conhecida de antemão. Qual dos três consegue absorver uma quantidade desconhecida, e que
+      marca do lado esquerdo diz isso?
+
+      Depois: o que o Python já faz quando as contagens não podem ser satisfeitas? Você não
+      precisa acrescentar esse comportamento.
+  - level: 2
+    text: |
+      Uma linha: três nomes à esquerda, um deles com estrela, e `names` à direita.
+
+      O da estrela já volta como lista, então entra no dicionário como está. O par trocado é
+      uma lista de dois itens que você escreve à mão - ou monta com o mesmo truque, já que
+      `a, b = b, a` e depois uma lista dos dois dá na mesma.
+
+      Não existe `if` nenhum nesta função.
+  - level: 3
+    text: |
+      O mesmo comando, sobre uma frase:
+
+          def sentence_parts(words):
+              abertura, *corpo, fecho = words
+              return {"opener": abertura, "body": corpo, "closer": fecho}
+
+
+          print(sentence_parts(["Prezado", "senhor", "ou", "senhora", "atenciosamente"]))
+          # {'opener': 'Prezado', 'body': ['senhor', 'ou', 'senhora'], 'closer': 'atenciosamente'}
+
+      A sua tem uma quarta chave, guardando o último e o primeiro na ordem inversa.
+
+solution: |
+  def split_watch(names):
+      first, *middle, last = names
+
+      return {
+          "first": first,
+          "middle": middle,
+          "last": last,
+          "swapped": [last, first],
+      }

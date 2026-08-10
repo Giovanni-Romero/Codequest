@@ -1,0 +1,221 @@
+# Missão 7 de Padrões Pythônicos. Introduz: generators.
+# Reforça: yield, list-comprehension, enumerate-zip.
+#
+# Onde a missão 5 ensinou o `yield` como palavra-chave, esta ensina a *expressão* geradora - a
+# compreensão com parênteses - e o argumento de memória por trás dela.
+#
+# A fonte é sem fim de novo, então a versão ansiosa do mesmo filtro não tem como retornar. É
+# esse o avaliador da missão: uma compreensão de lista sobre um gerador infinito é uma missão
+# que estoura o tempo, e trocar um par de colchetes por parênteses é a correção inteira. Nada
+# no motor está fazendo nada de especial.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-07
+title: O manifesto preguiçoso
+track: python
+island: pythonic-patterns
+order: 7
+difficulty: challenging
+tags: [patterns, generators, comprehensions, laziness]
+xp: 45
+
+concepts:
+  - generators
+
+teaching:
+  analogy: |
+    Dois escriturários recebem a ordem de achar os três primeiros caixotes acima de cem quilos
+    num armazém que ainda está sendo abastecido.
+
+    O primeiro copia o inventário inteiro, marca todo caixote pesado, e te entrega os três do
+    topo. Ele ainda está copiando. O armazém ainda está sendo abastecido.
+
+    O segundo caminha pelo corredor, e no instante em que tem três ele para de caminhar. Mesma
+    resposta, e ele volta antes do almoço. Nenhum dos dois é mais esperto. Um deles decidiu
+    quanto trabalho fazer antes de saber quanto era necessário.
+
+  explanation: |
+    Você já conhece uma compreensão:
+
+        pesados = [c for c in caixotes if c > 100]        # uma lista, construída agora
+
+    Troque os delimitadores e você tem uma **expressão geradora**, que não constrói nada:
+
+        pesados = (c for c in caixotes if c > 100)        # uma receita, executada depois
+
+    As duas linhas parecem quase idênticas e não se comportam nem parecido. A primeira faz
+    todo o trabalho imediatamente e te entrega uma lista que você pode indexar, medir e
+    percorrer duas vezes. A segunda não faz trabalho nenhum e te entrega um gerador: uma
+    passada, sem `len`, sem índice, e ele só toca o tanto de `caixotes` que você de fato pedir.
+
+    Essa última parte é o argumento inteiro. Se a fonte é um arquivo de dez milhões de linhas,
+    a versão em lista precisa de dez milhões de linhas de memória e a versão geradora precisa
+    de uma por vez. Se a fonte não tem fim, a versão em lista nunca retorna e a versão geradora
+    está bem.
+
+    Quando uma expressão geradora é o único argumento de uma função, você pode largar os
+    parênteses dela: `sum(c for c in caixotes)` em vez de `sum((c for c in caixotes))`.
+
+    Nada disso torna listas obsoletas. Uma lista que você precisa percorrer duas vezes,
+    indexar ou medir deveria ser uma lista. Use o gerador quando a sequência é grande, sem
+    fim, ou descartada depois de uma passada.
+
+  worked_example: |
+    # Palavras, que não é o que esta missão pede
+    def counting():
+        n = 1
+        while True:
+            yield n
+            n = n + 1
+
+
+    def first_multiples(factor, wanted):
+        multiplos = (n for n in counting() if n % factor == 0)
+
+        achados = []
+        for valor in multiplos:
+            achados.append(valor)
+            if wanted == len(achados):
+                break
+
+        return achados
+
+
+    print(first_multiples(7, 3))    # [7, 14, 21]
+
+    # A mesma linha com colchetes nunca retorna: counting() não tem fim, e uma compreensão de
+    # lista significa "todos eles".
+
+  key_points:
+    - "Parênteses fazem uma expressão geradora, colchetes fazem uma lista. As duas linhas diferem por um caractere e por todo o trabalho."
+    - "Uma expressão geradora é percorrida uma vez, não tem `len` e não pode ser indexada. Se você precisa de qualquer uma das três, você queria uma lista."
+    - "Sobre uma fonte sem fim, a versão em lista nunca retorna. Isso não é um programa lento, é um programa que parou."
+    - "Os parênteses podem ser largados quando a expressão é o único argumento da função: `sum(x * 2 for x in valores)`."
+    - "Listas não são a opção lenta. Uma sequência curta que você percorre duas vezes deveria ser uma lista, e um gerador que você percorre duas vezes por acidente é uma passada vazia silenciosa."
+
+brief: |
+  O armazém ainda está sendo abastecido e você precisa dos primeiros caixotes pesados.
+
+  Escreva uma **função geradora** chamada crates que produz pesos para sempre: 1, 2, 3, 4, e
+  assim por diante, subindo de um em um sem fim.
+
+  Depois escreva uma função chamada first_heavy que recebe um limiar e uma quantidade, e
+  devolve uma lista com os primeiros `count` pesos **estritamente maiores** que o limiar, em
+  ordem.
+
+  Filtre a fonte sem fim com uma **expressão geradora** - parênteses - e pare assim que tiver
+  o bastante.
+
+  Uma quantidade 0 dá uma lista vazia. O limiar pode ser 0, o que deixa tudo passar a partir
+  do 1.
+
+  Você não pode usar list nem range. Uma compreensão com colchetes sobre `crates()` não falha
+  aqui, ela simplesmente nunca volta.
+
+signature:
+  entrypoint: first_heavy
+  stub: |
+    def crates():
+        # 1, 2, 3, ... e nunca para.
+        # seu código aqui
+        pass
+
+
+    def first_heavy(threshold, count):
+        # Uma expressão geradora, e pare no instante em que tiver o bastante.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [list, range]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [100, 3]
+      expect: [101, 102, 103]
+    - args: [0, 4]
+      expect: [1, 2, 3, 4]
+  hidden:
+    # Nenhum pedido. A expressão geradora é construída e nunca puxada.
+    - args: [100, 0]
+      expect: []
+    # Um pedido, e é o primeiro peso além do limiar, não o próprio limiar.
+    - args: [100, 1]
+      expect: [101]
+    # "Estritamente maior" é a fronteira: 5 não passa contra um limiar de 5.
+    - args: [5, 2]
+      expect: [6, 7]
+    # Um limiar bem lá na frente, então o filtro realmente tem de caminhar até ele.
+    - args: [10000, 2]
+      expect: [10001, 10002]
+    # Nada filtrado.
+    - args: [0, 1]
+      expect: [1]
+    # Longo o bastante para uma resposta chumbada ficar conspícua.
+    - args: [50, 8]
+      expect: [51, 52, 53, 54, 55, 56, 57, 58]
+
+hints:
+  - level: 1
+    text: |
+      Duas compreensões, a um caractere de distância, e só uma delas pode ser escrita sobre uma
+      fonte sem fim. Qual delimitador envolve uma receita em vez de um resultado?
+
+      Depois: o que tem de acontecer no instante em que você tiver valores o bastante, dado
+      que a fonte vai continuar alegremente?
+  - level: 2
+    text: |
+      `crates` são as mesmas três linhas do gerador da missão 6, subindo de um em um em vez de
+      dobrar.
+
+      Em `first_heavy`, uma linha monta o filtro:
+
+          pesados = (peso for peso in crates() if peso > threshold)
+
+      Depois um `for` sobre `pesados`, dando append, com um `break` quando tiver `count`
+      deles. Ou um `while` com `next`. Os dois servem; os dois têm de parar de puxar.
+  - level: 3
+    text: |
+      O mesmo filtro sobre uma fonte sem fim, para quadrados:
+
+          def squares():
+              n = 1
+              while True:
+                  yield n * n
+                  n = n + 1
+
+
+          def first_big_squares(floor, wanted):
+              grandes = (s for s in squares() if s > floor)
+
+              achados = []
+              while wanted > 0:
+                  achados.append(next(grandes))
+                  wanted = wanted - 1
+
+              return achados
+
+
+          print(first_big_squares(50, 3))    # [64, 81, 100]
+
+      A sua sobe de um em um em vez de elevar ao quadrado, e a comparação tem o mesmo formato.
+
+solution: |
+  def crates():
+      weight = 1
+      while True:
+          yield weight
+          weight = weight + 1
+
+
+  def first_heavy(threshold, count):
+      heavy = (weight for weight in crates() if weight > threshold)
+
+      found = []
+      while count > 0:
+          found.append(next(heavy))
+          count = count - 1
+
+      return found

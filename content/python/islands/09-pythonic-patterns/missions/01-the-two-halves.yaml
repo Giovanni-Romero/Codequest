@@ -1,0 +1,208 @@
+# Mission 1 of Pythonic Patterns. Introduces: unpacking.
+#
+# The island opens on its two cheapest concepts rather than on the iterator protocol,
+# because the band is `challenging` and the hardest idea should not land where the player
+# has the least momentum. Unpacking also pays off in every later mission on the island.
+#
+# The ValueError cases are the teaching, not an afterthought: `head, *middle, tail` needs
+# at least two values, and a player who has only ever seen unpacking succeed does not know
+# that. Graded with `raises:`, which Island 5 built.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-01
+title: The two halves
+track: python
+island: pythonic-patterns
+order: 1
+difficulty: challenging
+tags: [patterns, unpacking, tuples]
+xp: 45
+
+concepts:
+  - unpacking
+
+teaching:
+  analogy: |
+    A watch bill is read out at the top of the hour: the first name is the officer, the last
+    name is the lookout, and everybody in between is the watch. The bosun does not count
+    down the list to position four. He says "first, last, and the rest", and the shape of
+    the sentence does the sorting.
+
+    Read out a bill with one name on it and the sentence falls apart, because there is no
+    "in between" and no second person to be the last one. The bosun does not improvise - he
+    says the bill is wrong.
+
+  explanation: |
+    Assignment can take a sequence apart in one statement:
+
+        first, second = pair
+
+    The count on the left has to match the count on the right, exactly. One name too few or
+    too many and Python raises `ValueError`, telling you both numbers.
+
+    Unless one name is starred, and then that one absorbs whatever is left over:
+
+        head, *middle, tail = names
+
+    `head` takes the first, `tail` takes the last, and `middle` takes everything between
+    them. Two rules are worth knowing before you use it. `middle` is always a **list**, even
+    when the thing you unpacked was a tuple or a string. And the un-starred names still have
+    to be satisfied first, so `names` must hold at least two values - with fewer, `middle`
+    has nothing to give away and the same `ValueError` arrives.
+
+    The same shape works on the right of an assignment, which is where the swap with no
+    temporary variable comes from:
+
+        a, b = b, a
+
+    Both sides are evaluated before either name is rebound, so nothing is lost in the middle.
+
+  worked_example: |
+    # A postal address, which is not what this mission asks for
+    def address_parts(lines):
+        name, *street, postcode = lines
+        return {"name": name, "street": street, "postcode": postcode}
+
+
+    print(address_parts(["Ada", "12 Dock Road", "Harbour End", "EH1 2AB"]))
+    # {'name': 'Ada', 'street': ['12 Dock Road', 'Harbour End'], 'postcode': 'EH1 2AB'}
+
+    print(address_parts(["Ada", "EH1 2AB"]))
+    # {'name': 'Ada', 'street': [], 'postcode': 'EH1 2AB'}  - the star can absorb nothing
+
+    left, right = "port", "starboard"
+    left, right = right, left
+    print(left)     # starboard
+
+  key_points:
+    - "The counts must match. `a, b = [1, 2, 3]` raises ValueError and the message tells you both numbers, which is usually the whole diagnosis."
+    - "A starred name always produces a **list**, whatever you unpacked. `a, *b = (1, 2, 3)` leaves `b` as `[2, 3]`, not a tuple."
+    - "A starred name can absorb nothing at all, so `head, *middle, tail` needs two values, not three. With one, it raises."
+    - "`a, b = b, a` needs no temporary. The right-hand side is built first, then both names are rebound."
+    - "Unpacking works in a `for` header too: `for name, hours in pairs` saves two index lookups per pass and reads as what it is."
+
+brief: |
+  The bosun reads out the watch bill.
+
+  Write a function called split_watch that takes a list of names and returns a dict:
+
+      {"first": ..., "middle": [...], "last": ..., "swapped": [...]}
+
+  `first` is the first name, `last` is the last name, and `middle` is a list of everything
+  between them - empty when there is nothing between. `swapped` is a two-item list holding
+  the last name and then the first, in that order.
+
+  Take the list apart with **one unpacking statement**. No indexing, no slicing, no `len`.
+
+  A list of fewer than two names cannot be read out. Let the ValueError that Python raises
+  travel - do not catch it, and do not check the length first. The whole point of this
+  mission is that the shape of the assignment already knows the rule.
+
+  You cannot use len, list or slice.
+
+signature:
+  entrypoint: split_watch
+  stub: |
+    def split_watch(names):
+        # One statement takes it apart. The rest is building the dict.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [len, list, slice]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["Ada", "Bo", "Cai"]]
+      expect:
+        first: Ada
+        middle: ["Bo"]
+        last: Cai
+        swapped: ["Cai", "Ada"]
+    # Exactly two. The star absorbs nothing and gives back an empty list, not None.
+    - args: [["Ada", "Bo"]]
+      expect:
+        first: Ada
+        middle: []
+        last: Bo
+        swapped: ["Bo", "Ada"]
+  hidden:
+    # One name. The starred assignment cannot be satisfied.
+    - args: [["Ada"]]
+      raises: ValueError
+    # No names at all. Same failure, same reason.
+    - args: [[]]
+      raises: ValueError
+    # A long bill. `middle` keeps the order it arrived in.
+    - args: [["Ada", "Bo", "Cai", "Dee", "Eli"]]
+      expect:
+        first: Ada
+        middle: ["Bo", "Cai", "Dee"]
+        last: Eli
+        swapped: ["Eli", "Ada"]
+    # The same name twice. Nothing here deduplicates, and first is still first.
+    - args: [["Ada", "Ada"]]
+      expect:
+        first: Ada
+        middle: []
+        last: Ada
+        swapped: ["Ada", "Ada"]
+    # Empty strings are names. Two of them satisfy the unpacking perfectly well.
+    - args: [["", ""]]
+      expect:
+        first: ""
+        middle: []
+        last: ""
+        swapped: ["", ""]
+    # Four names, so a solution that assumed exactly one in the middle is caught.
+    - args: [["Ada", "Bo", "Cai", "Dee"]]
+      expect:
+        first: Ada
+        middle: ["Bo", "Cai"]
+        last: Dee
+        swapped: ["Dee", "Ada"]
+
+hints:
+  - level: 1
+    text: |
+      You need three names bound from one list, and the number of items is not known in
+      advance. Which of the three can absorb an unknown count, and what mark on the left-hand
+      side says so?
+
+      Then: what does Python already do when the counts cannot be satisfied? You do not have
+      to add that behaviour.
+  - level: 2
+    text: |
+      One line: three names on the left, one of them starred, and `names` on the right.
+
+      The starred one comes back as a list already, so it goes into the dict as it is. The
+      swapped pair is a two-item list you write out by hand - or build with the same trick,
+      since `a, b = b, a` and then a list of the two is the same thing.
+
+      There is no `if` anywhere in this function.
+  - level: 3
+    text: |
+      The same statement, on a sentence:
+
+          def sentence_parts(words):
+              opener, *body, closer = words
+              return {"opener": opener, "body": body, "closer": closer}
+
+
+          print(sentence_parts(["Dear", "sir", "or", "madam", "regards"]))
+          # {'opener': 'Dear', 'body': ['sir', 'or', 'madam'], 'closer': 'regards'}
+
+      Yours has a fourth key, holding the last and the first the other way round.
+
+solution: |
+  def split_watch(names):
+      first, *middle, last = names
+
+      return {
+          "first": first,
+          "middle": middle,
+          "last": last,
+          "swapped": [last, first],
+      }

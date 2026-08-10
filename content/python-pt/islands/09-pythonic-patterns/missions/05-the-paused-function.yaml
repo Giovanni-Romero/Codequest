@@ -1,0 +1,222 @@
+# Missão 5 de Padrões Pythônicos. Introduz: yield.
+# Reforça: iterators, functions, while-loop.
+#
+# Cobrada com duas chamadas de `next` em vez de com `list(...)`, que é o único jeito honesto
+# de mostrar que um gerador produz sob demanda. Uma missão que consumisse tudo seria
+# indistinguível de uma que devolvesse uma lista, e o conceito ficaria sem teste.
+#
+# O campo `log` é a parte mais afiada: ele está vazio no momento em que o gerador é criado e
+# só enche conforme os valores são puxados, que é a regra "nada roda até o primeiro next"
+# tornada observável em vez de afirmada. Sem stdout nenhum - ver as notas da ilha.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-05
+title: A função pausada
+track: python
+island: pythonic-patterns
+order: 5
+difficulty: challenging
+tags: [patterns, yield, generators, laziness]
+xp: 45
+
+concepts:
+  - yield
+
+teaching:
+  analogy: |
+    O faroleiro que escreve o diário dele não escreve a noite inteira de antemão. Ele escreve
+    uma linha, larga a caneta, e espera. Quando a hora seguinte chega, ele pega exatamente de
+    onde parou - a página lembra, e ele também.
+
+    Pergunte a ele à meia-noite quantas linhas a noite vai ter e ele não sabe dizer. Peça a
+    próxima linha e ele tem uma. Essa é a diferença inteira entre um diário sendo escrito e um
+    diário que foi escrito.
+
+  explanation: |
+    Coloque `yield` em qualquer lugar do corpo de uma função e ela deixa de ser uma função que
+    retorna. Chamá-la agora constrói um **gerador** e não roda nada do corpo:
+
+        def countdown(start):
+            while start > 0:
+                yield start
+                start = start - 1
+
+        contador = countdown(3)      # nada rodou ainda
+
+    O corpo só anda quando alguma coisa puxa um valor. `next(contador)` roda até chegar num
+    `yield`, devolve aquele valor, e **congela ali** - variáveis locais, posição no laço, tudo.
+    O `next` seguinte retoma na linha depois do `yield`.
+
+    Então a diferença para o `return` não é o que volta, é o que acontece com a função. O
+    `return` a encerra. O `yield` a pausa.
+
+    Um gerador é um iterador, então tudo da missão 4 vale sem mudança: o `for` o percorre, ele
+    fica gasto depois de uma passada, e quando o corpo finalmente acaba o `next` levanta
+    `StopIteration`.
+
+    Uma consequência que vale carregar: um gerador pode descrever uma sequência que nunca
+    termina, porque nada obriga o corpo a rodar até o fim. `while True: yield x` é um gerador
+    perfeitamente comum, e só é perigoso se você pedir tudo dele.
+
+  worked_example: |
+    # Dobrando, que não é o que esta missão pede
+    def doubling(start, seen):
+        while True:
+            seen.append(start)      # só é acrescentado quando esta linha é de fato alcançada
+            yield start
+            start = start * 2
+
+
+    log = []
+    numeros = doubling(1, log)
+
+    print(log)               # [] - o corpo não rodou nada ainda
+    print(next(numeros))     # 1
+    print(next(numeros))     # 2
+    print(log)               # [1, 2] - duas linhas escritas, porque dois valores foram puxados
+
+    # O gerador não tem fim. Nada deu errado; ninguém pediu tudo dele.
+
+  key_points:
+    - "Uma função que contém `yield` não roda nada do corpo quando é chamada. Ela devolve um gerador, e o primeiro `next` é o que a inicia."
+    - "`yield` pausa; `return` encerra. Depois de um `yield` as variáveis locais e a posição no laço continuam lá, esperando."
+    - "Um gerador é um iterador, então fica gasto depois de uma passada e levanta `StopIteration` quando o corpo termina."
+    - "`while True: yield ...` é um gerador normal, não um travamento. Ele só trava se você pedir todo valor que ele poderia produzir."
+    - "Como nada roda cedo, efeitos colaterais dentro de um gerador acontecem quando os valores são puxados - não quando o gerador é criado. Isso surpreende as pessoas uma vez."
+
+brief: |
+  O faroleiro escreve o diário uma linha por vez, e só quando pedem.
+
+  Escreva uma **função geradora** chamada countdown que recebe um número inicial e uma lista.
+  Cada vez que ela produz um valor ela tem de:
+
+    - dar append daquele valor na lista que recebeu
+    - dar yield daquele mesmo valor
+
+  Ela conta para trás de um em um e para depois de produzir o 1. Um início de 0 ou menos não
+  produz nada.
+
+  Depois escreva uma função chamada peek que recebe um início e devolve um dicionário:
+
+      {"before": [...], "first": ..., "second": ..., "after": [...]}
+
+  Construa a lista de log e o gerador. `before` é uma **cópia** do log tirada antes de você
+  puxar qualquer coisa - ela tem de estar vazia, porque nada do corpo do gerador rodou. Depois
+  puxe dois valores com `next`, para `first` e `second`. `after` é uma cópia do log naquele
+  ponto, que tem de conter exatamente os dois valores que você puxou.
+
+  Copie o log com `log[:]` para que os dois retratos sejam listas separadas em vez de dois
+  nomes para a mesma.
+
+  Um início abaixo de 2 não consegue fornecer dois valores. Deixe o StopIteration viajar.
+
+  Você não pode usar list nem range. A contagem regressiva é um laço `while` e um `yield`.
+
+signature:
+  entrypoint: peek
+  stub: |
+    def countdown(start, log):
+        # Um gerador: dá append, dá yield, e continua dali.
+        # seu código aqui
+        pass
+
+
+    def peek(start):
+        # Construa, olhe o log, puxe duas vezes, olhe de novo.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [list, range]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [5]
+      expect: {before: [], first: 5, second: 4, after: [5, 4]}
+    # Exatamente dois disponíveis. O gerador não acabou, ele está apenas pausado depois do 1.
+    - args: [2]
+      expect: {before: [], first: 2, second: 1, after: [2, 1]}
+  hidden:
+    # Um valor disponível. A segunda puxada não tem nada.
+    - args: [1]
+      raises: StopIteration
+    # Nada: o while nunca roda, então a primeira puxada já falha.
+    - args: [0]
+      raises: StopIteration
+    # Um início negativo é o mesmo caso, e não pode contar para cima.
+    - args: [-3]
+      raises: StopIteration
+    # Uma contagem longa. Só dois valores são puxados, então só duas linhas são escritas -
+    # este é o caso que pega uma solução que construiu a sequência inteira primeiro.
+    - args: [100]
+      expect: {before: [], first: 100, second: 99, after: [100, 99]}
+    # Três disponíveis, e o terceiro fica sem ser escrito.
+    - args: [3]
+      expect: {before: [], first: 3, second: 2, after: [3, 2]}
+    # Grande o bastante para que construir tudo fosse lento além de errado.
+    - args: [1000000]
+      expect: {before: [], first: 1000000, second: 999999, after: [1000000, 999999]}
+
+hints:
+  - level: 1
+    text: |
+      Depois de `gen = countdown(5, log)` e antes de qualquer `next`, quantas linhas do corpo
+      rodaram? O campo `before` está te pedindo para provar a sua resposta.
+
+      E se `before` e `after` saírem como a mesma lista, o que você esqueceu de fazer quando
+      tirou o primeiro retrato?
+  - level: 2
+    text: |
+      `countdown` não tem `return` nenhum. Um laço `while start > 0`, um `append`, um `yield`,
+      e depois `start = start - 1` na linha seguinte ao yield - essa última linha é a que roda
+      quando o gerador é retomado.
+
+      `peek` cria o log primeiro, depois o gerador, e então tira `log[:]` antes de encostar
+      nele. Duas chamadas de `next`, e `log[:]` de novo.
+  - level: 3
+    text: |
+      A mesma pausa-e-retoma, contando para cima:
+
+          def climbing(top, seen):
+              degrau = 1
+              while degrau <= top:
+                  seen.append(degrau)
+                  yield degrau
+                  degrau = degrau + 1
+
+
+          def sample(top):
+              vistos = []
+              degraus = climbing(top, vistos)
+              vazio = vistos[:]
+              um = next(degraus)
+              dois = next(degraus)
+              return {"empty": vazio, "one": um, "two": dois, "seen": vistos[:]}
+
+      A sua conta para trás em vez de para cima, e as quatro chaves têm outros nomes.
+
+solution: |
+  def countdown(start, log):
+      while start > 0:
+          log.append(start)
+          yield start
+          start = start - 1
+
+
+  def peek(start):
+      log = []
+      counter = countdown(start, log)
+
+      before = log[:]
+
+      first = next(counter)
+      second = next(counter)
+
+      return {
+          "before": before,
+          "first": first,
+          "second": second,
+          "after": log[:],
+      }

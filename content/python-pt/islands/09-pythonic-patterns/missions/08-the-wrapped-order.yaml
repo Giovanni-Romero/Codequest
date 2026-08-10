@@ -1,0 +1,266 @@
+# Missão 8 de Padrões Pythônicos. Introduz: decorators.
+# Reforça: first-class-functions, args-kwargs, dunder-methods.
+#
+# A regra de valor de retorno da ilha morde com mais força aqui: o repr de uma função
+# decorada carrega um endereço, então nenhuma missão pode devolver uma. O formato que
+# funciona é o que o design fixou - o jogador escreve o decorador, aplica a uma função
+# auxiliar, e o entrypoint devolve o que o envoltório tornou observável.
+#
+# O contador mora no envoltório como atributo em vez de num global, que é o que o torna
+# legível de fora sem o decorador ter de devolver nada estranho. O `functools.wraps` é exigido
+# pelo enunciado e cobrado através do __name__.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-08
+title: A ordem envolvida
+track: python
+island: pythonic-patterns
+order: 8
+difficulty: challenging
+tags: [patterns, decorators, closures]
+xp: 45
+
+concepts:
+  - decorators
+
+teaching:
+  analogy: |
+    O capitão do porto decide que toda ordem deve ser carimbada e contada. Ele poderia mandar
+    os quarenta escriturários escreverem o carimbo eles mesmos, e trinta e nove lembrariam.
+
+    Em vez disso ele põe um escriturário na porta. Toda ordem passa por ele, é carimbada, é
+    contada, e segue para quem ia tratar dela. Os quarenta escriturários não mudam em nada, e
+    ninguém consegue esquecer o carimbo, porque esquecer deixou de ser uma opção disponível.
+
+    O escriturário da porta tem de passar tudo adiante intocado. Uma ordem de quatro páginas
+    entra e quatro páginas saem.
+
+  explanation: |
+    Um decorador é uma função que recebe uma função e devolve uma substituta:
+
+        def counted(func):
+            def wrapper(*args, **kwargs):
+                wrapper.calls = wrapper.calls + 1
+                return func(*args, **kwargs)
+
+            wrapper.calls = 0
+            return wrapper
+
+    Aplicado com `@`, que é só uma atribuição escrita acima da definição:
+
+        @counted
+        def weigh(crate):
+            return crate * 2
+
+    `@counted` significa `weigh = counted(weigh)`. O nome `weigh` agora aponta para o
+    `wrapper`, e a função original sobrevive apenas dentro da clausura, como `func`.
+
+    Três detalhes são onde mora todo bug de decorador.
+
+    **`*args, **kwargs` no envoltório.** Sem eles o envoltório aceita um número fixo de
+    argumentos e toda função decorada com outra assinatura quebra. O envoltório não sabe o que
+    está envolvendo e não pode fingir que sabe.
+
+    **`return func(...)`.** Esqueça o `return` e toda função decorada passa a devolver `None`.
+    É uma palavra e é o bug de decorador mais comum que existe.
+
+    **A identidade se perde.** `weigh.__name__` agora é `"wrapper"`, porque é genuinamente a
+    função para a qual o nome aponta. O `functools.wraps` copia o nome e a docstring da
+    original:
+
+        from functools import wraps
+
+        def counted(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                ...
+
+    Uma função é um objeto, então `wrapper.calls = 0` é uma atribuição de atributo comum, e é
+    um lugar organizado para guardar uma contagem que o mundo de fora pode ler.
+
+  worked_example: |
+    # Registro de chamadas, que não é o que esta missão pede
+    from functools import wraps
+
+
+    def logged(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            wrapper.log.append(args)
+            return func(*args, **kwargs)
+
+        wrapper.log = []
+        return wrapper
+
+
+    @logged
+    def add(a, b):
+        return a + b
+
+
+    print(add(1, 2))          # 3    - envolver não mudou a resposta
+    print(add(10, 20))        # 30
+    print(add.log)            # [(1, 2), (10, 20)]
+    print(add.__name__)       # 'add' - graças ao @wraps, não por acaso
+
+  key_points:
+    - "`@coisa` acima de uma definição significa `nome = coisa(nome)`. Roda uma vez, quando a função é definida, não uma vez por chamada."
+    - "O envoltório precisa de `*args, **kwargs` ou só funciona para funções com a assinatura exata que você imaginou."
+    - "Esqueça o `return func(...)` e toda função decorada devolve None. É esse o bug, e é uma palavra."
+    - "Sem o `functools.wraps` o `__name__` da função decorada vira `'wrapper'`, o que transforma todo traceback e todo depurador num jogo de adivinhação."
+    - "Uma função é um objeto. `wrapper.calls = 0` é um atributo normal, e deixa o mundo de fora ler o que o envoltório vem acompanhando."
+
+brief: |
+  Toda ordem é carimbada no caminho.
+
+  Escreva um decorador chamado counted. Ele envolve qualquer função de modo que:
+
+    - o envoltório conta quantas vezes foi chamado, guardando o número em `wrapper.calls`, que
+      começa em 0
+    - o envoltório passa todo argumento adiante intocado e devolve o que a função original
+      devolveu
+    - a função decorada mantém o próprio `__name__`, usando `functools.wraps`
+
+  Depois escreva uma função chamada weigh, decorada com `@counted`, que recebe o peso de um
+  caixote e o devolve dobrado.
+
+  Depois escreva uma função chamada run que recebe uma lista de pesos e devolve um dicionário:
+
+      {"results": [...], "calls": ..., "name": ...}
+
+  `results` é `weigh` aplicado a cada peso, em ordem. `calls` é `weigh.calls` depois do laço.
+  `name` é `weigh.__name__`, que tem de ser `"weigh"` e não `"wrapper"`.
+
+  `run` é chamada do zero em cada teste, então a contagem sempre começa em 0.
+
+  Você não pode usar map nem list. A contagem acontece dentro do envoltório, não no `run`.
+
+signature:
+  entrypoint: run
+  stub: |
+    from functools import wraps
+
+
+    def counted(func):
+        # Construa o envoltório, dê a ele uma contagem inicial, devolva-o.
+        # seu código aqui
+        pass
+
+
+    @counted
+    def weigh(weight):
+        return weight * 2
+
+
+    def run(weights):
+        # Chame weigh uma vez por peso, depois leia o que o envoltório registrou.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [map, list]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[10, 20, 30]]
+      expect: {results: [20, 40, 60], calls: 3, name: weigh}
+    - args: [[5]]
+      expect: {results: [10], calls: 1, name: weigh}
+  hidden:
+    # Nada para pesar. O envoltório nunca foi chamado, então a contagem continua 0.
+    - args: [[]]
+      expect: {results: [], calls: 0, name: weigh}
+    # Um peso zero continua sendo uma chamada.
+    - args: [[0, 0]]
+      expect: {results: [0, 0], calls: 2, name: weigh}
+    # Valores repetidos. A contagem segue chamadas, não entradas distintas.
+    - args: [[7, 7, 7, 7]]
+      expect: {results: [14, 14, 14, 14], calls: 4, name: weigh}
+    # Pesos negativos e float passam intocados - o envoltório não inspeciona nada.
+    - args: [[-3, 2.5]]
+      expect: {results: [-6, 5.0], calls: 2, name: weigh}
+    # Uma sequência mais longa, então uma contagem chumbada num número pequeno é pega.
+    - args: [[1, 2, 3, 4, 5, 6, 7]]
+      expect: {results: [2, 4, 6, 8, 10, 12, 14], calls: 7, name: weigh}
+
+hints:
+  - level: 1
+    text: |
+      `counted` recebe uma função e tem de devolver algo que possa ser chamado no lugar dela.
+      Que tipo de coisa pode ser chamada, e onde você a definiria?
+
+      E uma vez que a contagem está sendo mantida, como o `run` a lê de fora? O envoltório é um
+      objeto como qualquer outro.
+  - level: 2
+    text: |
+      Dentro do `counted`, defina `wrapper` e devolva-o - devolva a função em si, sem
+      parênteses, ou você estará devolvendo o que ela produziu.
+
+      `wrapper.calls = 0` vai **depois** da definição e antes do return. Dentro do corpo,
+      incremente, e depois `return func(*args, **kwargs)` - com o `return`.
+
+      `@wraps(func)` fica logo acima do `def wrapper`.
+
+      No `run`, um laço chamando `weigh(...)` e dando append. Depois leia `weigh.calls` e
+      `weigh.__name__`.
+  - level: 3
+    text: |
+      O mesmo decorador, sem cronometrar nada e apenas lembrando:
+
+          from functools import wraps
+
+
+          def remembered(func):
+              @wraps(func)
+              def wrapper(*args, **kwargs):
+                  wrapper.seen.append(args)
+                  return func(*args, **kwargs)
+
+              wrapper.seen = []
+              return wrapper
+
+
+          @remembered
+          def shout(word):
+              return word.upper()
+
+
+          def go(words):
+              ditas = []
+              for word in words:
+                  ditas.append(shout(word))
+              return {"said": ditas, "seen": shout.seen, "name": shout.__name__}
+
+      O seu guarda um número em vez de uma lista, e começa esse número em 0.
+
+solution: |
+  from functools import wraps
+
+
+  def counted(func):
+      @wraps(func)
+      def wrapper(*args, **kwargs):
+          wrapper.calls = wrapper.calls + 1
+          return func(*args, **kwargs)
+
+      wrapper.calls = 0
+      return wrapper
+
+
+  @counted
+  def weigh(weight):
+      return weight * 2
+
+
+  def run(weights):
+      results = []
+      for weight in weights:
+          results.append(weigh(weight))
+
+      return {
+          "results": results,
+          "calls": weigh.calls,
+          "name": weigh.__name__,
+      }

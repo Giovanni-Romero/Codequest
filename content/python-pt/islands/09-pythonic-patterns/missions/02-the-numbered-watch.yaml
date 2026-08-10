@@ -1,0 +1,195 @@
+# Missão 2 de Padrões Pythônicos. Introduz: enumerate-zip.
+# Reforça: unpacking, for-loop.
+#
+# `range` está proibido, e essa é a missão inteira: sem ele não existe caminho de volta para
+# o contador de índice, e o `enumerate` deixa de ser um agrado e vira a única rota.
+#
+# O corte silencioso do `zip` é o motivo dos casos com listas de tamanhos diferentes. É o
+# único comportamento aqui que perde dados sem erro nenhum, então ganha três casos de teste
+# em vez de uma frase no painel.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-02
+title: O turno numerado
+track: python
+island: pythonic-patterns
+order: 2
+difficulty: challenging
+tags: [patterns, enumerate, zip]
+xp: 45
+
+concepts:
+  - enumerate-zip
+
+teaching:
+  analogy: |
+    Duas listas chegam na capitania: a tripulação, e as horas que cada um trabalhou. Foram
+    escritas por dois escriturários diferentes e ninguém numerou as linhas. Para pagar alguém
+    você precisa percorrer as duas listas no mesmo ritmo, anotando o número da linha conforme
+    avança.
+
+    Dá para contar de cabeça. Todo mundo que conta de cabeça uma hora paga ao terceiro
+    marinheiro as horas do quarto, e é por isso que a capitania tem um carimbo que numera
+    linhas e um clipe que segura duas folhas lado a lado.
+
+    O clipe tem um hábito que vale conhecer. Se as folhas têm tamanhos diferentes, ele para na
+    mais curta, e não diz nada sobre as linhas que deixou para trás.
+
+  explanation: |
+    Duas funções embutidas cobrem quase todo laço em que você ia escrever um contador.
+
+    `enumerate` te entrega a posição junto com o item:
+
+        for posicao, nome in enumerate(nomes):
+            ...
+
+    Ela começa em 0 a menos que você diga outra coisa, e `enumerate(nomes, 1)` começa em 1 -
+    que é o que você quer sempre que um humano vai ler o número.
+
+    `zip` percorre várias sequências juntas, te dando um item de cada por volta:
+
+        for nome, horas in zip(nomes, lista_de_horas):
+            ...
+
+    As duas te entregam uma tupla por volta, e o cabeçalho do laço a desempacota - que é o
+    `for` da Ilha 1 e o desempacotamento da missão 1 se encontrando.
+
+    O `zip` tem um comportamento que custa dados às pessoas. Quando as sequências têm tamanhos
+    diferentes ele para na mais curta e não levanta nada. Dois nomes e cinco horas produzem
+    dois pares, em silêncio. Isso é ocasionalmente o que você quer e geralmente um bug, e o
+    jeito de dizer "estas têm de ter o mesmo tamanho" em voz alta é `zip(a, b, strict=True)`,
+    que levanta `ValueError` no lugar.
+
+    As duas se combinam, e a ordem se lê como você fala: `enumerate(zip(a, b), 1)` te dá um
+    número e um par.
+
+  worked_example: |
+    # Um resultado de corrida, que não é o que esta missão pede
+    def podium(runners, times):
+        linhas = []
+        for lugar, (corredor, tempo) in enumerate(zip(runners, times), 1):
+            linhas.append(f"{lugar}. {corredor} ({tempo}s)")
+        return linhas
+
+
+    print(podium(["Ada", "Bo", "Cai"], [9.8, 10.1, 10.4]))
+    # ['1. Ada (9.8s)', '2. Bo (10.1s)', '3. Cai (10.4s)']
+
+    print(podium(["Ada", "Bo"], [9.8, 10.1, 10.4]))
+    # ['1. Ada (9.8s)', '2. Bo (10.1s)']  - o terceiro tempo foi descartado, em silêncio
+
+  key_points:
+    - "`enumerate` começa em 0. Passe um segundo argumento para começar em outro lugar, e passe 1 sempre que o número for ser lido por uma pessoa."
+    - "`zip` para na sequência mais curta e não te conta nada. Se os tamanhos têm de bater, diga `strict=True` e receba um ValueError em vez de perda silenciosa de dados."
+    - "As duas te dão uma tupla por volta, então o cabeçalho do laço a desempacota. `for i, (a, b) in enumerate(zip(...))` precisa daqueles parênteses internos."
+    - "Um objeto zip só pode ser percorrido uma vez. Um segundo `for` sobre o mesmo não vê nada, que é a regra dos iteradores chegando cedo."
+    - "`for i in range(len(x))` seguido de `x[i]` é o formato que estas duas existem para apagar. Se você escreveu isso, uma das duas é a resposta."
+
+brief: |
+  Pague o turno.
+
+  Escreva uma função chamada watch_bill que recebe uma lista de nomes e uma lista de horas, e
+  devolve uma lista de strings - uma por marinheiro que pode ser pago:
+
+      "1. Ada - 4h"
+
+  O número começa em 1 e vai subindo. O nome e as horas vêm das duas listas, percorridas
+  juntas.
+
+  Quando as duas listas têm tamanhos diferentes, pague só os marinheiros para quem você tem
+  nome e horas, e não diga nada sobre o resto. Isso é o `zip` fazendo o padrão dele, e esta
+  missão quer o padrão.
+
+  Você não pode usar range, len nem slice. Montar um índice à mão é exatamente o trabalho que
+  estas duas funções existem para remover.
+
+signature:
+  entrypoint: watch_bill
+  stub: |
+    def watch_bill(names, hours):
+        # Um laço. Nenhum contador seu.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [range, len, slice]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["Ada", "Bo"], [4, 7]]
+      expect: ["1. Ada - 4h", "2. Bo - 7h"]
+    # Mais horas do que nomes. O zip para na mais curta e nada é dito sobre isso.
+    - args: [["Ada"], [4, 7, 9]]
+      expect: ["1. Ada - 4h"]
+  hidden:
+    # As duas vazias. Uma folha de pagamento vazia é uma folha de verdade.
+    - args: [[], []]
+      expect: []
+    # Nomes mas nenhuma hora. Ninguém pode ser pago.
+    - args: [["Ada", "Bo"], []]
+      expect: []
+    # Horas mas nenhum nome. O caso espelhado.
+    - args: [[], [4, 7]]
+      expect: []
+    # Mais nomes do que horas, ao contrário do caso visível.
+    - args: [["Ada", "Bo", "Cai"], [4]]
+      expect: ["1. Ada - 4h"]
+    # A numeração começa em 1, não em 0. Uma linha só é onde isso aparece.
+    - args: [["Ada"], [4]]
+      expect: ["1. Ada - 4h"]
+    # Zero horas é um número real e ainda rende uma linha.
+    - args: [["Ada", "Bo"], [0, 0]]
+      expect: ["1. Ada - 0h", "2. Bo - 0h"]
+    # Longo o bastante para uma resposta chumbada não ter onde se esconder.
+    - args: [["Ada", "Bo", "Cai", "Dee", "Eli"], [1, 2, 3, 4, 5]]
+      expect:
+        - "1. Ada - 1h"
+        - "2. Bo - 2h"
+        - "3. Cai - 3h"
+        - "4. Dee - 4h"
+        - "5. Eli - 5h"
+    # Um nome vazio é um nome, e as horas podem ser float.
+    - args: [[""], [2.5]]
+      expect: ["1.  - 2.5h"]
+
+hints:
+  - level: 1
+    text: |
+      Você precisa de três coisas por linha: uma posição, um nome e um número de horas. Duas
+      dessas três vêm de sequências que você recebeu. Qual embutida produz a terceira sem você
+      guardar uma variável para ela?
+  - level: 2
+    text: |
+      Um laço, um `append`, uma f-string. O cabeçalho liga três nomes, e dois deles chegam
+      juntos dentro de um par, então precisam dos próprios parênteses:
+
+          for numero, (nome, horas) in enumerate(..., 1):
+
+      O `1` é o segundo argumento do `enumerate` e é o que faz a primeira linha dizer 1 em vez
+      de 0.
+  - level: 3
+    text: |
+      O mesmo cabeçalho, num cardápio:
+
+          def menu(dishes, prices):
+              linhas = []
+              for numero, (prato, preco) in enumerate(zip(dishes, prices), 1):
+                  linhas.append(f"{numero}. {prato} - {preco}c")
+              return linhas
+
+
+          print(menu(["sopa", "pão"], [180, 90]))
+          # ['1. sopa - 180c', '2. pão - 90c']
+
+      A sua termina as linhas com um h em vez de um c, e as palavras são outras.
+
+solution: |
+  def watch_bill(names, hours):
+      lines = []
+
+      for number, (name, worked) in enumerate(zip(names, hours), 1):
+          lines.append(f"{number}. {name} - {worked}h")
+
+      return lines

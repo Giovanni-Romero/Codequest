@@ -1,0 +1,204 @@
+# Mission 6 of Pythonic Patterns. Introduces nothing.
+# Reinforces: yield, iterators, while-loop.
+#
+# Relief mission, and the one place on the island where laziness is graded by the wall
+# clock rather than by a value. The source is endless, so the eager answer - build the list,
+# then take the front of it - cannot return at all. `max_runtime_ms` is the grader and the
+# margin is enormous: the correct answer finishes in microseconds, the wrong one never.
+#
+# That is the second of the two techniques the island notes describe, and it needs no engine
+# work: the timeout the parent already enforces is the whole mechanism.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-06
+title: The endless tide
+track: python
+island: pythonic-patterns
+order: 6
+difficulty: moderate
+tags: [patterns, yield, laziness, relief]
+xp: 30
+
+concepts:
+  - yield
+
+teaching:
+  analogy: |
+    The tide does not stop. Ask the harbour for a list of every high tide there will ever be
+    and nobody can hand you one - not because the office is unhelpful, but because the list
+    does not end.
+
+    Ask for the next three and you get them before you have finished asking. Same tide, same
+    office. The only thing that changed is that you said how many you wanted.
+
+  explanation: |
+    Nothing new here. One generator, walked partway.
+
+    A generator whose body never finishes is legal and useful:
+
+        def tides():
+            height = 1
+            while True:
+                yield height
+                height = height * 2
+
+    Calling `tides()` costs nothing and returns immediately. The `while True` is not a hang,
+    because the body only advances when something pulls.
+
+    What *does* hang is asking for all of it. `list(tides())` never returns, and neither does
+    a list comprehension over it, because both of those mean "give me every value". The
+    endless source is safe precisely as long as you stop asking.
+
+    So you take a fixed number by pulling that many times:
+
+        first_three = []
+        for _ in something_that_counts_to_three:
+            first_three.append(next(source))
+
+    or you break out of a `for` over the generator once you have enough. Both are fine. The
+    underscore is the ordinary name for a loop variable you are not going to use.
+
+  worked_example: |
+    # Letters of the alphabet, over and over, which is not what this mission asks for
+    def rotating(letters):
+        while True:
+            for letter in letters:
+                yield letter
+
+
+    def first_letters(letters, count):
+        source = rotating(letters)
+
+        taken = []
+        for letter in source:
+            if count == 0:
+                break
+            taken.append(letter)
+            count = count - 1
+
+        return taken
+
+
+    print(first_letters(["a", "b"], 5))   # ['a', 'b', 'a', 'b', 'a']
+    # rotating() never ends. The break is what makes it safe to loop over at all.
+
+  key_points:
+    - "An endless generator is not a bug. `while True: yield` returns instantly and produces values only when pulled."
+    - "`list(endless)` and `[x for x in endless]` both mean \"all of it\", and both never return. This is the one way to turn a good generator into a hang."
+    - "Take a fixed amount by counting your own pulls, or by breaking out of the loop once you have enough."
+    - "`_` is the conventional name for a loop variable you will not use. It is an ordinary name, not syntax."
+    - "The generator holds its own state between pulls, so nothing outside it has to remember where the sequence was."
+
+brief: |
+  The tide table has no last page.
+
+  Write a **generator function** called tides that yields heights forever, starting at 1 and
+  doubling every time: 1, 2, 4, 8, 16, and so on. It never stops on its own.
+
+  Then write a function called first_heights that takes a count and returns a list of that
+  many heights from the beginning of the tide, in order.
+
+  A count of 0 gives an empty list. The count is never negative.
+
+  You must not build the whole sequence and then cut it down - there is no whole sequence.
+  You cannot use list, and asking a comprehension for every value of an endless generator is
+  a mission that never finishes rather than one that fails.
+
+signature:
+  entrypoint: first_heights
+  stub: |
+    def tides():
+        # Starts at 1, doubles, never stops.
+        # your code here
+        pass
+
+
+    def first_heights(count):
+        # Pull exactly `count` values. Not one more.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [list]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [5]
+      expect: [1, 2, 4, 8, 16]
+    - args: [1]
+      expect: [1]
+  hidden:
+    # None wanted. The generator is never pulled at all.
+    - args: [0]
+      expect: []
+    # Two, so a solution that always returns one value is caught.
+    - args: [2]
+      expect: [1, 2]
+    # Ten, which is where an off-by-one in the counting shows up clearly.
+    - args: [10]
+      expect: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    # Three. The sequence must start at 1, not at 2.
+    - args: [3]
+      expect: [1, 2, 4]
+    # Far enough out that a hardcoded table would have to be suspiciously long.
+    - args: [20]
+      expect:
+        [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+         32768, 65536, 131072, 262144, 524288]
+
+hints:
+  - level: 1
+    text: |
+      The generator has no stopping condition, so the stopping has to happen somewhere else.
+      Which of the two functions knows how many values are wanted?
+  - level: 2
+    text: |
+      `tides` is three lines and one of them is `while True`. The doubling happens after the
+      `yield`, on the line the generator resumes into.
+
+      In `first_heights`, make the generator once, then pull from it exactly `count` times
+      with `next`, appending as you go. A `while` with a counter of your own works; so does a
+      `for` over the generator with a `break`.
+  - level: 3
+    text: |
+      The same endless-source-and-a-limit shape, for odd numbers:
+
+          def odds():
+              value = 1
+              while True:
+                  yield value
+                  value = value + 2
+
+
+          def first_odds(count):
+              source = odds()
+              taken = []
+              while count > 0:
+                  taken.append(next(source))
+                  count = count - 1
+              return taken
+
+
+          print(first_odds(4))    # [1, 3, 5, 7]
+
+      Yours doubles rather than adding two, and starts from the same place.
+
+solution: |
+  def tides():
+      height = 1
+      while True:
+          yield height
+          height = height * 2
+
+
+  def first_heights(count):
+      source = tides()
+
+      heights = []
+      while count > 0:
+          heights.append(next(source))
+          count = count - 1
+
+      return heights

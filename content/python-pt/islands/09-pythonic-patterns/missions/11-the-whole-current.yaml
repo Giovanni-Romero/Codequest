@@ -1,0 +1,320 @@
+# Missão 11 de Padrões Pythônicos. Não introduz nada. Missão de fechamento.
+# Reforça: os sete conceitos da ilha.
+#
+# Combine, não aprenda. Cada peça foi ensinada antes: um decorador que conta, um gerador que
+# filtra preguiçosamente uma fonte sem fim, um gerenciador de contexto que sempre fecha, e uma
+# passagem numerada.
+#
+# A fonte sem fim é o que impede isto de ser resolvido de forma ansiosa, e é deliberado numa
+# missão de fechamento: o jogador precisa ter internalizado a preguiça, não apenas copiado a
+# sintaxe, porque uma compreensão de lista em qualquer ponto da corrente transforma tudo num
+# estouro de tempo.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-11
+title: A corrente inteira
+track: python
+island: pythonic-patterns
+order: 11
+difficulty: challenging
+tags: [patterns, closing, generators, decorators]
+xp: 45
+
+concepts:
+  - unpacking
+  - enumerate-zip
+  - iterators
+  - yield
+  - generators
+  - decorators
+  - custom-context-managers
+
+teaching:
+  analogy: |
+    A corrente marítima corre esteja alguém olhando ou não. O porto tira dela o que precisa,
+    anota quantas vezes meteu a mão, e fecha o portão na saída.
+
+    Nada sobre hoje é novo. Hoje o porto funciona.
+
+  explanation: |
+    Esta missão não introduz nada. Ela pede que você coloque quatro ferramentas em fila sem que
+    te digam qual vai onde, que é a parte que painel nenhum ensina.
+
+    A versão curta de cada decisão, para a próxima vez que você encontrar.
+
+    **Lista ou gerador?** Se a fonte é sem fim, enorme, ou percorrida uma vez, gerador. Se você
+    precisa de `len`, de índice, ou de uma segunda passada, lista. Errar na direção do gerador
+    te dá uma segunda passada vazia e silenciosa; errar na direção da lista te dá um programa
+    que nunca retorna.
+
+    **Decorador ou uma chamada dentro da função?** Se o comportamento pertence a *toda* chamada
+    de uma função, decore - o valor é que nenhum lugar que chama consegue esquecer. Se pertence
+    a este único lugar, escreva a linha.
+
+    **Gerenciador de contexto ou `try`/`finally`?** Se o mesmo par de preparação e limpeza
+    acontece mais de uma vez, ele quer um gerenciador e um nome. Uma vez, em uma função, é para
+    isso que o `try`/`finally` serve.
+
+    Nenhuma das três tem resposta que valha em todo lugar. Elas têm resposta aqui, e conseguir
+    dizer por quê é para o que a ilha serviu.
+
+  worked_example: |
+    # As mesmas quatro peças, para uma rádio
+    from contextlib import contextmanager
+    from functools import wraps
+
+
+    def tallied(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            wrapper.plays = wrapper.plays + 1
+            return func(*args, **kwargs)
+
+        wrapper.plays = 0
+        return wrapper
+
+
+    @contextmanager
+    def broadcast(log):
+        log.append("no ar")
+        try:
+            yield log
+        finally:
+            log.append("fora do ar")
+
+
+    def signal():
+        batida = 1
+        while True:
+            yield batida
+            batida = batida + 1
+
+  key_points:
+    - "Um gerador em qualquer ponto de uma corrente mantém a corrente inteira preguiçosa. Uma compreensão de lista no meio torna tudo ansioso de novo."
+    - "Decore quando toda chamada precisa do comportamento. Escreva a linha quando esta única chamada precisa."
+    - "Um gerenciador de contexto se paga na segunda vez que o mesmo par de preparação e limpeza aparece."
+    - "`enumerate(zip(a, b), 1)` é um cabeçalho para três nomes, e vale reconhecer de bate-pronto."
+    - "Tudo nesta ilha troca fazer o trabalho agora por descrever o trabalho. A economia é real, e o preço é que você só pode percorrer a descrição uma vez."
+
+brief: |
+  Rode a corrente inteira.
+
+  Escreva um decorador chamado tallied. Ele conta chamadas em `wrapper.calls`, começando em 0,
+  passa todo argumento adiante, devolve o que a função envolvida devolveu, e preserva o
+  `__name__` com `functools.wraps`.
+
+  Escreva um gerenciador de contexto chamado gate, usando `@contextmanager`, recebendo um log e
+  um nome. Na entrada ele dá append de `"open <nome>"` e produz o log. Na saída ele dá append
+  de `"shut <nome>"`, mesmo quando o bloco levanta erro.
+
+  Escreva uma **função geradora** chamada current que produz 1, 2, 3, 4 e assim por diante,
+  para sempre.
+
+  Escreva uma função chamada measure, decorada com `@tallied`, que recebe um valor e o devolve
+  triplicado.
+
+  Depois escreva uma função chamada survey que recebe um nome, um limiar e uma quantidade, e
+  devolve um dicionário:
+
+      {"log": [...], "lines": [...], "calls": ..., "name": ...}
+
+  Dentro de um bloco `with gate(log, name)`:
+
+    - filtre `current()` com uma **expressão geradora** até os valores estritamente maiores que
+      o limiar
+    - pegue os primeiros `count` deles, chamando `measure` em cada um
+    - monte uma string por valor, numerada a partir de 1, no formato `"1: 300"` - o número, dois
+      pontos e um espaço, e depois o que o `measure` devolveu
+
+  `log` é o log depois de tudo. `lines` é essa lista de strings. `calls` é `measure.calls`.
+  `name` é `measure.__name__`, que tem de ser `"measure"`.
+
+  Uma quantidade 0 não dá linha nenhuma nem chamada nenhuma, e o portão ainda abre e fecha.
+
+  Você não pode usar list, range nem map. A fonte não tem fim, então qualquer coisa que peça
+  tudo dela não falha - ela simplesmente nunca retorna.
+
+signature:
+  entrypoint: survey
+  stub: |
+    from contextlib import contextmanager
+    from functools import wraps
+
+
+    def tallied(func):
+        # seu código aqui
+        pass
+
+
+    @contextmanager
+    def gate(log, name):
+        # seu código aqui
+        pass
+
+
+    def current():
+        # 1, 2, 3, ... e nunca para.
+        # seu código aqui
+        pass
+
+
+    @tallied
+    def measure(value):
+        return value * 3
+
+
+    def survey(name, threshold, count):
+        # Abra o portão, filtre preguiçosamente, pegue exatamente `count`, numere, feche.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [list, range, map]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["harbour", 100, 3]
+      expect:
+        log: ["open harbour", "shut harbour"]
+        lines: ["1: 303", "2: 306", "3: 309"]
+        calls: 3
+        name: measure
+    - args: ["harbour", 0, 2]
+      expect:
+        log: ["open harbour", "shut harbour"]
+        lines: ["1: 3", "2: 6"]
+        calls: 2
+        name: measure
+  hidden:
+    # Nada pedido. O portão ainda abre e fecha, e o measure nunca é chamado.
+    - args: ["harbour", 100, 0]
+      expect:
+        log: ["open harbour", "shut harbour"]
+        lines: []
+        calls: 0
+        name: measure
+    # Um pedido, e é o primeiro valor além do limiar, não o próprio limiar.
+    - args: ["north", 10, 1]
+      expect:
+        log: ["open north", "shut north"]
+        lines: ["1: 33"]
+        calls: 1
+        name: measure
+    # Estritamente maior: 5 não passa contra um limiar de 5.
+    - args: ["north", 5, 2]
+      expect:
+        log: ["open north", "shut north"]
+        lines: ["1: 18", "2: 21"]
+        calls: 2
+        name: measure
+    # Um limiar bem lá longe, então o filtro preguiçoso realmente tem de caminhar até ele.
+    - args: ["deep", 10000, 2]
+      expect:
+        log: ["open deep", "shut deep"]
+        lines: ["1: 30003", "2: 30006"]
+        calls: 2
+        name: measure
+    # Um nome vazio ainda monta as duas linhas do log.
+    - args: ["", 0, 1]
+      expect:
+        log: ["open ", "shut "]
+        lines: ["1: 3"]
+        calls: 1
+        name: measure
+    # Mais longo, para que a numeração, a triplicação e a contagem façam cada uma o seu papel.
+    - args: ["long", 0, 6]
+      expect:
+        log: ["open long", "shut long"]
+        lines: ["1: 3", "2: 6", "3: 9", "4: 12", "5: 15", "6: 18"]
+        calls: 6
+        name: measure
+
+hints:
+  - level: 1
+    text: |
+      Descubra a ordem das operações antes de escrever qualquer coisa. O que acontece primeiro -
+      filtrar, pegar, triplicar ou numerar? Duas dessas quatro podem trocar de lugar sem mudar a
+      resposta, e duas não podem.
+
+      Depois confira a fonte: o que para o `current()` se nada no seu código parar?
+  - level: 2
+    text: |
+      Quatro peças, e três delas são copiadas das missões 6 a 10 com outras palavras.
+
+      Dentro do bloco: monte o gerador filtrado com parênteses, e depois um `while count > 0`
+      puxando com `next` - ou um `for` com `break`. Chame `measure` em cada valor que puxar,
+      mantenha o seu próprio contador de posição começando em 1, e dê append da string.
+
+      `measure.calls` é lido depois do bloco, e já vai estar certo porque o envoltório esteve
+      contando o tempo todo.
+  - level: 3
+    text: |
+      Cada peça disto existe numa missão anterior desta ilha. Abra o painel da missão 8 para o
+      decorador, o da missão 10 para o `@contextmanager`, e o da missão 7 para o filtro sobre
+      uma fonte sem fim.
+
+      A única pergunta de montagem é onde o `measure` é chamado, e a resposta é o mesmo lugar em
+      que a string é montada:
+
+          linha = f"{posicao}: {measure(valor)}"
+
+      A sua precisa que a posição avance, e que o filtro tenha rodado antes de tudo isso.
+
+solution: |
+  from contextlib import contextmanager
+  from functools import wraps
+
+
+  def tallied(func):
+      @wraps(func)
+      def wrapper(*args, **kwargs):
+          wrapper.calls = wrapper.calls + 1
+          return func(*args, **kwargs)
+
+      wrapper.calls = 0
+      return wrapper
+
+
+  @contextmanager
+  def gate(log, name):
+      log.append(f"open {name}")
+      try:
+          yield log
+      finally:
+          log.append(f"shut {name}")
+
+
+  def current():
+      value = 1
+      while True:
+          yield value
+          value = value + 1
+
+
+  @tallied
+  def measure(value):
+      return value * 3
+
+
+  def survey(name, threshold, count):
+      log = []
+      lines = []
+
+      with gate(log, name):
+          strong = (value for value in current() if value > threshold)
+
+          position = 1
+          while count > 0:
+              value = next(strong)
+              lines.append(f"{position}: {measure(value)}")
+              position = position + 1
+              count = count - 1
+
+      return {
+          "log": log,
+          "lines": lines,
+          "calls": measure.calls,
+          "name": measure.__name__,
+      }

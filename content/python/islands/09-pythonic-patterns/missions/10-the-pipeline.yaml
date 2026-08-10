@@ -1,0 +1,264 @@
+# Mission 10 of Pythonic Patterns. Introduces nothing.
+# Reinforces: generators, decorators, custom-context-managers, enumerate-zip.
+#
+# Relief mission. The three hardest ideas of the island in their smallest possible shape,
+# and the payoff is `@contextmanager` - which mission 9 named but forbade. Meeting it after
+# writing __enter__ and __exit__ by hand is the same move mission 8 of Objects made with
+# @dataclass, and for the same reason.
+#
+# It is also the only mission here where a decorator and a context manager are the same
+# object, which is worth seeing once: @contextmanager builds something usable both ways.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-10
+title: The pipeline
+track: python
+island: pythonic-patterns
+order: 10
+difficulty: moderate
+tags: [patterns, contextmanager, generators, relief]
+xp: 30
+
+concepts:
+  - generators
+  - custom-context-managers
+  - enumerate-zip
+
+teaching:
+  analogy: |
+    Mission 9 had you build the lighthouse book from planks: a hinge on the way in, a hinge
+    on the way out. It worked, and it was four times more woodwork than the job needed.
+
+    The harbour shop sells a book with the hinges already fitted. You write the two lines
+    that are yours - what to do on entry, what to do on exit - and hand over the middle.
+
+  explanation: |
+    Everything here you have already written. One shorthand is new.
+
+    `contextlib.contextmanager` turns a generator into a context manager:
+
+        from contextlib import contextmanager
+
+        @contextmanager
+        def watch(log, name):
+            log.append(f"open {name}")
+            try:
+                yield log              # everything before the yield is __enter__
+            finally:
+                log.append(f"close {name}")   # everything after it is __exit__
+
+    One `yield`, exactly one. What it yields is what `as` binds. The code before it is
+    `__enter__` and the code after it is `__exit__`, which is why the `finally` matters: an
+    exception in the block is thrown back in **at the yield**, and without the `finally` the
+    lines below it never run.
+
+    That is the whole trick, and it explains something about mission 9 in hindsight. The two
+    dunder methods were never two ideas - they were one function with a pause in the middle,
+    which is exactly what a generator is.
+
+    Use the class form when the manager needs state, several methods, or its own name in a
+    traceback. Use this form for the many cases that are genuinely "do this, then that".
+
+  worked_example: |
+    # A tent, which is not what this mission asks for
+    from contextlib import contextmanager
+
+
+    @contextmanager
+    def camp(diary, place):
+        diary.append(f"pitch {place}")
+        try:
+            yield diary
+        finally:
+            diary.append(f"strike {place}")
+
+
+    diary = []
+    try:
+        with camp(diary, "ridge") as pages:
+            pages.append("sleeping")
+            raise ValueError("bear")
+    except ValueError:
+        diary.append("fled")
+
+    print(diary)     # ['pitch ridge', 'sleeping', 'strike ridge', 'fled']
+    # Struck before fled, same as the class version, and half the lines.
+
+  key_points:
+    - "`@contextmanager` wants a generator with exactly one `yield`. Before it is `__enter__`, after it is `__exit__`, and what it yields is what `as` binds."
+    - "The `try`/`finally` is not optional. An exception in the block is raised at the `yield`, so without `finally` the cleanup is skipped - the exact failure the manager existed to prevent."
+    - "Two yields raise `RuntimeError`. The manager has one entry and one exit, so the generator gets one pause."
+    - "Reach for the class form when there is state or several methods to expose; reach for this one for \"do this, then that\", which is most of them."
+
+brief: |
+  Run a small pipeline and keep a record of it.
+
+  Write a context manager called stage, using `@contextmanager`, that takes a log list and a
+  name. On entry it appends `"start <name>"` and yields the log. On exit it appends
+  `"end <name>"`, and it must do that even when the block raises.
+
+  Write a **generator function** called doubled that takes a list of numbers and yields each
+  one doubled.
+
+  Then write a function called pipeline that takes a name and a list of numbers, and returns
+  a dict:
+
+      {"log": [...], "lines": [...]}
+
+  Inside a `with stage(log, name) as record` block, walk `doubled(numbers)` with `enumerate`
+  starting at 1, and build one string per number:
+
+      "1: 20"
+
+  Append `"ran <count>"` to the record before leaving the block, where count is how many
+  lines you built.
+
+  `log` is the log after everything. `lines` is the list of strings.
+
+  An empty list of numbers produces no lines and a count of 0, and the stage still opens and
+  closes.
+
+signature:
+  entrypoint: pipeline
+  stub: |
+    from contextlib import contextmanager
+
+
+    @contextmanager
+    def stage(log, name):
+        # Before the yield, then the yield, then the part that must always run.
+        # your code here
+        pass
+
+
+    def doubled(numbers):
+        # One yield per number.
+        # your code here
+        pass
+
+
+    def pipeline(name, numbers):
+        # One with block. One numbered walk. One record.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [map, range]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["loading", [10, 20]]
+      expect:
+        log: ["start loading", "ran 2", "end loading"]
+        lines: ["1: 20", "2: 40"]
+    - args: ["loading", []]
+      expect:
+        log: ["start loading", "ran 0", "end loading"]
+        lines: []
+  hidden:
+    # One number. The numbering starts at 1, which only shows here and in the empty case.
+    - args: ["weighing", [7]]
+      expect:
+        log: ["start weighing", "ran 1", "end weighing"]
+        lines: ["1: 14"]
+    # Zeroes double to zero and still count as lines.
+    - args: ["weighing", [0, 0, 0]]
+      expect:
+        log: ["start weighing", "ran 3", "end weighing"]
+        lines: ["1: 0", "2: 0", "3: 0"]
+    # Negatives and floats pass through the generator untouched.
+    - args: ["mixed", [-4, 2.5]]
+      expect:
+        log: ["start mixed", "ran 2", "end mixed"]
+        lines: ["1: -8", "2: 5.0"]
+    # An empty name still builds both log lines.
+    - args: ["", [1]]
+      expect:
+        log: ["start ", "ran 1", "end "]
+        lines: ["1: 2"]
+    # Longer, so the numbering and the doubling are both clearly doing their own job.
+    - args: ["long", [1, 2, 3, 4, 5]]
+      expect:
+        log: ["start long", "ran 5", "end long"]
+        lines: ["1: 2", "2: 4", "3: 6", "4: 8", "5: 10"]
+
+hints:
+  - level: 1
+    text: |
+      `"ran <count>"` sits between `"start"` and `"end"` in the log. Which of the two - the
+      manager or the block - has to append it for it to land there?
+
+      And in `stage`: what happens to the lines below the `yield` if the block raises and
+      there is no `finally`?
+  - level: 2
+    text: |
+      `stage` is: one append, then `try: yield log`, then `finally:` with the second append.
+
+      `doubled` is a two-line generator - a `for` and a `yield`. No list anywhere in it.
+
+      In `pipeline`, `for number, value in enumerate(doubled(numbers), 1)` gives you the
+      position and the already-doubled value in one header. Build the string, append it, and
+      keep the last position - or count the lines you built - for the `"ran ..."` entry.
+  - level: 3
+    text: |
+      The same three pieces, for a printer:
+
+          from contextlib import contextmanager
+
+
+          @contextmanager
+          def job(log, title):
+              log.append(f"begin {title}")
+              try:
+                  yield log
+              finally:
+                  log.append(f"finish {title}")
+
+
+          def upper(words):
+              for word in words:
+                  yield word.upper()
+
+
+          def printout(title, words):
+              log = []
+              pages = []
+              with job(log, title) as record:
+                  for number, word in enumerate(upper(words), 1):
+                      pages.append(f"{number}: {word}")
+                  record.append(f"printed {len(pages)}")
+              return {"log": log, "pages": pages}
+
+      Yours doubles numbers rather than shouting words, and the words in the log are
+      different.
+
+solution: |
+  from contextlib import contextmanager
+
+
+  @contextmanager
+  def stage(log, name):
+      log.append(f"start {name}")
+      try:
+          yield log
+      finally:
+          log.append(f"end {name}")
+
+
+  def doubled(numbers):
+      for number in numbers:
+          yield number * 2
+
+
+  def pipeline(name, numbers):
+      log = []
+      lines = []
+
+      with stage(log, name) as record:
+          for position, value in enumerate(doubled(numbers), 1):
+              lines.append(f"{position}: {value}")
+          record.append(f"ran {len(lines)}")
+
+      return {"log": log, "lines": lines}

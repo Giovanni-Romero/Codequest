@@ -1,0 +1,217 @@
+# Missão 4 de Padrões Pythônicos. Introduz: iterators.
+# Reforça: for-loop, lists.
+#
+# Colocada antes do `yield` de propósito, o mesmo movimento que a Ilha 5 fez com `exceptions`
+# antes de `try-except` e a Ilha 7 com `open-and-read` antes de `context-managers`. O jogador
+# precisa ver um iterador acabar antes que uma função que produz valores um por vez se leia
+# como algo além de um `return` esquisito.
+#
+# A missão é cobrada na exaustão, não no conteúdo: `rest` só sai certo se o laço e as duas
+# chamadas de `next` compartilharam um iterador. Uma solução que percorre a lista devolve
+# todos os valores e falha no primeiro caso que recebe.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-04
+title: Um de cada vez
+track: python
+island: pythonic-patterns
+order: 4
+difficulty: challenging
+tags: [patterns, iterators, protocol]
+xp: 45
+
+concepts:
+  - iterators
+
+teaching:
+  analogy: |
+    A máquina de senhas no portão do porto entrega uma senha por aperto. Ela não guarda uma
+    lista de senhas que você possa folhear - ela guarda uma posição, e todo aperto move a
+    posição em um.
+
+    Duas pessoas apertam, e depois a fila atrás delas passa pelo portão. A fila pega as senhas
+    da três em diante, porque a máquina nunca voltou. E quando o rolo acaba, a máquina não te
+    entrega uma senha em branco. Ela recusa, em voz alta, que é como o porteiro sabe que é
+    hora de fechar.
+
+  explanation: |
+    Uma lista não é um iterador. Ela consegue *fabricar* um, e é isso que o `for` vem fazendo
+    pelas suas costas desde a Ilha 1:
+
+        maquina = iter(valores)
+        primeiro = next(maquina)
+        segundo = next(maquina)
+
+    O `iter` constrói a máquina a partir da lista. O `next` a aperta. Tudo sobre o protocolo
+    decorre de um fato: a posição mora na máquina, não na lista.
+
+    Então um iterador se gasta. Pegue dois valores à mão e um laço `for` sobre o **mesmo
+    iterador** começa no terceiro, porque a posição já andou. Percorra duas vezes e o segundo
+    laço não vê nada - não é erro, é só uma passagem vazia, e esse é o bug mais confuso desta
+    área inteira.
+
+    Quando não sobra nada, o `next` levanta `StopIteration`. Isso não é falha, é o jeito que o
+    protocolo tem de dizer que o rolo acabou, e é exatamente o que o `for` captura para saber
+    quando parar. Se você prefere um valor a uma exceção, o `next` aceita um segundo argumento
+    para devolver no lugar:
+
+        next(maquina, None)      # None quando acabou, sem exceção
+
+    A lista em si fica intocada por tudo isso. Você pode construir um segundo iterador a
+    partir dela e começar de novo do começo.
+
+  worked_example: |
+    # Um baralho, que não é o que esta missão pede
+    def deal(cards):
+        baralho = iter(cards)
+
+        minha = next(baralho)
+        sua = next(baralho)
+
+        mesa = []
+        for carta in baralho:      # continua a partir da terceira
+            mesa.append(carta)
+
+        return {"mine": minha, "yours": sua, "table": mesa, "left": next(baralho, None)}
+
+
+    print(deal(["A", "K", "Q", "J"]))
+    # {'mine': 'A', 'yours': 'K', 'table': ['Q', 'J'], 'left': None}
+
+    cartas = ["A", "K"]
+    baralho = iter(cartas)
+    print([c for c in baralho])   # ['A', 'K']
+    print([c for c in baralho])   # []  - mesmo iterador, já gasto
+
+  key_points:
+    - "`iter(x)` fabrica um iterador; `next(it)` o avança. A posição fica no iterador, então a lista de onde ele veio nunca muda."
+    - "Um iterador é percorrido uma vez. Um segundo `for` sobre o mesmo não vê nada e não levanta nada, que é por que esse bug é tão silencioso."
+    - "Misturar `next` e `for` no mesmo iterador é normal e útil. O laço pega de onde o `next` parou."
+    - "`next` num iterador gasto levanta `StopIteration`. Isso é o protocolo funcionando, não um erro - é o sinal que o `for` sempre capturou por você."
+    - "`next(it, padrao)` devolve o padrão em vez de levantar. Use quando \"não sobrou nada\" for uma resposta comum em vez de excepcional."
+    - "Construir um segundo iterador a partir da mesma lista recomeça do começo. A lista nunca foi a coisa sendo consumida."
+
+brief: |
+  Dois oficiais pegam as senhas primeiro, e a fila passa atrás deles.
+
+  Escreva uma função chamada two_then_rest que recebe uma lista de valores e devolve um
+  dicionário:
+
+      {"first": ..., "second": ..., "rest": [...], "again": ...}
+
+  Construa **um** iterador a partir da lista. Pegue os dois primeiros valores dele com `next`.
+  Depois deixe um laço `for` coletar tudo que sobrou em `rest` - que tem de começar no
+  terceiro valor, porque o iterador já andou.
+
+  `again` é o primeiro valor de novo, tirado de um **segundo** iterador construído a partir da
+  mesma lista. A lista nunca foi consumida - só o iterador foi - e este é o campo que prova
+  isso.
+
+  Uma lista com menos de dois valores não consegue abastecer os dois oficiais. Deixe o
+  StopIteration viajar - não capture e não cheque o tamanho antes.
+
+  Você não pode usar len nem enumerate, e não pode indexar a lista. Dois iteradores, e o
+  protocolo faz o resto.
+
+signature:
+  entrypoint: two_then_rest
+  stub: |
+    def two_then_rest(values):
+        # Um iterador. Dois apertos, depois um laço. Depois um novo, para o último campo.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [len, enumerate]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["A", "K", "Q", "J"]]
+      expect: {first: A, second: K, rest: ["Q", "J"], again: A}
+    # Exatamente dois. O laço roda zero vezes e `rest` fica vazia, não ausente.
+    - args: [["A", "K"]]
+      expect: {first: A, second: K, rest: [], again: A}
+  hidden:
+    # Um valor. O segundo aperto não tem o que dar.
+    - args: [["A"]]
+      raises: StopIteration
+    # Nada. O primeiro aperto já falha.
+    - args: [[]]
+      raises: StopIteration
+    # Três valores, então uma solução que percorreu a lista em vez do iterador devolve os
+    # três em `rest` e é pega aqui.
+    - args: [[1, 2, 3]]
+      expect: {first: 1, second: 2, rest: [3], again: 1}
+    # Valores repetidos. O iterador não liga que eles se pareçam.
+    - args: [["A", "A", "A"]]
+      expect: {first: A, second: A, rest: ["A"], again: A}
+    # Uma fila longa, em ordem.
+    - args: [[1, 2, 3, 4, 5, 6]]
+      expect: {first: 1, second: 2, rest: [3, 4, 5, 6], again: 1}
+    # None é um valor como outro qualquer, e sobrevive à ida e volta.
+    - args: [[null, null, null]]
+      expect: {first: null, second: null, rest: [null], again: null}
+    # Tipos misturados, porque nada aqui inspeciona o que os valores são.
+    - args: [["A", 2, true, ""]]
+      expect: {first: A, second: 2, rest: [true, ""], again: A}
+
+hints:
+  - level: 1
+    text: |
+      Se as duas chamadas de `next` e o laço `for` recebem o mesmo iterador, onde o laço
+      começa? E o que aconteceria se você percorresse `values` em vez dele?
+
+      Para o `again`: o iterador está gasto, mas a lista está? O que `iter(values)` te daria se
+      você chamasse uma segunda vez?
+  - level: 2
+    text: |
+      `maquina = iter(values)` uma vez, no topo. Depois `next(maquina)` duas vezes, para dois
+      nomes.
+
+      O cabeçalho do laço é `for value in maquina` - o iterador, não a lista. Dê append de
+      cada valor numa lista que você criou antes do laço.
+
+      O último campo constrói um iterador novo em folha a partir da mesma lista -
+      `iter(values)` de novo - e tira um valor dele. Não existe `try` nenhum nesta função.
+  - level: 3
+    text: |
+      O mesmo formato, num balcão de padaria:
+
+          def serve(orders):
+              fila = iter(orders)
+
+              atendente_um = next(fila)
+              atendente_dois = next(fila)
+
+              esperando = []
+              for pedido in fila:
+                  esperando.append(pedido)
+
+              return {
+                  "one": atendente_um,
+                  "two": atendente_dois,
+                  "waiting": esperando,
+                  "restart": next(iter(orders)),
+              }
+
+      A sua usa outros nomes de chave, e o último se chama `again`.
+
+solution: |
+  def two_then_rest(values):
+      machine = iter(values)
+
+      first = next(machine)
+      second = next(machine)
+
+      rest = []
+      for value in machine:
+          rest.append(value)
+
+      return {
+          "first": first,
+          "second": second,
+          "rest": rest,
+          "again": next(iter(values)),
+      }

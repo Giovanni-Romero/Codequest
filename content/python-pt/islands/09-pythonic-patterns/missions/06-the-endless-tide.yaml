@@ -1,0 +1,204 @@
+# Missão 6 de Padrões Pythônicos. Não introduz nada.
+# Reforça: yield, iterators, while-loop.
+#
+# Missão de alívio, e o único lugar da ilha onde a preguiça é cobrada pelo relógio de parede
+# em vez de por um valor. A fonte não tem fim, então a resposta ansiosa - construir a lista e
+# depois pegar o começo dela - não tem como retornar. O `max_runtime_ms` é o avaliador e a
+# margem é enorme: a resposta certa termina em microssegundos, a errada nunca.
+#
+# Essa é a segunda das duas técnicas que as notas da ilha descrevem, e não precisa de trabalho
+# de motor: o timeout que o processo pai já impõe é o mecanismo inteiro.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-06
+title: A maré sem fim
+track: python
+island: pythonic-patterns
+order: 6
+difficulty: moderate
+tags: [patterns, yield, laziness, relief]
+xp: 30
+
+concepts:
+  - yield
+
+teaching:
+  analogy: |
+    A maré não para. Peça ao porto uma lista de toda maré alta que ainda vai existir e ninguém
+    consegue te entregar uma - não porque a capitania seja mal-humorada, mas porque a lista não
+    termina.
+
+    Peça as três próximas e você as recebe antes de terminar de pedir. Mesma maré, mesma
+    capitania. A única coisa que mudou é que você disse quantas queria.
+
+  explanation: |
+    Nada de novo aqui. Um gerador, percorrido pela metade.
+
+    Um gerador cujo corpo nunca termina é legal e útil:
+
+        def tides():
+            altura = 1
+            while True:
+                yield altura
+                altura = altura * 2
+
+    Chamar `tides()` não custa nada e retorna na hora. O `while True` não é um travamento,
+    porque o corpo só avança quando alguma coisa puxa.
+
+    O que **trava** é pedir tudo. `list(tides())` nunca retorna, e uma compreensão de lista
+    sobre ele também não, porque as duas coisas significam "me dê todos os valores". A fonte
+    sem fim é segura exatamente enquanto você parar de pedir.
+
+    Então você pega uma quantidade fixa puxando aquele tanto de vezes:
+
+        primeiras_tres = []
+        for _ in algo_que_conta_ate_tres:
+            primeiras_tres.append(next(fonte))
+
+    ou você sai de um `for` sobre o gerador assim que tiver o bastante. Os dois servem. O
+    sublinhado é o nome comum para uma variável de laço que você não vai usar.
+
+  worked_example: |
+    # Letras do alfabeto, repetidas, que não é o que esta missão pede
+    def rotating(letters):
+        while True:
+            for letra in letters:
+                yield letra
+
+
+    def first_letters(letters, count):
+        fonte = rotating(letters)
+
+        pegas = []
+        for letra in fonte:
+            if count == 0:
+                break
+            pegas.append(letra)
+            count = count - 1
+
+        return pegas
+
+
+    print(first_letters(["a", "b"], 5))   # ['a', 'b', 'a', 'b', 'a']
+    # rotating() nunca acaba. O break é o que torna seguro percorrê-lo.
+
+  key_points:
+    - "Um gerador sem fim não é bug. `while True: yield` retorna na hora e produz valores só quando puxado."
+    - "`list(sem_fim)` e `[x for x in sem_fim]` significam \"tudo\", e nenhum dos dois retorna. É o único jeito de transformar um bom gerador num travamento."
+    - "Pegue uma quantidade fixa contando as suas próprias puxadas, ou saindo do laço assim que tiver o bastante."
+    - "`_` é o nome convencional para uma variável de laço que você não vai usar. É um nome comum, não sintaxe."
+    - "O gerador guarda o próprio estado entre as puxadas, então nada fora dele precisa lembrar onde a sequência estava."
+
+brief: |
+  A tábua de marés não tem última página.
+
+  Escreva uma **função geradora** chamada tides que produz alturas para sempre, começando em 1
+  e dobrando a cada vez: 1, 2, 4, 8, 16, e assim por diante. Ela nunca para sozinha.
+
+  Depois escreva uma função chamada first_heights que recebe uma quantidade e devolve uma
+  lista com aquela quantidade de alturas a partir do começo da maré, em ordem.
+
+  Uma quantidade 0 dá uma lista vazia. A quantidade nunca é negativa.
+
+  Você não pode construir a sequência inteira e depois cortá-la - não existe sequência
+  inteira. Você não pode usar list, e pedir todos os valores de um gerador sem fim numa
+  compreensão é uma missão que nunca termina em vez de uma que falha.
+
+signature:
+  entrypoint: first_heights
+  stub: |
+    def tides():
+        # Começa em 1, dobra, nunca para.
+        # seu código aqui
+        pass
+
+
+    def first_heights(count):
+        # Puxe exatamente `count` valores. Nem um a mais.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [list]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [5]
+      expect: [1, 2, 4, 8, 16]
+    - args: [1]
+      expect: [1]
+  hidden:
+    # Nenhuma pedida. O gerador nunca é puxado.
+    - args: [0]
+      expect: []
+    # Duas, então uma solução que sempre devolve um valor é pega.
+    - args: [2]
+      expect: [1, 2]
+    # Dez, que é onde um erro de um na contagem aparece com clareza.
+    - args: [10]
+      expect: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    # Três. A sequência tem de começar em 1, não em 2.
+    - args: [3]
+      expect: [1, 2, 4]
+    # Longe o bastante para que uma tabela chumbada ficasse suspeita de tão comprida.
+    - args: [20]
+      expect:
+        [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,
+         32768, 65536, 131072, 262144, 524288]
+
+hints:
+  - level: 1
+    text: |
+      O gerador não tem condição de parada, então a parada tem de acontecer em outro lugar.
+      Qual das duas funções sabe quantos valores são desejados?
+  - level: 2
+    text: |
+      `tides` tem três linhas e uma delas é `while True`. A duplicação acontece depois do
+      `yield`, na linha em que o gerador é retomado.
+
+      Em `first_heights`, crie o gerador uma vez e puxe dele exatamente `count` vezes com
+      `next`, dando append conforme avança. Um `while` com um contador seu funciona; um `for`
+      sobre o gerador com `break` também.
+  - level: 3
+    text: |
+      O mesmo formato de fonte-sem-fim-e-um-limite, para números ímpares:
+
+          def odds():
+              valor = 1
+              while True:
+                  yield valor
+                  valor = valor + 2
+
+
+          def first_odds(count):
+              fonte = odds()
+              pegos = []
+              while count > 0:
+                  pegos.append(next(fonte))
+                  count = count - 1
+              return pegos
+
+
+          print(first_odds(4))    # [1, 3, 5, 7]
+
+      A sua dobra em vez de somar dois, e começa do mesmo lugar.
+
+solution: |
+  def tides():
+      height = 1
+      while True:
+          yield height
+          height = height * 2
+
+
+  def first_heights(count):
+      source = tides()
+
+      heights = []
+      while count > 0:
+          heights.append(next(source))
+          count = count - 1
+
+      return heights

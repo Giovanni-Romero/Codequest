@@ -1,0 +1,161 @@
+# Missão 3 de Padrões Pythônicos. Não introduz nada.
+# Reforça: enumerate-zip, unpacking, dictionaries.
+#
+# Missão de alívio. `dict(zip(a, b))` é a resposta inteira e é uma linha, que é justamente o
+# ponto: as duas funções da missão 2 se combinam com algo que o jogador tem desde a Ilha 2, e
+# a recompensa por tê-las aprendido é um laço que desaparece.
+#
+# O caso da chave repetida é o que não é óbvio pelo painel, então é cobrado duas vezes - um
+# par posterior sobrescreve silenciosamente um anterior, e essa é uma regra de dicionário que
+# o zip não suaviza em nada.
+# Referência do schema: docs/mission-schema.md
+
+id: py-patterns-03
+title: O livro pareado
+track: python
+island: pythonic-patterns
+order: 3
+difficulty: moderate
+tags: [patterns, zip, dictionaries, relief]
+xp: 30
+
+concepts:
+  - enumerate-zip
+
+teaching:
+  analogy: |
+    Duas colunas, escritas em duas folhas. A capitania quer um livro só, onde você procura um
+    nome e lê o número dele de volta.
+
+    Ninguém mais copia as colunas uma linha por vez. Você segura as folhas lado a lado e o
+    livro se escreve sozinho - e se um nome aparece duas vezes, a segunda entrada cai em cima
+    da primeira, porque um livro com uma página por nome não tem onde guardar uma segunda
+    resposta.
+
+  explanation: |
+    `zip` te dá pares. `dict` aceita pares. Então os dois juntos são um laço inteiro, apagado:
+
+        consulta = dict(zip(nomes, valores))
+
+    Isso funciona porque o `dict` aceita qualquer sequência de coisas de dois itens - uma
+    lista de pares, um objeto zip, uma lista de listas de dois - e trata o primeiro como
+    chave e o segundo como valor.
+
+    Duas regras vêm junto, e nenhuma é nova. O `zip` continua parando na sequência mais curta,
+    então um descompasso te dá um dicionário mais curto em silêncio. E uma chave repetida
+    continua sobrescrevendo, então o **último** par de uma chave é o que sobrevive.
+
+    O mesmo truque funciona ao contrário. `zip(*pares)` desmonta uma lista de pares em duas
+    sequências, porque a estrela entrega cada par ao `zip` como argumento próprio - o
+    desempacotamento da missão 1 usado numa chamada em vez de numa atribuição.
+
+  worked_example: |
+    # Uma agenda telefônica, que não é o que esta missão pede
+    def phone_book(names, numbers):
+        return dict(zip(names, numbers))
+
+
+    print(phone_book(["Ada", "Bo"], ["555-1", "555-2"]))
+    # {'Ada': '555-1', 'Bo': '555-2'}
+
+    print(phone_book(["Ada", "Ada"], ["555-1", "555-2"]))
+    # {'Ada': '555-2'}  - uma página por nome, e a última vence
+
+    pares = [("Ada", 1), ("Bo", 2)]
+    nomes, numeros = zip(*pares)
+    print(nomes)      # ('Ada', 'Bo') - e é uma tupla, não uma lista
+
+  key_points:
+    - "`dict(zip(a, b))` substitui um laço, um append e uma atribuição de chave. É uma das poucas linhas únicas que é genuinamente mais clara do que o que substitui."
+    - "O `zip` continua cortando. Um dicionário menor do que você esperava geralmente são duas listas que não tinham o mesmo tamanho."
+    - "Uma chave repetida sobrescreve, então o último par vence. Isso é regra de dicionário e nenhuma quantidade de zip muda."
+    - "`zip(*pares)` desmonta, e devolve tuplas em vez de listas. Envolva em `list(...)` se precisar alterá-las depois."
+
+brief: |
+  Duas colunas, um livro.
+
+  Escreva uma função chamada ledger que recebe uma lista de nomes e uma lista de pesos, e
+  devolve um dicionário mapeando cada nome ao peso dele.
+
+  Quando as duas listas têm tamanhos diferentes, guarde só os pares de que você tem as duas
+  metades. Quando o mesmo nome aparece duas vezes, o peso posterior vence - um livro tem uma
+  linha por nome.
+
+  Monte sem laço nenhum. Você não pode usar range, len nem slice, e não existe `for` na
+  resposta.
+
+  Um par de listas vazias dá um dicionário vazio.
+
+signature:
+  entrypoint: ledger
+  stub: |
+    def ledger(names, weights):
+        # Uma expressão. Duas funções que você já tem.
+        # seu código aqui
+        pass
+
+constraints:
+  forbidden_builtins: [range, len, slice]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["rope", "sail"], [12, 30]]
+      expect: {rope: 12, sail: 30}
+    # O mesmo nome duas vezes. O peso posterior é o que fica.
+    - args: [["rope", "rope"], [12, 30]]
+      expect: {rope: 30}
+  hidden:
+    # As duas vazias.
+    - args: [[], []]
+      expect: {}
+    # Nomes sem pesos, e o caso espelhado.
+    - args: [["rope", "sail"], []]
+      expect: {}
+    - args: [[], [12, 30]]
+      expect: {}
+    # Mais pesos do que nomes. O peso extra é descartado em silêncio.
+    - args: [["rope"], [12, 30, 45]]
+      expect: {rope: 12}
+    # Mais nomes do que pesos.
+    - args: [["rope", "sail", "chain"], [12]]
+      expect: {rope: 12}
+    # Um nome vazio é uma chave utilizável.
+    - args: [["", "sail"], [0, 30]]
+      expect: {"": 0, sail: 30}
+    # Três nomes distintos, então uma solução que guarda só o primeiro par é pega.
+    - args: [["rope", "sail", "chain"], [12, 30, 45]]
+      expect: {rope: 12, sail: 30, chain: 45}
+    # A duplicata não é vizinha, e a vencedora continua sendo a última.
+    - args: [["rope", "sail", "rope"], [1, 2, 3]]
+      expect: {rope: 3, sail: 2}
+
+hints:
+  - level: 1
+    text: |
+      O `zip` te dá algo que produz pares. O que o `dict` faz quando você entrega a ele uma
+      sequência de pares?
+  - level: 2
+    text: |
+      Um `return`, duas chamadas de função, uma aninhada na outra. Nada mais no corpo.
+
+      Você não precisa fazer nada a respeito do caso de tamanhos diferentes nem do nome
+      repetido - os dois comportamentos que o enunciado pede já são o que estas duas funções
+      fazem.
+  - level: 3
+    text: |
+      A mesma expressão, para um placar:
+
+          def scores(players, points):
+              return dict(zip(players, points))
+
+
+          print(scores(["Ada", "Bo"], [10, 7]))
+          # {'Ada': 10, 'Bo': 7}
+
+      A sua mapeia nomes para pesos e os parâmetros se chamam outra coisa.
+
+solution: |
+  def ledger(names, weights):
+      return dict(zip(names, weights))

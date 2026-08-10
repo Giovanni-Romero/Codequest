@@ -1,0 +1,249 @@
+# Mission 9 of Pythonic Patterns. Introduces: custom-context-managers.
+# Reinforces: context-managers, classes, dunder-methods, exceptions.
+#
+# Island 7 taught the player to *use* `with`. This is where they build one, and the whole
+# mission is arranged around the half that is easy to miss: __exit__ runs on the way out of
+# an exception too. The failing case appends "close" before "caught", and no amount of
+# reading a panel makes that as convincing as seeing the order.
+#
+# contextlib is forbidden so the class version comes first. @contextmanager is taught in the
+# panel and used in mission 10, where the player has already seen what it is shorthand for.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-09
+title: Open and shut
+track: python
+island: pythonic-patterns
+order: 9
+difficulty: challenging
+tags: [patterns, context-managers, cleanup]
+xp: 45
+
+concepts:
+  - custom-context-managers
+
+teaching:
+  analogy: |
+    The keeper signs the lighthouse book on the way in and on the way out. Every time.
+
+    The interesting clause is what happens when the night goes badly. If the lamp fails and
+    he has to run for help, he still signs out - the book is by the door and signing is part
+    of leaving, not part of finishing. A book that only got signed on good nights would tell
+    you nothing about the nights that mattered.
+
+  explanation: |
+    Island 7 gave you `with open(...)`. A context manager is any object with two dunder
+    methods, and writing your own is how you get that same guarantee for a resource the
+    standard library never heard of:
+
+        class Watch:
+            def __enter__(self):
+                ...
+                return something          # this is what `as` binds
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                ...                       # runs on the way out, always
+
+    `__enter__` runs when the block starts, and whatever it returns is what `as name` binds.
+    Returning `self` is common; returning something more useful is often better.
+
+    `__exit__` runs when the block ends - **however it ends**. Falling off the bottom, a
+    `return`, a `break`, or an exception tearing through: all four go through `__exit__`.
+    That is the entire reason context managers exist, and it is why the three parameters are
+    there. When the block ended normally they are all `None`; when an exception is on its way
+    out they describe it.
+
+    What `__exit__` returns is a decision, not a formality. Anything falsy - including `None`,
+    which is what you get by not returning at all - lets the exception carry on out of the
+    block. Returning **True** tells Python you have handled it and it should stop there. That
+    is a deliberate act of swallowing, and it is almost never what you want by accident.
+
+    There is a shorter way for simple cases, using `contextlib.contextmanager` and a
+    generator with one `yield`. It is worth knowing about, and it is the next mission. Write
+    the two methods first, because the short version is shorthand for exactly these.
+
+  worked_example: |
+    # A stage curtain, which is not what this mission asks for
+    class Curtain:
+        def __init__(self, notes):
+            self.notes = notes
+
+        def __enter__(self):
+            self.notes.append("up")
+            return self.notes
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            self.notes.append("down")
+            return False          # the show must not swallow its own disasters
+
+
+    notes = []
+    try:
+        with Curtain(notes) as script:
+            script.append("act one")
+            raise RuntimeError("the lead is missing")
+    except RuntimeError:
+        notes.append("apology")
+
+    print(notes)     # ['up', 'act one', 'down', 'apology']
+    # The curtain came down before the apology. That ordering is the whole point.
+
+  key_points:
+    - "`__enter__` returns whatever `as` should bind. It does not have to be `self`, and often the useful thing is not."
+    - "`__exit__` runs however the block ends - normally, by return, by break, or by exception. That guarantee is the only reason to write one."
+    - "`__exit__`'s three parameters describe the exception on its way out, and are all None when there was none."
+    - "Returning True from `__exit__` swallows the exception. Returning None - which is what happens if you just do not return - lets it travel, and that is the safe default."
+    - "Cleanup runs before the outer `except` does. If your log shows the handler first, the cleanup is not in `__exit__`."
+
+brief: |
+  The keeper signs the book on the way in and on the way out, whatever kind of night it was.
+
+  Define a class called Watch:
+
+    - `__init__` takes a log list and a name, and stores both
+    - `__enter__` appends `"open <name>"` to the log and returns the log itself, so the
+      block can write to it through `as`
+    - `__exit__` appends `"close <name>"` to the log and lets any exception carry on out
+
+  Then write a function called keep_watch that takes a name and a boolean called fail, and
+  returns the log:
+
+    - make an empty log
+    - inside a `with Watch(log, name) as entries` block, append `"working"` to `entries`,
+      and then - only when `fail` is true - raise a ValueError
+    - catch that ValueError **outside** the with block, and append `"caught"` to the log
+    - return the log
+
+  When `fail` is false the log ends after the close. When it is true, `"close <name>"` must
+  appear **before** `"caught"` - that ordering is what proves the cleanup happened on the way
+  out rather than afterwards.
+
+  You cannot import contextlib. Two dunder methods, written by hand.
+
+signature:
+  entrypoint: keep_watch
+  stub: |
+    class Watch:
+        def __init__(self, log, name):
+            # your code here
+            pass
+
+        def __enter__(self):
+            # Sign in, and hand back what the block should write to.
+            # your code here
+            pass
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            # Sign out. Do not swallow anything.
+            # your code here
+            pass
+
+
+    def keep_watch(name, fail):
+        # One with block, one try around it, one log that outlives both.
+        # your code here
+        pass
+
+constraints:
+  forbidden_imports: [contextlib]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["north", false]
+      expect: ["open north", "working", "close north"]
+    # The failing night. Close comes before caught, and that ordering is the mission.
+    - args: ["north", true]
+      expect: ["open north", "working", "close north", "caught"]
+  hidden:
+    # A different name, so the strings really are built from the argument.
+    - args: ["south", false]
+      expect: ["open south", "working", "close south"]
+    - args: ["south", true]
+      expect: ["open south", "working", "close south", "caught"]
+    # An empty name still produces both lines, with the trailing space intact.
+    - args: ["", false]
+      expect: ["open ", "working", "close "]
+    - args: ["", true]
+      expect: ["open ", "working", "close ", "caught"]
+    # A name with a space in it, because nothing here parses the name.
+    - args: ["east tower", true]
+      expect: ["open east tower", "working", "close east tower", "caught"]
+
+hints:
+  - level: 1
+    text: |
+      In the failing case, `"close"` lands in the log before `"caught"` does. Which of the two
+      pieces of code that could append it - the `__exit__` method, or a line after the with
+      block - runs at that moment?
+
+      And what does `entries` refer to, given that the block writes to it and `keep_watch`
+      returns the log?
+  - level: 2
+    text: |
+      `__enter__` appends and then returns `self.log`. That return is what makes `as entries`
+      give the block something to write to.
+
+      `__exit__` appends and then stops. Do not return True - returning nothing at all is
+      exactly the behaviour the brief asks for.
+
+      `keep_watch` is a `try` whose body is the whole `with` block, and one `except ValueError`
+      after it.
+  - level: 3
+    text: |
+      The same two methods, on an oven:
+
+          class Oven:
+              def __init__(self, log, dish):
+                  self.log = log
+                  self.dish = dish
+
+              def __enter__(self):
+                  self.log.append(f"heat {self.dish}")
+                  return self.log
+
+              def __exit__(self, exc_type, exc_value, traceback):
+                  self.log.append(f"cool {self.dish}")
+
+
+          def bake(dish, burnt):
+              log = []
+              try:
+                  with Oven(log, dish) as steps:
+                      steps.append("baking")
+                      if burnt:
+                          raise ValueError(dish)
+              except ValueError:
+                  log.append("binned")
+              return log
+
+      Yours opens and closes rather than heating and cooling, and the word it appends after
+      catching is different.
+
+solution: |
+  class Watch:
+      def __init__(self, log, name):
+          self.log = log
+          self.name = name
+
+      def __enter__(self):
+          self.log.append(f"open {self.name}")
+          return self.log
+
+      def __exit__(self, exc_type, exc_value, traceback):
+          self.log.append(f"close {self.name}")
+
+
+  def keep_watch(name, fail):
+      log = []
+
+      try:
+          with Watch(log, name) as entries:
+              entries.append("working")
+              if fail:
+                  raise ValueError(name)
+      except ValueError:
+          log.append("caught")
+
+      return log

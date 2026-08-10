@@ -1,0 +1,215 @@
+# Mission 4 of Pythonic Patterns. Introduces: iterators.
+# Reinforces: for-loop, lists.
+#
+# Placed before `yield` on purpose, the same move Island 5 made with `exceptions` before
+# `try-except` and Island 7 with `open-and-read` before `context-managers`. A player has to
+# watch an iterator run out before a function that produces values one at a time reads as
+# anything other than a strange `return`.
+#
+# The mission is graded on exhaustion rather than on contents: `rest` only comes out right
+# if the loop and the two `next` calls shared one iterator. A solution that iterates the
+# list itself gets every value back and fails the first case it is given.
+# Schema reference: docs/mission-schema.md
+
+id: py-patterns-04
+title: One at a time
+track: python
+island: pythonic-patterns
+order: 4
+difficulty: challenging
+tags: [patterns, iterators, protocol]
+xp: 45
+
+concepts:
+  - iterators
+
+teaching:
+  analogy: |
+    A ticket machine at the harbour gate hands out one ticket per press. It does not hold a
+    list of tickets you can look through - it holds a position, and every press moves the
+    position on by one.
+
+    Two people press it, then the queue behind them walks through the gate. The queue gets
+    the tickets from three onwards, because the machine never went back. And when the roll
+    runs out the machine does not hand you a blank ticket. It refuses, out loud, which is
+    how the gatekeeper knows to close.
+
+  explanation: |
+    A list is not an iterator. It can *make* one, and that is what `for` has been doing
+    behind your back since Island 1:
+
+        machine = iter(values)
+        first = next(machine)
+        second = next(machine)
+
+    `iter` builds the machine from the list. `next` presses it. Everything about the
+    protocol follows from one fact: the position lives in the machine, not in the list.
+
+    So an iterator is used up. Take two values by hand and a `for` loop over the **same
+    iterator** starts at the third, because the position has already moved. Loop over it
+    twice and the second loop sees nothing at all - not an error, just an empty pass, which
+    is the most confusing bug in this whole area.
+
+    When there is nothing left, `next` raises `StopIteration`. That is not a failure, it is
+    the protocol's way of saying the roll is finished, and it is exactly what `for` catches
+    to know when to stop. If you would rather have a value than an exception, `next` takes a
+    second argument to hand back instead:
+
+        next(machine, None)      # None when it is finished, no exception
+
+    The list itself is untouched by all of this. You can build a second iterator from it and
+    start again from the beginning.
+
+  worked_example: |
+    # A deck of cards, which is not what this mission asks for
+    def deal(cards):
+        deck = iter(cards)
+
+        mine = next(deck)
+        yours = next(deck)
+
+        table = []
+        for card in deck:          # carries on from the third
+            table.append(card)
+
+        return {"mine": mine, "yours": yours, "table": table, "left": next(deck, None)}
+
+
+    print(deal(["A", "K", "Q", "J"]))
+    # {'mine': 'A', 'yours': 'K', 'table': ['Q', 'J'], 'left': None}
+
+    cards = ["A", "K"]
+    deck = iter(cards)
+    print([c for c in deck])   # ['A', 'K']
+    print([c for c in deck])   # []  - same iterator, already spent
+
+  key_points:
+    - "`iter(x)` makes an iterator; `next(it)` advances it. The position is in the iterator, so the list you built it from never changes."
+    - "An iterator is walked once. A second `for` over the same one sees nothing and raises nothing, which is why this bug is so quiet."
+    - "Mixing `next` and `for` on the same iterator is normal and useful. The loop picks up wherever `next` left it."
+    - "`next` on a spent iterator raises `StopIteration`. That is the protocol working, not an error - it is the signal `for` has always been catching for you."
+    - "`next(it, default)` hands back the default instead of raising. Reach for it when \"there is nothing left\" is an ordinary answer rather than an exceptional one."
+    - "Building a second iterator from the same list starts again from the beginning. The list was never the thing being consumed."
+
+brief: |
+  Two officers take their tickets first, and the queue goes through behind them.
+
+  Write a function called two_then_rest that takes a list of values and returns a dict:
+
+      {"first": ..., "second": ..., "rest": [...], "again": ...}
+
+  Build **one** iterator from the list. Take the first two values from it with `next`. Then
+  let a `for` loop collect everything that is left into `rest` - which must start at the
+  third value, because the iterator has already moved.
+
+  `again` is the first value all over again, taken from a **second** iterator built from the
+  same list. The list was never consumed - only the iterator was - and this is the field
+  that proves it.
+
+  A list of fewer than two values cannot supply the two officers. Let the StopIteration
+  travel out - do not catch it and do not check the length first.
+
+  You cannot use len or enumerate, and you may not index the list. Two iterators, and the
+  protocol does the rest.
+
+signature:
+  entrypoint: two_then_rest
+  stub: |
+    def two_then_rest(values):
+        # One iterator. Two presses, then a loop. Then a fresh one, for the last field.
+        # your code here
+        pass
+
+constraints:
+  forbidden_builtins: [len, enumerate]
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [["A", "K", "Q", "J"]]
+      expect: {first: A, second: K, rest: ["Q", "J"], again: A}
+    # Exactly two. The loop runs zero times and `rest` is empty, not missing.
+    - args: [["A", "K"]]
+      expect: {first: A, second: K, rest: [], again: A}
+  hidden:
+    # One value. The second press has nothing to give.
+    - args: [["A"]]
+      raises: StopIteration
+    # Nothing at all. The first press already fails.
+    - args: [[]]
+      raises: StopIteration
+    # Three values, so a solution that walked the list instead of the iterator returns all
+    # three in `rest` and is caught here.
+    - args: [[1, 2, 3]]
+      expect: {first: 1, second: 2, rest: [3], again: 1}
+    # Repeated values. The iterator does not care that they look alike.
+    - args: [["A", "A", "A"]]
+      expect: {first: A, second: A, rest: ["A"], again: A}
+    # A long queue, in order.
+    - args: [[1, 2, 3, 4, 5, 6]]
+      expect: {first: 1, second: 2, rest: [3, 4, 5, 6], again: 1}
+    # None is a value like any other, and it survives the round trip.
+    - args: [[null, null, null]]
+      expect: {first: null, second: null, rest: [null], again: null}
+    # Mixed types, because nothing here inspects what the values are.
+    - args: [["A", 2, true, ""]]
+      expect: {first: A, second: 2, rest: [true, ""], again: A}
+
+hints:
+  - level: 1
+    text: |
+      If the two `next` calls and the `for` loop are given the same iterator, where does the
+      loop start? And what would happen if you looped over `values` instead?
+
+      For `again`: the iterator is spent, but is the list? What would `iter(values)` give you
+      if you called it a second time?
+  - level: 2
+    text: |
+      `machine = iter(values)` once, at the top. Then `next(machine)` twice, into two names.
+
+      The loop header is `for value in machine` - the iterator, not the list. Append each
+      value to a list you made before the loop.
+
+      The last field builds a brand new iterator from the same list - `iter(values)` again -
+      and takes one value from it. There is no `try` anywhere in this function.
+  - level: 3
+    text: |
+      The same shape, at a bakery counter:
+
+          def serve(orders):
+              queue = iter(orders)
+
+              staff_one = next(queue)
+              staff_two = next(queue)
+
+              waiting = []
+              for order in queue:
+                  waiting.append(order)
+
+              return {
+                  "one": staff_one,
+                  "two": staff_two,
+                  "waiting": waiting,
+                  "restart": next(iter(orders)),
+              }
+
+      Yours uses different key names, and the last one is called `again`.
+
+solution: |
+  def two_then_rest(values):
+      machine = iter(values)
+
+      first = next(machine)
+      second = next(machine)
+
+      rest = []
+      for value in machine:
+          rest.append(value)
+
+      return {
+          "first": first,
+          "second": second,
+          "rest": rest,
+          "again": next(iter(values)),
+      }
