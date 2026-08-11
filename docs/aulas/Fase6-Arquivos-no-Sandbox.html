@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 6: Arquivos no Sandbox</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #1f6f6b;
+    --accent-soft: #e2efee; --warn: #8a6d1f; --danger: #a8442a; --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+      --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #6ec2bc;
+      --accent-soft: #162625; --warn: #d4b45e; --danger: #e08160; --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #1f6f6b;
+    --accent-soft: #e2efee; --warn: #8a6d1f; --danger: #a8442a; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #6ec2bc;
+    --accent-soft: #162625; --warn: #d4b45e; --danger: #e08160; --code-bg: #191712;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+  header.top { padding: 4rem 0 2.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 3rem; }
+  .eyebrow { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1rem; }
+  h1 { font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 1rem; font-weight: 600; }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+  h2 { font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  blockquote { margin: 0 0 1.2rem; padding-left: 1rem; border-left: 3px solid var(--rule);
+    color: var(--ink-2); font-style: italic; }
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename { font: 500 .72rem/1 ui-monospace, monospace; color: var(--ink-3);
+    margin: 0 0 .4rem; letter-spacing: .02em; }
+  .callout { background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem; margin: 0 0 1.4rem; box-shadow: var(--shadow); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label { font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .55rem; }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); }
+  .callout.danger .label { color: var(--danger); }
+  .bridge { background: var(--accent-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin: 1.4rem 0; }
+  .bridge .slug { font: 600 .72rem/1 ui-monospace, monospace; color: var(--accent);
+    display: inline-block; margin-bottom: .5rem; }
+  .bridge p:last-child { margin-bottom: 0; }
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3); }
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+  details { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .85rem 1.1rem; margin: 0 0 1rem; }
+  details summary { cursor: pointer; font-weight: 600; font-size: .95rem;
+    font-family: ui-sans-serif, system-ui, sans-serif; }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+  .toc { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem; margin-bottom: 3rem; box-shadow: var(--shadow); }
+  .toc p { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 6</p>
+  <h1>Arquivos no Sandbox</h1>
+  <p class="lede">
+    Umas quarenta linhas de código, e nelas mora uma das classes de vulnerabilidade mais
+    antigas e mais teimosas da computação. Um nome de arquivo que vem de fora e vira
+    caminho de escrita. A lição não é "valide a entrada" — é <em>rejeitar não é o mesmo
+    que limpar</em>.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: o porteiro e a lista</li>
+    <li>Teoria 1 — Path traversal, formalmente</li>
+    <li>Teoria 2 — Por que sanear perde e rejeitar ganha</li>
+    <li>Teoria 3 — Estado que sobrevive entre execuções</li>
+    <li>O código, anotado</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercício de fixação</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  A Ilha 7 do currículo — <em>Files and Data</em> — ensina a abrir, ler e escrever
+  arquivos. Só que o sandbox do CodeQuest, até esta fase, escrevia exatamente dois
+  arquivos no diretório temporário: o código do jogador e o harness. Uma missão que
+  dissesse "leia <code>cargo.csv</code>" não teria nada para o jogador abrir.
+</p>
+
+<p>
+  Então nasceu um campo novo no schema de missão:
+</p>
+
+<p class="filename">content/python/islands/07-files-and-data/missions/01-the-logbook-page.yaml</p>
+<pre><code>files:
+  cargo.csv: |
+    port,weight
+    lisbon,10
+    porto,4</code></pre>
+
+<p>
+  Um mapa de nome de arquivo para conteúdo em texto. O loader valida, o runner planta no
+  diretório do sandbox antes de rodar, e o jogador faz <code>open("cargo.csv")</code> sem
+  precisar saber onde está. Três arquivos de produção mudaram, mais o schema documentado
+  e sete testes novos.
+</p>
+
+<div class="callout">
+  <span class="label">O detalhe que faz a fase existir</span>
+  <p>
+    Esse YAML é a parte do repositório que um não-programador é convidado a editar. É
+    <strong>dado</strong>, não código, e essa é a promessa. Um nome de arquivo vindo dali
+    que vire caminho de escrita transforma "editar conteúdo" em "escrever qualquer arquivo
+    da máquina". A promessa se quebra em silêncio.
+  </p>
+</div>
+
+<h2>2. A analogia: o porteiro e a lista</h2>
+
+<p>
+  Um prédio contrata dois porteiros diferentes. Os dois têm o mesmo objetivo: só moradores
+  entram.
+</p>
+
+<p>
+  O <strong>primeiro porteiro</strong> é do tipo prestativo. Alguém chega dizendo
+  "sou o João do 402, mas esqueci o crachá" e ele pensa: bom, existe um João no 402, o
+  rosto é parecido, deixa entrar. Alguém chega com um crachá de outro prédio e ele apaga a
+  logo errada com corretivo e deixa entrar. Ele está sempre <em>consertando</em> a
+  credencial até ela virar aceitável.
+</p>
+
+<p>
+  O <strong>segundo porteiro</strong> tem uma lista e um leitor de crachá. Crachá válido
+  na lista: entra. Qualquer outra coisa — crachá vencido, crachá quase certo, crachá que
+  daria pra consertar — não entra. Ele não negocia, não interpreta e não conserta.
+</p>
+
+<p>
+  O primeiro porteiro parece mais gentil e é infinitamente mais fácil de burlar, porque o
+  atacante só precisa achar <em>uma</em> forma de credencial que ele conserte errado. O
+  segundo é chato e é o único que funciona. A validação de nome de arquivo desta fase é o
+  segundo porteiro.
+</p>
+
+<h2>3. Teoria 1 — Path traversal, formalmente</h2>
+
+<p>
+  <strong>Path traversal</strong> (ou <em>directory traversal</em>) é a vulnerabilidade em
+  que um valor controlado por quem está de fora é usado para montar um caminho no sistema
+  de arquivos, e esse valor contém elementos de navegação que fazem o caminho final sair
+  do diretório onde deveria ficar.
+</p>
+
+<p>
+  O elemento clássico é <code>..</code>, que em praticamente todo sistema de arquivos
+  significa "o diretório acima". Junte isso a um <code>join</code> ingênuo:
+</p>
+
+<pre><code>workdir = Path("/tmp/codequest-abc123")
+name = "../../../../home/giovanni/.ssh/authorized_keys"   # veio do YAML
+
+(workdir / name).write_text(conteudo)
+# resolve para /home/giovanni/.ssh/authorized_keys</code></pre>
+
+<p>
+  Repare que <code>Path.__truediv__</code> fez exatamente o que foi pedido. Não há bug no
+  <code>pathlib</code>. O bug é ter tratado um nome não confiável como se fosse um nome.
+</p>
+
+<p>
+  Em Python há uma segunda armadilha, e ela é pior porque não envolve <code>..</code>
+  nenhum:
+</p>
+
+<pre><code>>>> from pathlib import Path
+>>> Path("/tmp/sandbox") / "/etc/passwd"
+PosixPath('/etc/passwd')</code></pre>
+
+<p>
+  Um segmento absoluto <strong>descarta tudo o que veio antes</strong>. O mesmo vale para
+  <code>Path("C:/sandbox") / "D:/dados.txt"</code> no Windows. Quem confia no
+  <code>join</code> para "manter dentro" está confiando numa garantia que a biblioteca
+  nunca ofereceu.
+</p>
+
+<h3>Formas que o mesmo ataque assume</h3>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th>Entrada</th><th>Por que passa por um filtro ingênuo</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>../../etc/passwd</code></td><td>O caso óbvio, o único que todo mundo lembra de bloquear</td></tr>
+    <tr><td><code>..\..\Windows\evil.txt</code></td><td>Separador do Windows. Um filtro que só olha <code>/</code> aprova</td></tr>
+    <tr><td><code>/etc/passwd</code></td><td>Não tem <code>..</code>. É absoluto, e o <code>join</code> descarta o prefixo</td></tr>
+    <tr><td><code>C:\Windows\evil.txt</code></td><td>Letra de drive. Absoluto no Windows sem começar com separador</td></tr>
+    <tr><td><code>%2e%2e%2f</code></td><td>URL-encoded. Vira <code>../</code> depois de um decode que acontece adiante</td></tr>
+    <tr><td><code>....//</code></td><td>Só é perigoso <em>depois</em> de um saneamento mal feito. Veja a seção 4</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout honest">
+  <span class="label">Sendo honesto sobre o CodeQuest</span>
+  <p>
+    Neste projeto o atacante realista não é um invasor remoto — é um erro de digitação de
+    quem escreve conteúdo, ou um YAML copiado de algum lugar sem ser lido. O jogo roda
+    local e single-player. A validação está aqui porque a <em>classe</em> do bug é a mesma
+    de um servidor, e porque um dia essa mesma reflexão vai valer num lugar onde o
+    atacante é de verdade.
+  </p>
+</div>
+
+<h2>4. Teoria 2 — Por que sanear perde e rejeitar ganha</h2>
+
+<p>
+  A tentação, ao ver <code>../</code> num nome, é tirá-lo:
+</p>
+
+<pre><code>def limpar(nome):
+    return nome.replace("..", "")     # NÃO FAÇA ISSO</code></pre>
+
+<p>
+  Agora rode <code>"....//etc/passwd"</code> por essa função. Ela encontra o
+  <code>..</code> das posições 0-1 e remove. Encontra o <code>..</code> das posições 2-3 e
+  remove. Sobra <code>"//etc/passwd"</code>. E ela mesma <em>construiu</em> a string
+  perigosa a partir de uma string que não era exatamente perigosa antes.
+</p>
+
+<figure>
+<svg viewBox="0 0 660 250" role="img" aria-labelledby="fig1-title">
+  <title id="fig1-title">Saneamento como loop infinito contra rejeição como decisão única</title>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" color="#8a837a" stroke-width="1.4">
+    <rect x="14" y="14" width="300" height="222" rx="9" stroke-dasharray="4 4"/>
+    <rect x="346" y="14" width="300" height="222" rx="9" stroke-dasharray="4 4"/>
+  </g>
+
+  <text x="164" y="42" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="13" font-weight="600" fill="#a8442a">SANEAR — corrida sem fim</text>
+  <text x="496" y="42" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="13" font-weight="600" fill="#1f6f6b">REJEITAR — decisão única</text>
+
+  <g font-family="ui-monospace, monospace" font-size="11.5" fill="currentColor" color="#55504a">
+    <text x="40" y="74">"....//etc"</text>
+    <text x="40" y="118">tira ".."</text>
+    <text x="40" y="162">"//etc"</text>
+    <text x="40" y="206">tira "//" ...?</text>
+
+    <text x="372" y="74">"cargo.csv"</text>
+    <text x="372" y="118">tem "/" "\" ":" "."?</text>
+    <text x="372" y="162">não → aceita</text>
+    <text x="372" y="206">sim → recusa a missão</text>
+  </g>
+
+  <g stroke="#a8442a" stroke-width="1.6" fill="none" marker-end="url(#arrow)">
+    <path d="M60 82 L60 106"/>
+    <path d="M60 126 L60 150"/>
+    <path d="M60 170 L60 194"/>
+    <path d="M150 202 C215 202 215 74 152 74"/>
+  </g>
+  <g stroke="#1f6f6b" stroke-width="1.6" fill="none" marker-end="url(#arrow)">
+    <path d="M392 82 L392 106"/>
+    <path d="M392 126 L392 150"/>
+    <path d="M478 126 C520 126 520 190 480 196"/>
+  </g>
+
+  <text x="230" y="228" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5"
+        fill="#a8442a">cada regra nova cria a próxima brecha</text>
+</svg>
+<figcaption>
+  Saneamento é um loop: cada correção cria a entrada seguinte. Rejeição é um ramo:
+  a resposta é sim ou não e a conversa acaba.
+</figcaption>
+</figure>
+
+<p>
+  A diferença profunda entre as duas abordagens é qual pergunta você está tentando
+  responder:
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th></th><th>Sanear</th><th>Rejeitar</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Pergunta</strong></td>
+      <td>"Como transformo isto em algo seguro?"</td>
+      <td>"Isto é exatamente o que eu esperava?"</td>
+    </tr>
+    <tr>
+      <td><strong>Conjunto</strong></td>
+      <td>Infinito — todas as entradas erradas possíveis</td>
+      <td>Finito — a forma única que você aceita</td>
+    </tr>
+    <tr>
+      <td><strong>Erro custa</strong></td>
+      <td>Uma brecha silenciosa em produção</td>
+      <td>Uma mensagem de erro para o autor do conteúdo</td>
+    </tr>
+    <tr>
+      <td><strong>Testável</strong></td>
+      <td>Só contra os ataques que você imaginou</td>
+      <td>Contra a definição inteira do que é válido</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  É o mesmo argumento de <code>blocklist-vs-allowlist</code> que apareceu no guard da
+  Fase 1, aplicado a caminhos em vez de a builtins. Enumerar o proibido perde de quem
+  escolhe de um conjunto infinito. Enumerar o permitido inverte a assimetria.
+</p>
+
+<h2>5. Teoria 3 — Estado que sobrevive entre execuções</h2>
+
+<p>
+  A segunda decisão da fase não é de segurança, é de correção — e ela só existe porque
+  alguém foi ler como o engine realmente roda os casos de teste.
+</p>
+
+<p>
+  O <code>GameSession</code> chama <code>prepare()</code> <strong>uma vez</strong> por
+  submissão e <code>execute()</code> <strong>uma vez por caso de teste</strong>. Cada caso
+  ganha um processo novo — isso já estava garantido desde a Fase 1 — mas todos os
+  processos compartilham o <em>mesmo diretório</em>.
+</p>
+
+<p>
+  Numa missão que ensina a <em>escrever</em> em arquivo, isso é veneno:
+</p>
+
+<pre><code>Caso 1: append "x" em log.txt  →  log.txt = "seed:x"   ✓ passa
+Caso 2: append "x" em log.txt  →  log.txt = "seed:xx"  ✗ falha</code></pre>
+
+<p>
+  O jogador escreveu código correto e o caso 2 reprovou por causa do lixo do caso 1. Pior:
+  o resultado passa a depender da <strong>ordem</strong> dos casos, que é a assinatura de
+  um teste não determinístico.
+</p>
+
+<p>
+  Havia duas saídas. A primeira: escrever as dez missões da ilha de modo que cada caso use
+  um arquivo diferente. A segunda: replantar os arquivos declarados antes de cada caso.
+  A segunda ganhou por um motivo que não é técnico —
+</p>
+
+<blockquote>
+  <p>
+    quem escreve missão não deveria precisar saber que o diretório é reutilizado. Se a
+    correção do engine mora na cabeça do autor de conteúdo, ela vai ser esquecida na
+    décima primeira missão.
+  </p>
+</blockquote>
+
+<div class="callout">
+  <span class="label">O princípio</span>
+  <p>
+    Isolamento que depende de disciplina não é isolamento. Ou o sistema garante o estado
+    inicial, ou ele vai variar. Vale para caso de teste, para sessão de agente e para
+    qualquer coisa que rode "de novo, do zero".
+  </p>
+</div>
+
+<h2>6. O código, anotado</h2>
+
+<h3>6.1 A validação, no loader</h3>
+
+<p class="filename">src/codequest/engine/loader.py</p>
+<pre><code>_RESERVED_SANDBOX_NAMES = frozenset({"submission.py", "harness.py", "request.json", "result.json"})
+
+
+def _rejects_as_filename(name: str) -> str | None:
+    """Return why ``name`` is unusable as a sandbox filename, or None when it is fine.
+
+    # [AI-ENG:path-traversal] A name that arrives as declarative data and then becomes a
+    # write path is the same bug as an agent taking the filename straight out of the
+    # model's tool call. The defence is to *reject* the whole name when it is not a plain
+    # single segment — never to clean it up. Sanitising invites the arms race: stripping
+    # ``"../"`` from ``"....//....//etc"`` *produces* ``"../../etc"``. Rejecting ends it.
+    """
+    if not isinstance(name, str) or not name:
+        return "must be a non-empty string"
+    # Both separators are checked on every platform, so a Linux CI run cannot green-light
+    # a name that would escape the sandbox once a player opens the game on Windows.
+    if "/" in name or "\\" in name:
+        return "must be a plain filename, with no directory separator"
+    if ":" in name:
+        return "must not contain a drive letter or stream marker"
+    if name.startswith("."):
+        return "must not start with a dot"
+    if name in _RESERVED_SANDBOX_NAMES:
+        return f"is reserved by the runner ({', '.join(sorted(_RESERVED_SANDBOX_NAMES))})"
+    return None</code></pre>
+
+<p>
+  Cinco pontos que valem parar:
+</p>
+
+<ul>
+  <li>
+    <strong>A função devolve <em>o motivo</em>, não um booleano.</strong> O loader
+    acumula problemas e mostra todos de uma vez — a regra número 2 do módulo desde a
+    Fase 1. Um <code>bool</code> obrigaria o chamador a inventar a mensagem, e ele não
+    sabe qual regra falhou.
+  </li>
+  <li>
+    <strong>Os dois separadores são checados nos dois sistemas.</strong> O CI roda Linux,
+    o Giovanni joga no Windows. Um filtro que só olhasse <code>/</code> ficaria verde no
+    CI e traria a brecha junto no instalador.
+  </li>
+  <li>
+    <strong><code>":"</code> cobre duas coisas.</strong> Letra de drive
+    (<code>C:\...</code>) e <em>alternate data stream</em> do NTFS
+    (<code>arquivo.txt:oculto</code>), que é um jeito de escrever dados invisíveis num
+    arquivo aparentemente inocente.
+  </li>
+  <li>
+    <strong><code>startswith(".")</code> resolve três casos com uma linha:</strong>
+    <code>"."</code>, <code>".."</code> e arquivos ocultos. Nenhuma missão precisa começar
+    um nome com ponto, então o custo de proibir é zero.
+  </li>
+  <li>
+    <strong>Nomes reservados.</strong> Não é segurança, é diagnóstico. Uma missão que
+    declarasse <code>submission.py</code> sobrescreveria o código do jogador e ele veria
+    um erro impossível de entender.
+  </li>
+</ul>
+
+<h3>6.2 O plantio, no runner</h3>
+
+<p class="filename">src/codequest/engine/runners/python.py</p>
+<pre><code>def _plant_files(workdir: Path, files: tuple[tuple[str, str], ...]) -> None:
+    """Write the mission's declared data files into the sandbox, overwriting freely.
+
+    Names arrive already validated by the loader, which rejects anything that is not a
+    plain filename. This function deliberately does no validation of its own and no
+    joining cleverness: ``workdir / name`` is safe *because* of that upstream rule, and
+    a second, weaker check here would only invite someone to relax the first one.
+    """
+    for name, content in files:
+        (workdir / name).write_text(content, encoding="utf-8")</code></pre>
+
+<div class="callout honest">
+  <span class="label">Uma decisão discutível, dita como decisão</span>
+  <p>
+    Defesa em profundidade diria para validar <em>de novo</em> aqui. O argumento contrário,
+    que venceu: duas validações em lugares diferentes viram uma validação e meia. A segunda
+    é sempre a mais fraca, e a existência dela é o que convence alguém a afrouxar a
+    primeira ("relaxa, o runner confere"). Uma fronteira, um dono, uma regra — e o
+    docstring diz alto de quem é. Isso é convenção, não lei; num sistema com fronteira de
+    rede no meio a resposta seria a oposta.
+  </p>
+</div>
+
+<h3>6.3 O replantio, antes de cada caso</h3>
+
+<p class="filename">src/codequest/engine/runners/python.py — dentro de execute()</p>
+<pre><code>        # The workdir outlives a single case, so a submission that wrote to a declared
+        # file - which is the whole point of the Files island - would hand the next case
+        # its leftovers. Re-planting makes every case start from the mission's own data,
+        # and means a mission author never has to know the workdir is shared.
+        try:
+            _plant_files(workdir, prepared.files)
+        except OSError as exc:
+            raise RunnerError(f"cannot restore the mission's data files: {exc}") from exc</code></pre>
+
+<p>
+  Note de onde vem <code>prepared.files</code>. Não do <code>Mission</code> — o
+  <code>execute()</code> não recebe a missão, e mudar a assinatura dele quebraria o
+  protocolo <code>Runner</code> que existe justamente para que adicionar Java seja um
+  arquivo novo e não um refactor. Os arquivos viajam no <code>PreparedCode</code>, que é o
+  objeto cujo trabalho é atravessar de <code>prepare()</code> até <code>execute()</code>.
+</p>
+
+<p>
+  E o erro é levantado, não devolvido como resultado. Sandbox que não aceita escrita é
+  problema <em>nosso</em>, não do jogador. Reprovar a submissão dele por causa de um disco
+  cheio seria mentir sobre quem errou.
+</p>
+
+<h3>6.4 O teste que prova o replantio</h3>
+
+<p class="filename">tests/unit/test_runner.py</p>
+<pre><code>def test_a_declared_file_is_planted_fresh_for_every_case(runner):
+    source = (
+        "def double(n):\n"
+        "    with open('log.txt', 'a', encoding='utf-8') as handle:\n"
+        "        handle.write('x')\n"
+        "    return open('log.txt', encoding='utf-8').read()\n"
+    )
+    prepared = _prepare_with_files(runner, source, (("log.txt", "seed:"),))
+    try:
+        first = runner.execute(prepared, TestCase(args=(1,), expect=""), FAST)
+        second = runner.execute(prepared, TestCase(args=(1,), expect=""), FAST)
+    finally:
+        runner.cleanup(prepared)
+
+    assert first.returned == "seed:x"
+    assert second.returned == "seed:x"</code></pre>
+
+<p>
+  O <code>second.returned == "seed:x"</code> é a asserção inteira da feature. Sem
+  replantio ela seria <code>"seed:xx"</code>. É um teste de duas linhas de expectativa que
+  vale mais do que a implementação: se alguém remover o replantio por achar redundante,
+  este teste explica em segundos por que ele existia.
+</p>
+
+<h2>7. A ponte com AI Engineering</h2>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:path-traversal]</span>
+  <p>
+    Um agente com ferramenta de escrita em disco recebe o <code>filename</code> dentro do
+    JSON da tool call — ou seja, <strong>gerado por um modelo</strong>, a partir de um
+    prompt que pode conter texto de um documento recuperado, de um e-mail, de uma página
+    web. É exatamente a mesma topologia desta fase: valor não confiável → caminho de
+    escrita. E a mesma defesa: rejeite a tool call inteira quando o nome não for a forma
+    que você espera. Não "conserte" o caminho e execute.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:schema-validation]</span>
+  <p>
+    O bloco <code>files:</code> entrou no mesmo validador que já cuidava do resto do
+    schema, com o mesmo padrão: acumular todos os problemas e reportar de uma vez. É o
+    formato de um validador de <em>structured output</em>. Um modelo que devolve JSON
+    quase certo precisa de um relatório completo do que está errado para conseguir
+    corrigir numa segunda passada — parar no primeiro erro transforma uma correção em
+    cinco rodadas de ida e volta, e cada rodada custa tokens e latência.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:sandboxing]</span>
+  <p>
+    O sandbox agora tem <em>estado</em>, e estado precisa de política de reset. Um code
+    interpreter que reaproveita o container entre chamadas está no mesmo lugar: os
+    arquivos que a chamada anterior escreveu ainda estão lá. Ou você garante o estado
+    inicial, ou o resultado da chamada N depende do que aconteceu na chamada N-1 — e
+    debugar isso depois de entregue é caro.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:blocklist-vs-allowlist]</span>
+  <p>
+    Mesma lição da Fase 1, campo novo. Enumerar o proibido é uma aposta contra um conjunto
+    infinito. Aqui a regra ficou allowlist na prática: um nome só passa se for um segmento
+    simples, e todo o resto do universo de strings é recusado sem análise.
+  </p>
+</div>
+
+<h2>8. Exercício de fixação</h2>
+
+<p>
+  Um colega escreveu esta função para um endpoint que serve arquivos de um diretório de
+  uploads. Ele diz que testou com <code>../../etc/passwd</code> e que a função barrou.
+</p>
+
+<pre><code>UPLOADS = Path("/srv/app/uploads")
+
+def read_upload(name: str) -> str:
+    safe = name.replace("../", "")
+    return (UPLOADS / safe).read_text()</code></pre>
+
+<p>
+  <strong>Encontre três entradas diferentes que escapam do diretório</strong>, e depois
+  reescreva a função seguindo o princípio desta aula. Não olhe a resposta antes de
+  escrever as três no papel.
+</p>
+
+<details>
+  <summary>Ver a resposta</summary>
+
+  <p><strong>As três (há mais):</strong></p>
+
+  <ol>
+    <li>
+      <code>"....//....//etc/passwd"</code> — o <code>replace</code> remove os dois
+      <code>"../"</code> internos e <em>produz</em> <code>"../../etc/passwd"</code>. O
+      saneamento construiu o ataque.
+    </li>
+    <li>
+      <code>"/etc/passwd"</code> — não contém <code>"../"</code>, então o
+      <code>replace</code> não faz nada. E <code>Path("/srv/app/uploads") / "/etc/passwd"</code>
+      devolve <code>PosixPath('/etc/passwd')</code>: o segmento absoluto descarta o
+      prefixo.
+    </li>
+    <li>
+      <code>"..%2Fetc%2Fpasswd"</code> — se qualquer camada adiante fizer URL-decode, isso
+      vira <code>"../etc/passwd"</code> depois de já ter passado pela validação. Validar
+      antes de normalizar é validar outra string.
+    </li>
+  </ol>
+
+  <p><strong>A reescrita:</strong></p>
+
+  <pre><code>UPLOADS = Path("/srv/app/uploads")
+
+
+def read_upload(name: str) -> str:
+    """Ler um upload pelo nome. Recusa qualquer coisa que não seja um nome simples."""
+    if not name or "/" in name or "\\" in name or ":" in name or name.startswith("."):
+        raise ValueError(f"nome de upload inválido: {name!r}")
+    return (UPLOADS / name).read_text(encoding="utf-8")</code></pre>
+
+  <p>
+    Nada é consertado. A função ou recebe um nome simples, ou não atende. E repare que
+    <code>name!r</code> mostra o nome com aspas e escapes visíveis — num log,
+    <code>'..\\x'</code> é legível e <code>..\x</code> pode virar tabulação.
+  </p>
+
+  <p><strong>A variante com <code>resolve()</code>, e por que ela é pior aqui:</strong></p>
+
+  <pre><code>alvo = (UPLOADS / name).resolve()
+if not alvo.is_relative_to(UPLOADS.resolve()):
+    raise ValueError(...)</code></pre>
+
+  <p>
+    Funciona, e às vezes é a resposta certa — quando subdiretórios são legítimos. Mas ela
+    é <em>mais fraca por natureza</em>: depende de <code>resolve()</code> se comportar
+    igual em todo sistema de arquivos, atravessa symlinks, toca o disco, e responde
+    "o resultado ficou dentro?" em vez de "a entrada era válida?". Quando um nome simples
+    basta, a checagem de forma é mais forte e mais barata. Escolha a pergunta mais
+    restritiva que ainda resolve o seu problema.
+  </p>
+</details>
+
+<h3>Bônus, se quiser ir além</h3>
+
+<p>
+  O <code>_plant_files</code> desta fase escreve texto. Escreva no papel o que precisaria
+  mudar para suportar um arquivo binário numa missão (uma imagem, um <code>.zip</code>) e
+  qual novo problema de validação isso cria. Dica: o YAML não tem tipo binário — o
+  conteúdo chegaria em base64, e "é base64 válido" vira uma checagem nova na mesma
+  fronteira.
+</p>
+
+<footer>
+  <p>
+    CodeQuest · Fase 6 — Arquivos no Sandbox · escrita a partir do código que foi
+    entregue, não do plano. Bookmarks cobertos:
+    <code>path-traversal</code>, <code>schema-validation</code>, <code>sandboxing</code>,
+    <code>blocklist-vs-allowlist</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

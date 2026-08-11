@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 5: Integração com LLM</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #1f6f6b;
+    --accent-soft: #e2efee; --warn: #8a6d1f; --danger: #a8442a; --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+      --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #6ec2bc;
+      --accent-soft: #162625; --warn: #d4b45e; --danger: #e08160; --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #1f6f6b;
+    --accent-soft: #e2efee; --warn: #8a6d1f; --danger: #a8442a; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #6ec2bc;
+    --accent-soft: #162625; --warn: #d4b45e; --danger: #e08160; --code-bg: #191712;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+  header.top { padding: 4rem 0 2.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 3rem; }
+  .eyebrow { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1rem; }
+  h1 { font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 1rem; font-weight: 600; }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+  h2 { font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  blockquote { margin: 0 0 1.2rem; padding-left: 1rem; border-left: 3px solid var(--rule);
+    color: var(--ink-2); font-style: italic; }
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename { font: 500 .72rem/1 ui-monospace, monospace; color: var(--ink-3);
+    margin: 0 0 .4rem; letter-spacing: .02em; }
+  .callout { background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem; margin: 0 0 1.4rem; box-shadow: var(--shadow); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label { font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .55rem; }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); }
+  .callout.danger .label { color: var(--danger); }
+  .bridge { background: var(--accent-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin: 1.4rem 0; }
+  .bridge .slug { font: 600 .72rem/1 ui-monospace, monospace; color: var(--accent);
+    display: inline-block; margin-bottom: .5rem; }
+  .bridge p:last-child { margin-bottom: 0; }
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3); }
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+  details { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .85rem 1.1rem; margin: 0 0 1rem; }
+  details summary { cursor: pointer; font-weight: 600; font-size: .95rem;
+    font-family: ui-sans-serif, system-ui, sans-serif; }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+  .toc { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem; margin-bottom: 3rem; box-shadow: var(--shadow); }
+  .toc p { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 5</p>
+  <h1>Integração com LLM</h1>
+  <p class="lede">
+    Duzentas linhas de código e a aula mais densa do projeto. Guardrails que funcionam,
+    contexto como orçamento, e a distinção que separa quem já colocou um modelo em
+    produção de quem ainda não: prompt é orientação, filtro é controle.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: o colega de estudo</li>
+    <li>Teoria 1 — Prompt orienta, código decide</li>
+    <li>Teoria 2 — Filtrar na fonte</li>
+    <li>Teoria 3 — Contexto é orçamento</li>
+    <li>Teoria 4 — Falha é ramo normal</li>
+    <li>Teoria 5 — Provar que é opcional</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercícios</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  Um painel de chat no canto da tela de missão. O jogador pergunta, um modelo local
+  responde. Quatro arquivos, todos opcionais, e a regra que governa tudo:
+</p>
+
+<blockquote>
+  <p>
+    O jogo tem que ser inteiramente jogável e inteiramente educativo com o Ollama
+    desinstalado. Se apagar <code>src/codequest/mentor/</code> quebrar qualquer coisa fora
+    dessa pasta, a integração está errada.
+  </p>
+</blockquote>
+
+<p>
+  O ensino já estava pronto antes desta fase: analogia, explicação, exemplo, três degraus
+  de dica, tudo escrito à mão em YAML. O mentor não é o professor. É o colega ao lado.
+</p>
+
+<h2>2. A analogia: o colega de estudo</h2>
+
+<p>
+  Duas pessoas podem te ajudar numa prova, e a diferença entre elas é tudo.
+</p>
+
+<p>
+  A primeira te passa a resposta. Você entrega, tira nota, e sai da sala sem saber fazer.
+  Na próxima prova, a pessoa não está lá.
+</p>
+
+<p>
+  A segunda pergunta: "o que acontece se a lista estiver vazia?". Você para, pensa, e
+  encontra o buraco sozinho. Levou mais tempo e você vai lembrar daqui a um mês.
+</p>
+
+<p>
+  O detalhe que essa analogia esconde, e que é o conteúdo técnico desta fase: você pode
+  <em>pedir</em> à primeira pessoa que se comporte como a segunda. Ela vai concordar, e vai
+  falhar em algum momento, porque a tentação de ajudar direto é forte. A única forma de
+  garantir é ela <strong>não ter a resposta</strong>.
+</p>
+
+<h2>3. Teoria 1 — Prompt orienta, código decide</h2>
+
+<p>
+  Esta é a lição mais valiosa do projeto inteiro para quem vai construir com LLM.
+</p>
+
+<p>
+  O system prompt do mentor diz, entre outras coisas:
+</p>
+
+<p class="filename">src/codequest/mentor/policy.py</p>
+<pre><code>f"- Never write a function called '{entrypoint}'. That is the mission.\n"</code></pre>
+
+<p>
+  Isso <strong>funciona</strong>. Reduz muito a frequência com que o modelo entrega a
+  resposta. E é exatamente por funcionar quase sempre que é perigoso confiar nele: você
+  para de pensar no caso em que não funciona.
+</p>
+
+<div class="callout danger">
+  <span class="label">A distinção</span>
+  <p>
+    Um prompt <strong>desloca probabilidade</strong>. Um filtro <strong>decide</strong>.
+  </p>
+  <p>
+    Qualquer coisa que você precise <em>garantir</em> exige código de um dos lados do
+    modelo. Qualquer coisa que você apenas <em>prefira</em> pode viver no prompt.
+  </p>
+</div>
+
+<p>
+  Então o mentor tem duas camadas de verdade, e o prompt não é nenhuma delas:
+</p>
+
+<figure>
+<svg viewBox="0 0 700 210" role="img" aria-label="As duas camadas de guardrail em volta do modelo">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a837a"/>
+    </marker>
+  </defs>
+  <g font-family="ui-monospace, monospace" font-size="11">
+    <rect x="8" y="52" width="120" height="42" rx="6" fill="#e2efee" stroke="#1f6f6b"/>
+    <text x="68" y="70" text-anchor="middle" fill="#1c1a17">missao</text>
+    <text x="68" y="85" text-anchor="middle" font-size="9.5" fill="#55504a">+ solution</text>
+
+    <rect x="182" y="52" width="130" height="42" rx="6" fill="none" stroke="#1f6f6b" stroke-width="1.6"/>
+    <text x="247" y="70" text-anchor="middle" fill="currentColor">montagem</text>
+    <text x="247" y="85" text-anchor="middle" font-size="9.5" fill="#8a837a">CAMADA 1</text>
+
+    <rect x="366" y="52" width="110" height="42" rx="6" fill="none" stroke="#8a837a" stroke-dasharray="4 3"/>
+    <text x="421" y="77" text-anchor="middle" fill="currentColor">modelo</text>
+
+    <rect x="530" y="52" width="130" height="42" rx="6" fill="none" stroke="#1f6f6b" stroke-width="1.6"/>
+    <text x="595" y="70" text-anchor="middle" fill="currentColor">filtro de saida</text>
+    <text x="595" y="85" text-anchor="middle" font-size="9.5" fill="#8a837a">CAMADA 2</text>
+  </g>
+  <g fill="none" stroke="#8a837a" stroke-width="1.2">
+    <line x1="130" y1="73" x2="178" y2="73" marker-end="url(#a)"/>
+    <line x1="314" y1="73" x2="362" y2="73" marker-end="url(#a)"/>
+    <line x1="478" y1="73" x2="526" y2="73" marker-end="url(#a)"/>
+  </g>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#8a837a">
+    <text x="182" y="120">a solution nunca entra</text>
+    <text x="182" y="134">os hidden nunca entram</text>
+    <text x="366" y="120">o system prompt pede</text>
+    <text x="366" y="134">para nao responder</text>
+    <text x="366" y="148" fill="#a8442a">isso nao e garantia</text>
+    <text x="530" y="120">def &lt;entrypoint&gt;( ?</text>
+    <text x="530" y="134">entao substitui</text>
+    <text x="8" y="185" font-size="10.5" fill="#55504a">O modelo nao pode vazar o que nunca recebeu. E o que passar, ainda e checado.</text>
+  </g>
+</svg>
+<figcaption>Duas camadas de código em volta de uma camada de esperança.</figcaption>
+</figure>
+
+<p class="filename">src/codequest/mentor/policy.py</p>
+<pre><code>def filter_reply(text: str, entrypoint: str) -> tuple[str, bool]:
+    """Screen a reply before it reaches the player."""
+    if defines_entrypoint(text, entrypoint):
+        return REDACTION, True
+    return text, False</code></pre>
+
+<h3>O filtro é deliberadamente estreito</h3>
+
+<p>
+  Ele procura uma <strong>definição</strong> de função com o nome do entrypoint, não a
+  menção do nome:
+</p>
+
+<pre><code>pattern = rf"^\s*(?:async\s+)?def\s+{re.escape(entrypoint)}\s*\("</code></pre>
+
+<p>
+  Um mentor que não pode dizer "sum_list" não consegue fazer uma pergunta útil. Bloquear a
+  palavra seria filtrar o sintoma errado — o que entrega o trabalho é a definição, não o
+  substantivo. Há testes para os dois lados:
+</p>
+
+<p class="filename">tests/unit/test_mentor.py</p>
+<pre><code>def test_merely_naming_the_function_is_allowed():
+    """A mentor that cannot say the function's name cannot ask a useful question."""
+    reply = "What should sum_list return when the list is empty?"
+
+    text, redacted = filter_reply(reply, "sum_list")
+
+    assert not redacted
+    assert text == reply</code></pre>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:guardrails]</span>
+  <p>
+    Carregue essa distinção para toda feature com LLM. "Não invente fatos" no prompt reduz
+    alucinação; um verificador que confere cada afirmação contra a fonte é o que garante.
+    "Só responda sobre nossos produtos" reduz desvio; um classificador na entrada decide.
+  </p>
+  <p>
+    A pergunta que separa as duas: <strong>se isso falhar uma vez em cem, é aceitável?</strong>
+    Se for, prompt basta. Se não for, você precisa de código — e precisa aceitar o custo
+    de falsos positivos que vem junto.
+  </p>
+</div>
+
+<h2>4. Teoria 2 — Filtrar na fonte</h2>
+
+<p>
+  A camada 1 é mais forte que a 2, e vale entender por quê.
+</p>
+
+<p>
+  A missão tem um campo <code>solution</code> com a resposta completa, e casos de teste
+  escondidos com os valores esperados. Nenhum dos dois entra no contexto. Não são
+  removidos depois — <strong>nunca são montados</strong>:
+</p>
+
+<p class="filename">src/codequest/mentor/prompts.py</p>
+<pre><code>    What goes in, and why each field earns its place:
+
+    - **system** - the role and the standing policy
+    - **brief** - without it the mentor cannot tell right from wrong
+    - **concepts** - lets it name what was taught instead of inventing vocabulary
+    - **player code** - the actual subject of nearly every question
+    - **last verdict** - where they are stuck, which is usually the whole answer
+    - **hints used** - so it does not repeat a rung they already paid for
+
+    What stays out, on purpose: ``mission.solution`` and the hidden test cases.</code></pre>
+
+<p>
+  A diferença entre "filtrar na fonte" e "filtrar depois" é a diferença entre uma
+  propriedade e um procedimento. Um dado que nunca foi enviado não pode vazar por prompt
+  injection, por bug no filtro, por mudança de modelo ou por alguém que refatorou sem
+  entender. Um dado enviado e filtrado depende de o filtro estar certo, para sempre.
+</p>
+
+<p>
+  E existe uma terceira camada, barata, que guarda contra o refactor descuidado:
+</p>
+
+<p class="filename">src/codequest/mentor/policy.py</p>
+<pre><code>def is_safe_context(payload: str, mission_solution: str, hidden_values: list[str]) -> bool:
+    """Assert that nothing forbidden made it into the assembled context.
+
+    Belt and braces over the filtering that already happened at assembly time. Cheap, and
+    the failure it guards against - a refactor quietly widening what gets sent - is
+    exactly the kind that survives code review.
+    """</code></pre>
+
+<div class="callout">
+  <span class="label">Vale reparar em quem checa</span>
+  <p>
+    Essa função é chamada <strong>pelos testes</strong>, não em produção. É uma asserção
+    sobre o comportamento do sistema, não um filtro em tempo de execução.
+  </p>
+  <p>
+    A hierarquia inteira, do mais forte ao mais fraco: <em>não montar</em> &gt;
+    <em>filtrar na saída</em> &gt; <em>testar que não vaza</em> &gt; <em>pedir no
+    prompt</em>. Use quantas camadas o risco justificar, e saiba qual é qual.
+  </p>
+</div>
+
+<h2>5. Teoria 3 — Contexto é orçamento</h2>
+
+<p>
+  O reflexo de quem começa é mandar tudo. O modelo tem 128 mil tokens de janela, a missão
+  cabe folgada, então por que escolher?
+</p>
+
+<p>Três razões, e nenhuma é a janela:</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Custo</th><th>Por quê</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Atenção</strong></td><td>Cada token irrelevante compete com os relevantes. Contexto mais longo com a mesma informação costuma dar resposta pior</td></tr>
+    <tr><td><strong>Latência</strong></td><td>Prefill é proporcional ao tamanho. Num modelo local, num laptop, isso é a diferença entre útil e abandonado</td></tr>
+    <tr><td><strong>Superfície de vazamento</strong></td><td>Tudo que entra pode sair. Este projeto é a prova: enviar a <code>solution</code> tornaria o mentor um botão de "revelar resposta"</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  O contexto real do CodeQuest tem cerca de <strong>1.200 caracteres</strong>. Cada campo
+  tem justificativa escrita no docstring. O campo mais valioso, aliás, não é o código do
+  jogador:
+</p>
+
+<p class="filename">src/codequest/mentor/prompts.py</p>
+<pre><code>    where = "a visible test" if failure.visible else "a hidden test"
+    return f"Their last run failed on {where}. {failure.detail}"</code></pre>
+
+<p>
+  <em>Onde a pessoa travou</em> costuma ser a resposta inteira. Um jogador que digita
+  "não entendi" com um veredito de "esperado 0 para lista vazia, recebido None" anexado
+  recebe ajuda muito melhor do que a pergunta merecia.
+</p>
+
+<p>
+  Repare também que essa linha <strong>não pode</strong> vazar o valor esperado de um caso
+  escondido, e não porque alguém lembrou de tomar cuidado: ela lê o
+  <code>failure.detail</code>, que o evaluator da Fase 1 já escreve sem o valor. A
+  restrição se sustenta por construção.
+</p>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:context-assembly]</span>
+  <p>
+    O exercício que transfere: pegue o seu prompt de produção e, campo por campo, responda
+    <strong>"por que isto está aqui, e o que piora se eu tirar?"</strong>. Todo campo sem
+    resposta boa é candidato a sair.
+  </p>
+  <p>
+    Em RAG isso vira a decisão de quantos chunks recuperar. A resposta quase nunca é "o
+    máximo que couber". Três chunks bons superam vinte medianos, e a diferença aparece nas
+    perguntas difíceis, que são as que importam.
+  </p>
+</div>
+
+<h2>6. Teoria 4 — Falha é ramo normal</h2>
+
+<p>
+  Nesta máquina, agora, o Ollama está instalado e parado. Esse é o estado real, e é por
+  isso que ele é o primeiro caso tratado, não o último.
+</p>
+
+<p class="filename">src/codequest/mentor/client.py</p>
+<pre><code>class MentorState(StrEnum):
+    READY = "ready"
+    THINKING = "thinking"
+    OFFLINE = "offline"
+    MODEL_MISSING = "model_missing"
+    TIMED_OUT = "timed_out"
+    ERROR = "error"</code></pre>
+
+<p>
+  Quatro modos de falha, cada um com nome e mensagem própria. Isso é a taxonomia de falha
+  da Fase 1 aplicada de novo, e a razão é a mesma: <strong>"algo deu errado" não é
+  informação</strong>.
+</p>
+
+<pre><code>Mentor offline. Ollama is not answering on http://localhost:11434.
+Start it with `ollama serve`, or keep playing - the game teaches without it.</code></pre>
+
+<p>
+  Compare com o que o servidor responde quando está de pé mas sem o modelo:
+</p>
+
+<pre><code>Mentor offline. Ollama is running but the model `gemma4:cloud` is not installed.
+Install it with `ollama pull gemma4:cloud`.</code></pre>
+
+<p>
+  São problemas diferentes com ações diferentes. Colapsar os dois em "mentor indisponível"
+  transfere para o jogador o trabalho de diagnosticar — e ele não tem como.
+</p>
+
+<h3>Nenhum método levanta exceção por rede</h3>
+
+<p class="filename">src/codequest/mentor/client.py</p>
+<pre><code>try:
+    response = httpx.post(f"{self.host}/api/chat", json=payload, timeout=self.timeout_seconds)
+except httpx.TimeoutException:
+    return self._failure(MentorState.TIMED_OUT)
+except httpx.HTTPError:
+    return self._failure(MentorState.OFFLINE)</code></pre>
+
+<p>
+  Uma exceção que sobe seria uma feature opcional derrubando o jogo. Retornar estado é o
+  que torna "opcional" verdade em vez de intenção.
+</p>
+
+<h3>E nenhum retry</h3>
+
+<div class="callout honest">
+  <span class="label">Uma escolha que merece defesa</span>
+  <p>
+    O cliente tenta uma vez. Sem retry, sem backoff.
+  </p>
+  <p>
+    O raciocínio: uma máquina que já está com dificuldade de servir um modelo local não
+    melhora sendo martelada, e o jogador está a uma tecla de perguntar de novo. Retry
+    automático faz sentido quando a falha é transitória e o usuário não está presente —
+    aqui ele está, olhando para a tela.
+  </p>
+  <p>
+    Num pipeline de agente sem ninguém olhando, a resposta seria a oposta. A decisão
+    depende de quem está esperando.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:graceful-degradation]</span>
+  <p>
+    Para uma feature com LLM, <strong>falha é ramo normal, não excepcional</strong>.
+    Modelo fora do ar, modelo lento, rate limit, resposta em formato errado, resposta
+    vazia — tudo isso é terça-feira.
+  </p>
+  <p>
+    A prática: antes de escrever o caminho feliz, liste os estados de falha e decida o que
+    o usuário vê em cada um. Se algum estado leva a "não sei o que mostrar", você
+    encontrou um buraco no design da feature, não um detalhe de implementação.
+  </p>
+</div>
+
+<h2>7. Teoria 5 — Provar que é opcional</h2>
+
+<p>
+  "O mentor é opcional" é fácil de dizer e fácil de quebrar sem perceber. Basta alguém
+  adicionar um import conveniente no topo de um arquivo.
+</p>
+
+<p>
+  O padrão correto é importar dentro da função:
+</p>
+
+<p class="filename">src/codequest/tui/widgets/mentor_chat.py</p>
+<pre><code>@work(thread=True, exclusive=True)
+def _ask(self, question: str) -> None:
+    """Talk to the model off the UI thread.
+
+    The import lives here rather than at the top of the file: the mentor package is
+    optional, and a module-scope import would make deleting it a crash on startup.
+    """
+    from codequest.mentor.client import MentorState, OllamaClient</code></pre>
+
+<p>
+  E o teste que garante isso encontrou um bug no teste que já existia — o que é a parte
+  interessante da história.
+</p>
+
+<div class="callout honest">
+  <span class="label">O bug no teste</span>
+  <p>
+    O <code>test_architecture.py</code> usava <code>ast.walk()</code>, que percorre a
+    árvore <em>inteira</em>, inclusive dentro de funções. Então ele sinalizou o import
+    local — o padrão que a regra existe para exigir.
+  </p>
+  <p>
+    O docstring dizia "module scope" e o código não fazia isso. A correção foi separar duas
+    perguntas que pareciam a mesma:
+  </p>
+</div>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Pergunta</th><th>Escopo que conta</th><th>Por quê</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Esta camada depende daquela?</td>
+      <td>qualquer escopo</td>
+      <td>Esconder uma dependência proibida dentro de uma função não faz dela uma não-dependência</td>
+    </tr>
+    <tr>
+      <td>Aquele pacote é opcional?</td>
+      <td>só escopo de módulo</td>
+      <td>Import dentro de função é exatamente como se torna um pacote opcional. Sinalizar seria proibir o padrão exigido</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  E a prova final não é um teste, é uma medição. Renomear a pasta e rodar a suíte inteira:
+</p>
+
+<pre><code>$ mv src/codequest/mentor src/codequest/_mentor_disabled
+$ pytest -q
+# conjunto de falhas IDENTICO ao de antes
+
+$ python -c "from codequest.tui.app import CodeQuestApp"
+CodeQuestApp importa sem o mentor: OK</code></pre>
+
+<h2>8. A ponte com AI Engineering</h2>
+
+<p>
+  Esta fase inteira é AI Engineering, então a tabela é curta e a lista de princípios é
+  longa.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>No CodeQuest</th><th>O princípio</th></tr></thead>
+  <tbody>
+    <tr><td>Filtro do entrypoint na saída</td><td>Guardrail é código. Prompt é preferência</td></tr>
+    <tr><td><code>solution</code> nunca montada</td><td>Não enviar vence filtrar depois, sempre</td></tr>
+    <tr><td>1.200 chars de contexto</td><td>Contexto é orçamento de atenção, não só de janela</td></tr>
+    <tr><td>Verdict no contexto</td><td>Onde o usuário travou vale mais que o que ele digitou</td></tr>
+    <tr><td>Quatro estados de falha nomeados</td><td>Falha é ramo normal com UX própria</td></tr>
+    <tr><td>Uma tentativa, sem retry</td><td>A política de retry depende de haver alguém esperando</td></tr>
+    <tr><td>Import dentro da função</td><td>Opcionalidade verificada, não prometida</td></tr>
+    <tr><td>31 testes, zero rede</td><td>Testar integração de LLM sem chamar o modelo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <span class="label">A frase que resume o projeto inteiro</span>
+  <p>
+    Desde a Fase 1, toda decisão importante deste repositório segue o mesmo padrão:
+    <strong>tornar o resultado ruim estruturalmente impossível, em vez de filtrar para que
+    não aconteça.</strong>
+  </p>
+  <p>
+    O jogador não forja o resultado porque não alcança o canal. O processo não trava o jogo
+    porque é outro processo. O XP não é pago duas vezes porque o estado persistido decide.
+    E o mentor não entrega a resposta porque nunca a recebeu.
+  </p>
+  <p>
+    Filtrar é o que sobra quando não dá para tornar impossível. É a segunda melhor opção,
+    e reconhecer qual das duas você está usando é metade do trabalho.
+  </p>
+</div>
+
+<h2>9. Exercícios</h2>
+
+<details>
+  <summary>1. Se o filtro de saída existe, por que se dar ao trabalho de não montar a solução no contexto?</summary>
+  <p>
+    Porque o filtro procura uma coisa específica: <code>def &lt;entrypoint&gt;(</code>. Um
+    modelo que descreve a solução em prosa passa. Um modelo que a escreve com outro nome
+    passa. Um modelo que a devolve em pseudocódigo passa.
+  </p>
+  <p>
+    Filtro pega o vazamento que você <em>previu</em>. Não enviar pega todos, inclusive os
+    que você não pensou — e continua pegando depois de trocar de modelo, coisa que uma
+    regex não garante.
+  </p>
+</details>
+
+<details>
+  <summary>2. O sistema tem 128k de janela e o contexto usa 1.200 caracteres. Por que não mandar a missão inteira, incluindo todos os testes?</summary>
+  <p>
+    Os testes escondidos são o motivo imediato: mandá-los transformaria a suíte oculta numa
+    tabela de consulta, e a missão pararia de pegar respostas chumbadas.
+  </p>
+  <p>
+    Mas mesmo o que é inofensivo tem custo. Atenção é finita dentro da janela — informação
+    irrelevante compete com a relevante. E num modelo local o prefill é a diferença entre
+    dois e quinze segundos, que é a diferença entre usar e desistir.
+  </p>
+  <p>
+    "Cabe na janela" nunca foi o critério. O critério é "isto melhora a resposta?".
+  </p>
+</details>
+
+<details>
+  <summary>3. Você tem um agente de suporte que não pode prometer reembolso. Onde põe essa regra?</summary>
+  <p>
+    <strong>Nas três camadas</strong>, e é importante saber o que cada uma faz:
+  </p>
+  <ol>
+    <li>
+      <strong>Estrutura.</strong> O agente não tem ferramenta de emitir reembolso. Se ele
+      não pode executar, prometer é no máximo constrangedor, não caro.
+    </li>
+    <li>
+      <strong>Prompt.</strong> "Você não pode autorizar reembolsos; encaminhe para um
+      humano." Reduz muito a frequência.
+    </li>
+    <li>
+      <strong>Filtro de saída.</strong> Classificador ou padrão sobre a resposta; se
+      promete reembolso, substitui por um encaminhamento.
+    </li>
+  </ol>
+  <p>
+    A camada 1 é a única que é garantia. As outras duas reduzem probabilidade. E se o custo
+    de errar for alto o bastante, existe a camada zero: um humano aprova antes de enviar.
+  </p>
+</details>
+
+<details>
+  <summary>4. Como você testa uma integração de LLM sem chamar o modelo — e o que esses testes <em>não</em> cobrem?</summary>
+  <p>
+    O que dá para testar sem rede, e este projeto testa: montagem de contexto (o que entra
+    e o que fica de fora), o filtro de saída nos dois sentidos, e cada estado de falha do
+    cliente, com o transporte HTTP mockado.
+  </p>
+  <p>
+    O que <strong>não</strong> dá: se o modelo é bom. Nenhum teste aqui diz se a resposta
+    ajuda, se o tom está certo, ou se ele obedece ao system prompt na prática. Isso é
+    trabalho de eval, com casos escritos à mão e julgamento — a mesma disciplina da Fase 3,
+    aplicada a saída de modelo em vez de a conteúdo.
+  </p>
+  <p>
+    Confundir "meus testes passam" com "meu recurso de IA é bom" é o erro mais comum de
+    quem vem de engenharia tradicional para AI Engineering. Testes cobrem a máquina em
+    volta do modelo. A qualidade do modelo é medida, não testada.
+  </p>
+</details>
+
+<footer>
+  <p>
+    CodeQuest — Fase 5. Todo código nesta página é o código real do repositório.<br>
+    Bookmarks correspondentes: <code>guardrails</code>, <code>context-assembly</code>,
+    <code>graceful-degradation</code>.<br>
+    Índice completo em <code>docs/ai-eng-bookmarks.md</code>.
+    Aula anterior: <code>Fase4-Interface-e-Estado-Reativo.html</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

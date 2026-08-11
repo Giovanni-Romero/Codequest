@@ -321,6 +321,7 @@ The rule that matters most: one mission introduces **one** new concept.
 | `docs/curriculum/` | Concept ordering and learning objectives |
 | `docs/ai-eng-bookmarks.md` | The 21 places in this code that teach something about AI engineering |
 | `docs/project-audit.md` | What was owed when the Python track closed, and what is deferred on purpose |
+| `docs/aulas/` | One HTML lesson per phase, teaching the AI-engineering concept that phase's code carries. Portuguese — the one deliberate exception to the English-only rule |
 | `AGENTS.md` | How AI agents should work in this repo |
 
 ---

@@ -8,8 +8,10 @@ A regra que os governa esta no `CLAUDE.md` secao 9: o comentario diz **a ponte**
 que a linha faz. "Faz parse de YAML" nao vale nada; "dado declarativo externo precisa ser
 validado, igual a structured output de LLM" e o ponto.
 
-Ao final de cada fase sai tambem uma aula em HTML em `D:\Projetos\2026\_AI_Eng_Aulas`
-cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
+Ao final de cada fase sai tambem uma aula em HTML cobrindo estes mesmos conceitos com
+teoria, diagrama e exercicio. Ela e escrita em `D:\Projetos\2026\_AI_Eng_Aulas` e
+espelhada em [`aulas/`](aulas/), que tem o indice e diz quais slugs cada aula cobre —
+e quais quatro ainda nao aparecem em aula nenhuma.
 
 **21 bookmarks.** Ordenados por arquivo: primeiro o codigo, depois as duas pontes que
 vivem numa missao.

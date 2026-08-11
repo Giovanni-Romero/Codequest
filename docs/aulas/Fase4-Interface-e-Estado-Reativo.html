@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 4: Interface e estado reativo</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #7a4b8c;
+    --accent-soft: #f0e9f3; --warn: #8a6d1f; --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+      --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #c39bd3;
+      --accent-soft: #261c2b; --warn: #d4b45e; --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #7a4b8c;
+    --accent-soft: #f0e9f3; --warn: #8a6d1f; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #c39bd3;
+    --accent-soft: #261c2b; --warn: #d4b45e; --code-bg: #191712;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+  header.top { padding: 4rem 0 2.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 3rem; }
+  .eyebrow { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1rem; }
+  h1 { font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 1rem; font-weight: 600; }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+  h2 { font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename { font: 500 .72rem/1 ui-monospace, monospace; color: var(--ink-3);
+    margin: 0 0 .4rem; letter-spacing: .02em; }
+  .callout { background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem; margin: 0 0 1.4rem; box-shadow: var(--shadow); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label { font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .55rem; }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+  .bridge { background: var(--accent-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin: 1.4rem 0; }
+  .bridge .slug { font: 600 .72rem/1 ui-monospace, monospace; color: var(--accent);
+    display: inline-block; margin-bottom: .5rem; }
+  .bridge p:last-child { margin-bottom: 0; }
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3); }
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+  details { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .85rem 1.1rem; margin: 0 0 1rem; }
+  details summary { cursor: pointer; font-weight: 600; font-size: .95rem;
+    font-family: ui-sans-serif, system-ui, sans-serif; }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+  .toc { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem; margin-bottom: 3rem; box-shadow: var(--shadow); }
+  .toc p { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 4</p>
+  <h1>Interface e estado reativo</h1>
+  <p class="lede">
+    A camada mais descartável do projeto, e a que revelou quatro bugs que três fases de
+    testes não tinham encontrado. Interface é onde as suposições vão morrer.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: a vitrine e o estoque</li>
+    <li>Teoria 1 — A UI é descartável, e isso é o produto</li>
+    <li>Teoria 2 — Não bloquear o loop de eventos</li>
+    <li>Teoria 3 — Estado compartilhado entre threads</li>
+    <li>Teoria 4 — Testar interface sem abrir os olhos</li>
+    <li>Os quatro bugs que só a interface encontrou</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercícios</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  Cinco telas, três widgets e uma folha de estilo. O jogo passou de "um motor com CLI"
+  para algo que alguém abre e joga:
+</p>
+
+<pre><code>$ python -m codequest ui</code></pre>
+
+<p>
+  Menu de linguagem, quatro slots de save, mapa de ilhas com desbloqueio progressivo,
+  tela de missão com editor e resultados, painel de dicas, tela de configuração. Tudo
+  navegável só pelo teclado, com a paleta de carta náutica noturna que o documento de
+  arte fixou antes de existir uma linha de CSS.
+</p>
+
+<p>
+  E, principalmente: <strong>zero lógica de jogo</strong>. Nenhuma tela calcula XP,
+  decide desbloqueio ou compara resposta com esperado. Elas chamam os serviços que já
+  existiam e renderizam a resposta.
+</p>
+
+<h2>2. A analogia: a vitrine e o estoque</h2>
+
+<p>
+  Uma loja tem vitrine e estoque. A vitrine muda toda estação: manequim novo, iluminação
+  nova, arrumação nova. O estoque não muda por causa disso — as caixas continuam onde
+  estavam, com o mesmo conteúdo e o mesmo sistema de contagem.
+</p>
+
+<p>
+  Se o vendedor da vitrine começar a anotar quantidades num caderno próprio, a loja passa
+  a ter duas contagens. Elas vão divergir, e o dia em que divergirem ninguém vai saber
+  qual está certa.
+</p>
+
+<p>
+  A regra de camadas do CodeQuest é exatamente isso: a vitrine pode ser refeita inteira,
+  desde que ela nunca guarde a contagem. É o que permite dizer, sem bravata, que trocar a
+  interface por uma web não tocaria em nada abaixo dela.
+</p>
+
+<h2>3. Teoria 1 — A UI é descartável, e isso é o produto</h2>
+
+<p>
+  A regra que governa esta fase estava escrita antes de a fase começar:
+</p>
+
+<div class="callout">
+  <span class="label">Regra de camada</span>
+  <p>
+    <code>tui/</code> importa apenas <code>services/</code> e <code>models/</code>.
+    Nunca <code>engine/</code>, nunca <code>storage/</code>.
+  </p>
+</div>
+
+<p>
+  Isso levantou um problema concreto na primeira hora: alguém precisa abrir a conexão
+  SQLite, e a UI não pode. A solução foi um seam novo:
+</p>
+
+<p class="filename">src/codequest/services/bootstrap.py</p>
+<pre><code>@dataclass(frozen=True, slots=True)
+class GameContext:
+    """Everything a front end needs, wired together and ready to use."""
+
+    settings: Settings
+    missions: MissionService
+    progress: ProgressService
+    session: GameSession
+    connection: sqlite3.Connection</code></pre>
+
+<p>
+  <code>services/</code> pode conhecer <code>storage/</code>. A UI recebe o
+  <code>GameContext</code> pronto e nunca descobre que existe um banco de dados. A CLI usa
+  a mesma função, então as duas interfaces são ligadas de forma idêntica.
+</p>
+
+<h3>O teste que torna isso real</h3>
+
+<p>
+  A regra não vive num documento. <code>tests/integration/test_architecture.py</code>
+  percorre a AST de cada arquivo e falha se um import proibido aparecer. Escrever a Fase 4
+  inteira com esse teste ligado significa que a violação seria pega no minuto em que fosse
+  cometida, não numa revisão futura que talvez nunca aconteça.
+</p>
+
+<p>
+  E há uma prova mais forte, que a Fase 5 permitiu fazer: <strong>renomear
+  <code>src/codequest/mentor/</code> e rodar a suíte inteira</strong>. O conjunto de
+  falhas foi idêntico com e sem a pasta. Isso não é um argumento sobre a arquitetura, é
+  uma medição dela.
+</p>
+
+<h2>4. Teoria 2 — Não bloquear o loop de eventos</h2>
+
+<p>
+  Uma interface é um laço: pega evento, processa, redesenha, repete. Milhares de vezes por
+  segundo. Se qualquer processamento demorar, o laço para — e uma janela parada é
+  indistinguível de uma janela travada.
+</p>
+
+<p>
+  No CodeQuest, apertar F5 dispara <em>um subprocess por caso de teste</em>. Oito casos,
+  alguns segundos. Na thread da UI isso é a tela congelada.
+</p>
+
+<figure>
+<svg viewBox="0 0 700 200" role="img" aria-label="Comparacao entre rodar na thread da UI e num worker">
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="11">
+    <text x="4" y="16" fill="#8a837a">NA THREAD DA UI</text>
+    <rect x="4" y="26" width="90" height="26" rx="4" fill="none" stroke="#8a837a"/>
+    <text x="49" y="43" text-anchor="middle" fill="currentColor">F5</text>
+    <rect x="100" y="26" width="470" height="26" rx="4" fill="#f0e9f3" stroke="#7a4b8c"/>
+    <text x="335" y="43" text-anchor="middle" fill="#1c1a17">8 subprocessos - tela congelada, sem redesenho</text>
+    <rect x="576" y="26" width="118" height="26" rx="4" fill="none" stroke="#8a837a"/>
+    <text x="635" y="43" text-anchor="middle" fill="currentColor">resultado</text>
+
+    <text x="4" y="92" fill="#8a837a">COM @work(thread=True)</text>
+    <rect x="4" y="102" width="90" height="26" rx="4" fill="none" stroke="#8a837a"/>
+    <text x="49" y="119" text-anchor="middle" fill="currentColor">F5</text>
+    <rect x="100" y="102" width="470" height="26" rx="4" fill="none" stroke="#7a4b8c" stroke-dasharray="4 3"/>
+    <text x="335" y="119" text-anchor="middle" fill="currentColor">worker roda em paralelo</text>
+    <rect x="576" y="102" width="118" height="26" rx="4" fill="none" stroke="#8a837a"/>
+    <text x="635" y="119" text-anchor="middle" fill="currentColor">resultado</text>
+
+    <rect x="100" y="136" width="58" height="22" rx="3" fill="#f0e9f3" stroke="#7a4b8c"/>
+    <text x="129" y="151" text-anchor="middle" font-size="10" fill="#1c1a17">caso 1/8</text>
+    <rect x="218" y="136" width="58" height="22" rx="3" fill="#f0e9f3" stroke="#7a4b8c"/>
+    <text x="247" y="151" text-anchor="middle" font-size="10" fill="#1c1a17">caso 2/8</text>
+    <rect x="336" y="136" width="58" height="22" rx="3" fill="#f0e9f3" stroke="#7a4b8c"/>
+    <text x="365" y="151" text-anchor="middle" font-size="10" fill="#1c1a17">caso 3/8</text>
+    <text x="410" y="151" font-size="10" fill="#8a837a">... a UI redesenha entre cada um</text>
+    <text x="4" y="182" font-size="10" fill="#8a837a">A barra e determinada, nao um spinner: o motor sabe o total.</text>
+  </g>
+</svg>
+<figcaption>O worker devolve o progresso pelo callback on_case, que foi adicionado ao motor nesta fase.</figcaption>
+</figure>
+
+<p class="filename">src/codequest/tui/screens/mission.py</p>
+<pre><code>@work(thread=True, exclusive=True)
+def _run_attempt(self, code: str) -> None:
+    def report(done: int, _total: int) -> None:
+        # Widgets may only be touched from the UI thread, so hop back for each update.
+        self.app.call_from_thread(self._show_progress, done, total)
+
+    outcome = context.session.attempt(..., on_case=report)
+    self.app.call_from_thread(self._show_outcome, outcome)</code></pre>
+
+<h3>Por que barra determinada e não spinner</h3>
+
+<p>
+  Um spinner diz "estou trabalhando". Uma barra diz "caso 3 de 8". O motor já sabia o
+  total — usar spinner seria <em>esconder informação que temos</em>, e a regra está no
+  documento de arte:
+</p>
+
+<blockquote>
+  <p>
+    O motor sabe quantos casos existem, então um spinner esconderia informação que ele já
+    tem.
+  </p>
+</blockquote>
+
+<p>
+  Isso exigiu um parâmetro novo no motor. Opcional, com default <code>None</code>, de modo
+  que a CLI e todos os testes existentes continuaram funcionando sem alteração — e com uma
+  proteção que vale notar:
+</p>
+
+<p class="filename">src/codequest/services/game_session.py</p>
+<pre><code>if on_case is not None:
+    # A misbehaving observer must not fail an attempt that actually ran. The
+    # progress bar is decoration; the verdict is the product.
+    with contextlib.suppress(Exception):
+        on_case(index, total)</code></pre>
+
+<h2>5. Teoria 3 — Estado compartilhado entre threads</h2>
+
+<p>
+  Tirar o trabalho da thread da UI resolveu o congelamento e criou um problema novo, que é
+  o assunto mais transferível desta fase.
+</p>
+
+<div class="callout honest">
+  <span class="label">O erro, literal</span>
+  <p>
+    <code>SQLite objects created in a thread can only be used in that same thread.
+    The object was created in thread id 5148 and this is thread id 25240.</code>
+  </p>
+</div>
+
+<p>
+  A conexão nasceu na thread principal. O worker roda a tentativa <em>e persiste o
+  resultado</em>, então toca a conexão de outra thread. O <code>sqlite3</code> do Python
+  bloqueia isso por padrão.
+</p>
+
+<p>
+  A saída preguiçosa seria desligar a checagem e seguir. A saída correta tem duas partes,
+  e a segunda é a que importa:
+</p>
+
+<p class="filename">src/codequest/storage/db.py</p>
+<pre><code># check_same_thread=False because the UI runs an attempt on a worker thread and that
+# attempt persists its result. Python's default guard assumes one connection per
+# thread; the underlying library here reports threadsafety 3 (serialized), so sharing
+# a connection is supported. What is *not* automatic is transaction interleaving, so
+# ProgressService serialises its writers with a lock. Dropping the guard without
+# adding that lock would trade a loud error for a rare corrupted save.
+connection = sqlite3.connect(path, isolation_level=None, check_same_thread=False)</code></pre>
+
+<p>
+  A distinção fina: <code>sqlite3.threadsafety == 3</code> significa que a biblioteca
+  serializa <strong>statements individuais</strong>. Não significa que a sua transação de
+  quatro statements seja atômica em relação a outra thread. Conceder XP toca
+  <code>attempt</code>, <code>progress</code>, <code>profile</code> e possivelmente
+  <code>unlocked_island</code>; revelar uma dica escreve em <code>progress</code>. As duas
+  podem acontecer ao mesmo tempo.
+</p>
+
+<p class="filename">src/codequest/services/progress_service.py</p>
+<pre><code>self._lock = threading.RLock()
+...
+with self._lock, transaction(self.connection):
+    ...</code></pre>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:shared-state]</span>
+  <p>
+    Essa armadilha aparece na primeira vez que um agente dispara chamadas de ferramenta em
+    paralelo. O cliente HTTP é thread-safe, o driver do banco é thread-safe, e a sua
+    operação de vários passos não é — porque ninguém prometeu que seria.
+  </p>
+  <p>
+    A pergunta a fazer: <strong>"o que aqui é uma sequência que precisa ser indivisível?"</strong>
+    A resposta quase nunca é "nada". Bibliotecas garantem a atomicidade das operações
+    delas; a atomicidade da sua operação é sua.
+  </p>
+</div>
+
+<h2>6. Teoria 4 — Testar interface sem abrir os olhos</h2>
+
+<p>
+  Interface é onde suíte de teste costuma apodrecer, e a razão é que a maioria das
+  tentativas testa a coisa errada. Esta fase usa duas técnicas, que respondem perguntas
+  diferentes.
+</p>
+
+<h3>Pilot: o programa funciona?</h3>
+
+<p>
+  A API <code>run_test()</code> do Textual sobe o app sem terminal, envia teclas de
+  verdade e deixa você inspecionar os widgets. Testa <strong>comportamento</strong>:
+</p>
+
+<p class="filename">tests/integration/test_tui_flow.py</p>
+<pre><code>async def test_two_hints_then_solving_pays_the_discounted_xp(app):
+    """A regra da Fase 3, chegando ao jogador pela interface pela primeira vez."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+
+        await pilot.press("f1")
+        await pilot.press("f1")
+        await pilot.pause()
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = CORRECT_SUM_LIST
+        await pilot.press("f5")
+        await pilot.pause(delay=6)
+
+        profile = pilot.app.context.progress.profiles.get_by_name("giovanni")
+        assert profile.total_xp == 7</code></pre>
+
+<p>
+  Repare no que esse teste cobre: uma regra de negócio da fase anterior, verificada
+  atravessando a interface inteira. É teste de integração de verdade, não de widget.
+</p>
+
+<h3>Snapshot: continua parecendo o que foi desenhado?</h3>
+
+<p>
+  Cada tela é renderizada em SVG e comparada com uma imagem guardada. Pega o que o pilot
+  não vê: uma borda que sumiu, uma cor que tornou "bloqueado" indistinguível de
+  "disponível", uma faixa responsiva que parou de refluir.
+</p>
+
+<div class="callout honest">
+  <span class="label">O risco de snapshot, dito por inteiro</span>
+  <p>
+    Snapshot é o teste mais fácil de desligar por acidente. Roda
+    <code>--snapshot-update</code>, o vermelho vira verde, o commit passa — e agora o teste
+    aprova qualquer coisa.
+  </p>
+  <p>
+    A disciplina é <strong>olhar o diff antes de aceitar</strong>. Nesta fase, adicionar a
+    tecla F2 ao rodapé mudou 5 dos 10 snapshots, e os outros 5 passaram intactos. Esse
+    "5 e não 10" é a informação: o raio da mudança bateu com a edição. Se os 10 tivessem
+    mudado, alguma coisa mais funda teria acontecido.
+  </p>
+</div>
+
+<h2>7. Os quatro bugs que só a interface encontrou</h2>
+
+<p>
+  Trezentos testes passavam antes desta fase. Todos os quatro bugs abaixo estavam lá
+  esperando, invisíveis, porque nada tinha exercitado esses caminhos.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Bug</th><th>Por que estava escondido</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>SQLite recusou a worker thread</strong></td>
+      <td>A CLI é single-threaded. A restrição existia desde a Fase 2 e nunca tinha sido tocada</td>
+    </tr>
+    <tr>
+      <td><strong><code>Widget._render</code> já existe no Textual</strong></td>
+      <td>Quatro classes sobrescreveram com assinatura diferente. Quebra na hora de pintar, não na de importar — nenhum teste unitário pinta</td>
+    </tr>
+    <tr>
+      <td><strong>O editor engolia F5 e Escape</strong></td>
+      <td>Um <code>TextArea</code> focado consome teclas. Como ele recebe foco ao abrir a missão, os controles do jogo paravam de funcionar sempre</td>
+    </tr>
+    <tr>
+      <td><strong><code>ListView</code> sem linha destacada</strong></td>
+      <td>Depois de reconstruir a lista, <code>Enter</code> não fazia nada. A lista parecia certa e simplesmente se recusava a abrir</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  E um quinto, de outra natureza: o extra <code>textual[syntax]</code> não estava no
+  <code>pyproject.toml</code>. Sem ele,
+  <code>TextArea.code_editor(language="python")</code> devolve um documento comum, sem
+  destaque de sintaxe, <strong>sem levantar erro e sem avisar</strong>. O teste que pega
+  isso não verifica o import:
+</p>
+
+<p class="filename">tests/unit/test_editor_highlighting.py</p>
+<pre><code>def test_the_code_editor_really_parses_python():
+    """The document must be syntax-aware, not merely constructed without error."""
+    editor = TextArea.code_editor("def f(x):\n    return x + 1\n", language="python")
+
+    assert isinstance(editor.document, SyntaxAwareDocument)</code></pre>
+
+<div class="callout">
+  <span class="label">O padrão, que já apareceu quatro vezes neste projeto</span>
+  <p>
+    <code>PRAGMA foreign_keys</code> desligado por padrão. <code>resource.setrlimit</code>
+    ausente no Windows. O extra de sintaxe faltando. Em todos, a API entrega
+    <strong>menos do que parece</strong> e não reclama.
+  </p>
+  <p>
+    O gatilho para desconfiar: sempre que uma capacidade depende de algo externo estar
+    presente — pragma, syscall, extra de pacote, modelo baixado — o caminho degradado
+    costuma ser o silencioso, porque quem escreveu a biblioteca preferiu funcionar mal a
+    não funcionar.
+  </p>
+  <p>
+    A defesa é sempre a mesma e cabe numa frase: <strong>teste a capacidade, não o
+    import.</strong> <code>hasattr(TextArea, "code_editor")</code> passava.
+  </p>
+</div>
+
+<h2>8. A ponte com AI Engineering</h2>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>No CodeQuest</th><th>Em AI Engineering</th></tr></thead>
+  <tbody>
+    <tr><td>UI só chama <code>services/</code></td><td>Interface de chat separada do orquestrador — trocar de front end não toca no agente</td></tr>
+    <tr><td><code>GameContext</code> injetado no app</td><td>Dependências passadas em vez de globais: o mesmo que permite testar um agente sem chamar a API real</td></tr>
+    <tr><td><code>@work(thread=True)</code></td><td>Chamada de LLM nunca no caminho que renderiza. Streaming existe por esse motivo</td></tr>
+    <tr><td>Barra determinada, não spinner</td><td>Mostrar passo 3 de 8 de um agente é possível quando o plano é conhecido, e é melhor que "pensando..."</td></tr>
+    <tr><td>Lock nos writers</td><td>Tool calls concorrentes tocando o mesmo estado</td></tr>
+    <tr><td>Callback que não pode derrubar a operação</td><td>Telemetria e observadores nunca quebram o trabalho que observam</td></tr>
+    <tr><td>Teste de capacidade, não de import</td><td>Verificar que o modelo respondeu no formato pedido, não que a chamada retornou 200</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>9. Exercícios</h2>
+
+<details>
+  <summary>1. Por que <code>tui/</code> não pode importar <code>storage/</code>, se a UI obviamente precisa de dados salvos?</summary>
+  <p>
+    Porque "precisar dos dados" e "saber como eles são guardados" são coisas diferentes. A
+    UI precisa de um <code>Profile</code>; ela não precisa saber que ele veio de SQLite, de
+    JSON ou de um servidor.
+  </p>
+  <p>
+    O benefício concreto não é abstrato: quando o XP parar de ser contado direito, existe
+    <em>um</em> lugar onde a escrita acontece. Se a tela pudesse escrever, você teria que
+    procurar um <code>UPDATE</code> perdido dentro de um widget.
+  </p>
+</details>
+
+<details>
+  <summary>2. O callback <code>on_case</code> engole qualquer exceção do observador. Isso não está escondendo bugs?</summary>
+  <p>
+    Está, de propósito, e a justificativa é a assimetria dos custos. Se o widget de
+    progresso explodir, a alternativa é perder <em>a tentativa inteira</em> — segundos de
+    subprocessos e um veredito válido — para mostrar uma barra.
+  </p>
+  <p>
+    A regra geral: um <strong>observador</strong> nunca deve poder derrubar o que observa.
+    Vale igual para telemetria, logging e webhooks. O que falta aqui, e seria a melhoria
+    honesta, é registrar a exceção em vez de descartá-la em silêncio.
+  </p>
+</details>
+
+<details>
+  <summary>3. <code>sqlite3.threadsafety == 3</code> diz que a conexão pode ser compartilhada. Por que ainda precisa de lock?</summary>
+  <p>
+    Porque o nível 3 garante que <em>um statement</em> não corrompe outro. Não diz nada
+    sobre uma transação de vários statements.
+  </p>
+  <p>
+    Conceder XP faz quatro escritas dentro de um <code>BEGIN</code>/<code>COMMIT</code>.
+    Se outra thread abrir a própria transação no meio, na mesma conexão, o resultado é
+    indefinido. A biblioteca garante a atomicidade das operações dela; a atomicidade da
+    <em>sua</em> operação é sua.
+  </p>
+</details>
+
+<details>
+  <summary>4. Você vai construir uma interface de chat para um agente. Quais três decisões desta fase você copia primeiro?</summary>
+  <ol>
+    <li>
+      <strong>Nada de lógica de agente na UI.</strong> A tela envia a mensagem e renderiza
+      o que voltar. No dia em que existir uma segunda interface — Slack, API, CLI — nada
+      abaixo dela muda.
+    </li>
+    <li>
+      <strong>A chamada nunca na thread que desenha.</strong> Uma resposta de LLM leva
+      segundos. É o mesmo problema do F5, com o mesmo remédio, e é por isso que streaming
+      é o padrão em vez de um luxo.
+    </li>
+    <li>
+      <strong>Progresso determinado quando possível.</strong> Se o agente tem um plano de
+      passos, mostre "passo 3 de 8". Um spinner é o que se usa quando não se sabe — usar
+      quando se sabe é jogar informação fora.
+    </li>
+  </ol>
+  <p>
+    E a quarta, que só se aprende apanhando: <strong>decida o que a tela mostra quando o
+    modelo falha, antes de escrever o caminho feliz.</strong> É o assunto da Fase 5.
+  </p>
+</details>
+
+<footer>
+  <p>
+    CodeQuest — Fase 4. Todo código nesta página é o código real do repositório.<br>
+    Bookmark correspondente: <code>shared-state</code>.<br>
+    Índice completo em <code>docs/ai-eng-bookmarks.md</code>.
+    Aula anterior: <code>Fase3-Curriculo-e-Conteudo-como-Dado.html</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

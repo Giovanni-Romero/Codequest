@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 1: Motor de Execução</title>
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --surface: #ffffff;
+    --surface-2: #f2efe9;
+    --ink: #1c1a17;
+    --ink-2: #55504a;
+    --ink-3: #8a837a;
+    --rule: #e3ded5;
+    --accent: #a8442a;
+    --accent-soft: #f6e9e4;
+    --good: #2f6b43;
+    --warn: #8a6d1f;
+    --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f;
+      --surface: #1c1a16;
+      --surface-2: #23201b;
+      --ink: #ece7dd;
+      --ink-2: #b3ab9e;
+      --ink-3: #837b6f;
+      --rule: #2f2b25;
+      --accent: #e08160;
+      --accent-soft: #2e1f19;
+      --good: #7bb98d;
+      --warn: #d4b45e;
+      --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #a8442a;
+    --accent-soft: #f6e9e4; --good: #2f6b43; --warn: #8a6d1f; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #e08160;
+    --accent-soft: #2e1f19; --good: #7bb98d; --warn: #d4b45e; --code-bg: #191712;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+
+  header.top {
+    padding: 4rem 0 2.5rem;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 3rem;
+  }
+  .eyebrow {
+    font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 6vw, 2.9rem);
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    margin: 0 0 1rem;
+    font-weight: 600;
+  }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+
+  h2 {
+    font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  h4 { font-size: .95rem; font-weight: 600; margin: 1.5rem 0 .4rem; color: var(--ink-2); }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  a { color: var(--accent); }
+
+  code, pre, .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-size: .82rem;
+    line-height: 1.55;
+    margin: 0 0 1.2rem;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename {
+    font: 500 .72rem/1 ui-monospace, monospace;
+    color: var(--ink-3);
+    margin: 0 0 .4rem;
+    letter-spacing: .02em;
+  }
+
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem;
+    margin: 0 0 1.4rem;
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent); display: block; margin-bottom: .55rem;
+  }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+
+  .bridge {
+    background: var(--accent-soft);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.1rem 1.25rem;
+    margin: 1.4rem 0;
+  }
+  .bridge .slug {
+    font: 600 .72rem/1 ui-monospace, monospace;
+    color: var(--accent); display: inline-block; margin-bottom: .5rem;
+  }
+  .bridge p:last-child { margin-bottom: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+  td code { font-size: .82em; }
+
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+
+  details {
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: .85rem 1.1rem;
+    margin: 0 0 1rem;
+  }
+  details summary {
+    cursor: pointer; font-weight: 600; font-size: .95rem;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 1.1rem 1.4rem;
+    margin-bottom: 3rem;
+    box-shadow: var(--shadow);
+  }
+  .toc p { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+           text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+
+  footer {
+    margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 1</p>
+  <h1>O motor de execução</h1>
+  <p class="lede">
+    Como rodar código que você não escreveu, não confia e não pode deixar travar a sua
+    máquina — e por que esse é exatamente o problema de quem constrói agentes.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: a cozinha de teste</li>
+    <li>Teoria 1 — AST: ler código sem executar</li>
+    <li>Teoria 2 — Isolamento de processo</li>
+    <li>Teoria 3 — Separação de canal</li>
+    <li>Teoria 4 — Taxonomia de falha</li>
+    <li>Teoria 5 — Protocolo como ponto de extensão</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercícios</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  A Fase 1 entrega o pedaço do CodeQuest que pega o código que o jogador digitou e
+  responde uma pergunta: <em>isso está certo?</em> Entre a pergunta e a resposta acontecem
+  cinco coisas, em ordem, e cada uma pode interromper a fila.
+</p>
+
+<p>
+  O jogador escreve uma função. O <strong>guard</strong> lê esse texto como uma árvore e
+  recusa construções que a missão proíbe. O <strong>runner</strong> escreve o arquivo num
+  diretório temporário e dispara um processo separado por caso de teste, com relógio na
+  mão. O <strong>harness</strong> — código nosso rodando dentro daquele processo — importa
+  a função do jogador, chama, e devolve o resultado por um canal que o jogador não
+  alcança. O <strong>evaluator</strong> compara o que voltou com o esperado e escreve uma
+  frase que ensina alguma coisa.
+</p>
+
+<figure>
+<svg viewBox="0 0 720 190" role="img" aria-label="Fluxo: código do jogador passa por guard, runner, harness e evaluator">
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.2" color="#8a837a">
+    <line x1="128" y1="52" x2="163" y2="52" marker-end="url(#a1)"/>
+    <line x1="273" y1="52" x2="308" y2="52" marker-end="url(#a1)"/>
+    <line x1="418" y1="52" x2="453" y2="52" marker-end="url(#a1)"/>
+    <line x1="563" y1="52" x2="598" y2="52" marker-end="url(#a1)"/>
+    <line x1="66" y1="76" x2="66" y2="128" marker-end="url(#a1)"/>
+    <line x1="211" y1="76" x2="211" y2="128" marker-end="url(#a1)"/>
+    <line x1="356" y1="76" x2="356" y2="128" marker-end="url(#a1)"/>
+  </g>
+  <g font-family="ui-monospace, monospace" font-size="12">
+    <rect x="8" y="34" width="120" height="36" rx="6" fill="#f6e9e4" stroke="#a8442a" stroke-width="1"/>
+    <text x="68" y="57" text-anchor="middle" fill="#1c1a17">código</text>
+
+    <rect x="163" y="34" width="110" height="36" rx="6" fill="none" stroke="#8a837a"/>
+    <text x="218" y="57" text-anchor="middle" fill="currentColor">guard</text>
+
+    <rect x="308" y="34" width="110" height="36" rx="6" fill="none" stroke="#8a837a"/>
+    <text x="363" y="57" text-anchor="middle" fill="currentColor">runner</text>
+
+    <rect x="453" y="34" width="110" height="36" rx="6" fill="none" stroke="#8a837a"/>
+    <text x="508" y="57" text-anchor="middle" fill="currentColor">harness</text>
+
+    <rect x="598" y="34" width="114" height="36" rx="6" fill="#f6e9e4" stroke="#a8442a" stroke-width="1"/>
+    <text x="655" y="57" text-anchor="middle" fill="#1c1a17">Verdict</text>
+  </g>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" fill="#8a837a">
+    <text x="8" y="146">SYNTAX_ERROR</text>
+    <text x="8" y="160">FORBIDDEN_CONSTRUCT</text>
+    <text x="163" y="146">TIMEOUT</text>
+    <text x="163" y="160">MEMORY_EXCEEDED</text>
+    <text x="308" y="146">RUNTIME_ERROR</text>
+    <text x="308" y="160">MISSING_ENTRYPOINT</text>
+    <text x="8" y="20" font-size="10">entrada não confiável</text>
+    <text x="598" y="20" font-size="10">saída tipada</text>
+  </g>
+</svg>
+<figcaption>Cada etapa é um portão. Sair por um portão produz um motivo específico, nunca "falhou".</figcaption>
+</figure>
+
+<h2>2. A analogia: a cozinha de teste</h2>
+
+<p>
+  Imagine um programa de TV onde candidatos mandam receitas e você precisa provar cada
+  uma. Você não vai cozinhar na sua cozinha de casa.
+</p>
+
+<p>
+  Primeiro você <strong>lê a receita</strong>. Se ela pede "use fermento químico" e a prova
+  era justamente sobre fermentação natural, você devolve sem cozinhar — não porque vai
+  explodir, mas porque cozinhar não testaria nada. Isso é o guard.
+</p>
+
+<p>
+  Depois você cozinha numa <strong>cozinha separada</strong>, com temporizador. Se o
+  candidato escreveu "deixe reduzindo até engrossar" e a panela nunca engrossa, o
+  temporizador toca e você desliga o fogão. A sua casa não pega fogo porque a cozinha não
+  é a sua casa. Isso é o subprocess com timeout.
+</p>
+
+<p>
+  E o prato sai por uma <strong>janela específica</strong>. Se o candidato gritar
+  "está pronto!" do lado de dentro, isso não conta — o que conta é o prato que atravessou
+  a janela. Se o grito e o prato usassem a mesma passagem, qualquer um poderia gritar e
+  ser aprovado. Isso é a separação de canal.
+</p>
+
+<h2>3. Teoria 1 — AST: ler código sem executar</h2>
+
+<p>
+  Uma <strong>AST</strong> (<em>Abstract Syntax Tree</em>, árvore sintática abstrata) é o
+  código representado como estrutura em vez de como texto. Antes de qualquer linha rodar,
+  o Python já converteu o seu arquivo numa árvore de nós: este nó é uma definição de
+  função, aquele é uma chamada, aquele outro é o nome de uma variável sendo lida.
+</p>
+
+<p>
+  A definição formal vem depois da intuição: pense na diferença entre a frase
+  <em>"o gato comeu o peixe"</em> como sequência de letras e como estrutura gramatical
+  (sujeito, verbo, objeto). Um corretor que trabalha em letras não sabe quem comeu quem.
+  Um que trabalha em estrutura sabe.
+</p>
+
+<p>É por isso que o guard usa AST e não expressão regular:</p>
+
+<p class="filename">tests/unit/test_guard.py</p>
+<pre><code>def test_a_word_containing_the_forbidden_name_is_not_a_match():
+    """Um regex marcaria 'summary'. A AST vê um identificador completamente diferente."""
+    report = check("def total(xs):\n    summary = 0\n    return summary\n", NO_SUM)
+
+    assert report.ok</code></pre>
+
+<p>
+  A missão proíbe <code>sum</code>. O texto contém as letras <code>s-u-m</code> três vezes.
+  Nenhuma delas é uma chamada ao builtin, e a árvore sabe disso porque
+  <code>summary</code> é <em>um nó</em>, não três letras seguidas de mais quatro.
+</p>
+
+<h3>O detalhe que quase virou um bug</h3>
+
+<p>
+  A primeira versão do guard marcava qualquer leitura do nome proibido. Um teste quebrou:
+</p>
+
+<p class="filename">src/codequest/engine/guard.py — o problema</p>
+<pre><code>def total(xs):
+    sum = 0          # o jogador criou a própria variável
+    for x in xs:
+        sum = sum + x
+    return sum       # isto NÃO é o builtin</code></pre>
+
+<p>
+  Essa é uma solução correta. Rejeitá-la ensinaria ao jogador que o jogo está quebrado —
+  o pior resultado possível numa ferramenta de ensino. A correção foi uma passada extra
+  que coleta todo nome que o jogador liga a alguma coisa (atribuição, parâmetro,
+  <code>def</code>) e isenta esses nomes da verificação.
+</p>
+
+<div class="callout honest">
+  <span class="label">Honestidade sobre o que isso custa</span>
+  <p>
+    Essa passada é cega a escopo: ligar <code>sum</code> numa função isenta o nome em
+    todas. Dá para trapacear. A escolha foi deliberada e está testada como
+    comportamento conhecido, não escondida — um falso positivo bloqueia uma resposta
+    certa, um falso negativo deixa alguém trapacear no próprio jogo single-player que
+    instalou. Só um dos dois custa alguma coisa.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:blocklist-vs-allowlist]</span>
+  <p>
+    Uma blocklist enumera o proibido. O problema estrutural é a assimetria: quem ataca
+    escolhe de um conjunto infinito, você enumera um finito. <code>getattr(builtins,
+    "s" + "um")</code> monta o nome em tempo de execução e nenhuma análise estática vê.
+  </p>
+  <p>
+    É literalmente o motivo pelo qual filtrar frases suspeitas não resolve prompt
+    injection: uma reformulação passa. O que resolve é <strong>allowlist</strong> —
+    restringir o modelo a um conjunto fixo de ações permitidas com argumentos validados.
+    A ação não nomeada nunca esteve alcançável, então não há o que filtrar.
+  </p>
+</div>
+
+<h2>4. Teoria 2 — Isolamento de processo</h2>
+
+<p>
+  A alternativa preguiçosa a um subprocess é <code>exec()</code>: rodar o código do
+  jogador dentro do próprio interpretador do jogo. Funciona, e é indefensável.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th></th><th><code>exec()</code></th><th>subprocess</th></tr></thead>
+  <tbody>
+    <tr><td>Memória</td><td>compartilhada com o jogo</td><td>separada pelo kernel</td></tr>
+    <tr><td>Loop infinito</td><td>trava o jogo, sem saída</td><td>o pai mata o filho</td></tr>
+    <tr><td>Limite de RAM</td><td>impossível</td><td><code>setrlimit</code> (POSIX)</td></tr>
+    <tr><td>Custo</td><td>microssegundos</td><td>~30 ms por caso</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  Trinta milissegundos por caso de teste é o preço de poder desistir. Vale.
+</p>
+
+<h3>Quem segura o relógio</h3>
+
+<p>
+  O timeout é medido <strong>no processo pai</strong>. Isso não é detalhe de
+  implementação — é a coisa toda. Pedir para o processo filho se limitar sozinho é
+  confiar num processo que pode estar travado exatamente porque não consegue mais fazer
+  nada.
+</p>
+
+<p class="filename">src/codequest/engine/runners/python.py</p>
+<pre><code>try:
+    stdout, stderr = process.communicate(timeout=timeout_seconds + _STARTUP_GRACE_SECONDS)
+except subprocess.TimeoutExpired:
+    # O relógio de parede é medido aqui, no pai. Um filho ao qual se pede que pare
+    # sozinho é um filho no qual se confia para não travar, que é justo o que se guarda.
+    timed_out = True
+    _kill_process_tree(process)
+    stdout, stderr = process.communicate()</code></pre>
+
+<h3>Matar a árvore, não o filho</h3>
+
+<p>
+  O erro clássico: matar só o processo que você tem na mão. Se o código do jogador chamou
+  <code>subprocess</code> ou <code>multiprocessing</code>, os netos continuam queimando CPU
+  depois do timeout que "funcionou".
+</p>
+
+<p class="filename">src/codequest/engine/runners/python.py</p>
+<pre><code>if os.name == "nt":
+    # Windows não tem process group no sentido POSIX; taskkill /T percorre a árvore.
+    subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], ...)
+else:
+    os.killpg(os.getpgid(process.pid), signal.SIGKILL)</code></pre>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:sandboxing]</span>
+  <p>
+    Esse é o mesmo bug em infraestrutura de agente: cancelar uma tarefa que já se
+    ramificou deixa a ramificação rodando. Você mata o handle que tem, o trabalho
+    continua, e a métrica diz que parou.
+  </p>
+  <p>
+    A regra é: <strong>termine o grupo, não o processo que você por acaso segura</strong>.
+    Vale para processos, para tasks assíncronas e para chamadas de ferramenta que
+    disparam outras chamadas.
+  </p>
+</div>
+
+<h3>Windows não dá o que não tem</h3>
+
+<p>
+  <code>resource.setrlimit</code> não existe no Windows. Não há teto de memória. O código
+  detecta e <em>declara</em>:
+</p>
+
+<p class="filename">src/codequest/engine/runners/base.py</p>
+<pre><code>SUPPORTS_RESOURCE_LIMITS = platform.system() != "Windows"</code></pre>
+
+<p>
+  E cada execução carrega <code>limits_enforced</code> dizendo <code>"cpu,memory"</code> ou
+  <code>"timeout"</code>. A tentação era engolir a diferença num <code>try/except</code>
+  silencioso e deixar o resto do sistema achar que existe um limite. Um controle de
+  segurança que você acha que tem e não tem é pior que um que você sabe que não tem.
+</p>
+
+<h3>Quem aplica o limite</h3>
+
+<p>
+  Nos sistemas POSIX, o jeito tradicional de aplicar rlimits é <code>preexec_fn</code> —
+  uma função que roda entre o <code>fork</code> e o <code>exec</code>. A documentação do
+  Python avisa que ela é insegura num processo com threads, e a interface Textual da
+  Fase 4 vai rodar trabalho numa thread de worker.
+</p>
+
+<p>A saída foi inverter quem aplica: o filho limita a si mesmo, logo ao nascer.</p>
+
+<p class="filename">src/codequest/engine/harness.py</p>
+<pre><code>def _apply_resource_limits(limits: dict[str, Any]) -> None:
+    try:
+        import resource
+    except ImportError:  # Windows: sem rlimits. O timeout é a única guarda.
+        return
+
+    cpu_seconds = limits.get("cpu_seconds")
+    if cpu_seconds:
+        # Limite duro um segundo acima do soft, para o processo receber SIGXCPU e
+        # morrer informando o motivo, em vez de ser morto sem explicação.
+        resource.setrlimit(resource.RLIMIT_CPU, (int(cpu_seconds), int(cpu_seconds) + 1))</code></pre>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:resource-limits]</span>
+  <p>
+    Um orçamento que o executor aplica <strong>em si mesmo antes de fazer qualquer
+    coisa</strong> é exigível. Um orçamento que o chamador apenas espera não é.
+  </p>
+  <p>
+    Traduzindo para agentes: teto de token, limite de profundidade de recursão e deadline
+    de wall-clock precisam estar dentro do loop de execução, não num
+    comentário dizendo "cuidado para não deixar rodar demais".
+  </p>
+</div>
+
+<h2>5. Teoria 3 — Separação de canal</h2>
+
+<p>
+  Este é o detalhe que quebra implementações ingênuas, e vale ler devagar.
+</p>
+
+<p>
+  O jogador precisa poder usar <code>print()</code> — é assim que um iniciante depura. Mas
+  o motor também precisa receber o valor de retorno da função. Se os dois viajarem pelo
+  mesmo <code>stdout</code>, o jogador pode imprimir algo com a forma do nosso payload e
+  forjar o resultado.
+</p>
+
+<p>A solução: o resultado vai para um arquivo cujo caminho só o processo pai conhece.</p>
+
+<p class="filename">tests/unit/test_runner.py</p>
+<pre><code>def test_player_stdout_cannot_forge_a_result(runner):
+    """O jogador imprime algo com a forma exata do nosso payload de resultado."""
+    source = (
+        'def double(n):\n'
+        '    print(\'{"status": "ok", "returned": 999}\')\n'
+        '    return n * 2\n'
+    )
+
+    result = _run(runner, source, TestCase(args=(21,), expect=42))
+
+    assert result.returned == 42      # o retorno verdadeiro venceu
+    assert "999" in result.stdout     # a falsificação virou output do jogador</code></pre>
+
+<p>
+  Arquivo e não descritor herdado, porque herança de descritor se comporta diferente no
+  Windows — e essa é a categoria de diferença que só aparece em produção.
+</p>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:channel-separation]</span>
+  <p>
+    Extrair JSON de uma resposta de modelo que também tem prosa é <em>o mesmo problema</em>,
+    e a maioria das soluções ataca o lado errado: regex mais esperto, prompt pedindo "só
+    JSON, sem explicação", parser tolerante.
+  </p>
+  <p>
+    O lado certo é dar ao payload um canal próprio — tool calling, structured output,
+    modo JSON. Aí o problema de parsing deixa de existir em vez de ser remendado. Quando
+    o canal separado não estiver disponível, saiba que você está remendando.
+  </p>
+</div>
+
+<h2>6. Teoria 4 — Taxonomia de falha</h2>
+
+<p>
+  A parte que parece burocracia e é o produto. Compare:
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Mensagem</th><th>O que o jogador aprende</th></tr></thead>
+  <tbody>
+    <tr><td>"Teste 3 falhou"</td><td>nada</td></tr>
+    <tr><td>"Esperado 0 para lista vazia, recebido None. Sua função não retorna nada quando o loop não executa."</td><td>o conceito</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  Para escrever a segunda frase, o sistema precisa <em>saber</em> qual categoria de falha
+  aconteceu. Daí a enumeração:
+</p>
+
+<p class="filename">src/codequest/models/verdict.py</p>
+<pre><code>class FailureReason(StrEnum):
+    PASSED = "passed"
+    WRONG_ANSWER = "wrong_answer"
+    RUNTIME_ERROR = "runtime_error"
+    TIMEOUT = "timeout"
+    MEMORY_EXCEEDED = "memory_exceeded"
+    FORBIDDEN_CONSTRUCT = "forbidden_construct"
+    SYNTAX_ERROR = "syntax_error"
+    MISSING_ENTRYPOINT = "missing_entrypoint"
+    HARNESS_ERROR = "harness_error"
+    NOT_RUN = "not_run"</code></pre>
+
+<p>
+  Repare em <code>HARNESS_ERROR</code>: é a categoria para <em>nosso</em> bug. Sem ela, um
+  defeito do motor apareceria como erro do jogador, e alguém passaria a tarde procurando
+  o que fez de errado num código correto. Uma taxonomia honesta tem um balde para a própria
+  falha.
+</p>
+
+<p>E <code>NOT_RUN</code> nasceu de uma decisão de produto:</p>
+
+<p class="filename">src/codequest/services/game_session.py</p>
+<pre><code>if result.status in {"timeout", "memory", "missing_entrypoint"}:
+    halted = True</code></pre>
+
+<p>
+  Um código que estoura o tempo no caso 1 vai estourar nos outros sete. Fazer o jogador
+  esperar oito timeouts para descobrir isso não ajuda ninguém — mas os casos restantes
+  também não <em>falharam</em>. Eles não rodaram, e merecem um nome próprio.
+</p>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:failure-taxonomy]</span>
+  <p>
+    Esse arquivo é design de <strong>eval harness</strong> com outro nome. Um eval de LLM
+    que só reporta "correto / incorreto" não distingue recusa de alucinação de tool call
+    malformada de timeout de rede — então a métrica cai e você não sabe o que consertar.
+  </p>
+  <p>
+    Nomeie cada modo de falha <em>antes</em> de começar a contar. E inclua o balde
+    "problema no meu harness", ou você vai atribuir ao modelo um bug seu.
+  </p>
+</div>
+
+<h2>7. Teoria 5 — Protocolo como ponto de extensão</h2>
+
+<p>
+  A v1.1 vai adicionar Java. O teste da abstração, escrito em
+  <code>docs/architecture.md</code> antes de existir código: adicionar
+  <code>JavaRunner</code> deve tocar exatamente um arquivo novo mais uma entrada de
+  registro. Se forçar mudança no evaluator, o protocolo estava errado.
+</p>
+
+<p class="filename">src/codequest/engine/runners/base.py</p>
+<pre><code>@runtime_checkable
+class Runner(Protocol):
+    language: str
+    file_extension: str
+
+    def prepare(self, submission: str, mission: Mission) -> PreparedCode: ...
+    def execute(self, prepared, case, constraints) -> ExecutionResult: ...
+    def cleanup(self, prepared: PreparedCode) -> None: ...</code></pre>
+
+<p>
+  É um <code>Protocol</code>, não uma classe base. <code>PythonRunner</code> não herda de
+  nada e não importa <code>Runner</code> — ele simplesmente tem a forma certa. Isso se
+  chama <em>tipagem estrutural</em>: a compatibilidade é decidida pelo formato, não pela
+  linhagem.
+</p>
+
+<h3>A decisão que salva a v1.1</h3>
+
+<p>
+  Java compila antes de rodar, e uma falha de compilação acontece <em>antes</em> de existir
+  qualquer resultado de teste ao qual anexá-la. Se <code>prepare()</code> fosse assumido
+  infalível, a chegada do Java forçaria remodelar o protocolo inteiro.
+</p>
+
+<p class="filename">src/codequest/engine/runners/base.py</p>
+<pre><code>@dataclass(frozen=True, slots=True)
+class PreparedCode:
+    workdir: str
+    entry_file: str
+    entrypoint: str
+    error: str | None = None          # &lt;- este campo
+    reason: FailureReason = FailureReason.PASSED</code></pre>
+
+<p>
+  O Python nunca preenche <code>error</code>. O campo existe porque o protocolo foi
+  desenhado para a linguagem <em>seguinte</em>, não para a atual. Custou um campo e uma
+  ramificação em <code>game_session.py</code> hoje; economiza uma refatoração inteira depois.
+</p>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:protocol-abstraction]</span>
+  <p>
+    É a mesma alavanca que impede uma aplicação de LLM de ficar soldada a um fornecedor.
+    Defina o que um provider de completion precisa fazer, e trocar Anthropic por um Ollama
+    local vira um arquivo novo.
+  </p>
+  <p>
+    E o teste de qualidade é o mesmo: se trocar o provider obriga a mexer na lógica de
+    negócio, a abstração está errada — descubra isso <em>antes</em> de ter três chamadores.
+  </p>
+</div>
+
+<h2>8. A ponte com AI Engineering</h2>
+
+<p>
+  Somando tudo: você acabou de construir um <strong>sandbox de execução de código não
+  confiável com portões tipados, orçamento de recurso e um harness de avaliação</strong>.
+</p>
+
+<p>
+  Trocando "código do jogador" por "código gerado por um modelo", esse é o
+  <em>code interpreter</em>. Trocando por "chamada de ferramenta proposta por um agente",
+  é a camada de execução de qualquer agente que faz mais do que conversar. Os problemas
+  não são parecidos — são os mesmos, com nomes diferentes.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>No CodeQuest</th><th>Em AI Engineering</th></tr></thead>
+  <tbody>
+    <tr><td>Guard lê a AST antes de executar</td><td>Validar a tool call proposta antes de despachar</td></tr>
+    <tr><td>Blocklist de builtins</td><td>Por que filtrar prompt injection perde para allowlist</td></tr>
+    <tr><td>Subprocess matável</td><td>Sandbox de code interpreter e de tool calling</td></tr>
+    <tr><td>Timeout e rlimit</td><td>Orçamento de token e deadline de wall-clock</td></tr>
+    <tr><td>Resultado em canal próprio</td><td>Structured output em vez de regex sobre prosa</td></tr>
+    <tr><td><code>FailureReason</code></td><td>Taxonomia de um eval harness</td></tr>
+    <tr><td><code>Runner</code> Protocol</td><td>Abstração de provider de LLM</td></tr>
+    <tr><td><code>GameSession.attempt</code></td><td>Cadeia de guardrails com motivo tipado</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <span class="label">A ideia que amarra tudo</span>
+  <p>
+    Toda decisão desta fase segue o mesmo padrão: <strong>tornar o resultado ruim
+    estruturalmente impossível, em vez de filtrar para que não aconteça</strong>.
+  </p>
+  <p>
+    O jogador não pode forjar o resultado porque não alcança o canal — não porque
+    verificamos se ele tentou. O processo não pode travar o jogo porque é outro processo —
+    não porque contamos com o código ser bem comportado. Sempre que você conseguir mover
+    uma garantia de "nós verificamos" para "não era alcançável", mova.
+  </p>
+</div>
+
+<h2>9. Exercícios</h2>
+
+<p>Responda antes de abrir. O valor está em formular, não em conferir.</p>
+
+<details>
+  <summary>1. Por que o timeout é medido no processo pai e não no filho?</summary>
+  <p>
+    Porque o filho pode estar travado exatamente na situação que o timeout existe para
+    resolver. Um <code>while True: pass</code> nunca chega na linha que checaria o próprio
+    relógio. A guarda precisa estar em alguém que ainda consegue agir.
+  </p>
+  <p>
+    Generalizando: um controle aplicado por quem está sendo controlado só funciona
+    enquanto quem está sendo controlado funciona.
+  </p>
+</details>
+
+<details>
+  <summary>2. O guard aceita este código, mesmo com <code>sum</code> proibido. Por quê — e isso é um bug?</summary>
+  <pre><code>def helper():
+    sum = 0
+    return sum
+
+def total(xs):
+    return sum(xs)</code></pre>
+  <p>
+    Porque a passada de bindings é cega a escopo: <code>sum</code> foi ligado em
+    <code>helper</code>, então o nome fica isento no arquivo inteiro.
+  </p>
+  <p>
+    <strong>Não é um bug</strong>, é um trade-off escolhido e testado. A alternativa —
+    análise de escopo de verdade — corre o risco de rejeitar uma solução correta, e num
+    jogo de ensino isso ensina que a ferramenta está quebrada. Como o guard protege a
+    lição e não a máquina, o falso negativo é o lado barato de errar.
+  </p>
+</details>
+
+<details>
+  <summary>3. Se o resultado voltasse por <code>stdout</code> junto com o <code>print()</code> do jogador, qual seria o ataque mais simples?</summary>
+  <p>
+    Imprimir uma linha com a forma exata do payload de sucesso, antes ou depois do retorno
+    verdadeiro, e deixar o parser escolher a errada. Nenhuma esperteza necessária.
+  </p>
+  <p>
+    Repare que remendos não resolvem: delimitador exótico o jogador copia; imprimir por
+    último ele imprime depois; hash o jogador calcula. O que resolve é o canal separado, e
+    isso é uma propriedade da arquitetura, não do parser.
+  </p>
+</details>
+
+<details>
+  <summary>4. Você vai construir um agente que executa SQL gerado por um modelo num banco de produção. Quais quatro decisões desta fase você copia?</summary>
+  <ol>
+    <li>
+      <strong>Análise estática antes de executar.</strong> Faça parse do SQL numa árvore e
+      inspecione: é SELECT? toca quais tabelas? tem DELETE sem WHERE? Decida sobre
+      estrutura, não sobre string.
+    </li>
+    <li>
+      <strong>Allowlist, não blocklist.</strong> Lista de tabelas e operações permitidas.
+      Bloquear "DROP" perde para <code>DR/**/OP</code>; permitir só SELECT em três tabelas
+      não perde.
+    </li>
+    <li>
+      <strong>Orçamento aplicado na borda.</strong> Timeout de statement, LIMIT forçado,
+      conexão só-leitura. No banco, não no prompt.
+    </li>
+    <li>
+      <strong>Taxonomia de falha.</strong> Recusado pela política, erro de sintaxe,
+      timeout, zero linhas, erro de permissão. Cada um leva a uma ação diferente, e
+      "falhou" leva a nenhuma.
+    </li>
+  </ol>
+  <p>
+    Bônus: rode com um usuário de banco cujas permissões tornem o estrago impossível.
+    Isso é o subprocess desta aula — mover a garantia de "verificamos" para "não era
+    alcançável".
+  </p>
+</details>
+
+<footer>
+  <p>
+    CodeQuest — Fase 1. Todo código nesta página é o código real do repositório.<br>
+    Bookmarks correspondentes: <code>static-analysis</code>,
+    <code>blocklist-vs-allowlist</code>, <code>sandboxing</code>,
+    <code>resource-limits</code>, <code>channel-separation</code>,
+    <code>failure-taxonomy</code>, <code>protocol-abstraction</code>,
+    <code>schema-validation</code>, <code>untrusted-parsing</code>.<br>
+    Índice completo em <code>docs/ai-eng-bookmarks.md</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

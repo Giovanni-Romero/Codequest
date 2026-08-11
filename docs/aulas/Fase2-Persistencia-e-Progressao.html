@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 2: Persistência e Progressão</title>
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --surface: #ffffff;
+    --surface-2: #f2efe9;
+    --ink: #1c1a17;
+    --ink-2: #55504a;
+    --ink-3: #8a837a;
+    --rule: #e3ded5;
+    --accent: #2f5d7c;
+    --accent-soft: #e6eef4;
+    --warn: #8a6d1f;
+    --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+      --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #78aecc;
+      --accent-soft: #1a252c; --warn: #d4b45e; --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #2f5d7c;
+    --accent-soft: #e6eef4; --warn: #8a6d1f; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #78aecc;
+    --accent-soft: #1a252c; --warn: #d4b45e; --code-bg: #191712;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+
+  header.top { padding: 4rem 0 2.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 3rem; }
+  .eyebrow {
+    font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0 0 1rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 1rem; font-weight: 600;
+  }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+
+  h2 {
+    font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  a { color: var(--accent); }
+
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename {
+    font: 500 .72rem/1 ui-monospace, monospace; color: var(--ink-3);
+    margin: 0 0 .4rem; letter-spacing: .02em;
+  }
+
+  .callout {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem; margin: 0 0 1.4rem; box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .55rem;
+  }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+
+  .bridge {
+    background: var(--accent-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin: 1.4rem 0;
+  }
+  .bridge .slug {
+    font: 600 .72rem/1 ui-monospace, monospace; color: var(--accent);
+    display: inline-block; margin-bottom: .5rem;
+  }
+  .bridge p:last-child { margin-bottom: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+
+  details {
+    background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .85rem 1.1rem; margin: 0 0 1rem;
+  }
+  details summary { cursor: pointer; font-weight: 600; font-size: .95rem; font-family: ui-sans-serif, system-ui, sans-serif; }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+
+  .toc {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem; margin-bottom: 3rem; box-shadow: var(--shadow);
+  }
+  .toc p {
+    font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem;
+  }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+
+  footer {
+    margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 2</p>
+  <h1>Persistência e progressão</h1>
+  <p class="lede">
+    Guardar estado sem mentir. Modelagem relacional, o padrão repository, injeção de SQL
+    e a propriedade que decide se um sistema sobrevive a um retry: idempotência.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: o caderno da padaria</li>
+    <li>Teoria 1 — Modelagem relacional</li>
+    <li>Teoria 2 — Repository: onde o SQL mora</li>
+    <li>Teoria 3 — Injeção, e por que parametrizar vence escapar</li>
+    <li>Teoria 4 — Transação</li>
+    <li>Teoria 5 — Idempotência</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercícios</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  A Fase 1 sabia julgar código, mas esquecia tudo quando o processo terminava. A Fase 2
+  dá memória ao jogo: quatro tabelas em SQLite, uma camada de repositories que é o único
+  lugar do projeto onde existe SQL, e um serviço que decide as regras de progressão.
+</p>
+
+<p>
+  O teste que resume a fase inteira roda em dois processos:
+</p>
+
+<pre><code>$ codequest new-save giovanni
+Created save #1 'giovanni' on the python track.
+
+$ codequest play giovanni py-foundations-02 solucao.py
+PASS  All 8 cases passed.
+  +10 XP   total 10
+  Unlocked island: foundations
+
+$ codequest play giovanni py-foundations-02 solucao.py
+PASS  All 8 cases passed.
+  Already completed, no XP this time. Total 10</code></pre>
+
+<p>
+  A terceira execução é o ponto. O código está certo, os oito casos passam, o veredito diz
+  <code>PASS</code> — e o XP não se move. Essa distinção entre "deu certo" e "rendeu algo"
+  é o assunto principal desta aula.
+</p>
+
+<h2>2. A analogia: o caderno da padaria</h2>
+
+<p>
+  Uma padaria de bairro com caderneta de fiado. Duas colunas de informação convivem ali,
+  e confundi-las é o erro clássico.
+</p>
+
+<p>
+  Tem o <strong>saldo</strong> de cada cliente: um número, atualizado, que responde "quanto
+  ele deve agora". E tem o <strong>histórico</strong>: cada linha rabiscada, com data,
+  respondendo "como chegamos nesse número".
+</p>
+
+<p>
+  O saldo é rápido de consultar e não conta história. O histórico conta história e é lento
+  de somar. Você quer os dois — e no CodeQuest são as tabelas
+  <code>progress</code> (o saldo) e <code>attempt</code> (o histórico).
+</p>
+
+<p>
+  Agora o detalhe que vira idempotência. Se o cliente paga a conta e o padeiro anota o
+  pagamento duas vezes por distração, o saldo fica errado. A defesa não é "prestar mais
+  atenção" — é a caderneta ter uma coluna que diz <em>esta dívida já foi quitada</em>, de
+  modo que anotar de novo não muda nada.
+</p>
+
+<h2>3. Teoria 1 — Modelagem relacional</h2>
+
+<p>
+  Quatro tabelas. Cada uma existe porque responde uma pergunta diferente.
+</p>
+
+<figure>
+<svg viewBox="0 0 700 250" role="img" aria-label="Diagrama das quatro tabelas e suas relacoes">
+  <g font-family="ui-monospace, monospace" font-size="11">
+    <rect x="250" y="10" width="200" height="72" rx="6" fill="#e6eef4" stroke="#2f5d7c"/>
+    <text x="350" y="29" text-anchor="middle" font-weight="600" fill="#1c1a17">profile</text>
+    <text x="262" y="46" fill="#55504a">id, name, track</text>
+    <text x="262" y="61" fill="#55504a">total_xp</text>
+    <text x="262" y="76" fill="#55504a">created_at, last_played_at</text>
+
+    <rect x="10" y="140" width="200" height="86" rx="6" fill="none" stroke="#8a837a"/>
+    <text x="110" y="159" text-anchor="middle" font-weight="600" fill="currentColor">progress</text>
+    <text x="22" y="176" fill="#8a837a">profile_id + mission_id (PK)</text>
+    <text x="22" y="191" fill="#8a837a">status, best_xp</text>
+    <text x="22" y="206" fill="#8a837a">attempts, hints_used</text>
+    <text x="22" y="221" fill="#8a837a">completed_at</text>
+
+    <rect x="250" y="140" width="200" height="86" rx="6" fill="none" stroke="#8a837a"/>
+    <text x="350" y="159" text-anchor="middle" font-weight="600" fill="currentColor">attempt</text>
+    <text x="262" y="176" fill="#8a837a">id (PK)</text>
+    <text x="262" y="191" fill="#8a837a">profile_id, mission_id</text>
+    <text x="262" y="206" fill="#8a837a">code, verdict, passed</text>
+    <text x="262" y="221" fill="#8a837a">created_at</text>
+
+    <rect x="490" y="140" width="200" height="86" rx="6" fill="none" stroke="#8a837a"/>
+    <text x="590" y="159" text-anchor="middle" font-weight="600" fill="currentColor">unlocked_island</text>
+    <text x="502" y="176" fill="#8a837a">profile_id + island_id (PK)</text>
+    <text x="502" y="191" fill="#8a837a">unlocked_at</text>
+  </g>
+  <g stroke="#8a837a" stroke-width="1.1" fill="none">
+    <path d="M300,82 L300,110 L110,110 L110,140"/>
+    <path d="M350,82 L350,140"/>
+    <path d="M400,82 L400,110 L590,110 L590,140"/>
+  </g>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="9.5" fill="#8a837a">
+    <text x="118" y="106">ON DELETE CASCADE</text>
+    <text x="358" y="106">CASCADE</text>
+    <text x="500" y="106">CASCADE</text>
+    <text x="10" y="240" font-size="9.5">o saldo</text>
+    <text x="250" y="240" font-size="9.5">o histórico</text>
+  </g>
+</svg>
+<figcaption>progress guarda o melhor atual; attempt guarda a jornada. As duas respostas são diferentes.</figcaption>
+</figure>
+
+<h3>Chave primária composta</h3>
+
+<p>
+  <code>progress</code> tem <code>PRIMARY KEY (profile_id, mission_id)</code>. Não é uma
+  escolha estética: é uma <strong>regra de negócio codificada no schema</strong>. Um
+  perfil tem no máximo uma linha de progresso por missão, e o banco recusa a segunda antes
+  que qualquer código Python tenha chance de errar.
+</p>
+
+<p>
+  Regra útil: quando uma restrição é sobre a forma dos dados, coloque no schema. Quando é
+  sobre política do produto, coloque no serviço. O limite de quatro saves é política — daí
+  ele <em>não</em> estar aqui, e sim como exceção com mensagem amigável.
+</p>
+
+<h3>A pegadinha que quase todo mundo leva</h3>
+
+<div class="callout">
+  <span class="label">SQLite desliga foreign keys por padrão</span>
+  <p>
+    Por compatibilidade retroativa, e <strong>por conexão</strong>. Sem o pragma, cada
+    cláusula <code>REFERENCES</code> do schema é decorativa: apagar um perfil deixaria
+    linhas de progresso órfãs apontando para um id que não existe mais, em silêncio.
+  </p>
+</div>
+
+<p class="filename">src/codequest/storage/db.py</p>
+<pre><code>connection = sqlite3.connect(path, isolation_level=None)
+connection.row_factory = sqlite3.Row
+connection.execute("PRAGMA foreign_keys = ON")
+connection.execute("PRAGMA journal_mode = WAL")</code></pre>
+
+<p>E existe um teste que falha se alguém remover essa linha:</p>
+
+<p class="filename">tests/unit/test_storage.py</p>
+<pre><code>def test_foreign_keys_are_enforced(db):
+    """SQLite vem com foreign keys OFF. Sem o pragma, REFERENCES é decorativo."""
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(
+            "INSERT INTO progress (profile_id, mission_id, status) VALUES (?, ?, ?)",
+            (999, "m1", "available"),
+        )</code></pre>
+
+<h3>Migrations: por que o save sobrevive a uma atualização</h3>
+
+<p>
+  Uma <strong>migration</strong> é uma mudança de schema numerada e registrada. O banco
+  guarda em que versão está; rodar as migrations de novo pula o que já foi aplicado. Sem
+  isso, atualizar o jogo significaria recriar o banco, e o jogador perderia o save.
+</p>
+
+<p>A regra que parece pedante e não é:</p>
+
+<p class="filename">src/codequest/storage/db.py</p>
+<pre><code>#: Ordered schema migrations. Append only — never edit a shipped one, because a database
+#: that already applied version 2 will never see the edit, and the two installs silently
+#: diverge.</code></pre>
+
+<p>
+  Editar uma migration já publicada cria dois bancos com o mesmo número de versão e
+  estruturas diferentes. O bug aparece meses depois, numa máquina que não é a sua.
+</p>
+
+<h3>Um detalhe que só aparece rodando</h3>
+
+<div class="callout honest">
+  <span class="label">Bug real desta fase</span>
+  <p>
+    A primeira versão envolvia a migration num <code>BEGIN</code> explícito. Todos os
+    testes de storage quebraram com <code>cannot commit - no transaction is active</code>.
+  </p>
+  <p>
+    Motivo: <code>executescript</code> do <code>sqlite3</code> faz um <em>commit
+    implícito</em> antes de rodar o script. O <code>BEGIN</code> em volta da chamada já
+    tinha sido descartado quando o script começou. A correção foi mover
+    <code>BEGIN</code> e <code>COMMIT</code> para <em>dentro</em> do script.
+  </p>
+  <p>
+    Vale a lição geral: APIs de banco têm comportamento transacional implícito, e ele
+    raramente é o que a leitura casual sugere.
+  </p>
+</div>
+
+<h2>4. Teoria 2 — Repository: onde o SQL mora</h2>
+
+<p>
+  O padrão <strong>repository</strong> diz: todo acesso a dados de uma entidade fica numa
+  classe, que recebe e devolve objetos de domínio. Quem chama nunca escreve SQL.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Camada</th><th>Sabe</th><th>Não sabe</th></tr></thead>
+  <tbody>
+    <tr><td><code>models/</code></td><td>a forma dos dados</td><td>que existe um banco</td></tr>
+    <tr><td><code>storage/</code></td><td>SQL, tabelas, transações</td><td>as regras do jogo</td></tr>
+    <tr><td><code>services/</code></td><td>as regras do jogo</td><td>SQL</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  O benefício imediato não é "código limpo", que é vago. É concreto: quando o XP parar de
+  ser contado direito, existe exatamente um arquivo onde a escrita acontece, e você não
+  precisa procurar um <code>UPDATE</code> perdido dentro de um widget.
+</p>
+
+<h3>A escolha de somar no banco</h3>
+
+<p class="filename">src/codequest/storage/repositories.py</p>
+<pre><code>def add_xp(self, profile_id: int, amount: int) -> None:
+    """Increment total XP.
+
+    Written as ``total_xp = total_xp + ?`` rather than read-modify-write in Python:
+    the addition happens inside the database, so two concurrent awards cannot both
+    read the old value and one of them overwrite the other.
+    """
+    self.connection.execute(
+        "UPDATE profile SET total_xp = total_xp + ?, last_played_at = ? WHERE id = ?",
+        (amount, _now(), profile_id),
+    )</code></pre>
+
+<p>
+  A alternativa — ler o total em Python, somar, gravar de volta — funciona até dois
+  caminhos fazerem isso ao mesmo tempo. Aí ambos leem 10, ambos gravam 20, e um dos dois
+  ganhos desaparece. Chama-se <em>lost update</em>. Fazer a aritmética dentro do banco
+  elimina a janela em vez de torcer para ela não acontecer.
+</p>
+
+<p>
+  É o mesmo raciocínio da Fase 1, aliás: <strong>tornar o resultado ruim estruturalmente
+  impossível, em vez de filtrar para que não aconteça</strong>.
+</p>
+
+<h2>5. Teoria 3 — Injeção, e por que parametrizar vence escapar</h2>
+
+<p>
+  Injeção de SQL acontece quando texto que deveria ser <em>dado</em> é lido como
+  <em>instrução</em>. O exemplo canônico, escrito da forma errada:
+</p>
+
+<pre><code># NUNCA FAÇA ISSO
+cursor.execute(f"SELECT * FROM profile WHERE name = '{name}'")</code></pre>
+
+<p>Com <code>name = "Robert'); DROP TABLE profile;--"</code>, o banco recebe:</p>
+
+<pre><code>SELECT * FROM profile WHERE name = 'Robert'); DROP TABLE profile;--'</code></pre>
+
+<p>
+  A aspa fechou a string, o ponto e vírgula terminou o comando, e o resto virou um segundo
+  comando. A forma certa:
+</p>
+
+<p class="filename">src/codequest/storage/repositories.py</p>
+<pre><code>row = self.connection.execute(
+    "SELECT * FROM profile WHERE name = ?", (name,)
+).fetchone()</code></pre>
+
+<p>
+  A diferença não é cosmética. Com <code>?</code>, a string do SQL é compilada num plano
+  de execução <em>antes</em> do valor chegar. O valor é depositado num espaço já reservado
+  e não pode mais alterar a estrutura do comando — a possibilidade some, não é filtrada.
+</p>
+
+<p>Existe um teste que prova isso com o payload clássico:</p>
+
+<p class="filename">tests/unit/test_storage.py</p>
+<pre><code>def test_a_profile_name_that_looks_like_sql_is_stored_as_text(db, profiles):
+    hostile = "Robert'); DROP TABLE profile;--"
+
+    profiles.create(hostile, "python")
+
+    assert profiles.get_by_name(hostile).name == hostile
+    assert db.execute("SELECT COUNT(*) AS n FROM profile").fetchone()["n"] == 1</code></pre>
+
+<p>
+  O nome vira um nome bobo. A tabela continua lá. Ninguém precisou lembrar de escapar nada.
+</p>
+
+<div class="callout honest">
+  <span class="label">A única interpolação do projeto</span>
+  <p>
+    Existe exatamente uma, em <code>db.py</code>, porque <code>executescript</code> não
+    aceita parâmetros. Ela é segura por razão estrutural e não por otimismo: o valor é um
+    <code>int</code> de uma constante declarada no mesmo arquivo, e <code>int()</code>
+    transforma qualquer outra coisa em <code>TypeError</code> antes de chegar ao banco.
+  </p>
+  <p>
+    Está comentada no ponto de uso justamente para nunca ser lida como permissão para a
+    próxima. Exceção documentada é diferente de regra frouxa.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:sql-injection]</span>
+  <p>
+    A classe de bug é <em>texto não confiável numa posição onde pode ser lido como
+    instrução</em>. Em AI Engineering ela reaparece o tempo todo, com outras roupas:
+  </p>
+  <ul>
+    <li>documento recuperado por RAG virando parte do prompt</li>
+    <li>argumento de tool call virando parte de um comando de shell</li>
+    <li>saída de modelo virando parte de uma query</li>
+    <li>memória de agente escrita numa sessão e lida em outra</li>
+  </ul>
+  <p>
+    A pergunta que transfere: <strong>este texto pode ser interpretado como instrução onde
+    ele vai parar?</strong> Se pode, você precisa de uma fronteira estrutural — parâmetro,
+    schema tipado, canal separado — e não de um filtro.
+  </p>
+</div>
+
+<h2>6. Teoria 4 — Transação</h2>
+
+<p>
+  Conceder XP toca três tabelas: registra a tentativa em <code>attempt</code>, atualiza
+  <code>progress</code>, soma em <code>profile</code>, e às vezes insere em
+  <code>unlocked_island</code>. Uma queda no meio disso deixaria o jogador com uma missão
+  marcada como completa e sem o XP, ou o contrário.
+</p>
+
+<p>
+  Uma <strong>transação</strong> torna o conjunto atômico: ou tudo acontece, ou nada
+  acontece. Não existe meio.
+</p>
+
+<p class="filename">src/codequest/storage/db.py</p>
+<pre><code>@contextmanager
+def transaction(connection: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    connection.execute("BEGIN")
+    try:
+        yield connection
+    except BaseException:
+        connection.execute("ROLLBACK")
+        raise
+    else:
+        connection.execute("COMMIT")</code></pre>
+
+<p>
+  Note <code>except BaseException</code> e não <code>except Exception</code>. Um
+  <code>KeyboardInterrupt</code> — o jogador apertando Ctrl+C no meio de um save — não
+  herda de <code>Exception</code>. Com o <code>except</code> mais estreito, o Ctrl+C
+  passaria direto sem fazer rollback e deixaria a escrita pela metade.
+</p>
+
+<h2>7. Teoria 5 — Idempotência</h2>
+
+<p>
+  Aqui está o conceito mais valioso da fase.
+</p>
+
+<p>
+  Uma operação é <strong>idempotente</strong> quando executá-la várias vezes tem o mesmo
+  efeito que executá-la uma vez. A analogia direta: apertar o botão do elevador. O
+  primeiro toque chama; do segundo ao décimo não acontece nada de novo. O elevador não
+  vem duas vezes.
+</p>
+
+<p>O oposto é "cobrar o cartão". Repetir cobra de novo, e isso é um problema real.</p>
+
+<h3>Como o CodeQuest garante</h3>
+
+<p class="filename">src/codequest/services/progress_service.py</p>
+<pre><code>with transaction(self.connection):
+    existing = self.progress.get(profile.id, mission.id)
+    already_completed = existing is not None and existing.is_completed
+
+    # A decisão, numa linha: pague apenas na primeira vez.
+    xp_to_award = mission.xp if (verdict.passed and not already_completed) else 0</code></pre>
+
+<p>
+  Repare em <em>onde</em> a decisão é tomada. Não numa flag passada pelo chamador, não
+  numa variável de sessão, não num "cuidado para não chamar duas vezes" no comentário. Ela
+  é derivada de <strong>estado que está no banco</strong>, dentro da transação que vai
+  escrever.
+</p>
+
+<p>Essa é a diferença entre idempotência de verdade e disciplina:</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Abordagem</th><th>Sobrevive a</th><th>Quebra em</th></tr></thead>
+  <tbody>
+    <tr><td>"não chame duas vezes"</td><td>nada</td><td>retry, duplo clique, crash e replay</td></tr>
+    <tr><td>flag em memória</td><td>chamadas na mesma sessão</td><td>reinício do processo</td></tr>
+    <tr><td>estado persistido</td><td>tudo acima</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>A defesa em profundidade</h3>
+
+<p>
+  O serviço decide, e o repositório <em>também</em> se protege, com um upsert que nunca
+  regride:
+</p>
+
+<p class="filename">src/codequest/storage/repositories.py</p>
+<pre><code>ON CONFLICT (profile_id, mission_id) DO UPDATE SET
+    attempts     = attempts + 1,
+    best_xp      = MAX(best_xp, excluded.best_xp),
+    status       = CASE
+                       WHEN progress.status = 'completed' THEN 'completed'
+                       ELSE excluded.status
+                   END,
+    completed_at = COALESCE(progress.completed_at, excluded.completed_at)</code></pre>
+
+<p>
+  <code>MAX</code> impede o XP de cair. O <code>CASE</code> impede uma missão completa de
+  voltar a "tentada" quando o jogador erra numa releitura futura. <code>COALESCE</code>
+  preserva a data original da conquista. Cada cláusula existe para que <em>escrever de
+  novo não desfaça nada</em>.
+</p>
+
+<p>E o teste que fecha o assunto:</p>
+
+<p class="filename">tests/unit/test_progress_service.py</p>
+<pre><code>def test_replaying_ten_times_still_pays_once(service):
+    """Repetição precisa ser entediante, não cara. Esta é a propriedade de retry-safety."""
+    profile = service.create_profile("giovanni", "python")
+
+    for _ in range(10):
+        profile = service.record_attempt(profile, MISSION, "code", PASSED).profile
+
+    assert profile.total_xp == 10</code></pre>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:idempotency]</span>
+  <p>
+    Todo pipeline de agente sério faz retry. A rede cai, o modelo retorna 529, um passo
+    dá timeout e o orquestrador tenta de novo. Se um passo com efeito colateral não for
+    idempotente, o retry cobra o cartão duas vezes, manda o email duas vezes, cria o
+    ticket duas vezes.
+  </p>
+  <p>
+    O padrão da indústria é <strong>chave de idempotência</strong>: o chamador gera um id
+    para a operação, o executor guarda o resultado indexado por esse id, e uma repetição
+    devolve o resultado guardado em vez de executar de novo. É a mesma ideia deste
+    <code>progress</code> — o estado persistido decide, não a boa vontade de quem chama.
+  </p>
+  <p>
+    Se você projetar cada ferramenta de agente para ser idempotente, o retry deixa de ser
+    perigoso e o sistema fica <em>simples</em>. Se não, você vai passar o resto do projeto
+    escrevendo lógica de compensação.
+  </p>
+</div>
+
+<h3>A honestidade na interface</h3>
+
+<p>
+  Um detalhe pequeno que revela a disciplina. O <code>AwardResult</code> separa dois
+  números que parecem o mesmo:
+</p>
+
+<p class="filename">src/codequest/services/progress_service.py</p>
+<pre><code>``xp_awarded`` is what the player *gained now*, which is zero on a replay even
+though the verdict says the mission passed. The UI needs the difference: showing
+"+10 XP" on a mission that granted nothing is a lie the player will notice.</code></pre>
+
+<p>
+  O veredito carrega o valor da missão; o award carrega o que foi de fato concedido.
+  Colapsar os dois num campo só produziria uma interface que mente — e o jogador percebe
+  na hora que o total não sobe.
+</p>
+
+<h2>8. A ponte com AI Engineering</h2>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>No CodeQuest</th><th>Em AI Engineering</th></tr></thead>
+  <tbody>
+    <tr><td>Query parametrizada</td><td>Fronteira entre dado e instrução: RAG, tool args, memória de agente</td></tr>
+    <tr><td>XP pago uma vez, decidido por estado</td><td>Chave de idempotência em passo de agente com efeito colateral</td></tr>
+    <tr><td>Transação em volta da escrita composta</td><td>Passo de agente que toca vários sistemas: tudo ou nada</td></tr>
+    <tr><td><code>progress</code> vs <code>attempt</code></td><td>Estado atual vs trace de execução — precisa dos dois para depurar</td></tr>
+    <tr><td>Soma feita no banco</td><td>Evitar lost update entre workers concorrentes</td></tr>
+    <tr><td>Migrations append-only</td><td>Evolução de schema sem quebrar dado já gravado</td></tr>
+    <tr><td>Limite de saves é regra de serviço</td><td>Política no serviço, invariante no schema</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <span class="label">A tabela attempt merece um parágrafo</span>
+  <p>
+    Ela guarda cada submissão com o código completo e o veredito. Do ponto de vista do
+    jogo, é para o jogador reler o que escreveu semanas atrás.
+  </p>
+  <p>
+    Do ponto de vista de AI Engineering, é um <strong>trace</strong>. É exatamente o que
+    você quer de um agente em produção: a entrada, a saída, o resultado, o timestamp — de
+    cada passo, gravados de forma append-only. Sem trace, depurar um agente é adivinhação;
+    <code>progress</code> te diz onde ele está, <code>attempt</code> te diz como chegou lá.
+  </p>
+</div>
+
+<h2>9. Exercícios</h2>
+
+<details>
+  <summary>1. Por que o limite de quatro saves é uma exceção do serviço e não um <code>CHECK</code> no schema?</summary>
+  <p>
+    Porque é <strong>política de produto</strong>, não invariante de dados. Uma constraint
+    de banco produziria <code>IntegrityError</code>; o serviço produz "você já tem 4 saves.
+    Apague um antes de criar outro."
+  </p>
+  <p>
+    E porque política muda. Se o jogo passar a oferecer seis slots, mexer numa constante é
+    diferente de escrever uma migration. A regra: forma dos dados vai para o schema,
+    política vai para o serviço.
+  </p>
+</details>
+
+<details>
+  <summary>2. Um jogador dá duplo clique em "enviar" e a mesma solução é submetida duas vezes ao mesmo tempo. O que acontece?</summary>
+  <p>
+    A segunda tentativa é registrada em <code>attempt</code> (correto — ela realmente
+    aconteceu), <code>progress.attempts</code> vai a 2 (também correto), e o XP é pago uma
+    vez só. A transação serializa as duas escritas, e a segunda enxerga
+    <code>status = 'completed'</code> gravado pela primeira.
+  </p>
+  <p>
+    Note que a resposta depende da leitura estar <em>dentro</em> da mesma transação da
+    escrita. Ler antes de abrir a transação abriria a janela de volta.
+  </p>
+</details>
+
+<details>
+  <summary>3. Por que <code>except BaseException</code> no gerenciador de transação, e não <code>except Exception</code>?</summary>
+  <p>
+    Porque <code>KeyboardInterrupt</code> e <code>SystemExit</code> herdam de
+    <code>BaseException</code>, não de <code>Exception</code>. Um Ctrl+C no meio de um save
+    escaparia do <code>except</code> mais estreito, o <code>ROLLBACK</code> nunca rodaria,
+    e a escrita ficaria pela metade.
+  </p>
+  <p>
+    Regra prática: <code>except Exception</code> para tratar erro; <code>BaseException</code>
+    para limpeza que precisa acontecer <em>de qualquer jeito</em>. Ou, melhor ainda, um
+    <code>finally</code>.
+  </p>
+</details>
+
+<details>
+  <summary>4. Você está construindo um agente que envia emails. Como aplica o que esta fase ensina?</summary>
+  <ol>
+    <li>
+      <strong>Chave de idempotência.</strong> Derive um id determinístico da intenção
+      (destinatário + assunto + hash do corpo, ou o id da tarefa que originou o envio).
+      Grave antes de enviar.
+    </li>
+    <li>
+      <strong>Decida por estado persistido.</strong> Antes de chamar a API, consulte se
+      aquela chave já foi enviada. Dentro da mesma transação, como no
+      <code>record_attempt</code>.
+    </li>
+    <li>
+      <strong>Separe estado e trace.</strong> Uma tabela "email enviado" (o saldo) e uma
+      "tentativas de envio" com resposta da API e timestamp (o histórico). Quando algo der
+      errado, você vai precisar das duas.
+    </li>
+    <li>
+      <strong>Cuidado com a fronteira dado/instrução.</strong> Se o corpo do email vem de
+      conteúdo recuperado, ele é texto não confiável. Não o deixe influenciar
+      <em>para quem</em> o email vai.
+    </li>
+  </ol>
+  <p>
+    O ponto difícil é o item 1: enviar e depois marcar deixa uma janela em que o crash
+    causa envio duplo. Marcar e depois enviar deixa uma janela em que o crash causa email
+    perdido. Não existe solução perfeita sem transação distribuída — você escolhe qual
+    falha prefere, e para email quase sempre se prefere perder a duplicar.
+  </p>
+</details>
+
+<footer>
+  <p>
+    CodeQuest — Fase 2. Todo código nesta página é o código real do repositório.<br>
+    Bookmarks correspondentes: <code>sql-injection</code>, <code>idempotency</code>,
+    <code>orchestration-gates</code>.<br>
+    Índice completo em <code>docs/ai-eng-bookmarks.md</code>. Aula anterior:
+    <code>Fase1-Motor-de-Execucao.html</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

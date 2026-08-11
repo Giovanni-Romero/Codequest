@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 7: Currículo como Eval Design</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #1f6f6b;
+    --accent-soft: #e2efee; --warn: #8a6d1f; --danger: #a8442a; --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+      --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #6ec2bc;
+      --accent-soft: #162625; --warn: #d4b45e; --danger: #e08160; --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #1f6f6b;
+    --accent-soft: #e2efee; --warn: #8a6d1f; --danger: #a8442a; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #6ec2bc;
+    --accent-soft: #162625; --warn: #d4b45e; --danger: #e08160; --code-bg: #191712;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+  header.top { padding: 4rem 0 2.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 3rem; }
+  .eyebrow { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1rem; }
+  h1 { font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 1rem; font-weight: 600; }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+  h2 { font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  blockquote { margin: 0 0 1.2rem; padding-left: 1rem; border-left: 3px solid var(--rule);
+    color: var(--ink-2); font-style: italic; }
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename { font: 500 .72rem/1 ui-monospace, monospace; color: var(--ink-3);
+    margin: 0 0 .4rem; letter-spacing: .02em; }
+  .callout { background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem; margin: 0 0 1.4rem; box-shadow: var(--shadow); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label { font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .55rem; }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); }
+  .callout.danger .label { color: var(--danger); }
+  .bridge { background: var(--accent-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin: 1.4rem 0; }
+  .bridge .slug { font: 600 .72rem/1 ui-monospace, monospace; color: var(--accent);
+    display: inline-block; margin-bottom: .5rem; }
+  .bridge p:last-child { margin-bottom: 0; }
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3); }
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+  details { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .85rem 1.1rem; margin: 0 0 1rem; }
+  details summary { cursor: pointer; font-weight: 600; font-size: .95rem;
+    font-family: ui-sans-serif, system-ui, sans-serif; }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+  .toc { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem; margin-bottom: 3rem; box-shadow: var(--shadow); }
+  .toc p { font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 7</p>
+  <h1>Currículo como Eval Design</h1>
+  <p class="lede">
+    Onze ilhas, 117 missões, e a descoberta que só aparece quando você escreve muitas:
+    <em>projetar missões é projetar um eval harness</em>. As mesmas três perguntas, os
+    mesmos três jeitos de errar. Esta aula é sobre elas — e sobre o dia em que o motor
+    precisou aprender a esperar.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: a prova e o quiz</li>
+    <li>Teoria 1 — Um item precisa discriminar</li>
+    <li>Teoria 2 — Uma nota precisa de especificação</li>
+    <li>Teoria 3 — Localizar a falha antes de consertar</li>
+    <li>O código, anotado: o motor aprende a esperar</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercício de fixação</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  Esta fase fechou a trilha Python: as ilhas 8 a 11 — Objetos, Padrões Pythônicos,
+  Algoritmos, e Async e Concorrência — saíram das quatro últimas sessões, bilíngues,
+  levando o jogo de 74 para <strong>117 missões por idioma</strong>. A Ilha 11 exigiu
+  duas mudanças no motor antes de a primeira missão existir: o harness passou a aguardar
+  um entrypoint <code>async def</code>, e o loader passou a aceitá-lo.
+</p>
+
+<p>
+  Mas o que essa fase <em>ensinou</em> não foi async. Foi que escrever quarenta e três
+  missões seguidas transforma "autoria de conteúdo" em outra coisa. Toda missão é um
+  item de avaliação: uma entrada, uma saída esperada, e a pretensão de que passar
+  significa alguma coisa. Quando você tem quatro missões, você confia no seu bom senso.
+  Quando você tem 117, o bom senso já falhou de três jeitos diferentes e você aprendeu a
+  nomeá-los.
+</p>
+
+<div class="callout">
+  <span class="label">A tese desta aula</span>
+  <p>
+    Um conjunto de missões e um eval harness de LLM são o mesmo artefato com nomes
+    diferentes. Os dois precisam de itens que <strong>discriminam</strong>, de uma nota
+    que seja <strong>especificada</strong>, e de um jeito de <strong>localizar</strong> a
+    falha. Errar qualquer um dos três produz uma métrica que sobe enquanto a qualidade
+    não muda.
+  </p>
+</div>
+
+<h2>2. A analogia: a prova e o quiz</h2>
+
+<p>
+  Um professor precisa descobrir quem entendeu a matéria. Ele tem duas opções e elas
+  parecem a mesma coisa de longe.
+</p>
+
+<p>
+  O <strong>quiz</strong> ele escreve na véspera. Perguntas que parecem justas, respostas
+  que ele sabe de cabeça. Todo mundo tira oito. O professor conclui que a turma aprendeu.
+</p>
+
+<p>
+  A <strong>prova</strong> ele escreve pensando em quem <em>não</em> entendeu. Para cada
+  questão ele pergunta: existe um jeito de acertar isto sem ter entendido? Se existe, a
+  questão não mede nada — mede se o aluno é esperto, que ele já era antes da aula. E ele
+  pergunta o contrário também: existe um jeito de ter entendido e mesmo assim errar? Se
+  existe, a questão está mal enunciada, e ele vai reprovar gente que sabe.
+</p>
+
+<p>
+  As duas perguntas são independentes, e é por isso que dá para desenhá-las num quadrado.
+</p>
+
+<figure>
+<svg viewBox="0 0 640 330" role="img" aria-labelledby="quadTitle">
+  <title id="quadTitle">Quadro de dois eixos: quem responde por quem passa</title>
+  <defs>
+    <style>
+      .lbl { font: 600 12px ui-sans-serif, system-ui, sans-serif; fill: #8a837a; letter-spacing:.08em; text-transform:uppercase; }
+      .cellh { font: 600 14px ui-sans-serif, system-ui, sans-serif; }
+      .cellb { font: 400 12px ui-sans-serif, system-ui, sans-serif; fill: #55504a; }
+      .ok { fill: #1f6f6b; }
+      .bad { fill: #a8442a; }
+      .warnt { fill: #8a6d1f; }
+      .box { fill: #ffffff; stroke: #e3ded5; }
+      @media (prefers-color-scheme: dark) {
+        .lbl { fill: #837b6f; } .cellb { fill: #b3ab9e; }
+        .ok { fill: #6ec2bc; } .bad { fill: #e08160; } .warnt { fill: #d4b45e; }
+        .box { fill: #1c1a16; stroke: #2f2b25; }
+      }
+    </style>
+  </defs>
+
+  <text x="20" y="22" class="lbl">O teste diz</text>
+  <text x="190" y="52" class="lbl" text-anchor="middle">passou</text>
+  <text x="440" y="52" class="lbl" text-anchor="middle">falhou</text>
+  <text x="16" y="130" class="lbl" transform="rotate(-90 16 130)" text-anchor="middle">entendeu</text>
+  <text x="16" y="255" class="lbl" transform="rotate(-90 16 255)" text-anchor="middle">não entendeu</text>
+
+  <rect x="60" y="66" width="260" height="110" rx="8" class="box"/>
+  <text x="76" y="94" class="cellh ok">Certo</text>
+  <text x="76" y="118" class="cellb">Entendeu, passou.</text>
+  <text x="76" y="136" class="cellb">É para isto que o item existe.</text>
+
+  <rect x="336" y="66" width="260" height="110" rx="8" class="box"/>
+  <text x="352" y="94" class="cellh warnt">Falso negativo</text>
+  <text x="352" y="118" class="cellb">Sabia e reprovou:</text>
+  <text x="352" y="136" class="cellb">o enunciado não especificou</text>
+  <text x="352" y="154" class="cellb">o que estava sendo medido.</text>
+
+  <rect x="60" y="192" width="260" height="110" rx="8" class="box"/>
+  <text x="76" y="220" class="cellh bad">Falso positivo</text>
+  <text x="76" y="244" class="cellb">Não sabia e passou:</text>
+  <text x="76" y="262" class="cellb">o item não discrimina.</text>
+  <text x="76" y="280" class="cellb">A métrica sobe, ninguém aprendeu.</text>
+
+  <rect x="336" y="192" width="260" height="110" rx="8" class="box"/>
+  <text x="352" y="220" class="cellh ok">Certo</text>
+  <text x="352" y="244" class="cellb">Não entendeu, falhou.</text>
+  <text x="352" y="262" class="cellb">Também é para isto.</text>
+</svg>
+<figcaption>
+  As duas diagonais são as que custam. A Teoria 1 é sobre o canto de baixo à esquerda;
+  a Teoria 2, sobre o de cima à direita.
+</figcaption>
+</figure>
+
+<h2>3. Teoria 1 — Um item precisa discriminar</h2>
+
+<p>
+  <strong>Poder discriminante</strong> é o termo formal, e vem da psicometria: um item
+  discrimina quando quem domina o assunto acerta e quem não domina erra. Um item que todo
+  mundo acerta não carrega informação nenhuma. Ele infla a nota e não muda a ordem entre
+  os alunos.
+</p>
+
+<p>
+  A primeira missão da Ilha 8 pede que o jogador escreva uma classe. O teste recebe uma
+  lista e devolve uma lista. E aí está o problema:
+</p>
+
+<div class="filename">content/python/islands/08-objects/missions/01-the-crate-that-knows-itself.yaml</div>
+<pre><code>One thing worth saying plainly: a two-line answer that skips the class entirely returns
+the right list, and the tests cannot tell. Write the class anyway. Everything on this
+island is built on it, and mission 2 hands you nothing to stand on if you skipped this.</code></pre>
+
+<p>
+  O teste não discrimina, e o enunciado <em>diz isso</em>. Essa decisão virou regra do
+  repositório e se repetiu três vezes: na Ilha 10 missão 1
+  (<code>values.index()</code> dentro de um <code>try</code> passaria), e na Ilha 11
+  missão 6, onde a versão <em>sem</em> o <code>Lock</code> quase sempre também produz o
+  total certo, porque em CPython o interpretador raramente troca de thread no meio de um
+  incremento curto.
+</p>
+
+<div class="callout honest">
+  <span class="label">A regra da honestidade</span>
+  <p>
+    Quando o teste não consegue distinguir a resposta certa da errada, <strong>diga
+    isso</strong>. Não finja cobertura que não existe. Um jogo que fingisse detectar o
+    lock faltante estaria mentindo sobre algo que o jogador consegue conferir — e no dia
+    em que ele confere, ele para de confiar em <em>todos</em> os enunciados, inclusive
+    nos honestos.
+  </p>
+</div>
+
+<p>
+  Repare no que a Ilha 11 missão 6 ensina exatamente por não conseguir testar: "quase
+  sempre certo" <strong>é o formato do bug</strong>. Uma condição de corrida que aparece
+  uma vez em dez mil execuções passa no teste, passa em desenvolvimento, e falha em
+  produção sob carga. O item não discrimina, e a razão pela qual ele não discrimina é
+  a lição.
+</p>
+
+<h2>4. Teoria 2 — Uma nota precisa de especificação</h2>
+
+<p>
+  O outro canto do quadrado é mais sutil e me custou uma ilha inteira para enxergar.
+</p>
+
+<p>
+  A Ilha 10 avalia complexidade <em>contando passos</em>, não cronometrando. Uma contagem
+  de comparações é o mesmo inteiro em qualquer máquina; um segundo medido não é,
+  especialmente num sistema de arquivos Windows frio onde o relógio inclui a partida do
+  interpretador. Parecia uma decisão limpa.
+</p>
+
+<p>
+  Então eu escrevi a busca binária e descobri o seguinte: <strong>toda implementação
+  correta acha o item, e elas não concordam sobre quantas comparações isso levou.</strong>
+</p>
+
+<div class="filename">content/python/islands/10-algorithms/missions/04-halve-the-shore.yaml</div>
+<pre><code># The midpoint rule is stated exactly in the brief, because the comparison count is graded
+# and `(low + high) // 2` and `low + (high - low + 1) // 2` produce different counts on the
+# same input. A graded count needs a specified algorithm, not just a correct one.</code></pre>
+
+<p>
+  Contar iterações do laço e contar testes <code>==</code> também diferem em um quando o
+  item está ausente. Um enunciado que diz "conte suas comparações" <em>não é uma
+  especificação</em>, e um jogador com uma busca binária perfeitamente boa reprovaria num
+  número que ninguém ensinou a produzir. Falso negativo, o canto de cima à direita.
+</p>
+
+<p>
+  A correção foi escrever a regra do laço dentro do enunciado — o meio exato, a condição
+  exata, onde o contador incrementa — em seis missões. Isso é mais prescritivo que
+  qualquer coisa antes no currículo, e é <strong>o preço de avaliar custo em vez de
+  avaliar resposta</strong>.
+</p>
+
+<p>
+  A Ilha 11 confirmou a regra num terreno diferente. A missão 8 precisa provar que
+  concorrência às vezes deixa <em>mais lento</em>, e a prova honesta disso é um
+  cronômetro — proibido. A saída foi declarar o modelo de custo no enunciado:
+</p>
+
+<div class="filename">content/python/islands/11-async-and-concurrency/missions/08-the-slower-fleet.yaml</div>
+<pre><code>len(jobs) * overhead_us          um ramo iniciado por trabalho, sempre pago
++ o maior `us` entre os trabalhos "wait", ou 0 se não houver nenhum
++ a soma dos `us` dos trabalhos "compute"</code></pre>
+
+<p>
+  Espera colapsa na maior porque esperas se sobrepõem; cálculo continua somando porque
+  não se sobrepõe. Dois programas concorrentes corretos <em>discordam</em> sobre o que a
+  concorrência custou a eles — então o modelo tem de vir de fora.
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th>O que você avalia</th><th>O que precisa especificar</th><th>Onde isso apareceu</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>A resposta</td><td>Nada além do formato de saída</td><td>Ilhas 1 a 9</td></tr>
+    <tr><td>O custo</td><td>O algoritmo exato: meio, condição, onde conta</td><td>Ilha 10, seis missões</td></tr>
+    <tr><td>A decisão</td><td>O modelo de custo, com os números de entrada</td><td>Ilha 11, missão 8</td></tr>
+    <tr><td>A ordem</td><td>Que os valores sejam distintos, para não haver empate</td><td>Ilha 11, missão 4</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <span class="label">A regra da especificação</span>
+  <p>
+    Quanto mais longe você se afasta de "a resposta está certa", mais o enunciado tem de
+    ditar. Avaliar <em>como</em> em vez de <em>o quê</em> transfere o ônus da definição do
+    avaliador para o enunciado — e um enunciado que não assume esse ônus produz falsos
+    negativos que parecem falhas do aluno.
+  </p>
+</div>
+
+<h2>5. Teoria 3 — Localizar a falha antes de consertar</h2>
+
+<p>
+  O terceiro requisito é o mais antigo dos três, e a Ilha 6 já o tinha ensinado: quando
+  algo falha, a pergunta não é <em>o que quebrou</em>, é <em>qual metade ainda é
+  confiável</em>.
+</p>
+
+<p>
+  <strong>Bissecção</strong> é o método. Você corta o espaço suspeito ao meio, testa o
+  meio, e descarta metade. Duzentas lâmpadas viram oito checagens em vez de duzentas —
+  <code>log₂(200) ≈ 7,6</code>. O que a torna uma <em>metodologia</em> e não só um
+  algoritmo é a exigência de formular uma hipótese <strong>falseável</strong> antes de
+  mexer em qualquer coisa: uma afirmação sobre a qual você poderia estar errado, e que o
+  próximo teste vai confirmar ou derrubar.
+</p>
+
+<p>
+  Esta aula tem um exemplo que aconteceu enquanto ela era escrita, e ele é melhor do que
+  qualquer um que eu inventaria.
+</p>
+
+<p>
+  Dois testes de snapshot da TUI falhavam <strong>duas em cada três execuções</strong>.
+  Por duas ilhas eles foram descartados como "flaky". Auditando o projeto, eu resolvi
+  investigar de verdade — e a primeira hipótese foi minha própria mudança recente no
+  harness. <code>git stash</code>, rodei contra o HEAD limpo: falhava igual. Hipótese
+  falseada, em noventa segundos, sem eu ter mexido em nada.
+</p>
+
+<p>
+  Segunda hipótese: os testes esperavam <code>pilot.pause(delay=8)</code> — tempo fixo —
+  por uma execução real de missão que roda um subprocesso por caso de teste. Espera cega.
+  Troquei por esperar a condição (<code>MissionScreen.running</code>, que o próprio código
+  já expunha). A taxa de falha caiu de 2 em 3 para <strong>1 em 10</strong>.
+</p>
+
+<div class="callout danger">
+  <span class="label">O momento que importa</span>
+  <p>
+    Uma melhora de 2-em-3 para 1-em-10 <em>parece</em> conserto. Não é. Se eu tivesse
+    parado ali, o teste continuaria vermelho de vez em quando e eu teria acreditado que
+    tinha resolvido. A hipótese "era espera cega" foi confirmada em parte e isso é
+    exatamente quando é mais tentador parar.
+  </p>
+</div>
+
+<p>
+  Terceira rodada: quarenta execuções instrumentadas, capturando o SVG de toda falha.
+  Quatro falharam, e as quatro diferiam <em>do mesmo jeito</em> — uma classe CSS extra,
+  <code>.terminal-r9 { fill: #121212 }</code>, renumerando todas as seguintes.
+</p>
+
+<p>
+  O cursor do editor pisca. Um cursor visível é mais uma cor distinta, então o snapshot
+  depende de qual fase do piscar ele pegou. Isso é não-determinismo por construção, e
+  nenhuma quantidade de espera conserta. <code>cursor_blink = False</code> nos testes:
+  <strong>25 execuções seguidas verdes</strong>, e a suíte caiu de vinte segundos para
+  quatro.
+</p>
+
+<p>
+  Duas causas empilhadas. Consertar só a óbvia teria parecido progresso e deixado o teste
+  vermelho — e é por isso que "é flaky" é um diagnóstico perigoso: ele encerra a
+  investigação sem produzir evidência nenhuma.
+</p>
+
+<h2>6. O código, anotado: o motor aprende a esperar</h2>
+
+<p>
+  A Ilha 11 foi a única que não podia começar pela autoria. O harness chamava o entrypoint
+  de forma síncrona, então um <code>async def</code> devolvia uma corrotina que o
+  serializador transformava em <code>&lt;coroutine object ... at 0x7f...&gt;</code> — um
+  endereço novo a cada execução. Teste eternamente vermelho, inclusive contra a solução
+  oficial da própria missão.
+</p>
+
+<div class="filename">src/codequest/engine/harness.py</div>
+<pre><code>try:
+    returned = function(*args, **kwargs)
+    if isinstance(returned, types.CoroutineType):
+        # [AI-ENG:deferred-results] What the callable handed back is not the answer:
+        # it is a promise to produce one. Serializing it now would ship
+        # ``&lt;coroutine object ... at 0x7f...&gt;`` — a fresh address every run, and a
+        # value that looks like data. Resolving the promise *before* the boundary,
+        # inside the same error handling that covers the ordinary call, is the same
+        # discipline an agent's tool executor needs: await first, then serialize,
+        # then report. The order is the whole point.
+        import asyncio
+
+        returned = asyncio.run(returned)
+except MemoryError:
+    return {"status": "memory", "type": "MemoryError", "message": "out of memory"}
+except RecursionError as exc:
+    return {"status": "error", "type": "RecursionError", "message": str(exc)}
+except BaseException as exc:  # any player exception is a normal outcome, not a crash
+    return { ... }</code></pre>
+
+<p>
+  Três detalhes valem a leitura, e nenhum deles é sobre async.
+</p>
+
+<h3>O <code>await</code> mora <em>dentro</em> do <code>try</code></h3>
+
+<p>
+  Se <code>asyncio.run</code> ficasse fora, uma exceção levantada dentro da corrotina
+  escaparia do harness e o processo pai receberia um arquivo de resultado vazio — falha
+  sem diagnóstico, que é a pior categoria. Resolver a promessa <em>e</em> tratar o erro
+  dela têm de acontecer no mesmo lugar.
+</p>
+
+<h3><code>asyncio.run</code> tem de ser a chamada mais externa</h3>
+
+<p>
+  Ela cria e fecha o próprio event loop. Uma missão cuja solução chamasse
+  <code>asyncio.run</code> estaria aninhando loops e levantaria <code>RuntimeError</code>.
+  Por isso todo enunciado async da Ilha 11 diz, em voz alta, que o motor aguarda por você.
+</p>
+
+<h3>O <code>import</code> está lá dentro, e isso foi medido</h3>
+
+<p>
+  Eu escrevi <code>import asyncio</code> no topo do arquivo, como qualquer pessoa
+  escreveria. Um teste ficou vermelho. E aqui vem a parte que eu quero que você guarde:
+  <strong>eu assumi a culpa antes de medir</strong>, "corrigi", e continuou vermelho — foi
+  o <code>git stash</code> da seção anterior que provou que o teste já era vermelho antes
+  de mim.
+</p>
+
+<p>
+  Mas no caminho eu medi, e a medição sobreviveu ao diagnóstico errado:
+</p>
+
+<pre><code>python -X importtime -c "pass"                    →  ~5 ms
+python -X importtime -c "import asyncio, inspect" → ~75 ms</code></pre>
+
+<p>
+  O <code>harness.py</code> é <strong>reexecutado por um interpretador novo a cada caso de
+  teste de cada missão</strong>. Pagar 70 ms extras em 117 missões para servir as quatro
+  que são async não é uma troca defensável. A detecção usa
+  <code>types.CoroutineType</code> (0,6 ms) em vez de <code>inspect</code>, e
+  <code>asyncio</code> só é importado no ramo que precisa dele.
+</p>
+
+<div class="callout">
+  <span class="label">A lição embutida</span>
+  <p>
+    A decisão de performance ficou porque o <em>número</em> ficou, não porque a hipótese
+    estava certa. Uma otimização sem medição ao lado é uma opinião; uma medição continua
+    valendo mesmo quando o motivo que levou você a fazê-la estava errado.
+  </p>
+</div>
+
+<h2>7. A ponte com AI Engineering</h2>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:deferred-results]</span>
+  <p>
+    O que a função devolveu não é a resposta: é a promessa de uma. Um executor de tool
+    calls de agente tem exatamente esta disciplina — <strong>aguardar primeiro,
+    serializar depois, reportar por último</strong> — e a ordem é o ponto inteiro.
+    Serializar antes de resolver produz algo que <em>parece</em> dado, atravessa o
+    boundary, e só quebra três camadas adiante. Resolver a promessa dentro do mesmo
+    tratamento de erro que cobre a chamada comum é o que impede uma exceção de dentro
+    dela de sumir sem rastro.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:debugging-methodology]</span>
+  <p>
+    Cortar ao meio o intervalo suspeito e formular uma hipótese falseável antes de mudar
+    qualquer coisa é a mesma disciplina de um agente depurando as próprias tool calls. A
+    pergunta nunca é "o que quebrou" e sim "qual metade ainda é confiável". A versão
+    humana vem primeiro — e o caso dos dois snapshots mostra por quê: a primeira hipótese
+    estava errada, a segunda estava incompleta, e só a terceira rodada de evidência achou
+    a causa.
+  </p>
+</div>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:concurrency-cost]</span>
+  <p>
+    Um agente que dispara dez tool calls em paralelo paga a mesma troca da missão 8:
+    sobrepõe a espera, <strong>nunca</strong> o trabalho, e paga um custo fixo por ramo.
+    O reflexo de paralelizar um lote de chamadas de LLM que levam vinte milissegundos cada
+    é o mesmo reflexo que a missão recusa, em outra escala.
+  </p>
+</div>
+
+<h3>E a ponte maior, que não tem slug</h3>
+
+<p>
+  Se você for construir um eval harness — para RAG, para agente, para o que for — as três
+  perguntas desta aula são as mesmas:
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead>
+    <tr><th>No CodeQuest</th><th>Num eval de LLM</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Uma resposta de duas linhas passa sem escrever a classe</td>
+      <td>O modelo acerta porque a resposta estava no prompt, ou porque o item é fácil demais para separar modelos</td>
+    </tr>
+    <tr>
+      <td>Duas buscas binárias corretas dão contagens diferentes</td>
+      <td>Dois resumos corretos recebem notas diferentes porque a rubrica não diz o que "bom" significa</td>
+    </tr>
+    <tr>
+      <td>Contagem de passos em vez de cronômetro</td>
+      <td>Métrica determinística em vez de LLM-as-judge, sempre que der — a primeira é a mesma em toda máquina</td>
+    </tr>
+    <tr>
+      <td>"É flaky" descartou um bug real por duas ilhas</td>
+      <td>Variância entre execuções atribuída a temperatura, quando é o eval que é não-determinístico</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  A linha de baixo é a que mais custa dinheiro em produção. Um eval não-determinístico
+  gera números que sobem e descem sozinhos, e a equipe aprende a ignorar as quedas — que é
+  exatamente quando uma regressão de verdade passa despercebida.
+</p>
+
+<h2>8. Exercício de fixação</h2>
+
+<p>
+  Você está construindo um eval para um agente de suporte. Um dos itens é assim:
+</p>
+
+<pre><code>entrada:   "meu pedido 4471 não chegou, já faz duas semanas"
+esperado:  o agente chama consultar_pedido(4471) e depois abrir_chamado(...)
+nota:      1.0 se as duas ferramentas foram chamadas, 0.0 caso contrário</code></pre>
+
+<p>
+  Três perguntas, nesta ordem:
+</p>
+
+<ol>
+  <li><strong>Discrimina?</strong> Existe um agente que não entendeu nada e ainda assim tira 1.0?</li>
+  <li><strong>Está especificado?</strong> Existe um agente que resolveu o problema do usuário e tira 0.0?</li>
+  <li><strong>Localiza?</strong> Quando dá 0.0, você sabe qual metade investigar?</li>
+</ol>
+
+<details>
+  <summary>Ver a resposta</summary>
+
+  <p>
+    <strong>1. Não discrimina.</strong> Um agente que chama <em>todas</em> as ferramentas
+    disponíveis em toda conversa tira 1.0 neste item. É o
+    <code>values.index()</code> da Ilha 10 e a resposta de duas linhas da Ilha 8: o
+    caminho barato passa e o teste não percebe. A correção é um item negativo — uma
+    conversa onde <code>abrir_chamado</code> seria <em>errado</em> — porque a única
+    prova de que uma ação foi escolhida é a existência de um caso onde ela não deveria
+    acontecer.
+  </p>
+
+  <p>
+    <strong>2. Não está especificado.</strong> Um agente que chama
+    <code>consultar_pedido(4471)</code>, descobre que o pedido foi entregue ontem no
+    vizinho, explica isso e <em>não</em> abre chamado resolveu melhor o problema — e tira
+    0.0. Falso negativo, o canto de cima à direita do quadrado. A rubrica está avaliando
+    <em>o caminho</em> e fingindo que avalia <em>o resultado</em>. Ou você especifica o
+    caminho (como a Ilha 10 especificou o meio da busca binária), ou avalia o resultado e
+    para de exigir a sequência.
+  </p>
+
+  <p>
+    <strong>3. Não localiza.</strong> Um único 0.0 cobre pelo menos quatro falhas
+    diferentes: o agente não extraiu o número do pedido, extraiu e chamou a ferramenta
+    errada, chamou a certa com argumento malformado, ou chamou tudo certo e a ferramenta
+    devolveu erro. Uma nota binária junta as quatro e não diz o que consertar — é
+    exatamente o que <code>[AI-ENG:failure-taxonomy]</code> nomeia na Fase 1. Registre a
+    <em>categoria</em> da falha, não só a nota, e a bissecção passa a ser possível.
+  </p>
+
+  <p>
+    <strong>O padrão geral:</strong> as três perguntas são independentes e um item pode
+    falhar nas três de uma vez, como este. Fazê-las nesta ordem é barato; descobrir a
+    resposta seis meses depois, quando a métrica está em 0,94 e o produto está ruim,
+    não é.
+  </p>
+</details>
+
+<footer>
+  <p>
+    CodeQuest · Fase 7 · escrita em 2026-08-11, a partir do código que shippou.<br>
+    Bookmarks cobertos: <code>deferred-results</code>, <code>debugging-methodology</code>,
+    <code>concurrency-cost</code>. Índice completo em <code>docs/ai-eng-bookmarks.md</code>;
+    o que ficou pendente ao fechar a trilha está em <code>docs/project-audit.md</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeQuest — Fase 3: Currículo e conteúdo como dado</title>
+<style>
+  :root {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #5c6f3f;
+    --accent-soft: #eaefe1; --warn: #8a6d1f; --code-bg: #f7f5f0;
+    --shadow: 0 1px 2px rgba(28,26,23,.05), 0 8px 24px rgba(28,26,23,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+      --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #a8c47c;
+      --accent-soft: #202718; --warn: #d4b45e; --code-bg: #191712;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2efe9; --ink: #1c1a17;
+    --ink-2: #55504a; --ink-3: #8a837a; --rule: #e3ded5; --accent: #5c6f3f;
+    --accent-soft: #eaefe1; --warn: #8a6d1f; --code-bg: #f7f5f0;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --surface: #1c1a16; --surface-2: #23201b; --ink: #ece7dd;
+    --ink-2: #b3ab9e; --ink-3: #837b6f; --rule: #2f2b25; --accent: #a8c47c;
+    --accent-soft: #202718; --warn: #d4b45e; --code-bg: #191712;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 400 17px/1.65 ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+
+  header.top { padding: 4rem 0 2.5rem; border-bottom: 1px solid var(--rule); margin-bottom: 3rem; }
+  .eyebrow {
+    font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 1rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 6vw, 2.9rem); line-height: 1.1; letter-spacing: -.02em;
+    margin: 0 0 1rem; font-weight: 600;
+  }
+  .lede { font-size: 1.15rem; color: var(--ink-2); margin: 0; max-width: 38rem; }
+
+  h2 {
+    font-size: 1.6rem; letter-spacing: -.01em; font-weight: 600;
+    margin: 3.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 1.15rem; font-weight: 600; margin: 2.25rem 0 .6rem; }
+  p { margin: 0 0 1.1rem; }
+  ul, ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+
+  code, pre { font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+  code { font-size: .87em; background: var(--code-bg); padding: .12em .35em; border-radius: 3px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55; margin: 0 0 1.2rem;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .filename {
+    font: 500 .72rem/1 ui-monospace, monospace; color: var(--ink-3);
+    margin: 0 0 .4rem; letter-spacing: .02em;
+  }
+
+  .callout {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 1.1rem 1.25rem; margin: 0 0 1.4rem; box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font: 600 .7rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .55rem;
+  }
+  .callout.honest { border-left-color: var(--warn); }
+  .callout.honest .label { color: var(--warn); }
+
+  .bridge {
+    background: var(--accent-soft); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.25rem; margin: 1.4rem 0;
+  }
+  .bridge .slug {
+    font: 600 .72rem/1 ui-monospace, monospace; color: var(--accent);
+    display: inline-block; margin-bottom: .5rem;
+  }
+  .bridge p:last-child { margin-bottom: 0; }
+
+  .tablewrap { overflow-x: auto; margin: 0 0 1.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font: 600 .74rem/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ink-3);
+  }
+
+  figure { margin: 1.6rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--ink-3); margin-top: .6rem; text-align: center; }
+
+  details {
+    background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: .85rem 1.1rem; margin: 0 0 1rem;
+  }
+  details summary { cursor: pointer; font-weight: 600; font-size: .95rem; font-family: ui-sans-serif, system-ui, sans-serif; }
+  details[open] summary { margin-bottom: .8rem; }
+  details > *:last-child { margin-bottom: 0; }
+
+  .toc {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 1.1rem 1.4rem; margin-bottom: 3rem; box-shadow: var(--shadow);
+  }
+  .toc p {
+    font: 600 .72rem/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 .7rem;
+  }
+  .toc ol { margin: 0; padding-left: 1.2rem; font-size: .95rem; }
+  .toc li { margin-bottom: .3rem; }
+
+  footer {
+    margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-3);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">CodeQuest · Fase 3</p>
+  <h1>Currículo e conteúdo como dado</h1>
+  <p class="lede">
+    Escrever dez missões parece a fase menos técnica do projeto. É a que mais se parece
+    com montar um conjunto de avaliação para um modelo — e onde eu cometi os dois erros
+    mais instrutivos até agora.
+  </p>
+</header>
+
+<nav class="toc">
+  <p>Nesta aula</p>
+  <ol>
+    <li>O que foi construído</li>
+    <li>A analogia: o manual de treinamento</li>
+    <li>Teoria 1 — Conteúdo como dado, não como código</li>
+    <li>Teoria 2 — Validar dado declarativo</li>
+    <li>Teoria 3 — Design de currículo é design de eval</li>
+    <li>Teoria 4 — Testes escondidos são teste adversarial</li>
+    <li>Os dois erros desta fase, contados inteiros</li>
+    <li>A ponte com AI Engineering</li>
+    <li>Exercícios</li>
+  </ol>
+</nav>
+
+<h2>1. O que foi construído</h2>
+
+<p>
+  A ilha Foundations, completa: dez missões cobrindo seis conceitos, do primeiro valor
+  guardado numa variável até um relatório que combina todos eles. Mais o desconto de XP
+  por dica, que fechou uma promessa que o README fazia e o código não cumpria.
+</p>
+
+<p>
+  E, o mais importante, a suíte que prova que tudo isso funciona:
+</p>
+
+<pre><code>$ codequest check
+[PASS] py-foundations-01  The ship's stores
+[PASS] py-foundations-02  Is that a number?
+...
+[PASS] py-foundations-10  The log at end of watch
+
+10/10 missions self-consistent</code></pre>
+
+<p>
+  Sessenta e seis asserções, geradas automaticamente a partir dos arquivos. Cada uma prova
+  que a solução declarada numa missão passa nos próprios testes visíveis e escondidos, e
+  obedece às restrições que a própria missão declara.
+</p>
+
+<h2>2. A analogia: o manual de treinamento</h2>
+
+<p>
+  Uma companhia de navegação treina timoneiros. Duas empresas concorrentes fazem isso de
+  formas opostas.
+</p>
+
+<p>
+  Na primeira, o treinamento está <strong>na cabeça do instrutor</strong>. Ele sabe a
+  ordem, sabe o que costuma confundir, improvisa exemplos. Funciona bem — enquanto for ele.
+  Quando adoece, ninguém consegue substituí-lo, e ninguém consegue revisar o que ele ensina
+  porque não está escrito em lugar nenhum.
+</p>
+
+<p>
+  Na segunda, o treinamento é <strong>um manual</strong>. Ordem numerada, pré-requisito de
+  cada lição, erros comuns listados, e um exercício de verificação por lição. Qualquer
+  instrutor consegue dar a aula. Qualquer pessoa consegue apontar que a lição 7 depende de
+  algo que só aparece na lição 9.
+</p>
+
+<p>
+  O CodeQuest é a segunda empresa. O currículo é um documento, as missões são arquivos, e
+  a coerência entre os dois é verificada por máquina. É a diferença entre conhecimento que
+  mora numa pessoa e conhecimento que mora num artefato.
+</p>
+
+<h2>3. Teoria 1 — Conteúdo como dado, não como código</h2>
+
+<p>
+  A decisão mais antiga do projeto, tomada antes de existir uma linha de motor: uma missão
+  é um arquivo YAML, nunca um módulo Python.
+</p>
+
+<p class="filename">content/python/islands/01-foundations/missions/04-grade-or-fail.yaml</p>
+<pre><code>id: py-foundations-04
+title: The navigator's exam
+difficulty: elementary
+xp: 10
+
+concepts: [conditionals, basic-types]
+
+teaching:
+  analogy: |
+    A customs officer at the gangway asks questions in a fixed order...
+  key_points:
+    - Only one branch of an if / elif chain runs. The first true condition wins.
+
+constraints:
+  forbidden_builtins: []
+
+tests:
+  visible:
+    - args: [95]
+      expect: "gold"
+  hidden:
+    - args: [90]
+      expect: "gold"
+    - args: [89]
+      expect: "silver"</code></pre>
+
+<p>Escolher dado em vez de código compra quatro coisas concretas:</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Propriedade</th><th>Por que importa aqui</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Não executa</strong></td><td>Um arquivo de conteúdo não pode ter um bug de runtime, não pode entrar em loop, não pode abrir um socket</td></tr>
+    <tr><td><strong>Validável</strong></td><td>Um schema descreve o que é válido. Código só é validável rodando</td></tr>
+    <tr><td><strong>Diff legível</strong></td><td>Mudar uma dica é uma linha no diff. Numa classe Python seria ruído entre chaves e indentação</td></tr>
+    <tr><td><strong>Contribuível</strong></td><td>Alguém que sabe ensinar loops pode escrever uma missão sem saber nada do motor</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  A regra correspondente está no <code>CLAUDE.md</code> §3 e é verificada por teste:
+  <code>content/</code> não pode conter nenhum <code>.py</code>. Não é higiene — é o que
+  impede o conteúdo de virar um vetor de execução.
+</p>
+
+<div class="callout honest">
+  <span class="label">O custo, dito por inteiro</span>
+  <p>
+    Dado precisa de uma camada de validação que código não precisaria. Um erro de digitação
+    num arquivo Python o interpretador pega; num YAML, ninguém pega — a não ser que você
+    escreva quem pega.
+  </p>
+  <p>
+    O <code>loader.py</code> e o <code>test_all_missions.py</code> existem por causa dessa
+    escolha. É um custo real, pago de propósito, e a próxima seção é sobre ele.
+  </p>
+</div>
+
+<h2>4. Teoria 2 — Validar dado declarativo</h2>
+
+<p>
+  Um arquivo de missão parece o contrato e silenciosamente pode não ser. O loader tem duas
+  regras que definem como ele lida com isso.
+</p>
+
+<h3>Faça o parse, depois valide</h3>
+
+<p>
+  Nunca as duas coisas ao mesmo tempo. Validar durante o parse produz mensagens sobre a
+  posição do parser — "erro na linha 47, coluna 12" — quando o que o autor precisa ouvir é
+  "falta o campo <code>solution</code>".
+</p>
+
+<h3>Reporte tudo de uma vez</h3>
+
+<p class="filename">src/codequest/engine/loader.py</p>
+<pre><code>def _validate_mission(raw: Any) -> list[str]:
+    """Return every schema problem found in ``raw``. An empty list means valid.
+
+    # [AI-ENG:schema-validation] Declarative data from outside the program is exactly
+    # the shape of an LLM's structured output: it *looks* like the contract and
+    # silently is not. Validating the whole document and reporting all violations at
+    # once is what turns a vague "the model returned garbage" into a fixable list.
+    """
+    problems: list[str] = []
+    ...
+    return problems</code></pre>
+
+<p>
+  Repare que a função devolve uma <strong>lista</strong> e não levanta na primeira falha.
+  Um validador que para no primeiro erro transforma um arquivo com cinco problemas em cinco
+  ciclos de editar-rodar-editar.
+</p>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:schema-validation]</span>
+  <p>
+    Troque "arquivo YAML escrito à mão" por "JSON devolvido por um modelo" e nada mais
+    muda. É a mesma classe de problema: dado externo que se parece com o contrato.
+  </p>
+  <p>
+    A prática que transfere é a de coletar todas as violações. Quando um modelo devolve
+    estrutura errada, você quer a lista completa — para consertar o prompt de uma vez, ou
+    para devolver ao modelo um erro que ele consiga corrigir num único passo. "O modelo
+    retornou lixo" não é acionável; "faltam os campos <code>x</code> e <code>y</code>, e
+    <code>z</code> veio como string em vez de número" é.
+  </p>
+</div>
+
+<h2>5. Teoria 3 — Design de currículo é design de eval</h2>
+
+<p>
+  Esta é a seção que justifica o título da aula.
+</p>
+
+<p>
+  O <code>curriculum-designer</code> impõe três regras ao ordenar conceitos, e elas são as
+  mesmas regras de quem monta um conjunto de avaliação sério:
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Regra do currículo</th><th>A mesma regra num eval</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Nunca dois conceitos novos na mesma missão</td>
+      <td>Cada caso isola <em>uma</em> capacidade. Se o caso testa raciocínio e formatação ao mesmo tempo, a falha não diz qual dos dois quebrou</td>
+    </tr>
+    <tr>
+      <td>Um conceito só depende do que veio antes</td>
+      <td>Não avalie uma capacidade cujo pré-requisito você não verificou. Falhar em aritmética não é falhar em raciocínio</td>
+    </tr>
+    <tr>
+      <td>Todo conceito é reusado pelo menos duas vezes</td>
+      <td>Uma capacidade medida uma vez é ruído. Medir de novo em contexto diferente separa acerto de sorte</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  O mapa de missões que saiu disso é literalmente uma matriz de cobertura:
+</p>
+
+<figure>
+<svg viewBox="0 0 700 230" role="img" aria-label="Matriz de conceitos por missao">
+  <g font-family="ui-monospace, monospace" font-size="10.5" fill="currentColor">
+    <text x="4" y="14" font-size="9.5" fill="#8a837a">missão →</text>
+    <text x="150" y="14">1   2   3   4   5   6   7   8   9  10</text>
+
+    <text x="4" y="40">variables</text>
+    <text x="150" y="40" fill="#5c6f3f" font-weight="700">●</text>
+    <text x="174" y="40">○</text><text x="198" y="40">○</text>
+    <text x="438" y="40">○</text><text x="654" y="40">○</text>
+
+    <text x="4" y="66">basic-types</text>
+    <text x="174" y="66" fill="#5c6f3f" font-weight="700">●</text>
+    <text x="198" y="66">○</text><text x="222" y="66">○</text><text x="654" y="66">○</text>
+
+    <text x="4" y="92">conditionals</text>
+    <text x="222" y="92" fill="#5c6f3f" font-weight="700">●</text>
+    <text x="246" y="92">○</text><text x="294" y="92">○</text>
+    <text x="318" y="92">○</text><text x="654" y="92">○</text>
+
+    <text x="4" y="118">for-loop</text>
+    <text x="246" y="118" fill="#5c6f3f" font-weight="700">●</text>
+    <text x="270" y="118">○</text><text x="294" y="118">○</text><text x="654" y="118">○</text>
+
+    <text x="4" y="144">accumulator</text>
+    <text x="270" y="144" fill="#5c6f3f" font-weight="700">●</text>
+    <text x="294" y="144">○</text><text x="654" y="144">○</text>
+
+    <text x="4" y="170">while-loop</text>
+    <text x="318" y="170" fill="#5c6f3f" font-weight="700">●</text>
+    <text x="342" y="170">○</text><text x="654" y="170">○</text>
+  </g>
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="10" fill="#8a837a">
+    <text x="4" y="205">● introduz    ○ reforça</text>
+    <text x="4" y="221">Linha sem dois ○ é um conceito órfão. Coluna com dois ● é uma missão que ensina demais.</text>
+  </g>
+</svg>
+<figcaption>A matriz torna dois defeitos visíveis de relance, e ambos aconteceram nesta fase.</figcaption>
+</figure>
+
+<h2>6. Teoria 4 — Testes escondidos são teste adversarial</h2>
+
+<p>
+  Toda missão tem dois grupos de teste. Os <strong>visíveis</strong> ensinam a forma do
+  problema. Os <strong>escondidos</strong> existem para pegar quem passou sem aprender.
+</p>
+
+<p>A regra que os governa, do <code>docs/mission-schema.md</code>:</p>
+
+<div class="callout">
+  <span class="label">Regra</span>
+  <p>
+    Se devolver uma constante passa em todos os testes visíveis, acrescente testes
+    escondidos até não passar.
+  </p>
+</div>
+
+<p>
+  Repare no que isso é: você assume o papel de alguém tentando burlar a sua própria
+  avaliação, e projeta contra essa pessoa. Alguns exemplos reais desta ilha:
+</p>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Missão</th><th>O que o teste escondido pega</th></tr></thead>
+  <tbody>
+    <tr><td>2 — Is that a number?</td><td><code>True</code> e <code>False</code>. Quem checou só <code>isinstance(v, int)</code> passa nos visíveis e falha aqui, porque em Python um <code>bool</code> é um <code>int</code></td></tr>
+    <tr><td>4 — The navigator's exam</td><td>Os valores exatos de fronteira: 90, 89, 70, 69, 50, 49. Quem escreveu <code>&gt;</code> onde precisava de <code>&gt;=</code> só descobre aqui</td></tr>
+    <tr><td>7 — The longest name</td><td>Um empate. Decide se a implementação guarda o primeiro ou o último, que era uma escolha que o brief exigia fazer de propósito</td></tr>
+    <tr><td>10 — The log at end of watch</td><td>Um log só com leituras negativas. Pega o acumulador de "maior até agora" iniciado em zero — que parece inofensivo e vence contra qualquer valor real negativo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  E há uma segunda camada, que é o que impede a missão de ensinar a coisa errada:
+</p>
+
+<p class="filename">content/.../05-count-the-vowels.yaml</p>
+<pre><code>constraints:
+  forbidden_builtins: [count, sum]</code></pre>
+
+<p>
+  A missão ensina a percorrer texto contando. <code>text.count("a")</code> resolve sem
+  ensinar nada. Sem essa linha, a missão existe mas não funciona.
+</p>
+
+<div class="bridge">
+  <span class="slug">[AI-ENG:failure-taxonomy] · adversarial evaluation</span>
+  <p>
+    Um conjunto de eval que só testa o caminho feliz mede se o modelo funciona quando tudo
+    dá certo, o que já se sabia. O valor está nos casos construídos para quebrar: entrada
+    ambígua, contexto contraditório, a pergunta cuja resposta honesta é "não sei", o
+    prompt que tenta redirecionar a instrução.
+  </p>
+  <p>
+    E o paralelo do <code>forbidden_builtins</code> é direto: se o seu eval pode ser
+    vencido por decorar o formato da resposta em vez de resolver a tarefa, ele mede
+    memorização. A pergunta a fazer sempre é <strong>"qual é o atalho barato aqui, e o meu
+    conjunto o rejeita?"</strong>
+  </p>
+</div>
+
+<h2>7. Os dois erros desta fase, contados inteiros</h2>
+
+<p>
+  Os dois foram meus, os dois foram pegos antes de commitar, e os dois são o mesmo tipo de
+  erro: uma afirmação que parecia óbvia demais para verificar.
+</p>
+
+<h3>Erro 1: a missão de exemplo desobedecia ao próprio currículo</h3>
+
+<p>
+  O repositório já vinha com <code>02-sum-list.yaml</code> como exemplo de referência. Ela
+  declara:
+</p>
+
+<pre><code>order: 2
+concepts:
+  - accumulator-pattern
+  - for-loop</code></pre>
+
+<p>
+  Dois conceitos novos no mesmo arquivo, e na posição 2 — antes de variáveis, tipos ou
+  condicionais existirem. A regra que ela quebra é a primeira do
+  <code>curriculum-designer</code>, e é a regra de que todo o resto do currículo depende.
+</p>
+
+<p>
+  Ela foi para a posição 6, depois que <code>for-loop</code> é ensinado na 5. Custou
+  atualizar seis referências em arquivos de teste. Barato agora; mais caro a cada missão
+  nova que fosse adicionada antes de alguém perceber.
+</p>
+
+<h3>Erro 2: eu escrevi a missão 2 usando algo que só aparece na missão 4</h3>
+
+<p>
+  Este é o mais instrutivo, porque aconteceu <em>depois</em> de eu ter desenhado a matriz
+  que existe justamente para impedi-lo.
+</p>
+
+<p>
+  A missão 2 ensina tipos. A minha primeira versão dela era assim:
+</p>
+
+<pre><code>def type_name(value):
+    if isinstance(value, bool):
+        return "bool"
+    elif isinstance(value, int):
+        return "int"
+    ...</code></pre>
+
+<p>
+  Solução natural, boa missão — e <code>if</code>/<code>elif</code> só é ensinado na missão
+  4. O jogador chegaria na missão 2 e precisaria de uma construção que o jogo ainda não
+  mostrou.
+</p>
+
+<p>A correção foi reformular a tarefa para caber no que já existe:</p>
+
+<p class="filename">content/.../02-type-detective.yaml</p>
+<pre><code>def is_whole_number(value):
+    return isinstance(value, int) and not isinstance(value, bool)</code></pre>
+
+<p>
+  Expressão booleana, sem ramificação. A armadilha valiosa — <code>isinstance(True, int)</code>
+  ser verdadeiro — sobreviveu inteira, que era o ponto da missão.
+</p>
+
+<div class="callout honest">
+  <span class="label">Por que isso escapou</span>
+  <p>
+    A matriz registra os conceitos que uma missão <strong>declara</strong>. Não registra os
+    que ela <strong>usa sem declarar</strong>. Eu escrevi <code>concepts: [basic-types,
+    variables]</code>, o que era verdade, e a solução mesmo assim precisava de condicionais.
+  </p>
+  <p>
+    A defesa que ficou é uma nota explícita no syllabus dizendo que missões 2 e 3 não podem
+    usar <code>if</code>. Uma nota é mais fraca que um teste, e é o que dá para fazer hoje —
+    verificar automaticamente exigiria analisar a AST de cada solução contra o conjunto de
+    construções já ensinadas. Vale registrar como dívida honesta em vez de fingir que a
+    matriz cobre.
+  </p>
+</div>
+
+<h2>8. A ponte com AI Engineering</h2>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>No CodeQuest</th><th>Em AI Engineering</th></tr></thead>
+  <tbody>
+    <tr><td>Conteúdo é YAML, nunca código</td><td>Prompt e configuração como dado versionado, não como string no meio da lógica</td></tr>
+    <tr><td>Loader valida e reporta tudo de uma vez</td><td>Validação de structured output com lista completa de violações</td></tr>
+    <tr><td>Um conceito novo por missão</td><td>Um caso de eval isola uma capacidade</td></tr>
+    <tr><td>Conceito reusado duas vezes</td><td>Medir a mesma capacidade em contextos diferentes separa acerto de sorte</td></tr>
+    <tr><td>Testes escondidos</td><td>Casos adversariais; eval que só mede caminho feliz não mede nada</td></tr>
+    <tr><td><code>forbidden_builtins</code></td><td>Fechar o atalho que passa no eval sem resolver a tarefa</td></tr>
+    <tr><td><code>codequest check</code> no CI</td><td>Rodar o eval a cada mudança, não só antes de lançar</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  <span class="label">A ideia que amarra</span>
+  <p>
+    O <code>test_all_missions.py</code> não testa o motor. Ele testa <strong>o conteúdo</strong>,
+    usando o motor como instrumento de medida.
+  </p>
+  <p>
+    Essa inversão é o que um harness de eval é. Você não está verificando se o seu código
+    de avaliação funciona; está usando código que funciona para medir a qualidade de outra
+    coisa. Reconhecer de qual lado você está muda o que você escreve: quando o alvo é o
+    conteúdo, um caso que falha é um <em>achado</em>, não um bug a silenciar.
+  </p>
+</div>
+
+<h2>9. Exercícios</h2>
+
+<details>
+  <summary>1. Por que <code>content/</code> não pode conter nenhum <code>.py</code>, se o projeto já executa código do jogador num sandbox?</summary>
+  <p>
+    São confianças diferentes. O código do jogador é executado num subprocess matável, com
+    timeout, e o jogador escolheu rodá-lo. Um arquivo de conteúdo é <em>importado pelo
+    jogo</em>, no processo do jogo, sem sandbox nenhum.
+  </p>
+  <p>
+    E há a razão de produto: o dia em que missões vierem de pull request de outras pessoas,
+    "conteúdo é dado" é a diferença entre revisar YAML e revisar código que vai rodar na
+    máquina de quem instalar.
+  </p>
+</details>
+
+<details>
+  <summary>2. A missão 5 proíbe <code>count</code> e <code>sum</code>. O jogador escreve <code>text.count("a")</code>. Como o guard pega isso, se <code>count</code> é método de string e não builtin?</summary>
+  <p>
+    O <code>_SubmissionVisitor</code> tem um <code>visit_Attribute</code> que compara
+    <code>node.attr</code> com a lista de proibidos. <code>text.count</code> é um nó
+    <code>Attribute</code> cujo <code>attr</code> é <code>"count"</code>, então bate.
+  </p>
+  <p>
+    Detalhe que vale notar: essa checagem <em>não</em> passa pela isenção de nomes ligados
+    pelo jogador. Uma variável chamada <code>count</code> é isentada; um atributo chamado
+    <code>count</code> não. As duas decisões estão certas por motivos diferentes.
+  </p>
+</details>
+
+<details>
+  <summary>3. Você tem um eval de 200 casos e o modelo acerta 94%. Que três perguntas fazer antes de comemorar?</summary>
+  <ol>
+    <li>
+      <strong>Os 200 casos isolam capacidades diferentes, ou 150 medem a mesma coisa?</strong>
+      Um conjunto desbalanceado transforma uma capacidade em 75% da nota.
+    </li>
+    <li>
+      <strong>Existe atalho barato que passa sem resolver?</strong> Se responder sempre o
+      formato mais comum já dá 60%, o número mede formato e não tarefa. É a versão eval do
+      <code>forbidden_builtins</code>.
+    </li>
+    <li>
+      <strong>Os 6% que falham são todos do mesmo tipo?</strong> Sem taxonomia de falha,
+      94% é um número. Com taxonomia, você descobre que 5 dos 6 pontos são um único modo
+      de erro consertável.
+    </li>
+  </ol>
+  <p>
+    Bônus, o mais desconfortável: quantos dos 200 casos você escreveu tentando quebrar o
+    modelo, e quantos escreveu esperando que ele passasse? A proporção prevê o quanto o
+    número vai se sustentar em produção.
+  </p>
+</details>
+
+<details>
+  <summary>4. O erro 2 desta fase — usar uma construção não ensinada — passou pela matriz de conceitos. Como você o pegaria automaticamente?</summary>
+  <p>
+    Faria o parse da <code>solution</code> de cada missão com <code>ast</code> e coletaria
+    os tipos de nó usados: <code>ast.If</code>, <code>ast.For</code>, <code>ast.While</code>,
+    e assim por diante. Depois mapearia cada tipo de nó para o conceito que o ensina, e
+    afirmaria que toda construção usada foi introduzida numa missão de ordem menor ou igual.
+  </p>
+  <p>
+    O motor para isso <strong>já existe</strong> — é o mesmo <code>NodeVisitor</code> do
+    <code>guard.py</code>, apontado para a solução em vez de para o código do jogador.
+  </p>
+  <p>
+    Não foi construído ainda, e essa é a resposta honesta: a nota no syllabus é uma
+    salvaguarda mais fraca que um teste, e está registrada como tal. Reconhecer a diferença
+    entre "documentei" e "verifiquei" é metade do valor da lição.
+  </p>
+</details>
+
+<footer>
+  <p>
+    CodeQuest — Fase 3. Todo código nesta página é o código real do repositório.<br>
+    Bookmarks correspondentes: <code>schema-validation</code>, <code>untrusted-parsing</code>,
+    <code>failure-taxonomy</code>.<br>
+    Índice completo em <code>docs/ai-eng-bookmarks.md</code>.
+    Aulas anteriores: <code>Fase1-Motor-de-Execucao.html</code>,
+    <code>Fase2-Persistencia-e-Progressao.html</code>.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

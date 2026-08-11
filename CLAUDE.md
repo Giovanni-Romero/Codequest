@@ -220,8 +220,15 @@ At the end of **every** phase, write:
 D:\Projetos\2026\_AI_Eng_Aulas\Fase<N>-<Tema>.html
 ```
 
-- **Portuguese (pt-BR).** This is Giovanni's study material, not a repo file, so §0's
-  "files in English" rule does not apply here.
+and then **copy it into `docs/aulas/`**, so the lessons are readable from GitHub. The
+external folder stays the source of truth — write there first, mirror second — and
+`docs/aulas/README.md` indexes them.
+
+- **Portuguese (pt-BR).** This is the one deliberate exception to §0's "every file in
+  English" rule, and it is now an exception inside the repository rather than outside
+  it. The reason is unchanged: these are Giovanni's study material, and translating them
+  would cost exactly the clarity that justifies writing them. Everything else in
+  `docs/` stays in English, `docs/aulas/README.md` included.
 - **Fully self-contained.** Inline CSS, inline SVG diagrams. No CDN, no external font,
   no remote image. It must open offline by double-clicking.
 - **Light and dark theme**, via `prefers-color-scheme`.
