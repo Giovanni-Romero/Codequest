@@ -422,7 +422,15 @@ engine first buys.
 
 **Status, 2026-08-10: all eleven islands have shipped.** 117 missions per language, 234
 mission files, both trees at `codequest check` 117/117. What remains in this phase is the
-playtesting and the HTML lesson, not authoring.
+playtesting, not authoring.
+
+**The HTML lesson shipped 2026-08-11** as `Fase7-Curriculo-como-Eval-Design.html`, which
+closes the phase under `CLAUDE.md` §7. It was written alongside an audit of the whole
+repository — see **`docs/project-audit.md`** for what that audit found, what it fixed,
+and what is deferred on purpose. The two findings worth carrying forward: the teaching
+retrofit of Islands 1 to 7 now has a number attached to it (117 lines of mission against
+265), and two snapshot tests that had been dismissed as flaky for two islands turned out
+to have two real, stacked causes.
 
 The authoring cycle is unchanged and still runs one island at a time:
 

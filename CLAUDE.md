@@ -129,9 +129,10 @@ lands in Phase 1.4 (`engine/runners/python.py`).
 - **There is no memory cap on Windows.** Document this loudly in code and docs. Do not
   hide it behind a silent `try/except`.
 - The wall-clock timeout is enforced by the parent. Never trust the child to stop itself.
-- CI on Linux covers the full path. The `windows:` job in `ci.yml` is gated with
-  `if: false` and must be enabled once the fallback exists — that fallback is exactly
-  the code that breaks silently.
+- CI on Linux covers the full path. The `windows:` job in `ci.yml` **is enabled** and
+  runs all three suites on `windows-latest` — it was gated with `if: false` until the
+  fallback existed, because that fallback is exactly the code that breaks silently.
+  Keep it enabled: a Windows-only regression is invisible on the Linux job by design.
 - **No new dependencies for this.** Docker and WSL were considered and rejected; see
   `PROJECT_PLAN.md` §7.
 

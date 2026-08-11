@@ -56,6 +56,28 @@ joins strings.
 | `entrypoint` | string | yes | Function name the engine calls. Must match `stub` and `solution` |
 | `stub` | string | yes | Pre-filled editor content |
 
+### The entrypoint may be `async def`
+
+Added for Island 11 (Async and Concurrency). The harness detects a coroutine and
+resolves it before the value crosses the JSON boundary, so an async mission is an
+ordinary mission everywhere downstream: `expect`, `raises` and `tolerance` all behave
+identically, and an exception raised inside the coroutine arrives as a normal failure.
+
+Three rules, all of them learned by writing the island rather than by guessing:
+
+1. **The engine awaits the entrypoint.** The brief must say so. The player writes
+   `async def` and returns a value; the engine does the rest.
+2. **The solution must not call `asyncio.run` on itself.** `asyncio.run` owns its event
+   loop from creation to close, and the harness has already opened one — a second raises
+   `RuntimeError: asyncio.run() cannot be called from a running event loop`.
+3. **A *synchronous* entrypoint may call `asyncio.run` freely.** Only the entrypoint
+   itself is awaited for you. Missions 5 to 9 of Island 11 drive asyncio and threading
+   themselves and hand back plain data.
+
+A coroutine still cannot be *returned*, for the same reason an instance or a generator
+cannot: `repr` carries a memory address that changes every run. Return the awaited
+value, not the promise of it.
+
 ---
 
 ## `constraints`
@@ -207,7 +229,8 @@ If pasting hint 3 solves the mission, rewrite hint 3.
 2. All required fields present, types correct
 3. `difficulty` is a valid enum value
 4. `concepts` reference ids that exist in the syllabus
-5. `signature.entrypoint` appears as a `def` in both `stub` and `solution`
+5. `signature.entrypoint` appears as a `def` — or an `async def` — in both `stub` and
+   `solution`
 6. `solution` passes every visible test
 7. `solution` passes every hidden test
 8. `id` is unique across the repository

@@ -29,7 +29,7 @@ question. The game teaches perfectly well with it turned off.
 |---|---|
 | **Current version** | 0.1.0 (in development) |
 | **Playable** | **Yes** — `python -m codequest ui` |
-| **Content** | Islands 1-2, Foundations and Collections: 22 missions, in English and Portuguese |
+| **Content** | The Python track is complete: **11 islands, 117 missions**, every one of them in English and Portuguese |
 | **Languages available** | Python |
 | **Planned** | Java, TypeScript, plus Architecture, Security and AI Engineering tracks |
 
@@ -163,11 +163,15 @@ The map shows islands in order. Island 1 is open from the start. The rest are lo
 and each locked island tells you exactly what it needs:
 
 ```
-  [1] Foundations        ########## 8/8    DONE
-  [2] Collections        #####..... 5/10
-  [3] Functions          LOCKED - finish 8 missions on Collections
-  [4] Strings and Text   LOCKED
+  ▲ 1. Foundations        ████████████ 10/10
+  ◆ 2. Collections        █████·······  5/12
+  ▪ 3. Functions           ···········   0/12   locked - complete 22 missions
+  ▪ 4. Strings and Text    ···········   0/10   locked - complete 34 missions
 ```
+
+The requirement is a running total across the whole track, not a count on the island
+in front of you: Functions opens once 22 missions are done anywhere, which is exactly
+Foundations plus Collections.
 
 ### 4. Solve a mission
 
@@ -315,6 +319,8 @@ The rule that matters most: one mission introduces **one** new concept.
 | `docs/architecture.md` | How the layers fit together |
 | `docs/mission-schema.md` | Every field in a mission file |
 | `docs/curriculum/` | Concept ordering and learning objectives |
+| `docs/ai-eng-bookmarks.md` | The 21 places in this code that teach something about AI engineering |
+| `docs/project-audit.md` | What was owed when the Python track closed, and what is deferred on purpose |
 | `AGENTS.md` | How AI agents should work in this repo |
 
 ---
