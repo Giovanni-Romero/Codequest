@@ -4,6 +4,12 @@
 # um sintoma que voce localiza. A lista proibida (range, enumerate, index) remove os
 # jeitos confortaveis de varrer, mas uma varredura linear teimosa com contador ainda
 # passa - a guarda protege a licao, nao a nota. Dito em voz alta em vez de fingir cobertura.
+#
+# [AI-ENG:debugging-methodology] Cortar ao meio o intervalo suspeito e formular uma
+# hipótese falseável antes de mudar qualquer coisa é a mesma disciplina que um agente
+# precisa ao depurar as próprias tool calls: a pergunta nunca é "o que quebrou" e sim
+# "qual metade disto ainda é confiável", e a resposta tem de ser uma sobre a qual você
+# poderia estar errado. Mesmo músculo, aposta menor, e a versão humana vem primeiro.
 # Schema reference: docs/mission-schema.md
 
 id: py-debug-04

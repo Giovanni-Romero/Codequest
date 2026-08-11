@@ -4,6 +4,12 @@
 # spot. The forbidden list (range, enumerate, index) removes the comfortable ways to
 # scan, but a determined linear walk with a counter still passes - the guard protects the
 # lesson, not the grade. Said out loud here rather than pretending the coverage is tight.
+#
+# [AI-ENG:debugging-methodology] Halving the suspect range and forming a falsifiable
+# hypothesis before changing anything is the same discipline an agent needs when it is
+# debugging its own tool calls: the question is never "what is broken" but "which half
+# of this is still trustworthy", and the answer has to be one you could have been wrong
+# about. Same muscle, smaller stakes, and the human version comes first.
 # Schema reference: docs/mission-schema.md
 
 id: py-debug-04

@@ -11,7 +11,14 @@ validado, igual a structured output de LLM" e o ponto.
 Ao final de cada fase sai tambem uma aula em HTML em `D:\Projetos\2026\_AI_Eng_Aulas`
 cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
 
-**19 bookmarks.** Ordenados por arquivo.
+**21 bookmarks.** Ordenados por arquivo: primeiro o codigo, depois as duas pontes que
+vivem numa missao.
+
+Uma ponte mora numa missao quando o argumento e da *missao* e nao de uma linha de motor —
+`concurrency-cost` e o que a missao 8 da Ilha 11 defende, nao algo que o `harness.py`
+faz. Elas sao verificadas pelo mesmo script e pelo mesmo teste que as de codigo, porque
+uma citacao que ninguem confere envelhece calada. Os espelhos `-pt` carregam o mesmo
+comentario e nao sao indexados, senao o alvo ficaria pulando de idioma.
 
 | Slug | Onde | Conceito | A ponte com AI Engineering |
 |---|---|---|---|
@@ -34,6 +41,8 @@ cobrindo estes mesmos conceitos com teoria, diagrama e exercicio.
 | `shared-state` | [src/codequest/services/progress_service.py:63](src/codequest/services/progress_service.py#L63) | Estado compartilhado entre threads | A UI roda a tentativa numa worker thread enquanto a principal ainda pode revelar dica. A biblioteca ser thread-safe protege statements isolados, nao a SUA transacao de varios passos. Mesma armadilha na primeira vez que um agente dispara tool calls em paralelo. |
 | `idempotency` | [src/codequest/services/progress_service.py:120](src/codequest/services/progress_service.py#L120) | Idempotencia | Efeito aplicado uma vez so, decidido por estado persistido. Um passo de agente que faz retry nao pode cobrar o cartao duas vezes. |
 | `sql-injection` | [src/codequest/storage/repositories.py:10](src/codequest/storage/repositories.py#L10) | Injecao de SQL | Todo valor entra como placeholder. Mesma classe de bug de documento recuperado virando parte do prompt ou argumento virando parte de um shell command. |
+| `debugging-methodology` | [content/python/islands/06-debugging/missions/04-halve-the-search.yaml:8](content/python/islands/06-debugging/missions/04-halve-the-search.yaml#L8) | Bisseccao e hipotese falseavel | Cortar ao meio o intervalo suspeito antes de mudar qualquer coisa e a mesma disciplina de um agente depurando as proprias tool calls. A pergunta nunca e "o que quebrou" e sim "qual metade ainda e confiavel", e a resposta tem de ser uma sobre a qual voce poderia estar errado. A versao humana vem primeiro. |
+| `concurrency-cost` | [content/python/islands/11-async-and-concurrency/missions/08-the-slower-fleet.yaml:16](content/python/islands/11-async-and-concurrency/missions/08-the-slower-fleet.yaml#L16) | O custo da concorrencia | Um agente que dispara dez tool calls em paralelo paga a mesma troca: sobrepoe a espera, nunca o trabalho, e paga um custo fixo por ramo. O reflexo de paralelizar um lote de chamadas de LLM de vinte milissegundos cada e o mesmo reflexo que a missao recusa, em outra escala. |
 
 ## Por onde comecar
 

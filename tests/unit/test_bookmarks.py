@@ -12,6 +12,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = PROJECT_ROOT / "src" / "codequest"
+CONTENT_ROOT = PROJECT_ROOT / "content"
 INDEX = PROJECT_ROOT / "docs" / "ai-eng-bookmarks.md"
 
 BOOKMARK = re.compile(r"\[AI-ENG:([a-z-]+)\]")
@@ -19,10 +20,30 @@ BOOKMARK = re.compile(r"\[AI-ENG:([a-z-]+)\]")
 INDEX_ROW = re.compile(r"^\|\s*`([a-z-]+)`\s*\|\s*\[([^\]:]+):(\d+)\]", re.MULTILINE)
 
 
+def _bookmarked_files() -> list[Path]:
+    """Source files first, then mission YAML, skipping translated trees.
+
+    Some bridges belong to a mission rather than to a line of engine code, and they get
+    checked here for the same reason the code ones do: a citation nobody verifies goes
+    stale silently. The ``-pt`` mirrors carry the identical comment, so indexing them
+    too would only make the target flip between languages.
+
+    Kept in step with ``scripts/refresh_bookmarks.py``, which walks the same set.
+    """
+    paths = sorted(PACKAGE_ROOT.rglob("*.py"))
+    if CONTENT_ROOT.is_dir():
+        paths += sorted(
+            path
+            for path in CONTENT_ROOT.rglob("*.yaml")
+            if not any(part.endswith("-pt") for part in path.parts)
+        )
+    return paths
+
+
 def bookmarks_in_source() -> dict[str, tuple[str, int]]:
-    """Every bookmark in src/, mapped to the file and line where it first appears."""
+    """Every bookmark in the repo, mapped to the file and line where it first appears."""
     found: dict[str, tuple[str, int]] = {}
-    for path in sorted(PACKAGE_ROOT.rglob("*.py")):
+    for path in _bookmarked_files():
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             match = BOOKMARK.search(line)
             if match and match.group(1) not in found:
