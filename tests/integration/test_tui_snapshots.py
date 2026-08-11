@@ -133,7 +133,7 @@ def test_editor_stays_visible_with_many_failing_cases(snap_compare, context):
             "#editor", CodeEditor
         ).text = "def sum_list(numbers):\n    return 6\n"
         await pilot.press("f5")
-        await pilot.pause(delay=8)
+        await _wait_for_run(pilot)
 
     assert snap_compare(CodeQuestApp(context=context), terminal_size=SHORT, run_before=run)
 
@@ -146,6 +146,50 @@ async def _open_mission(pilot) -> None:
     pilot.app.set_profile(profile)
     mission = pilot.app.context.missions.get_mission("py-foundations-06")
     pilot.app.push_screen(MissionScreen(mission))
+    await pilot.pause()
+
+    # The editor's cursor blinks, which makes the rendered SVG depend on what phase of
+    # the blink the snapshot lands in. A visible cursor is one more distinct colour, so
+    # Rich emits an extra `.terminal-rN` class and renumbers every class after it -- the
+    # whole stylesheet shifts by one and the comparison fails on a diff that has nothing
+    # to do with layout. It caught four runs in forty before this line existed.
+    #
+    # Blinking is right in the real game and meaningless in a still image.
+    from codequest.tui.widgets.code_editor import CodeEditor
+
+    for editor in pilot.app.screen.query(CodeEditor):
+        editor.cursor_blink = False
+
+
+async def _wait_for_run(pilot, limit: float = 20.0) -> None:
+    """Wait until the attempt is finished, rather than for a fixed number of seconds.
+
+    A run spawns one subprocess per test case on a worker thread, so how long it takes
+    depends on the machine and on what else it is doing. A fixed ``pause(delay=...)`` is
+    therefore a coin flip in both directions: too short and the snapshot catches the
+    results panel mid-render, too long and every run pays for the worst case. Both of
+    these tests used to sleep eight seconds and failed roughly two runs in three.
+
+    ``MissionScreen.running`` is the screen's own answer to "am I done" — set in
+    ``action_run`` and cleared in ``_show_outcome`` — so the condition was already
+    there to be waited on.
+
+    The ceiling exists so that a run which never finishes fails as a wrong snapshot
+    instead of hanging the suite forever.
+
+    Three waits, because "the run finished" and "the screen is done redrawing" are not
+    the same moment. The flag clears first, the worker thread joins second, and the
+    widgets settle last — the editor's syntax highlighting was still splitting ``def``
+    across two spans one run in ten with only the flag waited on. ``_wait_for_screen``
+    is what Textual's own ``App.run_test`` uses for exactly this.
+    """
+    waited = 0.0
+    while getattr(pilot.app.screen, "running", False) and waited < limit:
+        await pilot.pause(delay=0.1)
+        waited += 0.1
+
+    await pilot.app.workers.wait_for_complete()
+    await pilot._wait_for_screen()
     await pilot.pause()
 
 
@@ -190,6 +234,6 @@ def test_results_after_a_failing_run(snap_compare, context):
             "#editor", CodeEditor
         ).text = "def sum_list(numbers):\n    return 6\n"
         await pilot.press("f5")
-        await pilot.pause(delay=8)
+        await _wait_for_run(pilot)
 
     assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)
