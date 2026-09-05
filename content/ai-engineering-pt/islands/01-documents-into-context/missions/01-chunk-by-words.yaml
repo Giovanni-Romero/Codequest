@@ -1,0 +1,126 @@
+# Missão 1 de Documentos em Contexto. Introduz: fixed-window-chunking.
+# Referência do schema: docs/mission-schema.md
+
+id: ai-documents-01
+title: Carregue as janelas de contexto
+track: ai-engineering
+island: documents-into-context
+order: 1
+difficulty: moderate
+tags: [ai-engineering, chunking, context-window]
+xp: 30
+
+concepts:
+  - fixed-window-chunking
+
+teaching:
+  analogy: |
+    Um cais tem uma fila de caixotes etiquetados e vários barcos pequenos. Cada barco
+    carrega apenas uma quantidade fixa de caixotes, então o estivador enche um barco e
+    depois o próximo, sem mudar a ordem nem deixar um caixote para trás.
+
+    O contexto de um modelo tem o mesmo problema. Um documento pode ser maior que o
+    espaço disponível em uma requisição, então você o divide em partes consecutivas e
+    limitadas.
+
+  explanation: |
+    Chunking divide uma entrada grande em partes menores que a próxima etapa consegue
+    processar. Um chunker de janela fixa usa o mesmo tamanho máximo para cada parte.
+    Nesta missão, a unidade é uma palavra, não um caractere nem um token de modelo.
+    Separar por whitespace produz uma lista ordenada de palavras; fatiar essa lista cria
+    grupos limitados. Juntar cada grupo produz chunks sem perder nem reordenar palavras.
+
+  worked_example: |
+    # Agrupe ids de músicas em lotes de download com no máximo dois.
+    song_ids = ["s1", "s2", "s3", "s4", "s5"]
+    batch_size = 2
+    batches = []
+    for start in range(0, len(song_ids), batch_size):
+        batches.append(song_ids[start : start + batch_size])
+    print(batches)  # [["s1", "s2"], ["s3", "s4"], ["s5"]]
+
+  key_points:
+    - A unidade deve ser explícita. Esta missão conta palavras, não caracteres nem tokens do modelo.
+    - Cada chunk respeita o máximo porque a fatia termina em início mais max_words.
+    - O chunk final pode ser menor. Preenchê-lo inventaria conteúdo que não estava no documento.
+    - Separar antes de agrupar normaliza o whitespace e preserva o conteúdo e a ordem das palavras.
+
+brief: |
+  O arquivo tem documentos grandes demais para enviar por uma única janela de contexto.
+
+  Escreva `chunk_by_words`. Ela recebe uma string e uma quantidade máxima positiva de
+  palavras. Retorne chunks consecutivos contendo no máximo essa quantidade de palavras.
+
+  Uma palavra é qualquer sequência separada por whitespace. Junte as palavras de cada
+  chunk com um espaço comum. Preserve todas as palavras e sua ordem, não produza chunks
+  vazios e retorne uma lista vazia para texto vazio ou composto apenas por whitespace.
+
+  Levante `ValueError` quando `max_words` for zero ou negativo. Ainda não adicione overlap.
+
+signature:
+  entrypoint: chunk_by_words
+  stub: |
+    def chunk_by_words(text, max_words):
+        # Separe o texto em palavras e agrupe partes consecutivas e limitadas.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["one two three four five six seven", 3]
+      expect: ["one two three", "four five six", "seven"]
+    - args: ["alpha beta gamma", 3]
+      expect: ["alpha beta gamma"]
+  hidden:
+    - args: ["", 3]
+      expect: []
+    - args: [" \t\n ", 2]
+      expect: []
+    - args: ["anchor", 1]
+      expect: ["anchor"]
+    - args: ["one  two\tthree\nfour", 2]
+      expect: ["one two", "three four"]
+    - args: ["one two", 5]
+      expect: ["one two"]
+    - args: ["a b c d e", 2]
+      expect: ["a b", "c d", "e"]
+    - args: ["alpha, beta! gamma?", 1]
+      expect: ["alpha,", "beta!", "gamma?"]
+    - args: ["one two", 0]
+      raises: ValueError
+    - args: ["one two", -2]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Depois de separar o texto, onde começa cada grupo seguinte? Qual passo move você
+      exatamente um chunk inteiro para a frente?
+  - level: 2
+    text: |
+      Percorra as posições das palavras em passos de `max_words`. Uma fatia pode terminar
+      depois do fim da lista sem erro, criando naturalmente o grupo final mais curto.
+  - level: 3
+    text: |
+      O mesmo padrão, agrupando números de bilhetes em vez de palavras de um documento:
+
+          groups = []
+          for start in range(0, len(tickets), capacity):
+              group = tickets[start : start + capacity]
+              groups.append(group)
+
+      Seus grupos precisam ser unidos novamente como strings antes do retorno.
+
+solution: |
+  def chunk_by_words(text, max_words):
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+
+      words = text.split()
+      return [
+          " ".join(words[start : start + max_words])
+          for start in range(0, len(words), max_words)
+      ]

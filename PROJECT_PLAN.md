@@ -4,7 +4,8 @@
 > Inspired by CheckiO, but the teaching content lives inside the game, not in a cloud service.
 
 **Owner:** Giovanni
-**Status:** Phase 0 (not started)
+**Status:** Phase 5.1 complete; Phase 6 awaits the final Python playtest. Phase 7 has an
+AI Engineering syllabus and one CLI-only pilot mission; its broader implementation has not started.
 **License:** MIT (suggested)
 
 ---
@@ -503,6 +504,24 @@ Then write `content/java/` with its own syllabus.
 Architecture, Security, and AI Engineering missions. These reuse the same engine but
 the missions are different in shape: refactor this code, find the vulnerability,
 build a retrieval function. Same YAML schema, harder briefs.
+
+#### AI Engineering syllabus and pilot
+
+Added 2026-09-05 as curriculum pre-work that does not depend on the pending Python
+playtest. The full concept graph lives in `docs/curriculum/ai-engineering-syllabus.md`:
+eight framework-neutral islands followed by seven applied islands for PyTorch,
+Transformers, LangChain, LangGraph, LlamaIndex, PydanticAI, and DSPy.
+
+Only Island 1 and its first mission ship in this pilot. `chunk-by-words` teaches a
+deterministic fixed-window chunker through the existing Python runner, in English and
+Portuguese. It is reachable through the CLI with `--track ai-engineering`; it is not
+advertised in the TUI yet. The pilot adds no runtime dependency, network requirement,
+model weights, or engine change.
+
+Framework islands remain plans, not shipped content. When authored, they use optional
+dependency groups and deterministic local fixtures. Model-backed Ollama exercises are
+optional labs and never gate progression. This pilot does not close Phase 7 and does
+not require an HTML phase lesson.
 
 ---
 

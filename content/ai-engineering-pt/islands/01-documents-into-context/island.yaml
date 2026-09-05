@@ -1,0 +1,22 @@
+id: documents-into-context
+name: Documentos em Contexto
+track: ai-engineering
+order: 1
+theme: Preparando evidências antes que um modelo as veja
+description: |
+  Documentos brutos raramente cabem em uma requisição ao modelo. Você aprende a dividi-los
+  em partes limitadas, ordenadas e rastreáveis sem perder a origem de cada uma.
+
+concepts:
+  - fixed-window-chunking
+  - chunk-invariants
+  - chunk-overlap
+  - chunk-metadata
+  - semantic-boundaries
+  - context-budget
+  - chunk-quality
+
+unlock_requires:
+  missions_completed: 0
+
+completion_reward_xp: 180

@@ -1,0 +1,13 @@
+id: ai-engineering
+name: AI Engineering
+language: python
+version: "0.1"
+description: |
+  Build reliable AI systems from deterministic foundations to production frameworks.
+  The first pilot prepares documents for bounded model context.
+
+runner: python
+file_extension: .py
+
+islands:
+  - 01-documents-into-context

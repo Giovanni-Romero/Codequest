@@ -14,6 +14,7 @@ names the file instead of saying "content is broken".
 from __future__ import annotations
 
 import pytest
+import yaml
 
 from codequest.engine.loader import iter_mission_paths, load_mission, load_track
 from codequest.models.mission import XP_BY_DIFFICULTY
@@ -24,8 +25,26 @@ from helpers import CONTENT_ROOT
 #: of the Python track lives in its own tree (see mission-author SKILL.md) so it can be
 #: validated the same way as the English one without the engine ever learning about
 #: languages. Both must independently pass every check in this file.
-TRACKS = ["python", "python-pt"]
+TRACK_PAIRS = (
+    ("python", "python-pt"),
+    ("ai-engineering", "ai-engineering-pt"),
+)
+TRACKS = [track for pair in TRACK_PAIRS for track in pair]
 MISSION_PATHS = [path for track in TRACKS for path in iter_mission_paths(CONTENT_ROOT, track)]
+
+MIRROR_LOCKED_FIELDS = (
+    "id",
+    "track",
+    "island",
+    "order",
+    "difficulty",
+    "xp",
+    "concepts",
+    "tags",
+    "tests",
+    "constraints",
+    "solution",
+)
 
 
 def _ids(paths):
@@ -128,17 +147,37 @@ def test_mission_ids_are_unique_within_a_content_tree(track):
     assert not duplicates, f"duplicate mission ids in {track}: {duplicates}"
 
 
-def test_language_mirrors_declare_the_same_mission_ids():
+@pytest.mark.parametrize(("source_track", "mirror_track"), TRACK_PAIRS)
+def test_language_mirrors_declare_the_same_mission_ids(source_track, mirror_track):
     """The whole point of a mirror: identical id set, so a language switch never orphans
     or duplicates a save's progress."""
-    by_track = {
-        track: {load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, track)}
-        for track in TRACKS
-    }
-    reference = by_track[TRACKS[0]]
+    source_ids = {load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, source_track)}
+    mirror_ids = {load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, mirror_track)}
 
-    for track, ids in by_track.items():
-        assert ids == reference, f"{track} declares a different id set than {TRACKS[0]}"
+    assert source_ids, f"{source_track} has no missions"
+    assert mirror_ids == source_ids, f"{mirror_track} declares different ids than {source_track}"
+
+
+@pytest.mark.parametrize(("source_track", "mirror_track"), TRACK_PAIRS)
+def test_language_mirrors_keep_structural_fields_identical(source_track, mirror_track):
+    """Translated prose may differ; executable contracts and progress keys may not."""
+    source_paths = {
+        load_mission(path).id: path for path in iter_mission_paths(CONTENT_ROOT, source_track)
+    }
+    mirror_paths = {
+        load_mission(path).id: path for path in iter_mission_paths(CONTENT_ROOT, mirror_track)
+    }
+
+    assert mirror_paths.keys() == source_paths.keys()
+    for mission_id, source_path in source_paths.items():
+        source = yaml.safe_load(source_path.read_text(encoding="utf-8"))
+        mirror = yaml.safe_load(mirror_paths[mission_id].read_text(encoding="utf-8"))
+
+        for field in MIRROR_LOCKED_FIELDS:
+            assert mirror.get(field) == source.get(field), (
+                f"{mission_id}: translated field '{field}'"
+            )
+        assert mirror["signature"]["entrypoint"] == source["signature"]["entrypoint"]
 
 
 @pytest.mark.parametrize("track_id", TRACKS)
