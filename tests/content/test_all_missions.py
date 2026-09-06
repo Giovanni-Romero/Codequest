@@ -195,22 +195,25 @@ def test_every_island_declared_by_a_track_exists_on_disk(track_id):
 
 
 @pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
-def test_ai_engineering_ships_three_complete_islands(track_id):
+def test_ai_engineering_ships_complete_islands_in_order(track_id):
     from codequest.services.mission_service import MissionService
 
     service = MissionService(CONTENT_ROOT, track_id)
+    islands_dir = CONTENT_ROOT / track_id / "islands"
+    disk_folders = tuple(path.name for path in sorted(islands_dir.iterdir()) if path.is_dir())
 
-    assert service.track.island_ids == (
-        "01-documents-into-context",
-        "02-prompt-contracts",
-        "03-retrieval",
+    assert service.track.island_ids == disk_folders
+    assert [island.order for island in service.islands] == list(range(1, len(service.islands) + 1))
+    assert all(
+        [mission.order for mission in service.missions_in(island.id)] == list(range(1, 9))
+        for island in service.islands
     )
-    assert [len(service.missions_in(island.id)) for island in service.islands] == [8, 8, 8]
-    assert [island.unlock_requires.requires_mission for island in service.islands] == [
-        None,
-        "ai-documents-08",
-        "ai-prompts-08",
+    expected_unlocks = [None] + [
+        service.missions_in(island.id)[-1].id for island in service.islands[:-1]
     ]
+    assert [
+        island.unlock_requires.requires_mission for island in service.islands
+    ] == expected_unlocks
 
 
 @pytest.mark.parametrize("path", MISSION_PATHS, ids=_ids(MISSION_PATHS))

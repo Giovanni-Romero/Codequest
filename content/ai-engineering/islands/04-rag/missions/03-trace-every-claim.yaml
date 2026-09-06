@@ -1,0 +1,105 @@
+id: ai-rag-03
+title: Trace every claim
+track: ai-engineering
+island: rag
+order: 3
+difficulty: moderate
+tags: [ai-engineering, rag, citations, provenance]
+xp: 30
+
+concepts: [citation-provenance]
+
+teaching:
+  analogy: |
+    An expense report is not supported because receipts exist somewhere in the folder.
+    Every charge points to a specific receipt, and every receipt number must be real.
+  explanation: |
+    Citation provenance links each answer claim to records actually retrieved for that run.
+    A plausible source ID invented during generation is still unsupported. Audit both missing
+    citations and references outside the retrieved set before accepting the answer.
+  worked_example: |
+    receipts = {"R1", "R2"}
+    charges = [{"receipt_ids": ["R1"]}, {"receipt_ids": ["R9"]}]
+    missing = []
+    for charge in charges:
+        missing.extend(code for code in charge["receipt_ids"] if code not in receipts)
+    print(sorted(set(missing)))
+  key_points:
+    - Validate against retrieved record IDs because the model is not a source registry.
+    - Treat a claim with no citation separately from a claim with a false citation.
+    - Keep claim positions because they make correction actionable.
+
+brief: |
+  Write `audit_citations(claims, records)`. `claims` and `records` are lists. Records
+  contain unique `record_id` values. Claims contain `text` and a list of `citations`. Return `valid`, the zero-based
+  `uncited_claims`, and sorted unique `unsupported_ids`. Empty claims are valid. Reject
+  malformed claims, records, or duplicate record IDs.
+
+signature:
+  entrypoint: audit_citations
+  stub: |
+    def audit_citations(claims, records):
+        # Check every claim against the evidence retrieved for this run.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{text: safe, citations: [A]}], [{record_id: A}]]
+      expect: {valid: true, uncited_claims: [], unsupported_ids: []}
+    - args: [[{text: first, citations: []}, {text: second, citations: [B, X]}], [{record_id: B}]]
+      expect: {valid: false, uncited_claims: [0], unsupported_ids: [X]}
+  hidden:
+    - args: [null, []]
+      raises: ValueError
+    - args: [[], null]
+      raises: ValueError
+    - args: [[], []]
+      expect: {valid: true, uncited_claims: [], unsupported_ids: []}
+    - args: [[{text: claim, citations: [Z, Z]}], []]
+      expect: {valid: false, uncited_claims: [], unsupported_ids: [Z]}
+    - args: [[{text: claim, citations: [B, A]}], [{record_id: A}, {record_id: B}]]
+      expect: {valid: true, uncited_claims: [], unsupported_ids: []}
+    - args: [[], [{record_id: A}, {record_id: A}]]
+      raises: ValueError
+    - args: [[{text: claim, citations: A}], [{record_id: A}]]
+      raises: ValueError
+    - args: [[{citations: []}], []]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "What two different failures can occur between a claim and its evidence?"}
+  - {level: 2, text: "Build the retrieved ID set, then record empty and unknown citation lists separately."}
+  - level: 3
+    text: |
+      A receipt audit can collect row numbers with no receipt and a set of receipt codes
+      absent from the ledger, then sort the unknown codes for stable output.
+
+solution: |
+  def audit_citations(claims, records):
+      if not isinstance(claims, list) or not isinstance(records, list):
+          raise ValueError("claims and records must be lists")
+      available = set()
+      for record in records:
+          if not isinstance(record, dict) or not isinstance(record.get("record_id"), str):
+              raise ValueError("invalid record")
+          if record["record_id"] in available:
+              raise ValueError("record IDs must be unique")
+          available.add(record["record_id"])
+      uncited = []
+      unsupported = set()
+      for index, claim in enumerate(claims):
+          if not isinstance(claim, dict) or not isinstance(claim.get("text"), str):
+              raise ValueError("invalid claim")
+          citations = claim.get("citations")
+          if not isinstance(citations, list) or any(not isinstance(item, str) for item in citations):
+              raise ValueError("citations must be a list of IDs")
+          if not citations:
+              uncited.append(index)
+          unsupported.update(item for item in citations if item not in available)
+      return {
+          "valid": not uncited and not unsupported,
+          "uncited_claims": uncited,
+          "unsupported_ids": sorted(unsupported),
+      }

@@ -1,0 +1,18 @@
+id: rag
+name: RAG
+track: ai-engineering
+order: 4
+theme: Fundamentando respostas em evidências recuperadas
+description: |
+  Construa fronteiras explícitas de ingestão, recuperação, geração, citação e abstenção.
+
+concepts:
+  - ingestion-pipeline
+  - retrieval-generation-separation
+  - citation-provenance
+  - abstention-policy
+
+unlock_requires:
+  requires_mission: ai-retrieval-08
+
+completion_reward_xp: 180

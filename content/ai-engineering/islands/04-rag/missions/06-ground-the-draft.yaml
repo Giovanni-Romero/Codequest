@@ -1,0 +1,105 @@
+id: ai-rag-06
+title: Ground the draft
+track: ai-engineering
+island: rag
+order: 6
+difficulty: moderate
+tags: [ai-engineering, rag, generation, citations]
+xp: 30
+
+concepts: [retrieval-generation-separation, citation-provenance]
+
+teaching:
+  analogy: |
+    An editor checks each sentence against the research packet, not against the whole
+    library. Supported sentences stay; unsupported ones return with a precise note.
+  explanation: |
+    Retrieved records and generated claims remain different artifacts. Grounding compares
+    them without rewriting either one. Partitioning accepted and rejected claims preserves
+    useful work while making missing and invented citations visible.
+  worked_example: |
+    references = {"A", "B"}
+    notes = [["A"], [], ["C"]]
+    accepted = []
+    rejected = []
+    for index, cited in enumerate(notes):
+        (accepted if cited and set(cited) <= references else rejected).append(index)
+    print(accepted, rejected)
+  key_points:
+    - Compare against this run's retrieval set because the wider corpus was not supplied.
+    - Do not mutate draft claims because generation and validation are separate stages.
+    - Name uncited and unsupported failures separately because their repairs differ.
+
+brief: |
+  Write `partition_grounded_claims(records, claims)`. `records` and `claims` are lists. Records have unique `record_id` values.
+  Claims have string `text` and a list of citation IDs. Return claim indexes in `grounded`
+  and rejected entries with `index`, `reason`, and sorted `unsupported_ids`. Uncited claims
+  use reason `uncited`; unknown IDs use `unsupported`. Reject malformed input.
+
+signature:
+  entrypoint: partition_grounded_claims
+  stub: |
+    def partition_grounded_claims(records, claims):
+        # Keep retrieval and generation separate while checking their link.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{record_id: A}], [{text: safe, citations: [A]}]]
+      expect: {grounded: [0], rejected: []}
+    - args: [[{record_id: A}], [{text: first, citations: []}, {text: second, citations: [A, X]}]]
+      expect: {grounded: [], rejected: [{index: 0, reason: uncited, unsupported_ids: []}, {index: 1, reason: unsupported, unsupported_ids: [X]}]}
+  hidden:
+    - args: [null, []]
+      raises: ValueError
+    - args: [[], null]
+      raises: ValueError
+    - args: [[], []]
+      expect: {grounded: [], rejected: []}
+    - args: [[{record_id: A}, {record_id: B}], [{text: both, citations: [B, A]}]]
+      expect: {grounded: [0], rejected: []}
+    - args: [[], [{text: claim, citations: [Z, Y, Z]}]]
+      expect: {grounded: [], rejected: [{index: 0, reason: unsupported, unsupported_ids: [Y, Z]}]}
+    - args: [[{record_id: A}, {record_id: A}], []]
+      raises: ValueError
+    - args: [[], [{text: claim, citations: A}]]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Can each draft claim point only to records in the retrieval packet?"}
+  - {level: 2, text: "Build the available ID set and partition claim indexes without changing the claims."}
+  - level: 3
+    text: |
+      A manuscript checker can append an index to `accepted` when its references are a
+      non-empty subset of the research IDs, otherwise recording the missing IDs.
+
+solution: |
+  def partition_grounded_claims(records, claims):
+      if not isinstance(records, list) or not isinstance(claims, list):
+          raise ValueError("records and claims must be lists")
+      available = set()
+      for record in records:
+          if not isinstance(record, dict) or not isinstance(record.get("record_id"), str):
+              raise ValueError("invalid record")
+          if record["record_id"] in available:
+              raise ValueError("record IDs must be unique")
+          available.add(record["record_id"])
+      grounded = []
+      rejected = []
+      for index, claim in enumerate(claims):
+          if not isinstance(claim, dict) or not isinstance(claim.get("text"), str):
+              raise ValueError("invalid claim")
+          citations = claim.get("citations")
+          if not isinstance(citations, list) or any(not isinstance(item, str) for item in citations):
+              raise ValueError("citations must be a list")
+          if not citations:
+              rejected.append({"index": index, "reason": "uncited", "unsupported_ids": []})
+              continue
+          unsupported = sorted(set(citations) - available)
+          if unsupported:
+              rejected.append({"index": index, "reason": "unsupported", "unsupported_ids": unsupported})
+          else:
+              grounded.append(index)
+      return {"grounded": grounded, "rejected": rejected}

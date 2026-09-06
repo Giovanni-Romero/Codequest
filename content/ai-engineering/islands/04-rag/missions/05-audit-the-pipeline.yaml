@@ -1,0 +1,93 @@
+id: ai-rag-05
+title: Audit the pipeline
+track: ai-engineering
+island: rag
+order: 5
+difficulty: moderate
+tags: [ai-engineering, rag, ingestion, diagnosis]
+xp: 30
+
+concepts: [ingestion-pipeline, retrieval-generation-separation]
+
+teaching:
+  analogy: |
+    A baggage log follows check-in, sorting, and loading in order. When a bag stops,
+    the first failed checkpoint matters more than the final note that it never arrived.
+  explanation: |
+    Stage events make a pipeline observable without merging its responsibilities. Validate
+    the expected order, then stop diagnosis at the earliest failure. Later failures may be
+    consequences, so reporting them first sends repair work to the wrong component.
+  worked_example: |
+    checkpoints = [{"name": "gate", "ok": True}, {"name": "dock", "ok": False}]
+    failed = "none"
+    for checkpoint in checkpoints:
+        if not checkpoint["ok"]:
+            failed = checkpoint["name"]
+            break
+    print(failed)
+  key_points:
+    - Require the declared stage order because shuffled events destroy causal diagnosis.
+    - Stop at the first failure because downstream errors can be secondary effects.
+    - Keep the stage reason because `failed` alone is not actionable.
+
+brief: |
+  Write `audit_rag_pipeline(events)`. Require exactly one event for each stage in this
+  order: `ingestion`, `retrieval`, `generation`. Every event has status `ok` or `error`.
+  Return the first failed stage and its reason, or `{status: ok, stage: none}`. Reject a
+  missing, duplicate, reordered, malformed, or unknown stage.
+
+signature:
+  entrypoint: audit_rag_pipeline
+  stub: |
+    def audit_rag_pipeline(events):
+        # Validate the trace, then report its earliest failure.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{stage: ingestion, status: ok}, {stage: retrieval, status: error, reason: no_match}, {stage: generation, status: error, reason: skipped}]]
+      expect: {status: failed, stage: retrieval, reason: no_match}
+    - args: [[{stage: ingestion, status: ok}, {stage: retrieval, status: ok}, {stage: generation, status: ok}]]
+      expect: {status: ok, stage: none}
+  hidden:
+    - args: [[{stage: ingestion, status: ok}, {stage: retrieval, status: ok}, {stage: generation, status: error, reason: timeout}]]
+      expect: {status: failed, stage: generation, reason: timeout}
+    - args: [[{stage: ingestion, status: error}, {stage: retrieval, status: ok}, {stage: generation, status: maybe}]]
+      raises: ValueError
+    - args: [[{stage: ingestion, status: error}, {stage: retrieval, status: ok}, {stage: generation, status: ok}]]
+      expect: {status: failed, stage: ingestion, reason: error}
+    - args: [[]]
+      raises: ValueError
+    - args: [[{stage: retrieval, status: ok}, {stage: ingestion, status: ok}, {stage: generation, status: ok}]]
+      raises: ValueError
+    - args: [[{stage: ingestion, status: ok}, {stage: retrieval, status: maybe}, {stage: generation, status: ok}]]
+      raises: ValueError
+    - args: [[{stage: ingestion, status: ok}, {stage: retrieval, status: ok}, {stage: retrieval, status: ok}]]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "What must be true about the trace before its first failure means anything?"}
+  - {level: 2, text: "Compare the stage names with the fixed expected sequence before inspecting statuses."}
+  - level: 3
+    text: |
+      A delivery audit can compare `[event["name"] for event in events]` with its required
+      route, then return on the first event whose status is not successful.
+
+solution: |
+  def audit_rag_pipeline(events):
+      expected = ["ingestion", "retrieval", "generation"]
+      if not isinstance(events, list) or len(events) != len(expected):
+          raise ValueError("pipeline needs exactly three events")
+      if any(not isinstance(event, dict) for event in events):
+          raise ValueError("events must be mappings")
+      if [event.get("stage") for event in events] != expected:
+          raise ValueError("invalid stage order")
+      for event in events:
+          if event.get("status") not in {"ok", "error"}:
+              raise ValueError("invalid stage status")
+      for event in events:
+          if event["status"] == "error":
+              return {"status": "failed", "stage": event["stage"], "reason": event.get("reason", "error")}
+      return {"status": "ok", "stage": "none"}

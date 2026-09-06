@@ -1,0 +1,117 @@
+id: ai-rag-04
+title: Know when to abstain
+track: ai-engineering
+island: rag
+order: 4
+difficulty: moderate
+tags: [ai-engineering, rag, abstention, thresholds]
+xp: 30
+
+concepts: [abstention-policy]
+
+teaching:
+  analogy: |
+    A navigator does not invent a reef position when the charts are blank or disagree.
+    The safe output is a named refusal that says why the course cannot be set.
+  explanation: |
+    Abstention is a defined product result, not an exception or an apologetic sentence.
+    Evidence must clear a declared relevance floor and agree on repeated claims. Empty,
+    weak, and conflicting evidence have different reasons and should remain distinguishable.
+  worked_example: |
+    reports = [{"topic": "wind", "value": "east"}, {"topic": "wind", "value": "west"}]
+    values = {}
+    for report in reports:
+        values.setdefault(report["topic"], set()).add(report["value"])
+    conflict = any(len(items) > 1 for items in values.values())
+    print("wait" if conflict else "go")
+  key_points:
+    - A top-ranked record can still be below the acceptance threshold.
+    - Conflicting accepted evidence requires abstention because ranking does not resolve truth.
+    - Return explicit states because callers cannot reliably infer refusal from prose.
+
+brief: |
+  Write `decide_abstention(evidence, min_score)`. `evidence` is a list whose records contain unique
+  `record_id`, non-empty string `claim` and `value`, and a numeric score from 0 to 1. Keep records meeting
+  the threshold. Abstain with `no_evidence`, `below_threshold`, or `conflict`; otherwise
+  return an answer state with accepted record IDs. Validate the threshold and records.
+
+signature:
+  entrypoint: decide_abstention
+  stub: |
+    def decide_abstention(evidence, min_score):
+        # Return an explicit answer or abstention state.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[], 0.5]
+      expect: {status: abstain, reason: no_evidence, record_ids: []}
+    - args: [[{record_id: A, claim: tide, value: high, score: 0.8}], 0.5]
+      expect: {status: answer, reason: sufficient_evidence, record_ids: [A]}
+  hidden:
+    - args: [null, 0.5]
+      raises: ValueError
+    - args: [[{record_id: A, claim: tide, value: high, score: 0.2}], 0.5]
+      expect: {status: abstain, reason: below_threshold, record_ids: []}
+    - args: [[{record_id: A, claim: tide, value: high, score: 0.9}, {record_id: B, claim: tide, value: low, score: 0.8}], 0.5]
+      expect: {status: abstain, reason: conflict, record_ids: [A, B]}
+    - args: [[{record_id: A, claim: tide, value: high, score: 0.5}, {record_id: B, claim: wind, value: east, score: 1.0}], 0.5]
+      expect: {status: answer, reason: sufficient_evidence, record_ids: [A, B]}
+    - args: [[{record_id: A, claim: x, value: y, score: 0.5}, {record_id: A, claim: x, value: y, score: 0.5}], 0.5]
+      raises: ValueError
+    - args: [[], 1.1]
+      raises: ValueError
+    - args: [[{record_id: A, claim: x, value: y, score: nope}], 0.5]
+      raises: ValueError
+    - args: [[{record_id: A, claim: [], value: y, score: 0.5}], 0.5]
+      raises: ValueError
+    - args: [[{record_id: A, claim: x, value: {}, score: 0.5}], 0.5]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Which conditions make answering less honest than returning no answer?"}
+  - {level: 2, text: "Validate, filter by threshold, then check accepted values grouped by claim."}
+  - level: 3
+    text: |
+      A weather desk can group accepted reports by topic and abstain when one topic has
+      more than one distinct value, while preserving the accepted report IDs.
+
+solution: |
+  def decide_abstention(evidence, min_score):
+      if not isinstance(min_score, (int, float)) or isinstance(min_score, bool) or not 0 <= min_score <= 1:
+          raise ValueError("min_score must be between zero and one")
+      if not isinstance(evidence, list):
+          raise ValueError("evidence must be a list")
+      seen = set()
+      accepted = []
+      for record in evidence:
+          if not isinstance(record, dict):
+              raise ValueError("invalid evidence")
+          record_id = record.get("record_id")
+          score = record.get("score")
+          if not isinstance(record_id, str) or record_id in seen:
+              raise ValueError("record IDs must be unique strings")
+          claim = record.get("claim")
+          value = record.get("value")
+          if not isinstance(claim, str) or not claim.strip():
+              raise ValueError("claim must be a non-empty string")
+          if not isinstance(value, str) or not value.strip():
+              raise ValueError("value must be a non-empty string")
+          if not isinstance(score, (int, float)) or isinstance(score, bool) or not 0 <= score <= 1:
+              raise ValueError("invalid evidence score")
+          seen.add(record_id)
+          if score >= min_score:
+              accepted.append(record)
+      if not evidence:
+          return {"status": "abstain", "reason": "no_evidence", "record_ids": []}
+      if not accepted:
+          return {"status": "abstain", "reason": "below_threshold", "record_ids": []}
+      values = {}
+      for record in accepted:
+          values.setdefault(record["claim"], set()).add(record["value"])
+      ids = [record["record_id"] for record in accepted]
+      if any(len(group) > 1 for group in values.values()):
+          return {"status": "abstain", "reason": "conflict", "record_ids": ids}
+      return {"status": "answer", "reason": "sufficient_evidence", "record_ids": ids}

@@ -1,0 +1,96 @@
+id: ai-rag-02
+title: Separe as etapas
+track: ai-engineering
+island: rag
+order: 2
+difficulty: moderate
+tags: [ai-engineering, rag, diagnosis]
+xp: 30
+
+concepts: [retrieval-generation-separation]
+
+teaching:
+  analogy: |
+    Se um cozinheiro recebe ingredientes errados, culpar a receita esconde a falha real.
+    Entrega e preparo precisam de registros separados para você reparar a etapa correta.
+  explanation: |
+    RAG tem pelo menos duas decisões distintas: qual evidência recuperar e qual resposta
+    produzir com ela. Uma resposta fluente não corrige evidência ausente. Resultados
+    intermediários atribuem falhas sem transformar o pipeline em uma caixa-preta.
+  worked_example: |
+    delivery = {"status": "ok", "items": ["rice"]}
+    cooking = {"status": "error", "reason": "burned"}
+    if delivery["status"] != "ok":
+        failed = "delivery"
+    elif cooking["status"] != "ok":
+        failed = "cooking"
+    print(failed)
+  key_points:
+    - Inspecione recuperação antes de geração porque a geração depende da evidência recuperada.
+    - Preserve o resultado de cada etapa porque um erro final não identifica sua origem.
+    - Recuperação vazia é falha de recuperação mesmo quando a etapa relata sucesso.
+
+brief: |
+  Escreva `locate_rag_failure(retrieval, generation)`. Cada argumento é um mapa com `status`
+  igual a `ok` ou `error`. Recuperação também tem `records`; geração tem `text`. Retorne a
+  primeira etapa que falhou e o motivo, ou `{status: ok, stage: none}`. Recuperação vazia
+  falha antes da geração; texto gerado vazio falha na geração. Rejeite formatos inválidos.
+
+signature:
+  entrypoint: locate_rag_failure
+  stub: |
+    def locate_rag_failure(retrieval, generation):
+        # Inspecione as etapas na ordem de dependência.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [{status: error, reason: no_match, records: []}, {status: ok, text: answer}]
+      expect: {status: failed, stage: retrieval, reason: no_match}
+    - args: [{status: ok, records: [{record_id: A}]}, {status: error, reason: timeout, text: ""}]
+      expect: {status: failed, stage: generation, reason: timeout}
+  hidden:
+    - args: [{status: error, reason: no_match, records: []}, {status: ok, text: 7}]
+      raises: ValueError
+    - args: [{status: ok, records: [{record_id: A}]}, {status: ok, text: grounded}]
+      expect: {status: ok, stage: none}
+    - args: [{status: ok, records: []}, {status: error, reason: timeout, text: ""}]
+      expect: {status: failed, stage: retrieval, reason: no_evidence}
+    - args: [{status: ok, records: [{record_id: A}]}, {status: ok, text: "   "}]
+      expect: {status: failed, stage: generation, reason: empty_answer}
+    - args: [{status: ok, records: [{record_id: A}]}, {status: ok, text: 7}]
+      raises: ValueError
+    - args: [{records: []}, {status: ok, text: x}]
+      raises: ValueError
+    - args: [{status: maybe, records: []}, {status: ok, text: x}]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Qual etapa fornece a entrada necessária para a outra?"}
+  - {level: 2, text: "Valide os dois contratos e inspecione recuperação antes de geração."}
+  - level: 3
+    text: |
+      Um relatório de entrega pode retornar assim que seu status falha; apenas uma entrega
+      bem-sucedida e não vazia permite inspecionar o relatório da cozinha.
+
+solution: |
+  def locate_rag_failure(retrieval, generation):
+      for stage in (retrieval, generation):
+          if not isinstance(stage, dict) or stage.get("status") not in {"ok", "error"}:
+              raise ValueError("invalid stage result")
+      if not isinstance(retrieval.get("records"), list):
+          raise ValueError("retrieval records must be a list")
+      text = generation.get("text")
+      if not isinstance(text, str):
+          raise ValueError("generation text must be a string")
+      if retrieval["status"] == "error":
+          return {"status": "failed", "stage": "retrieval", "reason": retrieval.get("reason", "error")}
+      if not retrieval["records"]:
+          return {"status": "failed", "stage": "retrieval", "reason": "no_evidence"}
+      if generation["status"] == "error":
+          return {"status": "failed", "stage": "generation", "reason": generation.get("reason", "error")}
+      if not text.strip():
+          return {"status": "failed", "stage": "generation", "reason": "empty_answer"}
+      return {"status": "ok", "stage": "none"}

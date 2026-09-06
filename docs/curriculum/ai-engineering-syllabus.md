@@ -192,6 +192,25 @@ The required framework block applies the spine rather than replacing it.
 
 ## Island 4 — RAG
 
+**Theme:** grounding answers in retrieved evidence
+
+**Band:** moderate
+
+**Planned missions:** 8
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---:|---|---|---|---|
+| 1 | `stage-the-records` | `ingestion-pipeline` | chunking, metadata | Produce or reject traceable records |
+| 2 | `separate-the-stages` | `retrieval-generation-separation` | context assembly | Attribute failure to the correct stage |
+| 3 | `trace-every-claim` | `citation-provenance` | chunk metadata | Audit citations against retrieved IDs |
+| 4 | `know-when-to-abstain` | `abstention-policy` | relevance thresholds | Refuse empty, weak, or conflicting evidence |
+| 5 | `audit-the-pipeline` | — | ingestion and stage separation | Find the earliest failed stage |
+| 6 | `ground-the-draft` | — | stage separation and citations | Partition grounded and rejected claims |
+| 7 | `inspect-the-answer` | — | citations and abstention | **Relief:** classify, do not assemble |
+| 8 | `assemble-grounded-answer` | — | all four concepts | Closing deterministic RAG pipeline |
+
 ### ingestion-pipeline
 - **prereqs:** chunk-metadata, top-k-ranking
 - **objective:** transform source documents into retrievable records through explicit stages

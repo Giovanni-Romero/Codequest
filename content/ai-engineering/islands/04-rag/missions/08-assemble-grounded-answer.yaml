@@ -1,0 +1,151 @@
+id: ai-rag-08
+title: Assemble a grounded answer
+track: ai-engineering
+island: rag
+order: 8
+difficulty: moderate
+tags: [ai-engineering, rag, pipeline, citations, abstention]
+xp: 30
+
+concepts: [ingestion-pipeline, retrieval-generation-separation, citation-provenance, abstention-policy]
+
+teaching:
+  analogy: |
+    A harbor inquiry registers reports, selects the reports about the question, checks
+    every statement against those reports, and refuses to publish unsupported claims.
+  explanation: |
+    A deterministic RAG pipeline exposes each boundary even when no model is involved.
+    Ingest sources, retrieve under explicit limits, then validate the supplied draft.
+    The final result either carries grounded claims and source IDs or an explicit abstention.
+  worked_example: |
+    notices = [{"id": "N1", "words": {"storm", "north"}}, {"id": "N2", "words": {"sun"}}]
+    query = {"north"}
+    ranked = sorted(notices, key=lambda item: -len(query & item["words"]))
+    selected = [item["id"] for item in ranked if query & item["words"]]
+    print({"selected": selected, "publish": bool(selected)})
+  key_points:
+    - Ingestion establishes stable source IDs before retrieval begins.
+    - Retrieval selects the only evidence generation may cite.
+    - Unsupported drafts become abstentions because fluent text is not evidence.
+    - Return stage artifacts because an inspectable pipeline is easier to repair.
+
+brief: |
+  Write `assemble_grounded_answer(query, documents, claims, k, min_score, max_words)`.
+  `documents` and `claims` are lists. Documents have unique `source_id` and text. Normalize non-empty documents into records,
+  recording empty source IDs in `rejected_sources`. Score by the fraction of unique query
+  terms present, rank stably, apply threshold and top-k, then a running word budget that
+  skips oversized records. Claims cite source IDs. Return a grounded answer or abstain with
+  `no_evidence`, `empty_answer`, or `ungrounded`. Validate all inputs and limits.
+
+signature:
+  entrypoint: assemble_grounded_answer
+  stub: |
+    def assemble_grounded_answer(query, documents, claims, k, min_score, max_words):
+        # Ingest, retrieve, validate citations, then answer or abstain.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: ["north port", [{source_id: A, text: "North port closes"}, {source_id: B, text: "South bay opens"}], [{text: closed, citations: [A]}], 2, 0.5, 4]
+      expect: {status: answer, reason: grounded, claims: [{text: closed, citations: [A]}], record_ids: [A], rejected_sources: []}
+    - args: [storm, [{source_id: A, text: "calm sea"}], [{text: storm, citations: [A]}], 1, 0.5, 5]
+      expect: {status: abstain, reason: no_evidence, claims: [], record_ids: [], rejected_sources: []}
+  hidden:
+    - args: [x, null, [], 1, 0.0, 1]
+      raises: ValueError
+    - args: [x, [], [], 1, 0.0, 1]
+      expect: {status: abstain, reason: no_evidence, claims: [], record_ids: [], rejected_sources: []}
+    - args: [x, [{source_id: blank, text: "  "}, {source_id: A, text: x}], [], 1, 1.0, 1]
+      expect: {status: abstain, reason: empty_answer, claims: [], record_ids: [A], rejected_sources: [blank]}
+    - args: [x, [{source_id: A, text: x}], [{text: claim, citations: [B]}], 1, 1.0, 1]
+      expect: {status: abstain, reason: ungrounded, claims: [], record_ids: [A], rejected_sources: []}
+    - args: [x, [{source_id: A, text: "x x"}, {source_id: B, text: x}], [{text: claim, citations: [B]}], 2, 1.0, 1]
+      expect: {status: answer, reason: grounded, claims: [{text: claim, citations: [B]}], record_ids: [B], rejected_sources: []}
+    - args: [x, [{source_id: A, text: x}, {source_id: A, text: x}], [], 1, 0.0, 2]
+      raises: ValueError
+    - args: [x, [], [], -1, 0.0, 1]
+      raises: ValueError
+    - args: [x, [], [], 1, 1.1, 1]
+      raises: ValueError
+    - args: [x, [], [], 1, 0.0, -1]
+      raises: ValueError
+    - args: [x, [], null, 1, 0.0, 1]
+      raises: ValueError
+    - args: [x, [], 42, 1, 0.0, 1]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Can you name the four boundaries and the exact artifact each boundary must preserve?"}
+  - {level: 2, text: "Ingest records, score and limit them, collect selected IDs, then validate every draft citation."}
+  - level: 3
+    text: |
+      A publishing workflow can normalize reports, stable-sort them by keyword coverage,
+      pack affordable reports, and publish only when every note cites a packed report ID.
+
+solution: |
+  def assemble_grounded_answer(query, documents, claims, k, min_score, max_words):
+      if not isinstance(query, str):
+          raise ValueError("query must be text")
+      if not isinstance(k, int) or isinstance(k, bool) or k < 0:
+          raise ValueError("k must be non-negative")
+      if not isinstance(min_score, (int, float)) or isinstance(min_score, bool) or not 0 <= min_score <= 1:
+          raise ValueError("min_score must be between zero and one")
+      if not isinstance(max_words, int) or isinstance(max_words, bool) or max_words < 0:
+          raise ValueError("max_words must be non-negative")
+      if not isinstance(documents, list):
+          raise ValueError("documents must be a list")
+      if not isinstance(claims, list):
+          raise ValueError("claims must be a list")
+      for claim in claims:
+          if not isinstance(claim, dict) or not isinstance(claim.get("text"), str):
+              raise ValueError("invalid claim")
+          citations = claim.get("citations")
+          if not isinstance(citations, list) or any(not isinstance(item, str) for item in citations):
+              raise ValueError("invalid citations")
+      records = []
+      rejected = []
+      seen = set()
+      for document in documents:
+          if not isinstance(document, dict):
+              raise ValueError("invalid document")
+          source_id = document.get("source_id")
+          text = document.get("text")
+          if not isinstance(source_id, str) or not source_id or source_id in seen:
+              raise ValueError("source IDs must be unique strings")
+          if not isinstance(text, str):
+              raise ValueError("document text must be a string")
+          seen.add(source_id)
+          normalized = " ".join(text.split())
+          if normalized:
+              records.append({"record_id": source_id, "text": normalized})
+          else:
+              rejected.append(source_id)
+      query_terms = {term.casefold().strip(".,!?;:") for term in query.split()}
+      query_terms.discard("")
+      scored = []
+      for record in records:
+          terms = {term.casefold().strip(".,!?;:") for term in record["text"].split()}
+          score = len(query_terms & terms) / len(query_terms) if query_terms else 0.0
+          scored.append((record, score))
+      candidates = [item for item in sorted(scored, key=lambda item: -item[1]) if item[1] >= min_score][:k]
+      selected = []
+      used = 0
+      for record, score in candidates:
+          cost = len(record["text"].split())
+          if used + cost <= max_words:
+              selected.append(record)
+              used += cost
+      record_ids = [record["record_id"] for record in selected]
+      base = {"claims": [], "record_ids": record_ids, "rejected_sources": rejected}
+      if not selected:
+          return {"status": "abstain", "reason": "no_evidence", **base}
+      if not claims:
+          return {"status": "abstain", "reason": "empty_answer", **base}
+      available = set(record_ids)
+      for claim in claims:
+          citations = claim["citations"]
+          if not citations or not set(citations) <= available:
+              return {"status": "abstain", "reason": "ungrounded", **base}
+      return {"status": "answer", "reason": "grounded", "claims": claims, "record_ids": record_ids, "rejected_sources": rejected}

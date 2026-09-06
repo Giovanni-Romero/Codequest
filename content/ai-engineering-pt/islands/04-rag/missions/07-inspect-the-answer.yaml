@@ -1,0 +1,109 @@
+id: ai-rag-07
+title: Inspecione a resposta
+track: ai-engineering
+island: rag
+order: 7
+difficulty: moderate
+tags: [ai-engineering, rag, diagnosis, citations, abstention]
+xp: 30
+
+concepts: [citation-provenance, abstention-policy]
+
+teaching:
+  analogy: |
+    Um inspetor de segurança rotula um relatório em vez de remontar a máquina. Um rótulo
+    preciso diz à equipe certa se a evidência está ausente, sem citação, inventada ou sólida.
+  explanation: |
+    Um exercício de alívio testa julgamento de fundamentação sem pedir outro pipeline.
+    Inspecione o resultado declarado contra os IDs recuperados. Use precedência estável para
+    que a mesma resposta defeituosa sempre receba a mesma classificação acionável.
+  worked_example: |
+    stock = {"P1"}
+    order = {"status": "ship", "item_ids": ["P9"]}
+    if order["status"] == "ship" and not stock:
+        label = "no_stock"
+    elif not set(order["item_ids"]) <= stock:
+        label = "unknown_item"
+    print(label)
+  key_points:
+    - Uma resposta sem evidência recuperada deveria ter se abstido.
+    - Uma citação vazia e uma citação inventada são falhas diferentes.
+    - Valide o contrato do resultado antes de classificar seu conteúdo.
+
+brief: |
+  Escreva `inspect_rag_answer(answer, retrieved_ids)`. O status é `answer` ou `abstain`;
+  respostas contêm afirmações com listas de citações. Retorne um rótulo: `abstained`,
+  `should_abstain`, `uncited`, `invented_citation` ou `grounded`, nessa precedência.
+  Rejeite IDs duplicados ou dados de resposta malformados.
+
+signature:
+  entrypoint: inspect_rag_answer
+  stub: |
+    def inspect_rag_answer(answer, retrieved_ids):
+        # Classifique a fundamentação sem reconstruí-la.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [{status: abstain, reason: no_evidence}, []]
+      expect: abstained
+    - args: [{status: answer, claims: [{text: tide, citations: [A]}]}, [A]]
+      expect: grounded
+  hidden:
+    - args: [{status: answer, claims: [{text: first, citations: []}, {text: 7, citations: [A]}]}, [A]]
+      raises: ValueError
+    - args: [{status: answer, claims: [{text: guess, citations: [A]}]}, []]
+      expect: should_abstain
+    - args: [{status: answer, claims: [{text: guess, citations: []}]}, [A]]
+      expect: uncited
+    - args: [{status: answer, claims: [{text: guess, citations: [X]}]}, [A]]
+      expect: invented_citation
+    - args: [{status: answer, claims: []}, [A]]
+      expect: uncited
+    - args: [{status: answer, claims: []}, [A, A]]
+      raises: ValueError
+    - args: [{status: maybe}, []]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Qual falha deve vencer quando nenhuma evidência foi recuperada?"}
+  - {level: 2, text: "Trate abstenção, falta de evidência, listas vazias e IDs desconhecidos nessa ordem."}
+  - level: 3
+    text: |
+      Um inspetor de pedidos pode retornar cedo para cancelamento declarado, falta de estoque,
+      lista vazia de itens e, por fim, IDs fora do conjunto disponível.
+
+solution: |
+  def inspect_rag_answer(answer, retrieved_ids):
+      if not isinstance(answer, dict) or answer.get("status") not in {"answer", "abstain"}:
+          raise ValueError("invalid answer status")
+      if not isinstance(retrieved_ids, list) or any(not isinstance(item, str) for item in retrieved_ids):
+          raise ValueError("invalid retrieved IDs")
+      available = set(retrieved_ids)
+      if len(available) != len(retrieved_ids):
+          raise ValueError("retrieved IDs must be unique")
+      if answer["status"] == "abstain":
+          return "abstained"
+      claims = answer.get("claims")
+      if not isinstance(claims, list):
+          raise ValueError("answered results need claims")
+      citation_lists = []
+      for claim in claims:
+          if not isinstance(claim, dict) or not isinstance(claim.get("text"), str):
+              raise ValueError("invalid claim")
+          citations = claim.get("citations")
+          if not isinstance(citations, list) or any(not isinstance(item, str) for item in citations):
+              raise ValueError("invalid citations")
+          citation_lists.append(citations)
+      if not available:
+          return "should_abstain"
+      if not claims:
+          return "uncited"
+      if any(not citations for citations in citation_lists):
+          return "uncited"
+      cited = [item for citations in citation_lists for item in citations]
+      if not set(cited) <= available:
+          return "invented_citation"
+      return "grounded"
