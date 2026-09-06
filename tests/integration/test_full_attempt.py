@@ -278,6 +278,22 @@ def test_the_mission_service_loads_the_shipped_catalogue():
     assert service.islands[0].id == "foundations"
 
 
+def test_the_mission_service_can_switch_to_ai_engineering_and_back():
+    service = MissionService(CONTENT_ROOT, "python")
+
+    service.set_track("ai-engineering")
+
+    assert service.track.id == "ai-engineering"
+    assert service.get_mission("ai-documents-01") is not None
+    assert service.get_mission("py-foundations-06") is None
+
+    service.set_track("python")
+
+    assert service.track.id == "python"
+    assert service.get_mission("py-foundations-06") is not None
+    assert service.get_mission("ai-documents-01") is None
+
+
 def test_islands_know_which_missions_they_own():
     service = MissionService(CONTENT_ROOT, "python")
 

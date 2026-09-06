@@ -19,6 +19,7 @@ class UnlockRule:
     missions_completed: int = 0
     total_xp: int = 0
     requires_island: str | None = None
+    requires_mission: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -79,6 +79,11 @@ class CodeQuestApp(App):
         self.context.missions.set_language(language)
         strings.set_language(language)
 
+    def set_track(self, track_id: str) -> None:
+        """Load one track before its saves and map are shown."""
+        self.profile = None
+        self.context.missions.set_track(track_id)
+
     def on_unmount(self) -> None:
         """Close the database, but only the one this app opened.
 

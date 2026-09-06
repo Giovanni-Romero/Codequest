@@ -12,7 +12,8 @@ the player's real progress.
 from __future__ import annotations
 
 import pytest
-from textual.widgets import Input, Label, ListView
+from textual.color import Color
+from textual.widgets import Input, Label, ListView, Static, TabbedContent
 
 from codequest.services.bootstrap import create_context
 from codequest.tui.app import CodeQuestApp
@@ -86,6 +87,24 @@ async def test_choosing_python_reaches_the_save_screen(app):
         assert isinstance(pilot.app.screen, SaveSelectScreen)
 
 
+async def test_arrow_keys_highlight_ai_engineering_in_brass(app):
+    async with app.run_test() as pilot:
+        await pilot.press("down")
+
+        selected = pilot.app.screen.query_one("#track-ai-engineering")
+        assert selected.has_class("-highlight")
+        assert selected.styles.color == Color.parse("#c9a227")
+
+
+async def test_choosing_ai_engineering_loads_its_catalogue(app):
+    async with app.run_test() as pilot:
+        await pilot.press("down", "enter")
+
+        assert isinstance(pilot.app.screen, SaveSelectScreen)
+        assert pilot.app.context.missions.track.id == "ai-engineering"
+        assert pilot.app.context.missions.get_mission("ai-documents-01") is not None
+
+
 async def test_unbuilt_tracks_cannot_be_selected(app):
     """Java is visible so the player sees where the game is going, and disabled."""
     async with app.run_test() as pilot:
@@ -111,6 +130,47 @@ async def test_creating_a_save_lists_it(app):
         listing = pilot.app.screen.query_one("#save-list", ListView)
         assert len(listing.children) == 1
         assert pilot.app.context.progress.profiles.get_by_name("giovanni") is not None
+
+
+async def test_each_track_lists_only_its_saves_without_changing_existing_progress(app, context):
+    python_profile = context.progress.create_profile("python-career", "python")
+    context.progress.profiles.add_xp(python_profile.id, 125)
+    context.progress.progress.record_attempt(
+        python_profile.id, "py-foundations-01", passed=True, xp=10
+    )
+
+    async with app.run_test() as pilot:
+        await pilot.press("enter")
+        assert len(pilot.app.screen.query_one("#save-list", ListView).children) == 1
+
+        await pilot.press("escape", "down", "enter")
+        assert len(pilot.app.screen.query_one("#save-list", ListView).children) == 0
+
+        await pilot.press("n")
+        pilot.app.screen.query_one("#new-name", Input).value = "ai-career"
+        await pilot.press("enter")
+
+        ai_profile = context.progress.profiles.get_by_name("ai-career")
+        assert ai_profile is not None
+        assert ai_profile.track == "ai-engineering"
+
+        await pilot.press("enter")
+        await pilot.pause()
+        assert isinstance(pilot.app.screen, IslandMapScreen)
+        assert pilot.app.context.missions.get_mission("ai-documents-01") is not None
+
+        await pilot.press("escape", "escape", "up", "enter")
+        await pilot.pause()
+        assert pilot.app.context.missions.track.id == "python"
+        python_saves = pilot.app.screen.query_one("#save-list", ListView)
+        assert len(python_saves.children) == 1
+        assert "python-career" in str(python_saves.children[0].query_one(Label).render())
+
+        reloaded = context.progress.profiles.get(python_profile.id)
+        assert reloaded is not None
+        assert reloaded.track == "python"
+        assert reloaded.total_xp == 125
+        assert context.progress.progress.get(python_profile.id, "py-foundations-01").is_completed
 
 
 async def test_selecting_a_save_opens_the_map(app):
@@ -178,6 +238,79 @@ async def _open_mission(pilot, mission_id: str = "py-foundations-06") -> None:
     mission = pilot.app.context.missions.get_mission(mission_id)
     pilot.app.push_screen(MissionScreen(mission))
     await pilot.pause()
+
+
+async def _wait_for_attempt(pilot, limit: float = 20.0) -> None:
+    waited = 0.0
+    while getattr(pilot.app.screen, "running", False) and waited < limit:
+        await pilot.pause(delay=0.1)
+        waited += 0.1
+
+    await pilot.app.workers.wait_for_complete()
+    await pilot.pause()
+
+
+async def test_output_tab_shows_literal_prints_from_every_case(app):
+    """Dropping any CaseOutcome.stdout, including hidden cases, must fail this test."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+        pilot.app.screen.query_one("#editor", CodeEditor).text = """
+def sum_list(numbers):
+    print(f"[red]{numbers}[/red]")
+    total = 0
+    for number in numbers:
+        total += number
+    return total
+"""
+
+        await pilot.press("f5")
+        await _wait_for_attempt(pilot)
+        await pilot.press("f7")
+
+        tabs = pilot.app.screen.query_one("#right-tabs", TabbedContent)
+        rendered = str(pilot.app.screen.query_one("#output-body", Static).render())
+        assert tabs.active == "tab-output"
+        assert rendered.count("[red]") == 8
+        assert "case 1 (visible)" in rendered
+        assert "case 8 (hidden)" in rendered
+
+
+async def test_a_new_attempt_replaces_the_previous_output(app):
+    """The console represents one attempt, not an accidental unbounded history."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+        editor = pilot.app.screen.query_one("#editor", CodeEditor)
+        editor.text = CORRECT_SUM_LIST.replace("total = 0", 'print("old output")\n    total = 0')
+
+        await pilot.press("f5")
+        await _wait_for_attempt(pilot)
+
+        editor.text = CORRECT_SUM_LIST
+        await pilot.press("f5")
+        await _wait_for_attempt(pilot)
+        await pilot.press("f7")
+
+        rendered = str(pilot.app.screen.query_one("#output-body", Static).render())
+        assert "old output" not in rendered
+        assert rendered.count("No output") == 8
+
+
+async def test_output_marks_cases_skipped_after_execution_stops(app):
+    """A halted attempt must not describe untouched cases as executed with empty stdout."""
+    async with app.run_test() as pilot:
+        await _open_mission(pilot)
+        pilot.app.screen.query_one("#editor", CodeEditor).text = """
+def sum_list(numbers):
+    while True:
+        pass
+"""
+
+        await pilot.press("f5")
+        await _wait_for_attempt(pilot)
+        await pilot.press("f7")
+
+        rendered = str(pilot.app.screen.query_one("#output-body", Static).render())
+        assert rendered.count("Not executed") == 7
 
 
 async def test_running_a_correct_solution_awards_xp(app):

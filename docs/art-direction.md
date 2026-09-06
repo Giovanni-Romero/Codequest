@@ -82,10 +82,10 @@ re-measure before shipping.
 **One accent, on purpose.** `beacon` marks exactly one thing per screen: where you are, or
 what to press. An interface where four things glow has no accent at all.
 
-**The island map's mission list breaks the plain list rule, and only there.** A track list
-has three rows and a save list has two, so `parchment` on `sea` is enough to find the
-selection. The mission list has a hundred nearly identical lines, and it was not — playing
-the game is what showed it. So there, and nowhere else:
+**Moving navigation selections use brass.** Playtesting showed that `parchment` on `sea`
+was not distinct enough in the track menu or the long mission list. The save list keeps
+the quieter plain highlight because selecting a track already narrows it to at most four
+rows. In the track menu and mission list:
 
 - the selected row is `brass`, bold
 - a completed row is `verified`
@@ -95,7 +95,7 @@ is selected. The rule is that colour never carries meaning *alone*, and the `✔
 shape, so completion is still readable there. The third contrast pair above is measured
 because a completed row is green until the moment it is picked.
 
-This is the one place `brass` carries body text instead of a frame or a heading.
+These are the only places `brass` carries body text instead of a frame or a heading.
 
 ---
 
@@ -186,6 +186,9 @@ The four-panel layout needs room. Three bands, and the game never simply refuses
 | **≥100 cols** | Four panels side by side, as in the `tui-developer` diagram |
 | **80–99 cols** | Teaching and Results become tabs in the right column; editor stays full height |
 | **<80 cols** | Single panel with a tab bar, plus a one-line notice that the view is reduced |
+
+The lower-right tab group is always `Results`, `Hints`, and `Output`. `Output` shows the
+player's captured stdout literally, separated by test case; it never interprets Rich markup.
 
 Height follows the same principle: below 30 rows the teaching panel collapses to a
 scrollable strip rather than squeezing every panel to nothing.

@@ -8,15 +8,19 @@ files, classes, and automated tests. The track teaches AI systems, not Python sy
 
 ## Design rules
 
-- Islands 1 to 8 teach durable concepts without requiring a model, network, or framework.
-- Islands 9 to 15 apply those concepts through real frameworks installed as optional extras.
+- Islands 1 to 8 teach durable AI-system concepts without requiring a model, network, or framework.
+- Islands 9 to 16 add the mathematical, statistical, ML, data, model, responsible-AI,
+  and operational foundations expected from an AI engineer.
+- Islands 17 to 21 are mandatory framework specializations. Their packages remain
+  separately installed extras so the base game stays portable.
+- Island 22 is an end-to-end capstone that integrates the full track.
 - Graded missions are deterministic and run offline. Model-backed labs are optional and do
   not gate progression.
 - One mission introduces at most one concept. Every concept is reinforced at least twice.
 - Framework versions are selected and tested when their island is authored, not guessed now.
 - Only shipped islands appear in `track.yaml`; this syllabus is the longer roadmap.
 
-For Islands 2 to 15, concepts are introduced in missions 1 to 4 in the order listed.
+For each eight-mission island, concepts are introduced in missions 1 to 4 in the order listed.
 Mission 5 reinforces concepts 1 and 2, mission 6 reinforces 2 and 3, mission 7 reinforces
 3 and 4, and mission 8 combines all four. This gives every concept at least two later uses
 and creates a sawtooth curve with consolidation after each introduction.
@@ -33,19 +37,28 @@ and creates a sawtooth curve with consolidation after each introduction.
 | 6 | Evals | moderate | Measure capabilities and diagnose failure classes |
 | 7 | Tools and Agents | moderate | Orchestrate tools without duplicating effects or losing state |
 | 8 | Production AI | moderate | Operate AI features under latency, cost, safety, and outage constraints |
-| 9 | PyTorch Foundations | challenging | Build and train a small neural network on CPU |
-| 10 | Hugging Face Transformers | challenging | Tokenize and run transformer inference with local assets |
-| 11 | LangChain | expert | Compose prompts, retrievers, tools, and agent loops |
-| 12 | LangGraph | expert | Build durable stateful workflows with explicit transitions |
-| 13 | LlamaIndex | expert | Build data ingestion and query workflows over documents |
-| 14 | PydanticAI | expert | Build typed, testable, provider-independent agents |
-| 15 | DSPy | expert | Optimize LM programs against explicit metrics |
+| 9 | Mathematical and Statistical Foundations | challenging | Solve AI calculations and validate their assumptions with Python |
+| 10 | Machine Learning Foundations | challenging | Build and evaluate classical learning pipelines |
+| 11 | Reasoning and Decision Making | challenging | Search, plan, and update decisions under explicit rules |
+| 12 | Data Engineering for AI | challenging | Produce reproducible, versioned, quality-checked datasets |
+| 13 | PyTorch and Deep Learning | challenging | Build and train a small neural network on CPU |
+| 14 | NLP and Transformers | challenging | Tokenize and run transformer inference with local assets |
+| 15 | Responsible AI | challenging | Measure fairness, protect data, and define human oversight |
+| 16 | MLOps and Model Lifecycle | challenging | Track, deploy, monitor, and retire model versions safely |
+| 17 | LangChain — Required Specialization | expert | Compose prompts, retrievers, tools, and agent loops |
+| 18 | LangGraph — Required Specialization | expert | Build durable stateful workflows with explicit transitions |
+| 19 | LlamaIndex — Required Specialization | expert | Build data ingestion and query workflows over documents |
+| 20 | PydanticAI — Required Specialization | expert | Build typed, testable, provider-independent agents |
+| 21 | DSPy — Required Specialization | expert | Optimize LM programs against explicit metrics |
+| 22 | AI Engineering Capstone | expert | Deliver and defend a production-ready AI system |
 
 The dependency spine is:
 
-`chunking -> context assembly -> retrieval -> RAG -> structured output -> evals -> agents -> production`
+`chunking -> prompt contracts -> retrieval -> RAG -> structured output -> evals -> agents -> production -> math and statistics -> ML -> reasoning -> data engineering -> deep learning -> transformers -> responsible AI -> MLOps -> framework specializations -> capstone`
 
-The framework block applies the spine rather than replacing it.
+The systems-first order is deliberate: players first build observable deterministic AI
+pipelines, then learn the mathematics and model internals that explain and extend them.
+The required framework block applies the spine rather than replacing it.
 
 ---
 
@@ -317,7 +330,122 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 9 — PyTorch Foundations
+## Island 9 — Mathematical and Statistical Foundations
+
+Exercises are solved in Python, but code is the calculator and verifier rather than the
+subject. Missions require a numeric result, an interpretation, or an audit of assumptions.
+
+### vector-operations
+- **prereqs:** intermediate Python numeric operations, similarity-scoring
+- **objective:** compute vector addition, scaling, dot products, norms, and projections
+- **misconceptions:** vectors are only lists; dimensions may be combined freely
+- **mastery:** implements and hand-checks vector calculations with dimension validation
+
+### descriptive-statistics
+- **prereqs:** vector-operations
+- **objective:** summarize samples with center, spread, quantiles, and outlier-aware choices
+- **misconceptions:** mean always represents a sample; variance and standard deviation are interchangeable
+- **mastery:** selects and computes a defensible summary for a supplied dataset
+
+### probability-distributions
+- **prereqs:** descriptive-statistics
+- **objective:** compute conditional probability, expectation, and simple distribution outcomes
+- **misconceptions:** probability is confidence; independent and mutually exclusive mean the same thing
+- **mastery:** models a finite event space and verifies probabilities sum to one
+
+### optimization-steps
+- **prereqs:** vector-operations, descriptive-statistics
+- **objective:** calculate loss, gradients, and one explicit parameter-update step
+- **misconceptions:** a gradient is the new weight; a lower training loss proves generalization
+- **mastery:** predicts and validates one gradient-descent update in Python
+
+---
+
+## Island 10 — Machine Learning Foundations
+
+### dataset-splits
+- **prereqs:** descriptive-statistics
+- **objective:** create reproducible train, validation, and test partitions without leakage
+- **misconceptions:** random splitting prevents all leakage; the test set guides tuning
+- **mastery:** detects overlap, imbalance, temporal leakage, and non-reproducible splits
+
+### supervised-learning-contract
+- **prereqs:** dataset-splits, optimization-steps
+- **objective:** connect features, targets, loss, training, and inference as one contract
+- **misconceptions:** labels are ordinary features; fitting and predicting have the same inputs
+- **mastery:** implements a small deterministic learner and traces every stage
+
+### baselines-and-generalization
+- **prereqs:** supervised-learning-contract, capability-metrics
+- **objective:** compare a model with a meaningful baseline on held-out data
+- **misconceptions:** training accuracy measures usefulness; complexity is evidence of quality
+- **mastery:** identifies underfitting, overfitting, and misleading aggregate metrics
+
+### unsupervised-patterns
+- **prereqs:** vector-operations, descriptive-statistics
+- **objective:** group or reduce unlabeled observations using explicit distance rules
+- **misconceptions:** clusters are true classes; every dataset contains meaningful groups
+- **mastery:** runs a small clustering step and explains sensitivity to scale and initialization
+
+---
+
+## Island 11 — Reasoning and Decision Making
+
+### state-space-search
+- **prereqs:** intermediate Python collections and algorithms
+- **objective:** represent states, actions, goals, and explored paths explicitly
+- **misconceptions:** search is model reasoning; revisiting states is harmless
+- **mastery:** finds a valid path and explains completeness and termination
+
+### heuristic-search
+- **prereqs:** state-space-search
+- **objective:** prioritize search using a declared estimate of remaining cost
+- **misconceptions:** any heuristic improves search; a fast answer is necessarily optimal
+- **mastery:** compares uninformed and heuristic search on the same deterministic graph
+
+### constraint-planning
+- **prereqs:** heuristic-search, orchestration-gates
+- **objective:** build a plan whose actions respect prerequisites, resources, and exclusions
+- **misconceptions:** ordering alone guarantees validity; failed actions can be ignored
+- **mastery:** validates a plan and reports the earliest broken constraint
+
+### reinforcement-updates
+- **prereqs:** probability-distributions, optimization-steps
+- **objective:** update a tabular value estimate from reward and next-state information
+- **misconceptions:** reward is ground truth; exploration is random waste
+- **mastery:** computes and interprets one temporal-difference update
+
+---
+
+## Island 12 — Data Engineering for AI
+
+### data-contracts
+- **prereqs:** output-schema, dataset-splits
+- **objective:** declare field, type, range, nullability, and semantic expectations for datasets
+- **misconceptions:** valid CSV means valid data; schema changes are harmless implementation details
+- **mastery:** rejects contract violations with stable, traceable reasons
+
+### data-quality
+- **prereqs:** data-contracts, descriptive-statistics
+- **objective:** measure completeness, validity, uniqueness, consistency, and distribution changes
+- **misconceptions:** cleaning means deleting unusual rows; one quality score explains every defect
+- **mastery:** produces a deterministic quality report without mutating source data
+
+### dataset-versioning
+- **prereqs:** data-quality, chunk-metadata
+- **objective:** identify dataset contents and lineage with immutable versions
+- **misconceptions:** filenames are versions; model versions alone reproduce results
+- **mastery:** traces a derived dataset to its inputs and transformation version
+
+### reproducible-pipelines
+- **prereqs:** dataset-versioning, observability-traces
+- **objective:** run ingestion and transformation stages deterministically from declared inputs
+- **misconceptions:** notebooks are automatically reproducible; rerunning implies identical data
+- **mastery:** reproduces an artifact and diagnoses which input changed when hashes differ
+
+---
+
+## Island 13 — PyTorch and Deep Learning
 
 ### tensors-and-shapes
 - **prereqs:** intermediate Python numeric operations
@@ -345,7 +473,7 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 10 — Hugging Face Transformers
+## Island 14 — NLP and Transformers
 
 ### tokenizer-boundaries
 - **prereqs:** tensors-and-shapes, fixed-window-chunking
@@ -373,7 +501,63 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 11 — LangChain
+## Island 15 — Responsible AI
+
+### group-fairness-metrics
+- **prereqs:** descriptive-statistics, capability-metrics
+- **objective:** compare error and selection rates across declared groups
+- **misconceptions:** one fairness metric fits every decision; equal averages imply equal treatment
+- **mastery:** computes group metrics and states the trade-off the chosen metric encodes
+
+### privacy-boundaries
+- **prereqs:** trust-boundaries, data-contracts
+- **objective:** minimize, classify, redact, and retain data according to explicit policy
+- **misconceptions:** removing names anonymizes a dataset; logs are outside privacy scope
+- **mastery:** blocks prohibited fields before storage or model access
+
+### explainability-records
+- **prereqs:** observability-traces, baselines-and-generalization
+- **objective:** preserve the inputs, model version, evidence, and decision factors needed for review
+- **misconceptions:** fluent rationales explain model behavior; every explanation method proves causality
+- **mastery:** creates an auditable decision record without exposing protected data
+
+### human-oversight-governance
+- **prereqs:** explainability-records, orchestration-gates
+- **objective:** route high-impact or uncertain decisions to accountable human review
+- **misconceptions:** a confirmation button is meaningful oversight; humans always correct automation
+- **mastery:** models approve, reject, appeal, and timeout outcomes with named responsibility
+
+---
+
+## Island 16 — MLOps and Model Lifecycle
+
+### experiment-tracking
+- **prereqs:** eval-datasets, reproducible-pipelines
+- **objective:** record code, data, configuration, metrics, and artifacts for each experiment
+- **misconceptions:** a metric screenshot reproduces a run; only successful runs matter
+- **mastery:** distinguishes two runs and reconstructs why their metrics differ
+
+### model-versioning
+- **prereqs:** experiment-tracking, dataset-versioning
+- **objective:** register immutable model artifacts with lineage and approval status
+- **misconceptions:** the newest model is production-ready; a filename uniquely identifies weights
+- **mastery:** resolves a deployment to exact code, data, configuration, and artifact versions
+
+### deployment-strategies
+- **prereqs:** model-versioning, graceful-degradation
+- **objective:** choose rollback-safe batch, shadow, canary, or blue-green delivery
+- **misconceptions:** deployment equals copying weights; offline metrics guarantee online safety
+- **mastery:** executes a deterministic rollout policy and triggers rollback on a declared guardrail
+
+### drift-monitoring
+- **prereqs:** deployment-strategies, data-quality, observability-traces
+- **objective:** detect input, prediction, performance, and concept drift with explicit windows
+- **misconceptions:** every distribution change is harmful; no alert means no degradation
+- **mastery:** classifies a monitoring signal and selects retraining, rollback, or observation
+
+---
+
+## Island 17 — LangChain — Required Specialization
 
 ### langchain-runnables
 - **prereqs:** retrieval-generation-separation, graceful-degradation
@@ -401,7 +585,7 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 12 — LangGraph
+## Island 18 — LangGraph — Required Specialization
 
 ### langgraph-state
 - **prereqs:** orchestration-gates, langchain-tools-agents
@@ -429,7 +613,7 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 13 — LlamaIndex
+## Island 19 — LlamaIndex — Required Specialization
 
 ### llamaindex-documents-nodes
 - **prereqs:** ingestion-pipeline, chunk-metadata
@@ -457,7 +641,7 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 14 — PydanticAI
+## Island 20 — PydanticAI — Required Specialization
 
 ### pydanticai-agent-contracts
 - **prereqs:** tool-contracts, output-schema
@@ -485,7 +669,7 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Island 15 — DSPy
+## Island 21 — DSPy — Required Specialization
 
 ### dspy-signatures
 - **prereqs:** prompt-templates, output-schema
@@ -513,9 +697,38 @@ The framework block applies the spine rather than replacing it.
 
 ---
 
-## Framework execution policy
+## Island 22 — AI Engineering Capstone
 
-When framework islands are authored, dependencies are split into optional extras:
+### requirements-to-metrics
+- **prereqs:** capability-metrics, group-fairness-metrics, latency-cost-budget
+- **objective:** translate stakeholder requirements into testable quality, safety, latency, and cost targets
+- **misconceptions:** feature lists are success criteria; one offline score represents system value
+- **mastery:** writes an acceptance matrix with measurable thresholds and owners
+
+### end-to-end-system-design
+- **prereqs:** all Islands 1 to 21
+- **objective:** connect data, retrieval or models, evaluation, orchestration, and operations through explicit contracts
+- **misconceptions:** a framework is the architecture; every AI system needs an agent
+- **mastery:** builds the smallest architecture that satisfies the acceptance matrix
+
+### failure-budget-review
+- **prereqs:** end-to-end-system-design, drift-monitoring, human-oversight-governance
+- **objective:** test normal, degraded, hostile, and unavailable paths against a declared failure budget
+- **misconceptions:** happy-path accuracy is readiness; retries solve every dependency failure
+- **mastery:** attributes failures to stages and demonstrates safe fallback or abstention
+
+### operational-readiness
+- **prereqs:** failure-budget-review, deployment-strategies, explainability-records
+- **objective:** produce the evidence needed to deploy, observe, roll back, and govern the system
+- **misconceptions:** passing tests completes ownership; documentation can replace operating evidence
+- **mastery:** defends the system with reproducible tests, lineage, runbooks, and trade-offs
+
+---
+
+## Required framework execution policy
+
+The five framework specializations are required to complete the AI Engineering track.
+Their dependencies are split into installable extras:
 
 ```toml
 ai-ml = ["torch", "transformers"]
@@ -523,13 +736,14 @@ ai-rag = ["llama-index"]
 ai-orchestration = ["langchain", "langgraph", "pydantic-ai", "dspy"]
 ```
 
-The base game and portable build never install these extras. Graded missions use real
+The base game and portable build do not bundle these extras; players install them before
+starting the specialization block. Graded missions use real
 framework APIs but only local fixtures, tiny CPU workloads, fake model providers, and
 pre-created local assets. Downloads, GPUs, API keys, Ollama, and provider calls belong
 only to clearly labelled optional labs. Each extra receives its own CI job when its first
 island ships.
 
-Official API references for future authoring:
+Official API references for authoring:
 
 - PyTorch: <https://docs.pytorch.org/tutorials/beginner/basics/intro.html>
 - Transformers: <https://huggingface.co/docs/transformers/quicktour>

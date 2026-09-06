@@ -1,0 +1,95 @@
+id: ai-retrieval-07
+title: Inspect the ranking
+track: ai-engineering
+island: retrieval
+order: 7
+difficulty: moderate
+tags: [ai-engineering, retrieval, ranking, audit]
+xp: 30
+
+concepts: [top-k-ranking, relevance-thresholds]
+
+teaching:
+  analogy: |
+    A harbor inspector checks a published arrival board: too many ships, repeated IDs,
+    increasing times, and arrivals below the visibility limit are separate defects.
+  explanation: |
+    A retrieval audit checks the promises made by ranking and thresholding. It reports
+    stable issue codes without silently sorting or deleting anything. This relief
+    mission makes pipeline failures observable before the final build.
+  worked_example: |
+    rows = [{"name": "A", "rank": 1}, {"name": "A", "rank": 2}]
+    seen = set()
+    duplicates = []
+    for row in rows:
+        if row["name"] in seen:
+            duplicates.append(row["name"])
+        seen.add(row["name"])
+    print(duplicates)
+  key_points:
+    - Auditing never repairs the results it measures.
+    - Ranking, uniqueness, threshold, and count are independent invariants.
+    - Stable issue positions make the faulty record traceable.
+
+brief: |
+  Write `audit_ranked_results(results, k, min_score)`. Return `too-many` first when the
+  list exceeds `k`. Then scan results and append `duplicate:<id>`, `order:<index>` when
+  a score rises from the prior row, and `below-threshold:<index>`. Multiple issues for
+  one row use that order. Raise `ValueError` for invalid `k` or threshold.
+
+signature:
+  entrypoint: audit_ranked_results
+  stub: |
+    def audit_ranked_results(results, k, min_score):
+        # Check ranking promises without changing the list.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{id: A, score: 0.9}, {id: B, score: 0.6}], 2, 0.5]
+      expect: []
+    - args: [[{id: A, score: 0.4}, {id: A, score: 0.8}], 1, 0.5]
+      expect: [too-many, "below-threshold:0", "duplicate:A", "order:1"]
+  hidden:
+    - args: [[], 0, 0.0]
+      expect: []
+    - args: [[{id: A, score: 0.5}], 1, 0.5]
+      expect: []
+    - args: [[{id: A, score: 0.2}], 1, 0.3]
+      expect: ["below-threshold:0"]
+    - args: [[], -1, 0.5]
+      raises: ValueError
+    - args: [[], 1, 1.1]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Which invariant applies to the list, and which ones apply during the row scan?"}
+  - {level: 2, text: "Check length first; then keep a seen-ID set and previous score while scanning."}
+  - level: 3
+    text: |
+      An invoice audit can report an excessive row count first, then track repeated
+      codes, out-of-order amounts, and values below a declared minimum.
+
+solution: |
+  def audit_ranked_results(results, k, min_score):
+      if k < 0 or not 0 <= min_score <= 1:
+          raise ValueError("invalid retrieval limits")
+      issues = []
+      if len(results) > k:
+          issues.append("too-many")
+      seen = set()
+      previous = None
+      for index, result in enumerate(results):
+          result_id = result["id"]
+          score = result["score"]
+          if result_id in seen:
+              issues.append(f"duplicate:{result_id}")
+          seen.add(result_id)
+          if previous is not None and score > previous:
+              issues.append(f"order:{index}")
+          if score < min_score:
+              issues.append(f"below-threshold:{index}")
+          previous = score
+      return issues

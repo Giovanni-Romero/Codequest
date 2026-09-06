@@ -1,0 +1,151 @@
+id: ai-documents-05
+title: Keep the paragraph
+track: ai-engineering
+island: documents-into-context
+order: 5
+difficulty: moderate
+tags: [ai-engineering, chunking, semantic-boundaries, provenance]
+xp: 30
+
+concepts:
+  - semantic-boundaries
+
+teaching:
+  analogy: |
+    Packing a moving box by weight alone can split a matching set between two boxes.
+    A careful packer keeps each set together when it fits, but divides a set that is too
+    heavy rather than breaking the weight limit.
+
+    Paragraphs are natural sets of related sentences. Keep one together when possible,
+    but let the hard context limit win when a paragraph is too large.
+
+  explanation: |
+    A semantic boundary marks where one unit of meaning ends and another begins. Blank
+    lines give us a deterministic paragraph boundary without asking a model to guess.
+    A paragraph that fits becomes one chunk. An oversized paragraph falls back to fixed
+    word windows, because a useful preference must never defeat a hard limit.
+
+  worked_example: |
+    # Keep each shopping list together unless a bag holds only three items.
+    lists = [["bread", "milk"], ["rice", "beans", "tea", "salt"]]
+    bags = []
+    for items in lists:
+        for start in range(0, len(items), 3):
+            bags.append(items[start : start + 3])
+    print(bags)
+
+  key_points:
+    - Natural boundaries improve coherence, but they do not remove size limits.
+    - Lines separated by no blank line belong to the same paragraph.
+    - Oversized paragraphs need a deterministic fixed-window fallback.
+    - Metadata travels with every resulting chunk, including fallback chunks.
+
+brief: |
+  Write `chunk_by_paragraph`. It receives a non-empty `source_id`, text, and a positive
+  `max_words`. Paragraphs are blocks of non-empty lines separated by one or more blank
+  lines. Normalize whitespace inside each paragraph.
+
+  Return metadata dictionaries with `chunk_id`, `source_id`, `position`, and `text`.
+  Keep a paragraph as one chunk when it fits. Split an oversized paragraph into fixed
+  word windows. Positions start at zero across the whole source.
+
+  Return an empty list for empty text. Raise `ValueError` for an empty `source_id` or a
+  non-positive `max_words`.
+
+signature:
+  entrypoint: chunk_by_paragraph
+  stub: |
+    def chunk_by_paragraph(source_id, text, max_words):
+        # Prefer paragraph boundaries, then fall back to bounded word windows.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["guide", "First short paragraph.\n\nSecond one here.", 4]
+      expect:
+        - {chunk_id: "guide:0", source_id: guide, position: 0, text: "First short paragraph."}
+        - {chunk_id: "guide:1", source_id: guide, position: 1, text: "Second one here."}
+    - args: ["long", "one two three four five", 3]
+      expect:
+        - {chunk_id: "long:0", source_id: long, position: 0, text: "one two three"}
+        - {chunk_id: "long:1", source_id: long, position: 1, text: "four five"}
+  hidden:
+    - args: ["empty", "", 3]
+      expect: []
+    - args: ["empty", " \n\t\n ", 3]
+      expect: []
+    - args: ["wrapped", "one two\nthree four", 5]
+      expect:
+        - {chunk_id: "wrapped:0", source_id: wrapped, position: 0, text: "one two three four"}
+    - args: ["spaces", " one   two \n\n\n three\tfour ", 2]
+      expect:
+        - {chunk_id: "spaces:0", source_id: spaces, position: 0, text: "one two"}
+        - {chunk_id: "spaces:1", source_id: spaces, position: 1, text: "three four"}
+    - args: ["solo", "anchor", 1]
+      expect:
+        - {chunk_id: "solo:0", source_id: solo, position: 0, text: anchor}
+    - args: ["", "text", 2]
+      raises: ValueError
+    - args: ["doc", "text", 0]
+      raises: ValueError
+    - args: ["doc", "text", -2]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      What event tells you that the current paragraph is complete and ready to store?
+  - level: 2
+    text: |
+      Build the current paragraph from non-empty lines. On a blank line, store it and
+      start a new one. Then apply word slicing only to paragraphs above the limit.
+  - level: 3
+    text: |
+      Here is a block collector for groups separated by blank rows:
+
+          groups = []
+          current = []
+          for row in rows:
+              if row.strip():
+                  current.extend(row.split())
+              elif current:
+                  groups.append(current)
+                  current = []
+
+      Remember to store the last group after the loop.
+
+solution: |
+  def chunk_by_paragraph(source_id, text, max_words):
+      if not source_id.strip():
+          raise ValueError("source_id must not be empty")
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+
+      paragraphs = []
+      current = []
+      for line in text.splitlines():
+          if line.strip():
+              current.extend(line.split())
+          elif current:
+              paragraphs.append(current)
+              current = []
+      if current:
+          paragraphs.append(current)
+
+      chunks = []
+      for words in paragraphs:
+          for start in range(0, len(words), max_words):
+              position = len(chunks)
+              chunks.append(
+                  {
+                      "chunk_id": f"{source_id}:{position}",
+                      "source_id": source_id,
+                      "position": position,
+                      "text": " ".join(words[start : start + max_words]),
+                  }
+              )
+      return chunks

@@ -23,6 +23,7 @@ from codequest.tui.symbols import LOCKED, ROUTE
 #: The note is a strings.py key, not text - translated at render time, not at import.
 TRACKS = [
     ("python", "Python", True, "track.python.note"),
+    ("ai-engineering", "AI Engineering", True, "track.ai_engineering.note"),
     ("java", "Java", False, "track.java.note"),
     ("typescript", "TypeScript", False, "track.typescript.note"),
 ]
@@ -49,10 +50,10 @@ class MainMenuScreen(Screen):
         for track_id, name, playable, note_key in TRACKS:
             note = t(note_key)
             if playable:
-                label = f"  {name:<12} [$parchment-dim]{note}[/$parchment-dim]"
+                label = f"  {name:<16} [$parchment-dim]{note}[/$parchment-dim]"
                 items.append(ListItem(Label(label), id=f"track-{track_id}"))
             else:
-                label = f"{LOCKED} {name:<12} [$becalmed]{note}[/$becalmed]"
+                label = f"{LOCKED} {name:<16} [$becalmed]{note}[/$becalmed]"
                 item = ListItem(Label(label), id=f"track-{track_id}")
                 item.disabled = True
                 items.append(item)
@@ -64,8 +65,8 @@ class MainMenuScreen(Screen):
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         # Disabled items cannot be selected, so anything arriving here is playable.
         track_id = (event.item.id or "").removeprefix("track-")
-        if track_id == self.app.context.missions.track.id:
-            self.app.push_screen(SaveSelectScreen())
+        self.app.set_track(track_id)
+        self.app.push_screen(SaveSelectScreen())
 
     def action_settings(self) -> None:
         from codequest.tui.screens.settings import SettingsScreen

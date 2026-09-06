@@ -1,0 +1,122 @@
+id: ai-documents-02
+title: Nada perdido ao mar
+track: ai-engineering
+island: documents-into-context
+order: 2
+difficulty: moderate
+tags: [ai-engineering, chunking, invariants]
+xp: 30
+
+concepts:
+  - chunk-invariants
+
+teaching:
+  analogy: |
+    Um conferente do porto compara uma carga com o manifesto original. Contar os
+    caixotes não basta: precisam chegar os caixotes certos, na ordem certa e sem
+    etiquetas duplicadas inseridas na fila.
+
+    Validar chunks funciona do mesmo jeito. O tamanho é apenas uma regra. Os chunks
+    também precisam reconstruir exatamente a sequência original.
+
+  explanation: |
+    Uma invariante é uma regra que deve continuar verdadeira antes e depois de uma
+    transformação. No chunking, todo chunk deve ter conteúdo e respeitar o limite.
+    Achatar as palavras dos chunks deve produzir exatamente as palavras normalizadas
+    do original. Essa comparação detecta perdas, duplicações e mudanças de ordem.
+
+  worked_example: |
+    # Confira lotes contra a fila original de bilhetes.
+    tickets = ["A1", "A2", "A3"]
+    batches = [["A1", "A2"], ["A3"]]
+    rebuilt = []
+    for batch in batches:
+        rebuilt.extend(batch)
+    print(rebuilt == tickets)  # True
+
+  key_points:
+    - Uma contagem igual não prova que as mesmas palavras sobreviveram.
+    - Compare a sequência reconstruída para detectar perda, duplicação e reordenação.
+    - Rejeite chunks vazios porque eles não carregam contexto e distorcem contagens.
+    - Overlap ainda não é permitido; a reconstrução deve conter cada palavra uma vez.
+
+brief: |
+  Escreva `validate_chunks`. Ela recebe o texto original, uma lista de chunks e uma
+  quantidade máxima positiva de palavras por chunk.
+
+  Retorne `True` apenas quando todo chunk tiver conteúdo, respeitar `max_words` e quando
+  juntar todas as suas palavras reconstruir o original na mesma ordem. Diferenças de
+  whitespace não importam porque palavras são separadas por whitespace.
+
+  Texto vazio com lista vazia é válido. Levante `ValueError` quando `max_words` for zero
+  ou negativo.
+
+signature:
+  entrypoint: validate_chunks
+  stub: |
+    def validate_chunks(text, chunks, max_words):
+        # Confira tamanho, cobertura e ordem sem alterar os chunks.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["one two three four five", ["one two", "three four", "five"], 2]
+      expect: true
+    - args: ["one two three", ["one two"], 2]
+      expect: false
+    - args: ["one two three", ["two one", "three"], 2]
+      expect: false
+  hidden:
+    - args: ["", [], 3]
+      expect: true
+    - args: ["", [""], 3]
+      expect: false
+    - args: ["one two", ["one", "one", "two"], 1]
+      expect: false
+    - args: ["one two three", ["one two three"], 2]
+      expect: false
+    - args: ["one\t two\nthree", ["one two", "three"], 2]
+      expect: true
+    - args: ["anchor", ["anchor"], 0]
+      raises: ValueError
+    - args: ["anchor", ["anchor"], -1]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Se você desempacotar todos os chunks em uma única lista de palavras, com o que
+      essa lista deve ser igual?
+  - level: 2
+    text: |
+      Confira primeiro a quantidade de palavras de cada chunk. Depois, achate os chunks
+      válidos e compare o resultado diretamente com `text.split()`.
+  - level: 3
+    text: |
+      Este é o padrão para reconstruir números de bilhetes agrupados:
+
+          rebuilt = []
+          for group in groups:
+              if not group or len(group) > capacity:
+                  return False
+              rebuilt.extend(group)
+
+      Seus grupos são strings, então separe cada um antes de estender a lista.
+
+solution: |
+  def validate_chunks(text, chunks, max_words):
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+
+      rebuilt = []
+      for chunk in chunks:
+          words = chunk.split()
+          if not words or len(words) > max_words:
+              return False
+          rebuilt.extend(words)
+
+      return rebuilt == text.split()

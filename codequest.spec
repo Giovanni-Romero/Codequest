@@ -17,6 +17,8 @@ datas = [
     ("src/codequest/tui/styles.tcss", "codequest/tui"),
     ("content/python", "content/python"),
     ("content/python-pt", "content/python-pt"),
+    ("content/ai-engineering", "content/ai-engineering"),
+    ("content/ai-engineering-pt", "content/ai-engineering-pt"),
 ]
 
 # The mentor package is imported lazily, behind a feature flag (see

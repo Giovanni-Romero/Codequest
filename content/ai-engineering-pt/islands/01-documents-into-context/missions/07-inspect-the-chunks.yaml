@@ -1,0 +1,168 @@
+id: ai-documents-07
+title: Inspecione os chunks
+track: ai-engineering
+island: documents-into-context
+order: 7
+difficulty: moderate
+tags: [ai-engineering, chunking, quality, diagnostics]
+xp: 30
+
+concepts:
+  - chunk-quality
+
+teaching:
+  analogy: |
+    Um inspetor do cais não reempacota a carga. Ele percorre a fila pronta, anexa um
+    código preciso a cada caixote defeituoso e deixa os bons intactos. Esse relatório
+    informa exatamente o que a equipe precisa corrigir.
+
+    Uma auditoria de chunks também diagnostica uma saída existente. Código executado
+    com sucesso não prova que o contexto é útil, limitado, único ou rastreável.
+
+  explanation: |
+    Qualidade de chunks é um conjunto de propriedades observáveis verificadas depois da
+    transformação. Esta auditoria procura texto vazio, texto grande demais, texto
+    normalizado duplicado e metadados que não rastreiam uma posição na origem. Códigos
+    estáveis tornam o relatório fácil de consumir em testes e pipelines. Relate todo
+    problema aplicável em vez de parar no primeiro.
+
+  worked_example: |
+    # Inspecione encomendas prontas e relate cada falha.
+    parcels = [{"label": "A", "kg": 2}, {"label": "", "kg": 8}]
+    issues = []
+    for index, parcel in enumerate(parcels):
+        if not parcel["label"]:
+            issues.append({"index": index, "issue": "missing-label"})
+        if parcel["kg"] > 5:
+            issues.append({"index": index, "issue": "overweight"})
+    print(issues)
+
+  key_points:
+    - Código executado com sucesso ainda pode produzir contexto inútil.
+    - Normalize o whitespace antes de comparar textos duplicados.
+    - Um chunk pode ter vários problemas; não pare depois do primeiro.
+    - Metadados só são rastreáveis quando o identificador corresponde à origem e posição.
+
+brief: |
+  Escreva `audit_chunks`. Ela recebe dicionários de chunks e um `max_words` positivo.
+  Retorne dicionários de problemas com exatamente `index` e `issue`, na ordem de entrada.
+  Dentro de um chunk, relate os problemas nesta ordem:
+
+  1. `missing-metadata` quando faltar `chunk_id`, `source_id` não vazio ou `position`
+     inteiro, ou quando `chunk_id` não for `<source_id>:<position>`.
+  2. `empty-text` quando `text` faltar, não for string ou não contiver palavras.
+  3. `oversized` quando o texto tiver mais que `max_words` palavras.
+  4. `duplicate-text` quando o texto normalizado já apareceu num chunk anterior.
+
+  Relate todo problema aplicável. Retorne lista vazia para chunks válidos ou nenhum chunk.
+  Levante `ValueError` quando `max_words` for zero ou negativo.
+
+signature:
+  entrypoint: audit_chunks
+  stub: |
+    def audit_chunks(chunks, max_words):
+        # Inspecione os chunks existentes; não os reescreva.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{chunk_id: "doc:0", source_id: doc, position: 0, text: "one two"}]
+        - 2
+      expect: []
+    - args:
+        - [{text: ""}, {chunk_id: "doc:1", source_id: doc, position: 1, text: "one two three"}, {chunk_id: "doc:2", source_id: doc, position: 2, text: "one two three"}]
+        - 2
+      expect:
+        - {index: 0, issue: missing-metadata}
+        - {index: 0, issue: empty-text}
+        - {index: 1, issue: oversized}
+        - {index: 2, issue: oversized}
+        - {index: 2, issue: duplicate-text}
+  hidden:
+    - args: [[], 3]
+      expect: []
+    - args:
+        - [{chunk_id: "doc:0", source_id: doc, position: 0, text: "one   two"}, {chunk_id: "other:0", source_id: other, position: 0, text: "one two"}]
+        - 3
+      expect:
+        - {index: 1, issue: duplicate-text}
+    - args:
+        - [{chunk_id: wrong, source_id: doc, position: 4, text: anchor}]
+        - 1
+      expect:
+        - {index: 0, issue: missing-metadata}
+    - args:
+        - [{chunk_id: "doc:0", source_id: " ", position: 0, text: anchor}]
+        - 1
+      expect:
+        - {index: 0, issue: missing-metadata}
+    - args:
+        - [{chunk_id: "doc:0", source_id: doc, position: 0}]
+        - 2
+      expect:
+        - {index: 0, issue: empty-text}
+    - args:
+        - [{chunk_id: "doc:0", source_id: doc, position: 0, text: anchor}]
+        - 0
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Um único chunk pode quebrar mais de uma regra? Seu loop precisa continuar a
+      inspeção depois de registrar um problema.
+  - level: 2
+    text: |
+      Guarde textos não vazios e normalizados num set para detectar duplicações. Adicione
+      um pequeno dicionário para cada regra que falhar.
+  - level: 3
+    text: |
+      Este é um padrão de inspeção com várias regras para pedidos:
+
+          seen = set()
+          for index, order in enumerate(orders):
+              if not order.get("customer"):
+                  issues.append({"index": index, "issue": "missing-customer"})
+              if order.get("id") in seen:
+                  issues.append({"index": index, "issue": "duplicate-id"})
+              seen.add(order.get("id"))
+
+      Suas regras inspecionam metadados, texto normalizado e quantidade de palavras.
+
+solution: |
+  def audit_chunks(chunks, max_words):
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+
+      issues = []
+      seen_text = set()
+      for index, chunk in enumerate(chunks):
+          source_id = chunk.get("source_id")
+          position = chunk.get("position")
+          chunk_id = chunk.get("chunk_id")
+          metadata_ok = (
+              isinstance(source_id, str)
+              and bool(source_id.strip())
+              and isinstance(position, int)
+              and chunk_id == f"{source_id}:{position}"
+          )
+          if not metadata_ok:
+              issues.append({"index": index, "issue": "missing-metadata"})
+
+          text = chunk.get("text")
+          normalized = " ".join(text.split()) if isinstance(text, str) else ""
+          if not normalized:
+              issues.append({"index": index, "issue": "empty-text"})
+              continue
+          if len(normalized.split()) > max_words:
+              issues.append({"index": index, "issue": "oversized"})
+          if normalized in seen_text:
+              issues.append({"index": index, "issue": "duplicate-text"})
+          seen_text.add(normalized)
+
+      return issues

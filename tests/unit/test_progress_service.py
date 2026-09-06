@@ -84,6 +84,15 @@ def test_a_blank_name_is_refused(service):
         service.create_profile("   ", "python")
 
 
+def test_profiles_can_be_filtered_by_track_without_changing_the_global_save_list(service):
+    service.create_profile("python-career", "python")
+    service.create_profile("ai-career", "ai-engineering")
+
+    assert [profile.name for profile in service.list_profiles("python")] == ["python-career"]
+    assert [profile.name for profile in service.list_profiles("ai-engineering")] == ["ai-career"]
+    assert [profile.name for profile in service.list_profiles()] == ["python-career", "ai-career"]
+
+
 # ------------------------------------------------------------------ idempotency
 
 
@@ -306,6 +315,28 @@ def test_an_island_stays_locked_below_the_threshold(service):
 
     assert result.newly_unlocked == ()
     assert not service.is_island_unlocked(result.profile, far)
+
+
+def test_an_island_can_require_one_specific_completed_mission(service):
+    profile = service.create_profile("giovanni", "ai-engineering")
+    gated = island("prompt-contracts", 2, requires_mission="ai-documents-08")
+
+    unrelated = service.record_attempt(profile, MISSION, "code", PASSED, islands=(gated,))
+
+    assert unrelated.newly_unlocked == ()
+    assert not service.is_island_unlocked(unrelated.profile, gated)
+
+    final_mission = make_mission(id="ai-documents-08", xp=30)
+    final_verdict = Verdict("ai-documents-08", True, FailureReason.PASSED, "all good")
+    completed = service.record_attempt(
+        unrelated.profile,
+        final_mission,
+        "code",
+        final_verdict,
+        islands=(gated,),
+    )
+
+    assert completed.newly_unlocked == ("prompt-contracts",)
 
 
 def test_an_island_gated_on_xp_unlocks_at_the_right_total(service):

@@ -351,6 +351,25 @@ def test_loads_the_foundations_island():
     assert island.unlock_requires.missions_completed == 0
 
 
+def test_loads_a_specific_mission_unlock_requirement(tmp_path):
+    path = tmp_path / "island.yaml"
+    path.write_text(
+        """
+id: prompt-contracts
+name: Prompt Contracts
+track: ai-engineering
+order: 2
+unlock_requires:
+  requires_mission: ai-documents-08
+""",
+        encoding="utf-8",
+    )
+
+    island = load_island(path)
+
+    assert island.unlock_requires.requires_mission == "ai-documents-08"
+
+
 def test_discovery_finds_the_shipped_missions():
     missions = discover_missions(CONTENT_DIR, "python")
 

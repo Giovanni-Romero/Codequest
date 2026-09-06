@@ -172,6 +172,8 @@ class IslandMapScreen(Screen):
             parts.append(t("island_map.requirement_xp", n=rule.total_xp))
         if rule.requires_island:
             parts.append(t("island_map.requirement_island", island=rule.requires_island))
+        if rule.requires_mission:
+            parts.append(t("island_map.requirement_mission", mission=rule.requires_mission))
         locked = t("island_map.locked_prefix")
         return f"{locked} - " + ", ".join(parts) if parts else locked
 

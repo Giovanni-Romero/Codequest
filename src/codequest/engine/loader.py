@@ -397,6 +397,7 @@ def load_island(path: str | Path) -> Island:
             missions_completed=int(unlock_raw.get("missions_completed", 0)),
             total_xp=int(unlock_raw.get("total_xp", 0)),
             requires_island=unlock_raw.get("requires_island"),
+            requires_mission=unlock_raw.get("requires_mission"),
         ),
         completion_reward_xp=int(raw.get("completion_reward_xp", 0)),
         mission_ids=(),

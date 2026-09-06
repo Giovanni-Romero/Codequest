@@ -44,6 +44,11 @@ class MissionService:
         self.language = language
         self._load()
 
+    def set_track(self, track_id: str) -> None:
+        """Replace the active catalogue while keeping the player's chosen language."""
+        self.track_id = track_id
+        self._load()
+
     def _load(self) -> None:
         """Read every island and mission of the track into memory.
 

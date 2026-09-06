@@ -109,6 +109,14 @@ ListView > ListItem.--highlight {
     color: $parchment;
 }
 
+/* Playtesting showed that the plain list highlight disappears into the menu text.
+   Match the map's moving selection without changing the quieter save list. */
+#track-list > ListItem.-highlight {
+    background: $sea;
+    color: $brass;
+    text-style: bold;
+}
+
 /* ------------------------------------------------------------ island map */
 
 #island-list {
@@ -157,7 +165,7 @@ ListView > ListItem.--highlight {
     width: 1fr;
 }
 
-#teaching, #brief, #results, #hints {
+#teaching, #brief, #results, #hints, #output {
     height: 1fr;
     overflow-y: auto;
 }

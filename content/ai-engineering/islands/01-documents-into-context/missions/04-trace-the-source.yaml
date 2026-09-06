@@ -1,0 +1,120 @@
+id: ai-documents-04
+title: Trace the source
+track: ai-engineering
+island: documents-into-context
+order: 4
+difficulty: moderate
+tags: [ai-engineering, chunking, provenance, metadata]
+xp: 30
+
+concepts:
+  - chunk-metadata
+
+teaching:
+  analogy: |
+    A loose quote on a scrap of paper is hard to trust. A library card that carries the
+    book code and page position lets anyone return to the shelf and verify it.
+
+    A text chunk also needs an identity. Its text is useful to a model; its metadata is
+    what lets the application cite, inspect, and replace it later.
+
+  explanation: |
+    Metadata is data that describes another piece of data. Each chunk needs its source,
+    its position inside that source, and a stable identifier built from both. A list
+    index alone is not durable because combining lists changes indexes. Keeping the text
+    beside its provenance makes every later transformation traceable.
+
+  worked_example: |
+    # Label photo captions without changing their text.
+    album = "trip-7"
+    captions = ["station", "harbour"]
+    labelled = []
+    for position, caption in enumerate(captions):
+        labelled.append({"id": f"{album}:{position}", "caption": caption})
+    print(labelled)
+
+  key_points:
+    - Text alone cannot support a trustworthy citation.
+    - A stable identifier combines source identity with position inside that source.
+    - Keep the original text unchanged so provenance does not alter evidence.
+    - Empty input produces no metadata records.
+
+brief: |
+  Write `add_chunk_metadata`. It receives a non-empty `source_id` and a list of chunk
+  strings. Return one dictionary per chunk with exactly these keys:
+  `chunk_id`, `source_id`, `position`, and `text`.
+
+  Positions start at zero. Build `chunk_id` as `<source_id>:<position>`. Preserve chunk
+  order and text exactly. Return an empty list for no chunks. Raise `ValueError` when
+  `source_id` is empty or contains only whitespace.
+
+signature:
+  entrypoint: add_chunk_metadata
+  stub: |
+    def add_chunk_metadata(source_id, chunks):
+        # Attach a stable source and position without changing the text.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["manual", ["first part", "second part"]]
+      expect:
+        - {chunk_id: "manual:0", source_id: manual, position: 0, text: "first part"}
+        - {chunk_id: "manual:1", source_id: manual, position: 1, text: "second part"}
+    - args: ["note-9", ["same", "same"]]
+      expect:
+        - {chunk_id: "note-9:0", source_id: note-9, position: 0, text: same}
+        - {chunk_id: "note-9:1", source_id: note-9, position: 1, text: same}
+  hidden:
+    - args: ["empty", []]
+      expect: []
+    - args: ["A", [""]]
+      expect:
+        - {chunk_id: "A:0", source_id: A, position: 0, text: ""}
+    - args: ["doc:west", ["one", "two", "three"]]
+      expect:
+        - {chunk_id: "doc:west:0", source_id: "doc:west", position: 0, text: one}
+        - {chunk_id: "doc:west:1", source_id: "doc:west", position: 1, text: two}
+        - {chunk_id: "doc:west:2", source_id: "doc:west", position: 2, text: three}
+    - args: ["", ["text"]]
+      raises: ValueError
+    - args: ["   ", ["text"]]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Which two values stay stable even if these records are later mixed with chunks
+      from other documents?
+  - level: 2
+    text: |
+      Use `enumerate` to obtain each zero-based position. Combine the source and position
+      for the identifier.
+  - level: 3
+    text: |
+      Here is the pattern for labelling photographs:
+
+          labelled = []
+          for number, caption in enumerate(captions):
+              labelled.append({"photo_id": f"{album}:{number}", "caption": caption})
+
+      Your record carries four declared chunk fields instead.
+
+solution: |
+  def add_chunk_metadata(source_id, chunks):
+      if not source_id.strip():
+          raise ValueError("source_id must not be empty")
+
+      return [
+          {
+              "chunk_id": f"{source_id}:{position}",
+              "source_id": source_id,
+              "position": position,
+              "text": text,
+          }
+          for position, text in enumerate(chunks)
+      ]

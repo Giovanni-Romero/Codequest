@@ -53,14 +53,15 @@ class SaveSelectScreen(Screen):
 
     def refresh_saves(self) -> None:
         """Rebuild the list from storage. Called after anything that changes it."""
-        profiles = self.app.context.progress.list_profiles()
+        progress = self.app.context.progress
+        profiles = progress.list_profiles(self.app.context.missions.track.id)
         listing = self.query_one("#save-list", ListView)
         listing.clear()
 
         for profile in profiles:
             listing.append(ListItem(Label(self._describe(profile)), id=f"save-{profile.id}"))
 
-        remaining = MAX_PROFILES - len(profiles)
+        remaining = MAX_PROFILES - len(progress.list_profiles())
         tagline = self.query_one("#tagline", Static)
         if remaining > 0:
             tagline.update(

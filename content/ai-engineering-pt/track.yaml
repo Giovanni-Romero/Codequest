@@ -4,10 +4,12 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  O primeiro piloto prepara documentos para um contexto de modelo limitado.
+  As três primeiras ilhas cobrem contexto rastreável, contratos de prompt e recuperação.
 
 runner: python
 file_extension: .py
 
 islands:
   - 01-documents-into-context
+  - 02-prompt-contracts
+  - 03-retrieval

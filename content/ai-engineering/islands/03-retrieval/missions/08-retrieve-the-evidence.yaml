@@ -1,0 +1,127 @@
+id: ai-retrieval-08
+title: Retrieve the evidence
+track: ai-engineering
+island: retrieval
+order: 8
+difficulty: moderate
+tags: [ai-engineering, retrieval, pipeline, context-budget]
+xp: 30
+
+concepts: [sparse-representation, similarity-scoring, top-k-ranking, relevance-thresholds]
+
+teaching:
+  analogy: |
+    A rescue crew decodes the distress signal, ranks matching charts, rejects weak
+    matches, and packs only the best charts that fit aboard. Every chart keeps its ID.
+  explanation: |
+    A retriever is an explicit pipeline: represent, score, rank, accept, then budget.
+    Each stage has a different failure mode and the returned metadata preserves
+    provenance for the RAG island that follows.
+  worked_example: |
+    maps = [{"id": "A", "match": 3, "weight": 2}, {"id": "B", "match": 1, "weight": 1}]
+    ranked = sorted(maps, key=lambda item: -item["match"])
+    loaded = [item for item in ranked if item["weight"] <= 2]
+    print(loaded)
+  key_points:
+    - Ranking happens before threshold and budget selection.
+    - Top-k limits candidates; the word budget limits returned context.
+    - Retrieved records preserve source metadata unchanged.
+
+brief: |
+  Write `retrieve_context(query, chunks, k, min_score, max_words)`. Chunks contain
+  unique `chunk_id`, `source_id`, and `text`. Use this island's tokenizer and cosine
+  score, stable ranking, threshold, and top-k candidate limit. Then scan those candidates
+  and return affordable records with `chunk_id`, `source_id`, original `text`, and
+  `score`; skip oversized candidates and continue. Validate all three limits.
+
+signature:
+  entrypoint: retrieve_context
+  stub: |
+    def retrieve_context(query, chunks, k, min_score, max_words):
+        # Build a traceable, bounded retrieval result.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: ["port map", [{chunk_id: A, source_id: guide, text: "port map"}, {chunk_id: B, source_id: guide, text: "tide table"}], 2, 0.5, 2]
+      expect: [{chunk_id: A, source_id: guide, text: "port map", score: 0.9999999999999998}]
+    - args: [red, [{chunk_id: A, source_id: one, text: "red red"}, {chunk_id: B, source_id: two, text: red}], 2, 0.5, 1]
+      expect: [{chunk_id: B, source_id: two, text: red, score: 1.0}]
+  hidden:
+    - args: [query, [], 3, 0.5, 10]
+      expect: []
+    - args: [missing, [{chunk_id: A, source_id: one, text: present}], 1, 0.1, 10]
+      expect: []
+    - args: [x, [{chunk_id: A, source_id: one, text: x}, {chunk_id: A, source_id: two, text: x}], 2, 0.0, 10]
+      raises: ValueError
+    - args: [x, [], -1, 0.0, 0]
+      raises: ValueError
+    - args: [x, [], 1, -0.1, 0]
+      raises: ValueError
+    - args: [x, [], 1, 0.0, -1]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Can you name the five stages and the exact order in which each narrows the corpus?"}
+  - {level: 2, text: "Score all chunks, stable-sort, filter by threshold, slice top-k, then apply the running word budget."}
+  - level: 3
+    text: |
+      A shipping selector can validate unique IDs, compute a score for every parcel,
+      rank them, reject weak candidates, cap the shortlist, and pack affordable records.
+
+solution: |
+  def retrieve_context(query, chunks, k, min_score, max_words):
+      from math import sqrt
+
+      if k < 0 or not 0 <= min_score <= 1 or max_words < 0:
+          raise ValueError("invalid retrieval limits")
+
+      def vector(text):
+          counts = {}
+          for raw in text.split():
+              term = raw.casefold().strip(".,!?;:")
+              if term:
+                  counts[term] = counts.get(term, 0) + 1
+          return counts
+
+      query_vector = vector(query)
+      query_size = sqrt(sum(value * value for value in query_vector.values()))
+      scored = []
+      seen = set()
+      for chunk in chunks:
+          if chunk["chunk_id"] in seen:
+              raise ValueError("chunk IDs must be unique")
+          seen.add(chunk["chunk_id"])
+          chunk_vector = vector(chunk["text"])
+          chunk_size = sqrt(sum(value * value for value in chunk_vector.values()))
+          score = 0.0
+          if query_size and chunk_size:
+              dot = sum(
+                  value * chunk_vector.get(term, 0)
+                  for term, value in query_vector.items()
+              )
+              score = dot / (query_size * chunk_size)
+          scored.append((chunk, score))
+
+      candidates = [
+          item
+          for item in sorted(scored, key=lambda item: -item[1])
+          if item[1] >= min_score
+      ][:k]
+      selected = []
+      used = 0
+      for chunk, score in candidates:
+          cost = len(chunk["text"].split())
+          if used + cost <= max_words:
+              selected.append(
+                  {
+                      "chunk_id": chunk["chunk_id"],
+                      "source_id": chunk["source_id"],
+                      "text": chunk["text"],
+                      "score": score,
+                  }
+              )
+              used += cost
+      return selected

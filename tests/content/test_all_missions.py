@@ -194,6 +194,25 @@ def test_every_island_declared_by_a_track_exists_on_disk(track_id):
     assert not missing, f"islands without an island.yaml: {missing}"
 
 
+@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
+def test_ai_engineering_ships_three_complete_islands(track_id):
+    from codequest.services.mission_service import MissionService
+
+    service = MissionService(CONTENT_ROOT, track_id)
+
+    assert service.track.island_ids == (
+        "01-documents-into-context",
+        "02-prompt-contracts",
+        "03-retrieval",
+    )
+    assert [len(service.missions_in(island.id)) for island in service.islands] == [8, 8, 8]
+    assert [island.unlock_requires.requires_mission for island in service.islands] == [
+        None,
+        "ai-documents-08",
+        "ai-prompts-08",
+    ]
+
+
 @pytest.mark.parametrize("path", MISSION_PATHS, ids=_ids(MISSION_PATHS))
 def test_mission_concepts_are_declared_by_its_island(path):
     """A mission teaching a concept its island never lists means the syllabus drifted."""

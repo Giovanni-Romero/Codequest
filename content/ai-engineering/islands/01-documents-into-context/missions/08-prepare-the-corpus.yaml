@@ -1,0 +1,239 @@
+id: ai-documents-08
+title: Prepare the corpus
+track: ai-engineering
+island: documents-into-context
+order: 8
+difficulty: moderate
+tags: [ai-engineering, ingestion, chunking, context-budget, provenance]
+xp: 30
+
+concepts:
+  - fixed-window-chunking
+  - chunk-invariants
+  - chunk-overlap
+  - chunk-metadata
+  - semantic-boundaries
+  - context-budget
+  - chunk-quality
+
+teaching:
+  analogy: |
+    A shipping line does not throw loose cargo straight onto a vessel. It groups related
+    items, divides oversized loads, labels every package, rejects duplicates, and then
+    loads what fits within the ship's capacity.
+
+    Corpus preparation is the same pipeline. Each stage protects a property that a later
+    retrieval or generation step needs.
+
+  explanation: |
+    An ingestion pipeline turns source documents into bounded, traceable records through
+    explicit stages. Here every stage is one you already built: paragraph boundaries,
+    fixed windows, controlled overlap, stable metadata, duplicate filtering, and a hard
+    context budget. The order matters because budgeting unlabeled or invalid chunks only
+    makes bad data cheaper, not useful.
+
+  worked_example: |
+    # Prepare labelled parcels before loading the truck.
+    orders = [{"shop": "A", "items": ["tea", "rice"]}]
+    parcels = []
+    for order in orders:
+        for position, item in enumerate(order["items"]):
+            parcels.append({"id": f"{order['shop']}:{position}", "item": item})
+    loaded = parcels[:1]
+    print(loaded)
+
+  key_points:
+    - Pipeline order makes failures attributable instead of hiding them in one operation.
+    - Semantic boundaries are preferred; hard size limits still win.
+    - Exact duplicate text keeps its first provenance and is not added twice.
+    - Budgeting happens after chunks are valid because only usable context earns space.
+
+brief: |
+  Write `prepare_corpus`. It receives document dictionaries with `source_id` and `text`,
+  plus `max_words`, `overlap`, and `context_budget`.
+
+  Process documents in order. Split text into paragraphs at blank lines. Keep paragraphs
+  that fit; split oversized paragraphs into overlapping word windows. Attach `chunk_id`,
+  `source_id`, `position`, and `text`, with positions starting at zero per source. Remove
+  exact duplicate normalized text while keeping its first occurrence. Finally, scan the
+  chunks in order and return those that fit inside the total word budget, skipping a
+  chunk that does not fit and continuing with later chunks.
+
+  Ignore empty documents. Raise `ValueError` for empty or duplicate source IDs, a
+  non-positive `max_words`, overlap outside `0 <= overlap < max_words`, or a negative
+  context budget.
+
+signature:
+  entrypoint: prepare_corpus
+  stub: |
+    def prepare_corpus(documents, max_words, overlap, context_budget):
+        # Build valid chunks first, then select the ones that fit the budget.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{source_id: guide, text: "one two\n\nthree four five six"}]
+        - 3
+        - 1
+        - 7
+      expect:
+        - {chunk_id: "guide:0", source_id: guide, position: 0, text: "one two"}
+        - {chunk_id: "guide:1", source_id: guide, position: 1, text: "three four five"}
+        - {chunk_id: "guide:2", source_id: guide, position: 2, text: "five six"}
+    - args:
+        - [{source_id: A, text: "a b"}, {source_id: B, text: "c d\n\ne"}]
+        - 2
+        - 0
+        - 3
+      expect:
+        - {chunk_id: "A:0", source_id: A, position: 0, text: "a b"}
+        - {chunk_id: "B:1", source_id: B, position: 1, text: e}
+  hidden:
+    - args: [[], 3, 1, 10]
+      expect: []
+    - args:
+        - [{source_id: empty, text: " \n\t "}]
+        - 3
+        - 0
+        - 10
+      expect: []
+    - args:
+        - [{source_id: first, text: "same text"}, {source_id: second, text: "same   text\n\nnew"}]
+        - 3
+        - 0
+        - 10
+      expect:
+        - {chunk_id: "first:0", source_id: first, position: 0, text: "same text"}
+        - {chunk_id: "second:1", source_id: second, position: 1, text: new}
+    - args:
+        - [{source_id: doc, text: "a b c d e"}]
+        - 4
+        - 3
+        - 8
+      expect:
+        - {chunk_id: "doc:0", source_id: doc, position: 0, text: "a b c d"}
+        - {chunk_id: "doc:1", source_id: doc, position: 1, text: "b c d e"}
+    - args:
+        - [{source_id: doc, text: anchor}]
+        - 0
+        - 0
+        - 4
+      raises: ValueError
+    - args:
+        - [{source_id: doc, text: anchor}]
+        - 2
+        - 2
+        - 4
+      raises: ValueError
+    - args:
+        - [{source_id: doc, text: anchor}]
+        - 2
+        - -1
+        - 4
+      raises: ValueError
+    - args:
+        - [{source_id: doc, text: anchor}]
+        - 2
+        - 0
+        - -1
+      raises: ValueError
+    - args:
+        - [{source_id: same, text: one}, {source_id: same, text: two}]
+        - 2
+        - 0
+        - 4
+      raises: ValueError
+    - args:
+        - [{source_id: " ", text: anchor}]
+        - 2
+        - 0
+        - 4
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Which properties must be true before a chunk deserves any of the final budget?
+      Build the pipeline in the same order as the earlier missions.
+  - level: 2
+    text: |
+      First collect paragraphs. Split only oversized ones with a positive stride. Label
+      candidates, filter repeated normalized text, and budget the remaining list last.
+  - level: 3
+    text: |
+      A compact multi-stage pattern in another domain looks like this:
+
+          prepared = label(split(raw_items))
+          unique = []
+          seen = set()
+          for item in prepared:
+              if item["value"] not in seen:
+                  unique.append(item)
+                  seen.add(item["value"])
+          return pack_within_limit(unique)
+
+      Your split stage must preserve paragraphs, overlap, and per-source positions.
+
+solution: |
+  def prepare_corpus(documents, max_words, overlap, context_budget):
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+      if overlap < 0 or overlap >= max_words:
+          raise ValueError("overlap must be between zero and max_words")
+      if context_budget < 0:
+          raise ValueError("context_budget must not be negative")
+
+      chunks = []
+      seen_sources = set()
+      seen_text = set()
+      stride = max_words - overlap
+
+      for document in documents:
+          source_id = document["source_id"]
+          if not source_id.strip() or source_id in seen_sources:
+              raise ValueError("source IDs must be non-empty and unique")
+          seen_sources.add(source_id)
+
+          paragraphs = []
+          current = []
+          for line in document["text"].splitlines():
+              if line.strip():
+                  current.extend(line.split())
+              elif current:
+                  paragraphs.append(current)
+                  current = []
+          if current:
+              paragraphs.append(current)
+
+          position = 0
+          for words in paragraphs:
+              for start in range(0, len(words), stride):
+                  candidate = " ".join(words[start : start + max_words])
+                  candidate_position = position
+                  position += 1
+                  if candidate not in seen_text:
+                      chunks.append(
+                          {
+                              "chunk_id": f"{source_id}:{candidate_position}",
+                              "source_id": source_id,
+                              "position": candidate_position,
+                              "text": candidate,
+                          }
+                      )
+                      seen_text.add(candidate)
+                  if start + max_words >= len(words):
+                      break
+
+      selected = []
+      used = 0
+      for chunk in chunks:
+          cost = len(chunk["text"].split())
+          if used + cost <= context_budget:
+              selected.append(chunk)
+              used += cost
+      return selected

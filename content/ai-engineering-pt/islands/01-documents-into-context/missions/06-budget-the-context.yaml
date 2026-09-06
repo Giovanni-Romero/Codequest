@@ -1,0 +1,131 @@
+id: ai-documents-06
+title: Limite o contexto
+track: ai-engineering
+island: documents-into-context
+order: 6
+difficulty: moderate
+tags: [ai-engineering, context-window, budgeting, metadata]
+xp: 30
+
+concepts:
+  - context-budget
+
+teaching:
+  analogy: |
+    Um viajante guarda itens por prioridade dentro de um limite rígido de peso. Um item
+    pesado demais fica para trás, mas outro mais leve no fim da lista ainda pode caber.
+    A mala nunca recebe permissão para passar do limite.
+
+    Montar um contexto tem a mesma fronteira rígida. Chunks candidatos chegam numa ordem
+    útil e somente os que cabem podem entrar na requisição.
+
+  explanation: |
+    Um orçamento de contexto é o custo máximo permitido para a evidência selecionada.
+    Esta missão usa palavras como substituto determinístico para tokens de modelo.
+    Percorra os chunks na ordem recebida e mantenha um apenas quando seu custo inteiro
+    couber. Pular um não reordena os selecionados, e overlap conta novamente porque
+    palavras repetidas também ocupam espaço no contexto.
+
+  worked_example: |
+    # Carregue encomendas prioritárias sob um limite de seis quilos.
+    parcels = [{"name": "A", "kg": 4}, {"name": "B", "kg": 3}, {"name": "C", "kg": 2}]
+    packed = []
+    used = 0
+    for parcel in parcels:
+        if used + parcel["kg"] <= 6:
+            packed.append(parcel)
+            used += parcel["kg"]
+    print(packed)  # A e C
+
+  key_points:
+    - Um orçamento rígido nunca é excedido, nem por uma palavra.
+    - Conte o texto inteiro; overlap consome orçamento como qualquer outra palavra.
+    - Pular um chunk não impede que outro menor, mais adiante, caiba.
+    - Preserve a ordem e os metadados dos chunks selecionados.
+
+brief: |
+  Escreva `fit_context_budget`. Ela recebe dicionários de chunks ordenados e um orçamento
+  de palavras. Cada chunk tem um campo `text`. Retorne os dicionários originais que
+  couberem ao percorrer a lista do início ao fim.
+
+  Um chunk cabe quando adicionar todas as palavras dele não ultrapassa `max_words`.
+  Pule os que não couberem e continue. Preserve ordem relativa e metadados. Um orçamento
+  zero retorna lista vazia. Levante `ValueError` para orçamento negativo.
+
+signature:
+  entrypoint: fit_context_budget
+  stub: |
+    def fit_context_budget(chunks, max_words):
+        # Mantenha o chunk inteiro apenas quando seu custo couber no orçamento.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{id: A, text: "one two three"}, {id: B, text: "four five"}, {id: C, text: six}]
+        - 4
+      expect: [{id: A, text: "one two three"}, {id: C, text: six}]
+    - args:
+        - [{id: A, text: "one two"}, {id: B, text: "three four"}]
+        - 4
+      expect: [{id: A, text: "one two"}, {id: B, text: "three four"}]
+  hidden:
+    - args: [[], 5]
+      expect: []
+    - args:
+        - [{id: A, text: one}]
+        - 0
+      expect: []
+    - args:
+        - [{id: large, text: "one two three four"}, {id: small, text: five}]
+        - 2
+      expect: [{id: small, text: five}]
+    - args:
+        - [{id: overlap-1, text: "a b c"}, {id: overlap-2, text: "c d e"}]
+        - 5
+      expect: [{id: overlap-1, text: "a b c"}]
+    - args:
+        - [{chunk_id: "doc:0", source_id: doc, position: 0, text: "alpha beta"}]
+        - 2
+      expect: [{chunk_id: "doc:0", source_id: doc, position: 0, text: "alpha beta"}]
+    - args: [[], -1]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      Que número você precisa conhecer antes de decidir se o próximo chunk inteiro entra?
+  - level: 2
+    text: |
+      Mantenha uma contagem `used`. Adicione um chunk apenas quando `used + cost` ficar
+      abaixo ou igual ao orçamento.
+  - level: 3
+    text: |
+      Este é o padrão para escolher downloads sob um limite de armazenamento:
+
+          chosen = []
+          used = 0
+          for file in files:
+              if used + file["size"] <= capacity:
+                  chosen.append(file)
+                  used += file["size"]
+
+      Seu custo vem de separar o texto de cada chunk em palavras.
+
+solution: |
+  def fit_context_budget(chunks, max_words):
+      if max_words < 0:
+          raise ValueError("max_words must not be negative")
+
+      selected = []
+      used = 0
+      for chunk in chunks:
+          cost = len(chunk["text"].split())
+          if used + cost <= max_words:
+              selected.append(chunk)
+              used += cost
+      return selected

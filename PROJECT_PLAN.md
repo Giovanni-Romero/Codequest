@@ -5,7 +5,7 @@
 
 **Owner:** Giovanni
 **Status:** Phase 5.1 complete; Phase 6 awaits the final Python playtest. Phase 7 has an
-AI Engineering syllabus and one CLI-only pilot mission; its broader implementation has not started.
+AI Engineering syllabus and three complete islands; Island 4 is next.
 **License:** MIT (suggested)
 
 ---
@@ -505,23 +505,40 @@ Architecture, Security, and AI Engineering missions. These reuse the same engine
 the missions are different in shape: refactor this code, find the vulnerability,
 build a retrieval function. Same YAML schema, harder briefs.
 
-#### AI Engineering syllabus and pilot
+#### AI Engineering track — 22-island roadmap
 
-Added 2026-09-05 as curriculum pre-work that does not depend on the pending Python
-playtest. The full concept graph lives in `docs/curriculum/ai-engineering-syllabus.md`:
-eight framework-neutral islands followed by seven applied islands for PyTorch,
-Transformers, LangChain, LangGraph, LlamaIndex, PydanticAI, and DSPy.
+Added 2026-09-05 and expanded 2026-09-06 after comparing the plan with curricula from
+Carnegie Mellon, MIT, Stanford, and Georgia Tech. The authoritative concept graph is
+`docs/curriculum/ai-engineering-syllabus.md`.
 
-Only Island 1 and its first mission ship in this pilot. `chunk-by-words` teaches a
-deterministic fixed-window chunker through the existing Python runner, in English and
-Portuguese. It is reachable through the CLI with `--track ai-engineering`; it is not
-advertised in the TUI yet. The pilot adds no runtime dependency, network requirement,
-model weights, or engine change.
+The approved sequence is:
 
-Framework islands remain plans, not shipped content. When authored, they use optional
-dependency groups and deterministic local fixtures. Model-backed Ollama exercises are
-optional labs and never gate progression. This pilot does not close Phase 7 and does
-not require an HTML phase lesson.
+1. **Reliable AI systems:** Documents into Context, Prompt Contracts, Retrieval, RAG,
+   Structured Outputs, Evals, Tools and Agents, Production AI.
+2. **Academic and engineering foundations:** Mathematical and Statistical Foundations,
+   Machine Learning Foundations, Reasoning and Decision Making, Data Engineering for AI,
+   PyTorch and Deep Learning, NLP and Transformers, Responsible AI, MLOps and Model Lifecycle.
+3. **Mandatory framework specializations:** LangChain, LangGraph, LlamaIndex, PydanticAI,
+   and DSPy. Packages remain separately installed extras, but all five islands are required
+   for track completion.
+4. **Synthesis:** AI Engineering Capstone.
+
+Mathematics, statistics, reasoning, governance, and other non-framework topics still use
+Python: code calculates, simulates, validates assumptions, and produces auditable results.
+The graded artifact remains deterministic and offline; written interpretation appears in
+the brief and expected return structure rather than requiring subjective grading.
+
+**Status, 2026-09-06: Islands 1 to 3 have shipped.** Each has eight bilingual missions.
+Island 1 covers bounded traceable context, Island 2 prompt contracts and trust boundaries,
+and Island 3 sparse retrieval, cosine similarity, stable top-k ranking, thresholds, and a
+closing retrieval pipeline. Islands unlock only after the final mission of the previous
+island is completed. The three islands add no runtime dependency, network requirement, or
+model weights.
+
+Future framework missions use deterministic local fixtures, tiny CPU workloads, and fake
+providers. Model-backed exercises may be optional labs, but do not replace the mandatory
+graded framework missions. Islands 1 to 3 do not close Phase 7 and do not require an HTML
+phase lesson yet.
 
 ---
 

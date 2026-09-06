@@ -19,15 +19,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import ClassVar
 
+from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding, BindingType
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from codequest.models.mission import Mission
 from codequest.models.profile import MissionStatus
+from codequest.models.verdict import FailureReason, Verdict
 from codequest.services.game_session import AttemptOutcome
 from codequest.tui.screens.dialogs import ConfirmDialog
 from codequest.tui.strings import t
@@ -54,6 +56,7 @@ class MissionScreen(Screen):
         Binding("f3", "toggle_teaching", "Teaching", priority=True),
         Binding("f4", "reset_editor", "Reset", priority=True),
         Binding("f6", "next_mission", "Next", priority=True),
+        Binding("f7", "show_output", "Output", priority=True),
         Binding("escape", "back_to_map", "Map", priority=True),
     ]
 
@@ -88,6 +91,11 @@ class MissionScreen(Screen):
                         yield TestResults(id="results")
                     with TabPane(t("mission.tab_hints"), id="tab-hints"):
                         yield HintPanel(id="hints")
+                    with (
+                        TabPane(t("mission.tab_output"), id="tab-output"),
+                        VerticalScroll(id="output"),
+                    ):
+                        yield Static(t("results.press_f5"), classes="muted", id="output-body")
                 yield from self._compose_mentor()
         yield Footer()
 
@@ -157,6 +165,7 @@ class MissionScreen(Screen):
             return
         self.running = True
         self.query_one("#right-tabs", TabbedContent).active = "tab-results"
+        self.query_one("#output-body", Static).update(Text(t("mission.running")))
         self.query_one("#run-status", Static).update(f"[$beacon]{t('mission.running')}[/$beacon]")
         self._run_attempt(self.query_one("#editor", CodeEditor).submission)
 
@@ -191,6 +200,7 @@ class MissionScreen(Screen):
     def _show_outcome(self, outcome: AttemptOutcome, code: str) -> None:
         self.running = False
         self.query_one("#results", TestResults).show_verdict(outcome.verdict, outcome.xp_awarded)
+        self.query_one("#output-body", Static).update(self._format_output(outcome.verdict))
         self.app.refresh_profile()
 
         if outcome.passed:
@@ -227,6 +237,25 @@ class MissionScreen(Screen):
 
         status.update(f"[$brass]{'  -  '.join(parts)}[/$brass]")
 
+    def _format_output(self, verdict: Verdict) -> Text:
+        """Render each sandbox stdout literally, keeping test cases separate."""
+        if not verdict.outcomes:
+            return Text(t("output.not_executed"))
+
+        lines: list[str] = []
+        for outcome in verdict.outcomes:
+            kind = t("results.visible") if outcome.visible else t("results.hidden")
+            lines.append(t("results.case", n=outcome.index + 1, kind=kind))
+            if outcome.reason is FailureReason.NOT_RUN:
+                lines.append(f"    {t('output.not_executed')}")
+            elif output := outcome.stdout.rstrip("\n"):
+                lines.extend(f"    {line}" for line in output.splitlines())
+            else:
+                lines.append(f"    {t('output.empty')}")
+            lines.append("")
+
+        return Text("\n".join(lines).rstrip())
+
     # ------------------------------------------------------------------ hints
 
     def action_hint(self) -> None:
@@ -241,6 +270,10 @@ class MissionScreen(Screen):
         profile = self.app.profile
         if profile is not None:
             self.app.context.progress.record_hint(profile, self.mission)
+
+    def action_show_output(self) -> None:
+        """Open the captured stdout without moving focus out of the editor."""
+        self.query_one("#right-tabs", TabbedContent).active = "tab-output"
 
     def action_toggle_mentor(self) -> None:
         """Open or close the mentor panel. A no-op when the mentor is not there."""

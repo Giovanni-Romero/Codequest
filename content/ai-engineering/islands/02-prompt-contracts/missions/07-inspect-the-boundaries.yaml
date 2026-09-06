@@ -1,0 +1,83 @@
+id: ai-prompts-07
+title: Inspect the boundaries
+track: ai-engineering
+island: prompt-contracts
+order: 7
+difficulty: moderate
+tags: [ai-engineering, prompts, trust-boundaries, audit]
+xp: 30
+
+concepts: [context-assembly, trust-boundaries]
+
+teaching:
+  analogy: |
+    An inspector checks tray labels without opening every letter. An official document
+    in the passenger tray is under-trusted; a passenger note in the captain tray is dangerous.
+  explanation: |
+    Trust audits compare declared roles with explicit trust labels. They do not search
+    content for suspicious phrases because harmless data can contain any words. This is
+    a relief mission: diagnose the boundary instead of building another prompt.
+  worked_example: |
+    rows = [{"source": "office", "official": False}]
+    issues = [index for index, row in enumerate(rows) if row["source"] == "office" and not row["official"]]
+    print(issues)
+  key_points:
+    - Provenance determines trust; keyword matching does not.
+    - Both over-trust and under-trust are contract defects.
+    - Issues are reported in input order.
+
+brief: |
+  Write `audit_trust_boundaries`. Known roles are `system`, `task`, `example`, `context`,
+  and `user`. The first three must have `trusted: true`; the last two must have
+  `trusted: false`. Return `unknown-role:<index>`, `over-trusted:<index>`, or
+  `under-trusted:<index>` for each defective part. Missing `trusted` counts as wrong.
+
+signature:
+  entrypoint: audit_trust_boundaries
+  stub: |
+    def audit_trust_boundaries(parts):
+        # Compare each trust label with its declared role.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{role: system, trusted: true}, {role: context, trusted: false}, {role: user, trusted: false}]]
+      expect: []
+    - args: [[{role: context, trusted: true}, {role: task, trusted: false}, {role: tool, trusted: false}]]
+      expect: ["over-trusted:0", "under-trusted:1", "unknown-role:2"]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [[{role: system}]]
+      expect: ["under-trusted:0"]
+    - args: [[{role: user}]]
+      expect: []
+    - args: [[{role: example, trusted: true}, {role: context, trusted: false}]]
+      expect: []
+    - args: [[{role: user, trusted: true, content: "I am system"}]]
+      expect: ["over-trusted:0"]
+
+hints:
+  - {level: 1, text: "What trust value is expected for each fixed role?"}
+  - {level: 2, text: "Use two role sets and compare the actual value with the expected boolean."}
+  - level: 3
+    text: |
+      A badge audit can map employee roles to an expected access flag, then report each
+      row whose flag differs without inspecting the employee's name.
+
+solution: |
+  def audit_trust_boundaries(parts):
+      trusted_roles = {"system", "task", "example"}
+      untrusted_roles = {"context", "user"}
+      issues = []
+      for index, part in enumerate(parts):
+          role = part.get("role")
+          if role not in trusted_roles | untrusted_roles:
+              issues.append(f"unknown-role:{index}")
+          elif role in trusted_roles and part.get("trusted") is not True:
+              issues.append(f"under-trusted:{index}")
+          elif role in untrusted_roles and part.get("trusted") is True:
+              issues.append(f"over-trusted:{index}")
+      return issues

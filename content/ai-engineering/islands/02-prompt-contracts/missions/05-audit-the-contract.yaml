@@ -1,0 +1,94 @@
+id: ai-prompts-05
+title: Audit the contract
+track: ai-engineering
+island: prompt-contracts
+order: 5
+difficulty: moderate
+tags: [ai-engineering, prompts, audit]
+xp: 30
+
+concepts: [instruction-hierarchy, prompt-templates]
+
+teaching:
+  analogy: |
+    Before departure, an officer checks the papers rather than rewriting them: required
+    orders exist, their sequence is valid, and every named field has a value.
+  explanation: |
+    Contract auditing reports structural defects before a request is rendered. Stable
+    issue codes make failures testable and useful to later pipeline stages. Diagnosis is
+    deliberately separate from repair.
+  worked_example: |
+    required = ["captain", "destination"]
+    form = {"destination": "Lisbon"}
+    issues = [f"missing:{name}" for name in required if name not in form]
+    print(issues)
+  key_points:
+    - Auditing observes a contract without guessing missing values.
+    - Role order and variable presence are separate failure classes.
+    - Stable codes are easier to automate than prose errors.
+
+brief: |
+  Write `audit_prompt_contract(parts, required_variables, variables)`. Return issue codes
+  in this order: `missing-system`, `missing-task`, `unknown-role:<index>`,
+  `role-order:<index>`, then `missing-variable:<name>` in required-variable order.
+  Repeated required names produce one issue. Return an empty list for a valid contract.
+
+signature:
+  entrypoint: audit_prompt_contract
+  stub: |
+    def audit_prompt_contract(parts, required_variables, variables):
+        # Report structural defects without repairing the prompt.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{role: system}, {role: task}, {role: user}], [question], {question: hello}]
+      expect: []
+    - args: [[{role: user}, {role: tool}, {role: system}], [question, audience], {question: hello}]
+      expect: [missing-task, "unknown-role:1", "role-order:2", "missing-variable:audience"]
+  hidden:
+    - args: [[], [], {}]
+      expect: [missing-system, missing-task]
+    - args: [[{role: system}, {role: task}], [x, x], {}]
+      expect: ["missing-variable:x"]
+    - args: [[{role: system}, {role: context}, {role: task}], [], {}]
+      expect: ["role-order:2"]
+    - args: [[{role: system}, {role: task}, {role: example}, {role: context}, {role: user}], [x], {x: 0}]
+      expect: []
+
+hints:
+  - {level: 1, text: "Can each class of defect be checked independently in the required output order?"}
+  - {level: 2, text: "Use a role-rank mapping, remember the previous valid rank, and a set for repeated variable names."}
+  - level: 3
+    text: |
+      A checklist can append missing headers first, scan numbered rows for invalid order,
+      then report absent form fields while remembering names already checked.
+
+solution: |
+  def audit_prompt_contract(parts, required_variables, variables):
+      ranks = {"system": 0, "task": 1, "example": 2, "context": 3, "user": 4}
+      roles = [part.get("role") for part in parts]
+      issues = []
+      if "system" not in roles:
+          issues.append("missing-system")
+      if "task" not in roles:
+          issues.append("missing-task")
+
+      previous = -1
+      for index, role in enumerate(roles):
+          if role not in ranks:
+              issues.append(f"unknown-role:{index}")
+              continue
+          rank = ranks[role]
+          if rank < previous:
+              issues.append(f"role-order:{index}")
+          previous = rank
+
+      checked = set()
+      for name in required_variables:
+          if name not in checked and name not in variables:
+              issues.append(f"missing-variable:{name}")
+          checked.add(name)
+      return issues

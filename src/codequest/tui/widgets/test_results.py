@@ -71,12 +71,6 @@ class TestResults(VerticalScroll):
             if outcome.detail and not outcome.passed:
                 lines.append(f"    [$parchment-dim]{outcome.detail}[/$parchment-dim]")
 
-        if verdict.stdout:
-            lines.append("")
-            lines.append(f"[$brass]{t('results.your_output')}[/$brass]")
-            for line in verdict.stdout.rstrip().splitlines():
-                lines.append(f"    {line}")
-
         if xp_awarded:
             lines.append("")
             lines.append(f"[$beacon]{t('results.xp_gained', xp=xp_awarded)}[/$beacon]")

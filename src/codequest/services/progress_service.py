@@ -98,8 +98,14 @@ class ProgressService:
         with self._lock, transaction(self.connection):
             return self.profiles.create(name, track)
 
-    def list_profiles(self) -> list[Profile]:
-        return self.profiles.list_all()
+    def list_profiles(self, track: str | None = None) -> list[Profile]:
+        """List every save, or only the careers belonging to one track."""
+        profiles = self.profiles.list_all()
+        return (
+            profiles
+            if track is None
+            else [profile for profile in profiles if profile.track == track]
+        )
 
     def delete_profile(self, profile_id: int) -> None:
         with self._lock, transaction(self.connection):
@@ -204,6 +210,10 @@ class ProgressService:
             return False
         if self.progress.completed_count(profile.id) < rule.missions_completed:
             return False
+        if rule.requires_mission:
+            required = self.progress.get(profile.id, rule.requires_mission)
+            if required is None or required.status is not MissionStatus.COMPLETED:
+                return False
         return not (
             rule.requires_island and not self.islands.is_unlocked(profile.id, rule.requires_island)
         )

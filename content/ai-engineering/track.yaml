@@ -4,10 +4,12 @@ language: python
 version: "0.1"
 description: |
   Build reliable AI systems from deterministic foundations to production frameworks.
-  The first pilot prepares documents for bounded model context.
+  The first three islands cover traceable context, prompt contracts, and retrieval.
 
 runner: python
 file_extension: .py
 
 islands:
   - 01-documents-into-context
+  - 02-prompt-contracts
+  - 03-retrieval

@@ -47,8 +47,17 @@ def context(tmp_path):
 
 
 def test_main_menu(snap_compare, context):
-    """Java and TypeScript must read as unavailable without relying on colour alone."""
+    """Python starts brass-selected while unavailable tracks keep their lock glyph."""
     assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE)
+
+
+def test_main_menu_with_ai_engineering_selected(snap_compare, context):
+    """Moving down transfers the brass selection instead of leaving two highlighted rows."""
+
+    async def run(pilot):
+        await pilot.press("down")
+
+    assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)
 
 
 def test_save_select_empty(snap_compare, context):
@@ -235,5 +244,27 @@ def test_results_after_a_failing_run(snap_compare, context):
         ).text = "def sum_list(numbers):\n    return 6\n"
         await pilot.press("f5")
         await _wait_for_run(pilot)
+
+    assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)
+
+
+def test_output_after_a_printing_run(snap_compare, context):
+    """Each case keeps its own literal stdout in the third lower-right tab."""
+
+    async def run(pilot):
+        await _open_mission(pilot)
+        from codequest.tui.widgets.code_editor import CodeEditor
+
+        pilot.app.screen.query_one("#editor", CodeEditor).text = """
+def sum_list(numbers):
+    print(f"[red]{numbers}[/red]")
+    total = 0
+    for number in numbers:
+        total += number
+    return total
+"""
+        await pilot.press("f5")
+        await _wait_for_run(pilot)
+        await pilot.press("f7")
 
     assert snap_compare(CodeQuestApp(context=context), terminal_size=WIDE, run_before=run)

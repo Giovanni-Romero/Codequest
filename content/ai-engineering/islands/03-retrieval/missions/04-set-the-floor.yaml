@@ -1,0 +1,82 @@
+id: ai-retrieval-04
+title: Set the floor
+track: ai-engineering
+island: retrieval
+order: 4
+difficulty: moderate
+tags: [ai-engineering, retrieval, thresholds]
+xp: 30
+
+concepts: [top-k-ranking, relevance-thresholds]
+
+teaching:
+  analogy: |
+    The nearest lighthouse may still be beyond the safe navigation range. Being first
+    in a list does not make it close enough to trust.
+  explanation: |
+    A relevance threshold separates relative ranking from acceptance. The best result
+    can still be rejected. An explicit floor also gives the system a deterministic
+    no-match state instead of forcing weak evidence downstream.
+  worked_example: |
+    candidates = [{"name": "north", "signal": 0.8}, {"name": "west", "signal": 0.2}]
+    accepted = [item["name"] for item in candidates if item["signal"] >= 0.5]
+    print(accepted)
+  key_points:
+    - Top result does not mean relevant result.
+    - Equality with the floor is accepted.
+    - An empty result is a valid retrieval outcome.
+
+brief: |
+  Write `accept_relevant`. It receives results already ranked in descending order, a
+  maximum `k`, and `min_score`. Return IDs with score at least the floor, preserving
+  order and returning at most `k`. Raise `ValueError` when `k` is negative or the floor
+  is outside `0 <= min_score <= 1`.
+
+signature:
+  entrypoint: accept_relevant
+  stub: |
+    def accept_relevant(results, k, min_score):
+        # Keep only ranked candidates that clear the explicit floor.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{id: A, score: 0.9}, {id: B, score: 0.5}, {id: C, score: 0.2}], 3, 0.5]
+      expect: [A, B]
+    - args: [[{id: A, score: 0.4}], 1, 0.5]
+      expect: []
+  hidden:
+    - args: [[], 3, 0.5]
+      expect: []
+    - args: [[{id: A, score: 1.0}], 0, 0.0]
+      expect: []
+    - args: [[{id: A, score: 0.9}, {id: B, score: 0.8}], 1, 0.0]
+      expect: [A]
+    - args: [[], -1, 0.5]
+      raises: ValueError
+    - args: [[], 1, -0.1]
+      raises: ValueError
+    - args: [[], 1, 1.1]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Which two independent limits decide whether another ID may be appended?"}
+  - {level: 2, text: "Filter by `score >= min_score`, preserve order, and stop after `k` accepted items."}
+  - level: 3
+    text: |
+      A signal monitor can scan strongest-first readings, append those above a minimum,
+      and stop when the requested number of valid readings is reached.
+
+solution: |
+  def accept_relevant(results, k, min_score):
+      if k < 0 or not 0 <= min_score <= 1:
+          raise ValueError("invalid retrieval limits")
+      accepted = []
+      for result in results:
+          if result["score"] >= min_score:
+              accepted.append(result["id"])
+              if len(accepted) == k:
+                  break
+      return accepted[:k]

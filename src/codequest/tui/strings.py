@@ -48,6 +48,10 @@ _STRINGS: dict[str, dict[Language, str]] = {
         "en": "foundations to async, ten islands",
         "pt": "do básico ao assíncrono, dez ilhas",
     },
+    "track.ai_engineering.note": {
+        "en": "three islands, 24 missions",
+        "pt": "três ilhas, 24 missões",
+    },
     "track.java.note": {"en": "planned for v1.1", "pt": "planejado para v1.1"},
     "track.typescript.note": {"en": "planned for v1.2", "pt": "planejado para v1.2"},
     # ------------------------------------------------------------ save_select.py
@@ -95,6 +99,10 @@ _STRINGS: dict[str, dict[Language, str]] = {
         "en": "unlock {island} first",
         "pt": "desbloqueie {island} primeiro",
     },
+    "island_map.requirement_mission": {
+        "en": "complete {mission}",
+        "pt": "conclua {mission}",
+    },
     "island_map.locked_prefix": {"en": "locked", "pt": "bloqueada"},
     "island_map.hints_used": {"en": "{n} hints", "pt": "{n} dicas"},
     # ----------------------------------------------------------------- mission.py
@@ -109,6 +117,7 @@ _STRINGS: dict[str, dict[Language, str]] = {
     "mission.your_code": {"en": "Your code", "pt": "Seu código"},
     "mission.tab_results": {"en": "Results", "pt": "Resultados"},
     "mission.tab_hints": {"en": "Hints", "pt": "Dicas"},
+    "mission.tab_output": {"en": "Output", "pt": "Saída"},
     "mission.worked_example": {"en": "Worked example", "pt": "Exemplo resolvido"},
     "mission.key_points": {"en": "Key points", "pt": "Pontos-chave"},
     "mission.subtitle": {"en": "{title}  -  {xp} XP", "pt": "{title}  -  {xp} XP"},
@@ -151,6 +160,8 @@ _STRINGS: dict[str, dict[Language, str]] = {
         "Sair descarta ele.[/$parchment-dim]",
     },
     "mission.leave_label": {"en": "Leave", "pt": "Sair"},
+    "output.empty": {"en": "No output", "pt": "Sem saída"},
+    "output.not_executed": {"en": "Not executed", "pt": "Não executado"},
     # -------------------------------------------------------------- dialogs.py
     "dialog.cancel": {"en": "Cancel", "pt": "Cancelar"},
     "dialog.delete": {"en": "Delete", "pt": "Apagar"},
@@ -217,7 +228,6 @@ _STRINGS: dict[str, dict[Language, str]] = {
     "results.visible": {"en": "visible", "pt": "visível"},
     "results.hidden": {"en": "hidden", "pt": "oculto"},
     "results.case": {"en": "case {n} ({kind})", "pt": "caso {n} ({kind})"},
-    "results.your_output": {"en": "your output", "pt": "sua saída"},
     "results.xp_gained": {"en": "+{xp} XP", "pt": "+{xp} XP"},
     "results.already_completed": {
         "en": "Already completed, no XP this time.",
