@@ -31,6 +31,11 @@ TRACK_PAIRS = (
 )
 TRACKS = [track for pair in TRACK_PAIRS for track in pair]
 MISSION_PATHS = [path for track in TRACKS for path in iter_mission_paths(CONTENT_ROOT, track)]
+SOURCE_MISSION_PATHS = [
+    path
+    for source_track, _ in TRACK_PAIRS
+    for path in iter_mission_paths(CONTENT_ROOT, source_track)
+]
 
 MIRROR_LOCKED_FIELDS = (
     "id",
@@ -82,9 +87,9 @@ def test_mission_has_a_full_hint_ladder(path):
     assert levels == [1, 2, 3], f"{path.name} has hint levels {levels}"
 
 
-@pytest.mark.parametrize("path", MISSION_PATHS, ids=_ids(MISSION_PATHS))
+@pytest.mark.parametrize("path", SOURCE_MISSION_PATHS, ids=_ids(SOURCE_MISSION_PATHS))
 def test_the_declared_solution_passes_its_own_tests(path):
-    """The heart of it. Runs the shipped solution through the real sandbox."""
+    """Run canonical solutions; mirror parity below proves their copies are identical."""
     mission = load_mission(path)
 
     outcome = GameSession().check_solution(mission)
