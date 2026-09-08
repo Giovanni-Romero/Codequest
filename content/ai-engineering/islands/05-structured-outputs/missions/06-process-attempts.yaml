@@ -1,0 +1,108 @@
+id: ai-structured-outputs-06
+title: Process ordered attempts
+track: ai-engineering
+island: structured-outputs
+order: 6
+difficulty: moderate
+tags: [ai-engineering, structured-outputs, parsing, retry]
+xp: 30
+concepts: [safe-output-parsing, validation-retry]
+teaching:
+  analogy: |
+    A proofreader checks drafts in order. They publish the first acceptable draft, stop on a
+    forbidden claim, and stop when the review quota is used.
+  explanation: |
+    A bounded attempt processor combines safe parsing with retry policy. Each string is parsed
+    as data; only parse failures consume repair attempts. A valid object succeeds, while a policy
+    marker is permanent. Ordering is part of the contract.
+  worked_example: |
+    drafts = ["bad", "ready"]
+    for draft in drafts:
+        if draft == "ready":
+            print("publish")
+            break
+  key_points:
+    - Parse each complete attempt; never evaluate it.
+    - Stop immediately on success or permanent failure.
+    - A non-negative attempt limit is a safety boundary.
+brief: |
+  Write `read_attempts(texts, limit)`. `texts` must be a list of strings, and `limit` must be a
+  non-negative integer that is not bool. Every successfully parsed value must be a dictionary
+  whose string `status` is exactly `ok`, `schema`, or `policy`; validate the complete list before
+  any terminal return, even beyond the bounded prefix. Malformed JSON is repairable. Then inspect
+  only `texts[:limit]`: return the first `ok` object, return `{"status": "failed", "reason":
+  "policy"}` for policy, continue after schema or malformed JSON, and otherwise return
+  `{"status": "exhausted"}`. Raise `ValueError` for every invalid input or parsed status.
+signature:
+  entrypoint: read_attempts
+  stub: |
+    def read_attempts(texts, limit):
+        # Parse attempts in order and stop at the declared boundaries.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [['{"status": "schema"}', '{"status": "ok", "value": 4}'], 2]
+      expect: {status: ok, value: 4}
+    - args: [['{"status": "policy"}', '{"status": "ok"}'], 2]
+      expect: {status: failed, reason: policy}
+  hidden:
+    - args: [['{"status": "policy"}', 7], 1]
+      raises: ValueError
+    - args: [['{"status": "policy"}', '{"status": []}'], 2]
+      raises: ValueError
+    - args: [['{"status": "policy"}', '{"status": {}}'], 2]
+      raises: ValueError
+    - args: [['{"status": "schema"}', '{"status": []}'], 1]
+      raises: ValueError
+    - args: [['{"status": "schema"}', '{"status": {}}'], 1]
+      raises: ValueError
+    - args: [['{"status": "policy"}', 7], 2]
+      raises: ValueError
+    - args: [[], 0]
+      expect: {status: exhausted}
+    - args: ['bad', 1]
+      raises: ValueError
+    - args: [['bad', '{"status": "ok"}'], 1]
+      expect: {status: exhausted}
+    - args: [['bad', '{"status": "ok", "value": 9}'], 2]
+      expect: {status: ok, value: 9}
+    - args: [['{"status": "unknown"}'], 1]
+      raises: ValueError
+    - args: [['{"status": "schema"}'], -1]
+      raises: ValueError
+    - args: [[], true]
+      raises: ValueError
+hints:
+  - {level: 1, text: "What should happen first: interpreting the text or deciding whether the attempt is repairable?"}
+  - {level: 2, text: "Parse with `json.loads`, inspect ordered statuses, and slice work by `limit`."}
+  - level: 3
+    text: |
+      A ballot counter can catch a decoder error as a repairable draft, return on `accepted`,
+      return a failure on `blocked`, and report exhaustion after the inspected prefix.
+solution: |
+  import json
+
+  def read_attempts(texts, limit):
+      if not isinstance(texts, list) or not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
+          raise ValueError("invalid input")
+      if any(not isinstance(text, str) for text in texts):
+          raise ValueError("texts must be strings")
+      parsed = []
+      for text in texts:
+          try:
+              value = json.loads(text)
+          except json.JSONDecodeError:
+              parsed.append(None)
+              continue
+          if not isinstance(value, dict) or not isinstance(value.get("status"), str) or value.get("status") not in {"ok", "schema", "policy"}:
+              raise ValueError("invalid status")
+          parsed.append(value)
+      for value in parsed[:limit]:
+          if value is None:
+              continue
+          if value["status"] == "ok":
+              return value
+          if value["status"] == "policy":
+              return {"status": "failed", "reason": "policy"}
+      return {"status": "exhausted"}

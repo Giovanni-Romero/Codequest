@@ -239,6 +239,25 @@ The required framework block applies the spine rather than replacing it.
 
 ## Island 5 — Structured Outputs
 
+**Theme:** turning model-shaped text into validated application data
+
+**Band:** moderate
+
+**Planned missions:** 8
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces |
+|---:|---|---|---|
+| 1 | `declare-the-shape` | `output-schema` | — |
+| 2 | `parse-only-json` | `safe-output-parsing` | `output-schema` |
+| 3 | `retry-repairable` | `validation-retry` | `safe-output-parsing` |
+| 4 | `classify-failures` | `failure-taxonomy` | `validation-retry` |
+| 5 | `parse-then-validate` | — | `output-schema`, `safe-output-parsing` |
+| 6 | `process-attempts` | — | `safe-output-parsing`, `validation-retry` |
+| 7 | `diagnose-stop` | — | `validation-retry`, `failure-taxonomy` |
+| 8 | `build-the-pipeline` | — | all four concepts |
+
 ### output-schema
 - **prereqs:** prompt-templates
 - **objective:** express required output fields, types, and allowed values explicitly

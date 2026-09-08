@@ -1,0 +1,74 @@
+id: ai-structured-outputs-04
+title: Name the failure
+track: ai-engineering
+island: structured-outputs
+order: 4
+difficulty: moderate
+tags: [ai-engineering, structured-outputs, taxonomy]
+xp: 30
+concepts: [failure-taxonomy]
+teaching:
+  analogy: |
+    An airport board separates weather, security, mechanical, and schedule problems. One vague
+    word like “delay” cannot tell the right team what to do.
+  explanation: |
+    A failure taxonomy gives each failure a stable class. Parse, schema, policy, provider, and
+    timeout failures need different actions. Keep the original class instead of flattening every
+    problem into one exception message.
+  worked_example: |
+    codes = {"WX": "weather", "ME": "mechanical"}
+    print(codes.get("WX", "unknown"))
+  key_points:
+    - Classification is part of the result contract.
+    - Unknown input should be rejected, not guessed.
+    - The class should not depend on incidental wording.
+brief: |
+  Write `classify_failure(event)`. Accept a dictionary with `kind` equal to one of
+  `parse`, `schema`, `policy`, `provider`, or `timeout`, and optional `detail` string.
+  Return `{"kind": kind, "retryable": true/false}` where only parse and schema are retryable.
+  Raise `ValueError` for invalid containers, kinds, or detail types.
+signature:
+  entrypoint: classify_failure
+  stub: |
+    def classify_failure(event):
+        # Preserve a stable failure class for the next pipeline stage.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [{kind: parse}]
+      expect: {kind: parse, retryable: true}
+    - args: [{kind: timeout, detail: slow}]
+      expect: {kind: timeout, retryable: false}
+  hidden:
+    - args: [null]
+      raises: ValueError
+    - args: [{kind: schema}]
+      expect: {kind: schema, retryable: true}
+    - args: [{kind: policy}]
+      expect: {kind: policy, retryable: false}
+    - args: [{kind: provider}]
+      expect: {kind: provider, retryable: false}
+    - args: [{kind: nope}]
+      raises: ValueError
+    - args: [{kind: [parse]}]
+      raises: ValueError
+    - args: [{kind: {name: parse}}]
+      raises: ValueError
+    - args: [{kind: parse, detail: 4}]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which stable label lets the next stage choose a different response?"}
+  - {level: 2, text: "Use a finite set of kinds and a separate retryable mapping."}
+  - level: 3
+    text: |
+      A service desk can keep `retryable = {"address": True, "label": True}` and return
+      the looked-up flag beside the original category.
+solution: |
+  def classify_failure(event):
+      kinds = {"parse", "schema", "policy", "provider", "timeout"}
+      if not isinstance(event, dict) or not isinstance(event.get("kind"), str) or event.get("kind") not in kinds:
+          raise ValueError("invalid failure")
+      if "detail" in event and not isinstance(event["detail"], str):
+          raise ValueError("detail must be text")
+      return {"kind": event["kind"], "retryable": event["kind"] in {"parse", "schema"}}

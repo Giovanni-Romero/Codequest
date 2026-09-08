@@ -1,0 +1,90 @@
+id: ai-structured-outputs-05
+title: Keep parsing separate
+track: ai-engineering
+island: structured-outputs
+order: 5
+difficulty: moderate
+tags: [ai-engineering, structured-outputs, schema, parsing]
+xp: 30
+concepts: [output-schema, safe-output-parsing]
+teaching:
+  analogy: |
+    A warehouse first opens a sealed box, then checks its contents against the order. A sealed
+    box and a wrong item are different problems.
+  explanation: |
+    Parse JSON before inspecting its fields. A decoder failure is a parse failure; a dictionary
+    with wrong fields is a schema failure. Keeping these stages separate makes repair decisions
+    and diagnostics reliable.
+  worked_example: |
+    import json
+    raw = '{"sku": "A1"}'
+    item = json.loads(raw)
+    print(item["sku"] if isinstance(item, dict) else "bad shape")
+  key_points:
+    - Never inspect fields before confirming the top-level object.
+    - Return distinct reasons for syntax and schema defects.
+    - Validate every required field after parsing.
+brief: |
+  Write `parse_card(text)`. The input must be a string containing one JSON object with exactly
+  `name` and `count`. The name must be a non-empty string; count must be a non-negative integer,
+  not bool. Return `{"status": "ok", "value": {"name": ..., "count": ...}}` for valid data,
+  `{"status": "failed", "reason": "parse"}` for non-string, malformed, or non-object input,
+  and `{"status": "failed", "reason": "schema"}` for an object with invalid fields or values.
+signature:
+  entrypoint: parse_card
+  stub: |
+    def parse_card(text):
+        # Separate decoder errors from application-schema errors.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: ['{"name": "Ada", "count": 2}']
+      expect: {status: ok, value: {name: Ada, count: 2}}
+    - args: ['{"name": "Ada"}']
+      expect: {status: failed, reason: schema}
+  hidden:
+    - args: [null]
+      expect: {status: failed, reason: parse}
+    - args: ['{bad}']
+      expect: {status: failed, reason: parse}
+    - args: ['[1]']
+      expect: {status: failed, reason: parse}
+    - args: ['{"name": "A", "count": true}']
+      expect: {status: failed, reason: schema}
+    - args: ['{"name": "A", "count": -1}']
+      expect: {status: failed, reason: schema}
+    - args: ['{"name": "", "count": 1}']
+      expect: {status: failed, reason: schema}
+    - args: ['{"name": "A", "count": 1.5}']
+      expect: {status: failed, reason: schema}
+    - args: ['{"name": "B", "count": 0}']
+      expect: {status: ok, value: {name: B, count: 0}}
+    - args: ['{"name": "C", "count": 8, "extra": 1}']
+      expect: {status: failed, reason: schema}
+hints:
+  - {level: 1, text: "At what point can you know whether the text is JSON, and at what point can you know its fields are right?"}
+  - {level: 2, text: "Use `json.loads` first, then validate an exact dictionary shape."}
+  - level: 3
+    text: |
+      A manifest reader can catch `JSONDecodeError` as `parse`, then compare `set(value)`
+      and primitive types, raising `schema` for the second stage.
+solution: |
+  import json
+
+  def parse_card(text):
+      if not isinstance(text, str):
+          return {"status": "failed", "reason": "parse"}
+      try:
+          value = json.loads(text)
+      except json.JSONDecodeError:
+          return {"status": "failed", "reason": "parse"}
+      if not isinstance(value, dict):
+          return {"status": "failed", "reason": "parse"}
+      if set(value) != {"name", "count"}:
+          return {"status": "failed", "reason": "schema"}
+      if not isinstance(value["name"], str) or not value["name"]:
+          return {"status": "failed", "reason": "schema"}
+      if not isinstance(value["count"], int) or isinstance(value["count"], bool) or value["count"] < 0:
+          return {"status": "failed", "reason": "schema"}
+      return {"status": "ok", "value": value}

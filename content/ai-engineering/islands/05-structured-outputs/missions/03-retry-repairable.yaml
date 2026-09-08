@@ -1,0 +1,93 @@
+id: ai-structured-outputs-03
+title: Retry repairable output
+track: ai-engineering
+island: structured-outputs
+order: 3
+difficulty: moderate
+tags: [ai-engineering, structured-outputs, retry]
+xp: 30
+concepts: [validation-retry]
+teaching:
+  analogy: |
+    A printer retries a jam, but it does not keep pressing print after the machine is unplugged.
+  explanation: |
+    A retry policy needs a fixed limit and a declared repairable class. Syntax and schema errors
+    may be repairable; policy and provider failures are permanent here. Stop as soon as one
+    attempt succeeds or a permanent failure appears.
+  worked_example: |
+    attempts = ["jam", "ok"]
+    for attempt in attempts[:3]:
+        if attempt == "ok":
+            print("printed")
+            break
+  key_points:
+    - A limit prevents an infinite retry loop.
+    - Retry only reasons explicitly marked repairable.
+    - Return the first success, not the last attempt.
+brief: |
+  Write `first_success(attempts, limit)`. `attempts` must be a list whose every element is a
+  dictionary with string `status` equal to `"ok"`, `"parse"`, `"schema"`, `"policy"`, or
+  `"provider"`, plus optional `value`. `limit` must be a non-negative integer and not bool.
+  Validate the complete list before any terminal return, then inspect at most the bounded prefix.
+  Return the first `value` for `ok`, return
+  `{"status": "failed", "reason": status}` for a permanent failure, and return
+  `{"status": "exhausted", "reason": "retry_limit"}` otherwise.
+signature:
+  entrypoint: first_success
+  stub: |
+    def first_success(attempts, limit):
+        # Bound repair attempts and preserve the first useful result.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{status: parse}, {status: ok, value: 7}], 3]
+      expect: 7
+    - args: [[{status: policy}, {status: ok, value: 8}], 3]
+      expect: {status: failed, reason: policy}
+  hidden:
+    - args: [[{status: policy}, {status: nope}], 1]
+      raises: ValueError
+    - args: [[{status: [policy]}], 1]
+      raises: ValueError
+    - args: [[{status: {kind: policy}}], 1]
+      raises: ValueError
+    - args: [[], true]
+      raises: ValueError
+    - args: [[], 0]
+      expect: {status: exhausted, reason: retry_limit}
+    - args: [[{status: parse}], 1]
+      expect: {status: exhausted, reason: retry_limit}
+    - args: [[{status: parse}, {status: ok, value: 9}], 1]
+      expect: {status: exhausted, reason: retry_limit}
+    - args: [[{status: provider}], 4]
+      expect: {status: failed, reason: provider}
+    - args: [[{status: schema}, {status: ok, value: 2}], 2]
+      expect: 2
+    - args: [null, 1]
+      raises: ValueError
+    - args: [[], -1]
+      raises: ValueError
+    - args: [[{status: nope}], 1]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which failures can another attempt plausibly repair, and when must the loop stop?"}
+  - {level: 2, text: "Slice to a non-negative limit, accept `ok`, continue only for parse/schema, and stop for policy/provider."}
+  - level: 3
+    text: |
+      A delivery desk can loop over `jobs[:limit]`, return on `delivered`, return a failure
+      dictionary on `cancelled`, and continue only for `label_error` or `address_error`.
+solution: |
+  def first_success(attempts, limit):
+      if not isinstance(attempts, list) or not isinstance(limit, int) or isinstance(limit, bool) or limit < 0:
+          raise ValueError("invalid input")
+      allowed = {"ok", "parse", "schema", "policy", "provider"}
+      if any(not isinstance(attempt, dict) or not isinstance(attempt.get("status"), str) or attempt.get("status") not in allowed for attempt in attempts):
+          raise ValueError("invalid attempt")
+      for attempt in attempts[:limit]:
+          status = attempt["status"]
+          if status == "ok":
+              return attempt.get("value")
+          if status not in {"parse", "schema"}:
+              return {"status": "failed", "reason": status}
+      return {"status": "exhausted", "reason": "retry_limit"}

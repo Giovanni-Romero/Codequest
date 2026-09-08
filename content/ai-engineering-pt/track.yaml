@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  As quatro primeiras ilhas cobrem contexto rastreável, contratos de prompt, recuperação e RAG.
+  As cinco primeiras ilhas cobrem contexto rastreável, contratos de prompt, recuperação, RAG e saídas estruturadas.
 
 runner: python
 file_extension: .py
@@ -14,3 +14,4 @@ islands:
   - 02-prompt-contracts
   - 03-retrieval
   - 04-rag
+  - 05-structured-outputs
