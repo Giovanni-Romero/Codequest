@@ -1,0 +1,93 @@
+id: ai-tools-06
+title: Controle a repetição
+track: ai-engineering
+island: tools-and-agents
+order: 6
+difficulty: moderate
+tags: [ai-engineering, tools, retry]
+xp: 30
+concepts: [orchestration-gates, idempotent-effects]
+teaching:
+  analogy: |
+    Um atendente confere todos os carimbos antes de reutilizar um recibo antigo.
+  explanation: |
+    Repetições atravessam os mesmos portões. Execution e persistence podem descrever efeitos como dados; aplicados têm IDs e chaves únicos.
+  worked_example: |
+    applied = {"operation_id": "A", "idempotency_key": "once"}
+    retry = {"operation_id": "A", "idempotency_key": "once"}
+    print(applied == retry)
+  key_points:
+    - Falhas de portão são decididas antes de qualquer replay.
+    - Applied não aceita IDs nem chaves duplicados.
+    - Replay exige a mesma action e a mesma carga tipada em profundidade.
+brief: |
+  Escreva `gate_tool_operation(operation, gates, applied) -> dict`. `operation` usa o schema de
+  requisição da Missão 4; `gates`, o schema da Missão 3; `applied`, o schema de registros aplicados
+  da Missão 4. Valide todos os argumentos antes de escolher resultado. A falha de portão mais cedo
+  devolve a forma `stopped` da Missão 3. Um registro anterior conflitante devolve
+  `{"status": "stopped", "gate": "persistence", "reason": "idempotency_conflict"}`. Uma
+  operação aplicada idêntica devolve `replayed` com `operation_id` e `result`; caso contrário,
+  devolva `ready` com `effect` contendo operation_id, idempotency_key, action e payload.
+signature:
+  entrypoint: gate_tool_operation
+  stub: |
+    def gate_tool_operation(operation, gates, applied):
+        # Gate a retry before returning a single effect plan.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: {x: 1}}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], []]
+      expect: {status: ready, effect: {operation_id: a, idempotency_key: one, action: save, payload: {x: 1}}}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 1}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], [{operation_id: a, idempotency_key: one, action: save, payload: 1, result: done}]]
+      expect: {status: replayed, operation_id: a, result: done}
+  hidden:
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 1}, [{gate: validation, status: fail, reason: bad, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], []]
+      expect: {status: stopped, gate: validation, reason: bad}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 2}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], [{operation_id: a, idempotency_key: one, action: save, payload: 1, result: done}]]
+      expect: {status: stopped, gate: persistence, reason: idempotency_conflict}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: true}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], [{operation_id: a, idempotency_key: one, action: save, payload: 1, result: done}]]
+      expect: {status: stopped, gate: persistence, reason: idempotency_conflict}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 1}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], [{operation_id: b, idempotency_key: two, action: save, payload: 1, result: done, extra: x}]]
+      raises: ValueError
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: []}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], []]
+      expect: {status: ready, effect: {operation_id: a, idempotency_key: one, action: save, payload: []}}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 1}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: fail, reason: late, effect: null}], []]
+      expect: {status: stopped, gate: persistence, reason: late}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 1}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: {job: run}}, {gate: persistence, status: pass, reason: null, effect: {job: save}}], []]
+      expect: {status: ready, effect: {operation_id: a, idempotency_key: one, action: save, payload: 1}}
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: 1}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], [{operation_id: b, idempotency_key: two, action: save, payload: 1, result: old}, {operation_id: b, idempotency_key: three, action: save, payload: 1, result: old}]]
+      raises: ValueError
+    - args: [{operation_id: a, idempotency_key: one, action: save, payload: {items: [true]}}, [{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}], [{operation_id: a, idempotency_key: one, action: save, payload: {items: [1]}, result: old}]]
+      expect: {status: stopped, gate: persistence, reason: idempotency_conflict}
+hints:
+  - {level: 1, text: "Qual decisão vem antes de procurar recibo?"}
+  - {level: 2, text: "Valide portões e registros antes de parar ou repetir."}
+  - {level: 3, text: "Confira carimbos e IDs únicos antes de comparar carga."}
+solution: |
+  def gate_tool_operation(operation, gates, applied):
+      if not isinstance(operation, dict) or set(operation) != {"operation_id", "idempotency_key", "action", "payload"} or any(not isinstance(operation[k], str) or not operation[k] for k in ("operation_id", "idempotency_key", "action")): raise ValueError("invalid operation")
+      names = ["validation", "policy", "execution", "persistence"]
+      if not isinstance(gates, list) or len(gates) != 4 or not isinstance(applied, list): raise ValueError("invalid input")
+      for name, gate in zip(names, gates):
+          if not isinstance(gate, dict) or set(gate) != {"gate", "status", "reason", "effect"} or gate["gate"] != name or not isinstance(gate["status"], str) or gate["status"] not in {"pass", "fail"} or not isinstance(gate["reason"], (str, type(None))): raise ValueError("invalid gate")
+          if (gate["status"] == "pass") != (gate["reason"] is None): raise ValueError("invalid gate")
+          if gate["effect"] is not None and (not isinstance(gate["effect"], dict) or name in {"validation", "policy"} or gate["status"] == "fail"): raise ValueError("invalid gate")
+      applied_ids, applied_keys = set(), set()
+      for row in applied:
+          if not isinstance(row, dict) or set(row) != {"operation_id", "idempotency_key", "action", "payload", "result"} or any(not isinstance(row[k], str) or not row[k] for k in ("operation_id", "idempotency_key", "action")): raise ValueError("invalid applied")
+          if row["operation_id"] in applied_ids or row["idempotency_key"] in applied_keys: raise ValueError("duplicate applied")
+          applied_ids.add(row["operation_id"]); applied_keys.add(row["idempotency_key"])
+      def equal(left, right):
+          if type(left) is not type(right): return False
+          if isinstance(left, list): return len(left) == len(right) and all(equal(a, b) for a, b in zip(left, right))
+          if isinstance(left, dict): return set(left) == set(right) and all(equal(left[key], right[key]) for key in left)
+          return left == right
+      for gate in gates:
+          if gate["status"] == "fail": return {"status": "stopped", "gate": gate["gate"], "reason": gate["reason"]}
+      for row in applied:
+          if row["operation_id"] == operation["operation_id"] or row["idempotency_key"] == operation["idempotency_key"]:
+              same = equal(row["action"], operation["action"]) and equal(row["payload"], operation["payload"])
+              if not same: return {"status": "stopped", "gate": "persistence", "reason": "idempotency_conflict"}
+              return {"status": "replayed", "operation_id": operation["operation_id"], "result": row["result"]}
+      return {"status": "ready", "effect": dict(operation)}

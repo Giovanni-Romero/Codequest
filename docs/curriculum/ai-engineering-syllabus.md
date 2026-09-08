@@ -333,6 +333,25 @@ The required framework block applies the spine rather than replacing it.
 
 ## Island 7 — Tools and Agents
 
+**Theme:** deterministic tool contracts, least-authority routing, gates, and idempotent effects
+
+**Band:** moderate
+
+**Planned missions:** 8
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---:|---|---|---|---|
+| 1 | `define-the-tool-contract` | `tool-contracts` | — | Validate before an effect exists |
+| 2 | `route-the-request` | `tool-routing` | `tool-contracts` | Route only least-authority matches |
+| 3 | `stop-at-the-gate` | `orchestration-gates` | `tool-routing` | Stop at the earliest failure |
+| 4 | `deduplicate-the-effect` | `idempotent-effects` | `orchestration-gates` | Plan at-most-once effects |
+| 5 | `prepare-the-tool-call` | — | `tool-contracts`, `tool-routing` | Prepare a safe call |
+| 6 | `gate-the-retry` | — | `orchestration-gates`, `idempotent-effects` | Gate retries before persistence |
+| 7 | `inspect-the-tool-trace` | — | all four concepts | **Relief:** diagnose, do not plan |
+| 8 | `orchestrate-the-tools` | — | all four concepts | Closing deterministic pipeline |
+
 ### tool-contracts
 - **prereqs:** output-schema, failure-taxonomy
 - **objective:** define tool inputs, outputs, errors, and side effects as a contract

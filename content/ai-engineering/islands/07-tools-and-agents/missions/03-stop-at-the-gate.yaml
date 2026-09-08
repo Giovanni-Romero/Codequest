@@ -1,0 +1,69 @@
+id: ai-tools-03
+title: Stop at the gate
+track: ai-engineering
+island: tools-and-agents
+order: 3
+difficulty: moderate
+tags: [ai-engineering, tools, gates]
+xp: 30
+concepts: [orchestration-gates, tool-routing]
+teaching:
+  analogy: |
+    An airport checks a ticket, passport, boarding, and baggage in a fixed order.
+  explanation: |
+    Gates make a workflow observable and safe. Validate every stage before choosing an outcome. The first failed gate wins because later work cannot repair an earlier rejection. Effects appear only after validation and policy have passed.
+  worked_example: |
+    gates = ["validation", "policy"]
+    print(gates[0])
+  key_points:
+    - Validate all stage records before stopping.
+    - Keep gates in their declared order.
+    - A failed gate carries no effect.
+brief: |
+  Write `evaluate_gates(stages)`. Stages are exactly validation, policy, execution, and
+  persistence in that order. Each record has exact `gate`, `status`, `reason`, and `effect`.
+  Status is pass or fail. Validation and policy passes cannot carry effects; failures cannot
+  carry effects. Return the earliest failure or ordered non-None effects after all pass.
+signature:
+  entrypoint: evaluate_gates
+  stub: |
+    def evaluate_gates(stages):
+        # Stop a declared workflow at its earliest failed gate.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: {job: run}}, {gate: persistence, status: pass, reason: null, effect: {job: save}}]]
+      expect: {status: passed, effects: [{job: run}, {job: save}]}
+    - args: [[{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: fail, reason: denied, effect: null}, {gate: execution, status: fail, reason: later, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}]]
+      expect: {status: stopped, gate: policy, reason: denied}
+  hidden:
+    - args: [[{gate: validation, status: fail, reason: bad, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}]]
+      expect: {status: stopped, gate: validation, reason: bad}
+    - args: [[{gate: validation, status: pass, reason: null, effect: {}}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}]]
+      raises: ValueError
+    - args: [[{gate: policy, status: pass, reason: null, effect: null}, {gate: validation, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}]]
+      raises: ValueError
+    - args: [[{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: fail, reason: 1, effect: null}]]
+      raises: ValueError
+    - args: [[{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: []}]]
+      raises: ValueError
+    - args: [[{gate: validation, status: pass, reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: {x: [1]}}, {gate: persistence, status: pass, reason: null, effect: null}]]
+      expect: {status: passed, effects: [{x: [1]}]}
+    - args: [[{gate: validation, status: [], reason: null, effect: null}, {gate: policy, status: pass, reason: null, effect: null}, {gate: execution, status: pass, reason: null, effect: null}, {gate: persistence, status: pass, reason: null, effect: null}]]
+      raises: ValueError
+hints:
+  - {level: 1, text: "What must be true of the whole stage list before the first failure matters?"}
+  - {level: 2, text: "Check the exact ordered gate names before scanning for failures."}
+  - {level: 3, text: "For boarding, validate every stamp first, then return the first stamp marked failed."}
+solution: |
+  def evaluate_gates(stages):
+      names = ["validation", "policy", "execution", "persistence"]
+      if not isinstance(stages, list) or len(stages) != 4: raise ValueError("invalid stages")
+      for expected, stage in zip(names, stages):
+          if not isinstance(stage, dict) or set(stage) != {"gate", "status", "reason", "effect"} or stage["gate"] != expected or not isinstance(stage["status"], str) or stage["status"] not in {"pass", "fail"}: raise ValueError("invalid stage")
+          if not isinstance(stage["reason"], (str, type(None))) or (stage["status"] == "pass" and stage["reason"] is not None) or (stage["status"] == "fail" and (not isinstance(stage["reason"], str) or not stage["reason"])): raise ValueError("invalid stage")
+          if stage["effect"] is not None and (not isinstance(stage["effect"], dict) or (expected in {"validation", "policy"}) or stage["status"] == "fail"): raise ValueError("invalid stage")
+      for stage in stages:
+          if stage["status"] == "fail": return {"status": "stopped", "gate": stage["gate"], "reason": stage["reason"]}
+      return {"status": "passed", "effects": [stage["effect"] for stage in stages if stage["effect"] is not None]}
