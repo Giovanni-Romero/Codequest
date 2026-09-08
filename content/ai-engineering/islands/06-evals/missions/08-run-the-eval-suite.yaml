@@ -1,0 +1,89 @@
+id: ai-evals-08
+title: Run the eval suite
+track: ai-engineering
+island: evals
+order: 8
+difficulty: moderate
+tags: [ai-engineering, evals, pipeline]
+xp: 30
+concepts: [eval-datasets, capability-metrics, adversarial-cases, evaluation-leakage]
+teaching:
+  analogy: |
+    A lab validates samples, seals the answer key, runs a fixed batch, and files each measurement by test type.
+  explanation: |
+    An evaluation pipeline makes evidence, leakage, limits, and metrics explicit. It validates the complete contract before using a bounded prefix. A leaked suite is blocked instead of scored. The returned artifact keeps benign and adversarial evidence visible.
+  worked_example: |
+    samples = ["a", "b", "c"]
+    print(samples[:2])
+  key_points:
+    - Validate beyond the scoring limit.
+    - Block leakage before metric aggregation.
+    - Preserve capability and case-kind evidence.
+brief: |
+  Write `run_eval_suite(cases, predictions, required_capabilities, metrics, exposure, limit, min_score)`.
+  Cases are exact `case_id`, `capability`, `kind`, and `expected`; kind is benign or adversarial.
+  Validate every case, prediction, capability, metric (`exact`), exposure ID, limit, and score before
+  returning. Audit the full valid dataset as `dataset` with required-order `counts` and `missing`.
+  Return invalid_dataset with invalid IDs, blocked with leakage and that dataset audit, or ok with
+  that dataset audit, capability_scores, and benign/adversarial passed counts for only the prefix
+  limited by `limit`. Exact expected and predicted values must be scalars.
+signature:
+  entrypoint: run_eval_suite
+  stub: |
+    def run_eval_suite(cases, predictions, required_capabilities, metrics, exposure, limit, min_score):
+        # Run bounded, leak-free capability measurements.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}, {case_id: b, capability: parse, kind: adversarial, expected: reject}], {a: ok, b: reject}, [parse], {parse: exact}, [], 2, 1.0]
+      expect: {status: ok, dataset: {counts: {parse: 2}, missing: []}, capability_scores: [{capability: parse, score: 1.0, meets_target: true}], benign: {passed: 1, total: 1}, adversarial: {passed: 1, total: 1}}
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}], {a: ok}, [parse], {parse: exact}, [{source: notes, case_id: a}], 1, 0.5]
+      expect: {status: blocked, dataset: {counts: {parse: 1}, missing: []}, leakage: indirect}
+  hidden:
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}], {a: ok}, [parse], {parse: exact}, [], 0, 0.5]
+      expect: {status: ok, dataset: {counts: {parse: 1}, missing: []}, capability_scores: [], benign: {passed: 0, total: 0}, adversarial: {passed: 0, total: 0}}
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}, {case_id: b, capability: parse, kind: other, expected: x}], {a: ok, b: x}, [parse], {parse: exact}, [], 1, 0.5]
+      expect: {status: invalid_dataset, invalid: [b]}
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}], {a: ok}, [parse], {parse: exact}, [{source: direct, case_id: a}], 1, 0.5]
+      expect: {status: blocked, dataset: {counts: {parse: 1}, missing: []}, leakage: direct}
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}], {a: ok}, [parse], {parse: exact}, [], true, 0.5]
+      raises: ValueError
+    - args: [[{case_id: a, capability: [parse], kind: benign, expected: ok}], {a: ok}, [parse], {parse: exact}, [], 1, 0.5]
+      expect: {status: invalid_dataset, invalid: [a]}
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: [ok]}], {a: ok}, [parse], {parse: exact}, [], 1, 0.5]
+      expect: {status: invalid_dataset, invalid: [a]}
+    - args: [[{case_id: a, capability: parse, kind: benign, expected: ok}], {a: {value: ok}}, [parse], {parse: exact}, [], 1, 0.5]
+      expect: {status: invalid_dataset, invalid: [a]}
+hints:
+  - {level: 1, text: "Which facts must be checked even when the limit selects no cases?"}
+  - {level: 2, text: "Validate all inputs, classify leakage, then score only the bounded prefix."}
+  - {level: 3, text: "For a lab tray, inspect every label first, seal contaminated trays, then count only the first allowed samples."}
+solution: |
+  def run_eval_suite(cases, predictions, required_capabilities, metrics, exposure, limit, min_score):
+      if not isinstance(cases, list) or not isinstance(predictions, dict) or not isinstance(required_capabilities, list) or not isinstance(metrics, dict) or not isinstance(exposure, list) or not isinstance(limit, int) or isinstance(limit, bool) or limit < 0 or not isinstance(min_score, (int, float)) or isinstance(min_score, bool) or not 0 <= min_score <= 1 or any(not isinstance(capability, str) or not capability for capability in required_capabilities) or len(set(required_capabilities)) != len(required_capabilities):
+          raise ValueError("invalid input")
+      invalid, declared_ids = [], set()
+      for case in cases:
+          case_id = case.get("case_id") if isinstance(case, dict) else None
+          structural = isinstance(case, dict) and set(case) == {"case_id", "capability", "kind", "expected"} and isinstance(case_id, str) and case_id
+          duplicate = structural and case_id in declared_ids
+          if structural: declared_ids.add(case_id)
+          valid = structural and not duplicate and isinstance(case["capability"], str) and case["capability"] in required_capabilities and isinstance(case["kind"], str) and case["kind"] in {"benign", "adversarial"} and case_id in predictions and not isinstance(case["expected"], (list, dict, set)) and not isinstance(predictions[case_id], (list, dict, set))
+          if not valid: invalid.append(case_id if isinstance(case_id, str) else "<invalid>")
+      if set(predictions) != declared_ids or set(metrics) != set(required_capabilities) or any(not isinstance(metrics[capability], str) or metrics[capability] != "exact" for capability in required_capabilities): invalid.append("<mapping>")
+      for record in exposure:
+          if not isinstance(record, dict) or set(record) != {"source", "case_id"} or not isinstance(record.get("source"), str) or not record["source"] or not isinstance(record.get("case_id"), str) or not record["case_id"] or record["case_id"] not in declared_ids: invalid.append("<exposure>")
+      if invalid: return {"status": "invalid_dataset", "invalid": invalid}
+      dataset = {"counts": {capability: sum(case["capability"] == capability for case in cases) for capability in required_capabilities}, "missing": [capability for capability in required_capabilities if not any(case["capability"] == capability for case in cases)]}
+      if any(record["source"] == "direct" for record in exposure): return {"status": "blocked", "dataset": dataset, "leakage": "direct"}
+      if exposure: return {"status": "blocked", "dataset": dataset, "leakage": "indirect"}
+      selected, scores = cases[:limit], []
+      benign = {"passed": 0, "total": 0}; adversarial = {"passed": 0, "total": 0}
+      for kind, summary in [("benign", benign), ("adversarial", adversarial)]:
+          rows = [case for case in selected if case["kind"] == kind]; summary["total"] = len(rows); summary["passed"] = sum(type(predictions[row["case_id"]]) is type(row["expected"]) and predictions[row["case_id"]] == row["expected"] for row in rows)
+      for capability in required_capabilities:
+          rows = [case for case in selected if case["capability"] == capability]
+          if rows:
+              passed = sum(type(predictions[row["case_id"]]) is type(row["expected"]) and predictions[row["case_id"]] == row["expected"] for row in rows); score = passed / len(rows); scores.append({"capability": capability, "score": score, "meets_target": score >= min_score})
+      return {"status": "ok", "dataset": dataset, "capability_scores": scores, "benign": benign, "adversarial": adversarial}

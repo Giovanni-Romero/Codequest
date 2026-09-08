@@ -1,0 +1,16 @@
+id: evals
+name: Evals
+track: ai-engineering
+order: 6
+theme: Measuring capabilities with representative, adversarial, and held-out evidence
+description: |
+  Build deterministic evaluation datasets, measure declared capabilities, attack shortcuts,
+  and keep held-out evidence separate from development exposure.
+concepts:
+  - eval-datasets
+  - capability-metrics
+  - adversarial-cases
+  - evaluation-leakage
+unlock_requires:
+  requires_mission: ai-structured-outputs-08
+completion_reward_xp: 180

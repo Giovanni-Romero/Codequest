@@ -286,6 +286,25 @@ The required framework block applies the spine rather than replacing it.
 
 ## Island 6 — Evals
 
+**Theme:** measuring capabilities with representative, adversarial, and held-out evidence
+
+**Band:** moderate
+
+**Planned missions:** 8
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---:|---|---|---|---|
+| 1 | `audit-the-dataset` | `eval-datasets` | — | Count coverage without hashing payloads |
+| 2 | `measure-capabilities` | `capability-metrics` | `eval-datasets` | Score each declared capability |
+| 3 | `challenge-shortcuts` | `adversarial-cases` | `capability-metrics` | Pair attacks with benign controls |
+| 4 | `guard-the-held-out-set` | `evaluation-leakage` | `eval-datasets` | Classify direct and indirect exposure |
+| 5 | `validate-before-scoring` | — | `eval-datasets`, `capability-metrics` | Reject bad data before a score exists |
+| 6 | `stress-each-capability` | — | `capability-metrics`, `adversarial-cases` | Separate benign and adversarial scores |
+| 7 | `inspect-the-eval` | — | `adversarial-cases`, `evaluation-leakage` | **Relief:** diagnose, do not score |
+| 8 | `run-the-eval-suite` | — | all four concepts | Closing deterministic evaluation pipeline |
+
 ### eval-datasets
 - **prereqs:** failure-taxonomy
 - **objective:** build representative cases with explicit inputs and expected properties

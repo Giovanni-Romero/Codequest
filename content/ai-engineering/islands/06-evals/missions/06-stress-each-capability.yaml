@@ -1,0 +1,69 @@
+id: ai-evals-06
+title: Stress each capability
+track: ai-engineering
+island: evals
+order: 6
+difficulty: moderate
+tags: [ai-engineering, evals, adversarial]
+xp: 30
+concepts: [capability-metrics, adversarial-cases]
+teaching:
+  analogy: |
+    A bridge inspection records normal traffic and storm traffic separately.
+  explanation: |
+    Benign and adversarial evidence answer different questions. Missing evidence is unknown, not success. A target applies only after both kinds are measured.
+  worked_example: |
+    results = [True, False]
+    print(sum(results) / len(results))
+  key_points:
+    - Keep normal and hostile evidence separate.
+    - Missing scores are null.
+    - Require both scores for a target.
+brief: |
+  Write `score_adversarial_capabilities(results, required_capabilities, min_score)`. Every result is
+  exactly `capability`, `kind`, and `passed`; kind is benign or adversarial and passed is bool.
+  Return required-order records with benign, adversarial, missing_kinds, and meets_target. Missing
+  scores are null and cannot pass. Reject invalid values and duplicate capability/kind pairs.
+signature:
+  entrypoint: score_adversarial_capabilities
+  stub: |
+    def score_adversarial_capabilities(results, required_capabilities, min_score):
+        # Compare ordinary and hostile evidence for each capability.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{capability: parse, kind: benign, passed: true}, {capability: parse, kind: adversarial, passed: false}], [parse], 0.5]
+      expect: [{capability: parse, benign: 1.0, adversarial: 0.0, missing_kinds: [], meets_target: false}]
+    - args: [[{capability: parse, kind: benign, passed: true}], [parse, route], 0.5]
+      expect: [{capability: parse, benign: 1.0, adversarial: null, missing_kinds: [adversarial], meets_target: false}, {capability: route, benign: null, adversarial: null, missing_kinds: [benign, adversarial], meets_target: false}]
+  hidden:
+    - args: [[{capability: parse, kind: benign, passed: true}, {capability: parse, kind: adversarial, passed: true}], [parse], 1.0]
+      expect: [{capability: parse, benign: 1.0, adversarial: 1.0, missing_kinds: [], meets_target: true}]
+    - args: [[{capability: parse, kind: benign, passed: 1}], [parse], 0.5]
+      raises: ValueError
+    - args: [[{capability: parse, kind: benign, passed: true}, {capability: parse, kind: benign, passed: false}], [parse], 0.5]
+      raises: ValueError
+    - args: [[{capability: [parse], kind: benign, passed: true}], [parse], 0.5]
+      raises: ValueError
+    - args: [[{capability: parse, kind: benign, passed: true}, {capability: parse, kind: adversarial, passed: true}, {capability: parse, kind: other, passed: true}], [parse], 0.5]
+      raises: ValueError
+hints:
+  - {level: 1, text: "What should a target mean when one evidence kind is missing?"}
+  - {level: 2, text: "Validate unique capability/kind pairs, then compute each kind separately."}
+  - {level: 3, text: "For road tests, return `None` for an untested rain route and require both routes."}
+solution: |
+  def score_adversarial_capabilities(results, required_capabilities, min_score):
+      if not isinstance(results, list) or not isinstance(required_capabilities, list) or not isinstance(min_score, (int, float)) or isinstance(min_score, bool) or not 0 <= min_score <= 1 or any(not isinstance(value, str) or not value for value in required_capabilities) or len(set(required_capabilities)) != len(required_capabilities):
+          raise ValueError("invalid input")
+      pairs = set()
+      for result in results:
+          if not isinstance(result, dict) or set(result) != {"capability", "kind", "passed"} or not isinstance(result["capability"], str) or not result["capability"] or result["capability"] not in required_capabilities or not isinstance(result["kind"], str) or result["kind"] not in {"benign", "adversarial"} or type(result["passed"]) is not bool or (result["capability"], result["kind"]) in pairs:
+              raise ValueError("invalid result")
+          pairs.add((result["capability"], result["kind"]))
+      output = []
+      for capability in required_capabilities:
+          values = {result["kind"]: 1.0 if result["passed"] else 0.0 for result in results if result["capability"] == capability}
+          missing = [kind for kind in ["benign", "adversarial"] if kind not in values]
+          output.append({"capability": capability, "benign": values.get("benign"), "adversarial": values.get("adversarial"), "missing_kinds": missing, "meets_target": not missing and values["benign"] >= min_score and values["adversarial"] >= min_score})
+      return output

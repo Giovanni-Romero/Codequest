@@ -1,0 +1,71 @@
+id: ai-evals-04
+title: Guard the held-out set
+track: ai-engineering
+island: evals
+order: 4
+difficulty: moderate
+tags: [ai-engineering, evals, leakage]
+xp: 30
+concepts: [evaluation-leakage]
+teaching:
+  analogy: |
+    A driving examiner cannot show the route answers before the road test and still call the score independent.
+  explanation: |
+    Evaluation leakage occurs when held-out cases reach the system before measurement. Direct exposure of a held-out ID invalidates the result immediately. Indirect exposure through a named source is still evidence to investigate. Preserve source order so the report can be audited.
+  worked_example: |
+    held_out = ["final-1"]
+    seen = {"guide": ["practice-1"], "cache": ["final-1"]}
+    print([source for source, ids in seen.items() if any(case in held_out for case in ids)])
+  key_points:
+    - Held-out means unavailable before evaluation, not merely hidden in the UI.
+    - Direct exposure has priority over indirect evidence.
+    - A clean result means no declared exposure matched a held-out ID.
+brief: |
+  Write `classify_leakage(exposure, held_out_ids)`. `held_out_ids` is a unique list of non-empty
+  strings. Every exposure record is exactly `source`, `kind`, and `case_ids`; source is a non-empty
+  string, kind is `direct` or `indirect`, and case IDs are unique strings. Return `{"status":
+  "direct"}` if any direct record contains a held-out ID. Otherwise return indirect with ordered
+  unique matching sources, or clean. Validate the complete input before any terminal result.
+signature:
+  entrypoint: classify_leakage
+  stub: |
+    def classify_leakage(exposure, held_out_ids):
+        # Classify whether held-out evidence reached the evaluated system.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{source: prompt, kind: indirect, case_ids: [h1]}], [h1]]
+      expect: {status: indirect, sources: [prompt]}
+    - args: [[{source: cache, kind: direct, case_ids: [h1]}, {source: prompt, kind: indirect, case_ids: [h1]}], [h1]]
+      expect: {status: direct}
+  hidden:
+    - args: [[], [h1]]
+      expect: {status: clean}
+    - args: [[{source: cache, kind: direct, case_ids: [h1]}, {source: bad, kind: other, case_ids: [h1]}], [h1]]
+      raises: ValueError
+    - args: [[{source: prompt, kind: indirect, case_ids: [h1, h1]}], [h1]]
+      raises: ValueError
+    - args: [[{source: prompt, kind: indirect, case_ids: [h1]}], [h1, h1]]
+      raises: ValueError
+    - args: [[{source: prompt, kind: [indirect], case_ids: [h1]}], [h1]]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which contact with a held-out ID makes the measurement invalid immediately?"}
+  - {level: 2, text: "Validate all records first; then scan direct records before building the ordered indirect source list."}
+  - {level: 3, text: "For sealed exam cards, first reject any card in the answer key, then list named folders that merely reference one."}
+solution: |
+  def classify_leakage(exposure, held_out_ids):
+      if not isinstance(exposure, list) or not isinstance(held_out_ids, list) or any(not isinstance(case_id, str) or not case_id for case_id in held_out_ids) or len(set(held_out_ids)) != len(held_out_ids):
+          raise ValueError("invalid held out ids")
+      for record in exposure:
+          if not isinstance(record, dict) or set(record) != {"source", "kind", "case_ids"} or not isinstance(record["source"], str) or not record["source"] or not isinstance(record["kind"], str) or record["kind"] not in {"direct", "indirect"} or not isinstance(record["case_ids"], list) or any(not isinstance(case_id, str) or not case_id for case_id in record["case_ids"]) or len(set(record["case_ids"])) != len(record["case_ids"]):
+              raise ValueError("invalid exposure")
+      held = set(held_out_ids)
+      if any(record["kind"] == "direct" and any(case_id in held for case_id in record["case_ids"]) for record in exposure):
+          return {"status": "direct"}
+      sources = []
+      for record in exposure:
+          if record["kind"] == "indirect" and any(case_id in held for case_id in record["case_ids"]) and record["source"] not in sources:
+              sources.append(record["source"])
+      return {"status": "indirect", "sources": sources} if sources else {"status": "clean"}
