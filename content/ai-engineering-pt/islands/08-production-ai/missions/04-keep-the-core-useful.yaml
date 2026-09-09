@@ -1,0 +1,141 @@
+id: ai-production-04
+title: Mantenha o núcleo útil
+track: ai-engineering
+island: production-ai
+order: 4
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- graceful-degradation
+- layered-guardrails
+teaching:
+  analogy: Um mapa de papel ainda leva você para casa quando o aplicativo fica sem sinal.
+  explanation: Degradação graciosa preserva o núcleo útil quando provedor opcional falha. Fallback é explícito, não imitação escondida. Validação impede sucesso falso de esconder indisponibilidade.
+  worked_example: 'núcleo = {"rota": "casa"}
+
+    print(núcleo["rota"])'
+  key_points:
+  - O núcleo sobrevive à falha do provedor.
+  - Cada falha tem fallback próprio.
+  - Sucesso e falha têm formatos válidos diferentes.
+brief: Escreva `resolve_provider_result(core_result, provider_result, fallbacks) -> dict`. Valide o provedor e os três fallbacks ordenados antes de retornar. Preserve core_result exatamente. Resultados bem-sucedidos usam o valor do provedor; resultados offline, timeout e rejected usam o fallback correspondente e expõem um motivo de degradação tipado.
+signature:
+  entrypoint: resolve_provider_result
+  stub: "def resolve_provider_result(core_result, provider_result, fallbacks):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - id: 1
+    - status: ok
+      value: answer
+      reason: null
+    - &id001
+      - &id004
+        status: offline
+        value: cached
+      - &id003
+        status: timeout
+        value: later
+      - &id002
+        status: rejected
+        value: safe
+    expect:
+      status: ok
+      core:
+        id: 1
+      result: answer
+  - args:
+    - id: 1
+    - status: offline
+      value: null
+      reason: down
+    - *id001
+    expect:
+      status: offline
+      core:
+        id: 1
+      result: cached
+      degraded: true
+      reason: down
+  - args:
+    - 0
+    - status: rejected
+      value: null
+      reason: policy
+    - *id001
+    expect:
+      status: rejected
+      core: 0
+      result: safe
+      degraded: true
+      reason: policy
+  hidden:
+  - args:
+    - {}
+    - status: ok
+      value: null
+      reason: why
+    - *id001
+    raises: ValueError
+  - args:
+    - {}
+    - status: offline
+      value: x
+      reason: down
+    - *id001
+    raises: ValueError
+  - args:
+    - {}
+    - status: timeout
+      value: null
+      reason: ''
+    - *id001
+    raises: ValueError
+  - args:
+    - {}
+    - status: offline
+      value: null
+      reason: down
+    - - *id002
+      - *id003
+      - *id004
+    raises: ValueError
+  - args:
+    - {}
+    - status: offline
+      value: null
+      reason: down
+    - - *id004
+      - *id003
+    raises: ValueError
+  - args:
+    - true
+    - status: timeout
+      value: null
+      reason: slow
+    - *id001
+    expect:
+      status: timeout
+      core: true
+      result: later
+      degraded: true
+      reason: slow
+hints:
+- level: 1
+  text: O que continua útil sem serviço opcional?
+- level: 2
+  text: Mapeie cada status de falha a um fallback declarado.
+- level: 3
+  text: 'Para um menu: `choice = fallbacks[status] if status != "ok" else value`. '
+solution: "def resolve_provider_result(core_result, provider_result, fallbacks):\n    states = [\"offline\", \"timeout\", \"rejected\"]\n    if not isinstance(provider_result, dict) or set(provider_result) != {\"status\", \"value\", \"reason\"} or provider_result[\"status\"] not in {\"ok\", *states}: raise ValueError(\"invalid provider\")\n    if not isinstance(fallbacks, list) or len(fallbacks) != 3: raise ValueError(\"invalid fallbacks\")\n    values = {}\n    for expected, row in zip(states, fallbacks):\n        if not isinstance(row, dict) or set(row) != {\"status\", \"value\"} or row[\"status\"] != expected: raise ValueError(\"invalid fallback\")\n        values[expected] = row[\"value\"]\n    status, value, reason = provider_result[\"status\"], provider_result[\"value\"], provider_result[\"reason\"]\n    if status == \"ok\":\n        if reason is not None: raise ValueError(\"invalid provider\")\n        return {\"status\": \"ok\", \"core\": core_result, \"result\": value}\n    if value\
+  \ is not None or type(reason) is not str or not reason: raise ValueError(\"invalid provider\")\n    return {\"status\": status, \"core\": core_result, \"result\": values[status], \"degraded\": True, \"reason\": reason}\n"

@@ -528,16 +528,16 @@ Python: code calculates, simulates, validates assumptions, and produces auditabl
 The graded artifact remains deterministic and offline; written interpretation appears in
 the brief and expected return structure rather than requiring subjective grading.
 
-**Status, 2026-09-08: Islands 1 to 7 have shipped.** Each has eight bilingual missions.
+**Status, 2026-09-09: Islands 1 to 8 have shipped.** Each has eight bilingual missions.
 Island 1 covers bounded traceable context, Island 2 prompt contracts and trust boundaries,
 and Island 3 sparse retrieval, cosine similarity, stable top-k ranking, thresholds, and a
 closing retrieval pipeline. Island 4 adds deterministic RAG assembly, citation provenance,
 and abstention. Islands unlock only after the final mission of the previous island is
-completed. Island 6 adds deterministic eval datasets, capability metrics, adversarial cases, and held-out leakage checks. Island 7 adds explicit tool contracts, least-authority routing, ordered orchestration gates, and idempotent effect plans. The seven islands add no runtime dependency, network requirement, or model weights.
+completed. Island 6 adds deterministic eval datasets, capability metrics, adversarial cases, and held-out leakage checks. Island 7 adds explicit tool contracts, least-authority routing, ordered orchestration gates, and idempotent effect plans. Island 8 adds deterministic guardrails, safe traces, bounded latency and cost plans, and graceful provider fallbacks. The eight islands add no runtime dependency, network requirement, or model weights.
 
 Future framework missions use deterministic local fixtures, tiny CPU workloads, and fake
 providers. Model-backed exercises may be optional labs, but do not replace the mandatory
-graded framework missions. Island 8 is next. Islands 1 to 7 do not close Phase 7 and do not require an HTML
+graded framework missions. Island 9 is next. Islands 1 to 8 do not close Phase 7 and do not require an HTML
 phase lesson yet.
 
 ---

@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Build reliable AI systems from deterministic foundations to production frameworks.
-  The first seven islands cover traceable context, prompt contracts, retrieval, RAG, structured outputs, evals, and tools.
+  The first eight islands cover traceable context, prompt contracts, retrieval, RAG, structured outputs, evals, tools, and production guarantees.
 
 runner: python
 file_extension: .py
@@ -17,3 +17,4 @@ islands:
   - 05-structured-outputs
   - 06-evals
   - 07-tools-and-agents
+  - 08-production-ai

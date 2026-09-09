@@ -1,0 +1,220 @@
+id: ai-production-05
+title: Registre a decisão do guardrail
+track: ai-engineering
+island: production-ai
+order: 5
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- layered-guardrails
+- observability-traces
+teaching:
+  analogy: Uma portaria registra qual checkpoint parou a visita, nunca a conversa privada.
+  explanation: Uma decisão e um trace precisam concordar. Bloqueio de entrada termina na entrada; saída termina na saída. O trace segue só com metadados.
+  worked_example: 'etapas = ["chegada", "saída"]
+
+    print(etapas[-1])'
+  key_points:
+  - Decisão e trace descrevem a mesma etapa.
+  - Valide todo o trace antes de decidir.
+  - Evidência segura omite payloads.
+brief: Escreva `trace_guarded_run(request, response, policy, events) -> dict`. Reutilize os formatos exatos de guardrail e trace. Valide todas as entradas antes de derivar a decisão. Um trace de rejeição termina na etapa de erro correspondente; trabalho permitido tem três etapas bem-sucedidas. Retorne apenas metadados da decisão e o trace seguro.
+signature:
+  entrypoint: trace_guarded_run
+  stub: "def trace_guarded_run(request, response, policy, events):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - input_labels:
+      - ok
+    - output_labels:
+      - ok
+    - &id002
+      prompt_rules: &id006
+      - be concise
+      blocked_input_labels:
+      - secret
+      blocked_output_labels: &id007
+      - unsafe
+    - &id001
+      - &id003
+        stage: input
+        status: ok
+        elapsed_ms: 1
+        input_size: 2
+        output_size: 0
+        failure_reason: null
+      - &id004
+        stage: provider
+        status: ok
+        elapsed_ms: 3
+        input_size: 2
+        output_size: 4
+        failure_reason: null
+      - stage: output
+        status: ok
+        elapsed_ms: 1
+        input_size: 4
+        output_size: 4
+        failure_reason: null
+    expect:
+      status: allowed
+      layer: null
+      matches: []
+      trace:
+        status: complete
+        total_elapsed_ms: 5
+        events: *id001
+  - args:
+    - input_labels:
+      - ok
+    - output_labels:
+      - unsafe
+    - *id002
+    - &id005
+      - *id003
+      - *id004
+      - stage: output
+        status: error
+        elapsed_ms: 1
+        input_size: 4
+        output_size: 4
+        failure_reason: blocked_output
+    expect:
+      status: rejected
+      layer: output
+      matches:
+      - unsafe
+      trace:
+        status: failed
+        total_elapsed_ms: 5
+        events: *id005
+        failure_stage: output
+        failure_reason: blocked_output
+  hidden:
+  - args:
+    - input_labels:
+      - secret
+    - output_labels: []
+    - *id002
+    - *id001
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - *id002
+    - []
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - *id002
+    - - stage: input
+        status: ok
+        elapsed_ms: true
+        input_size: 2
+        output_size: 0
+        failure_reason: null
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - *id002
+    - - stage: input
+        status: ok
+        elapsed_ms: 1
+        input_size: 2
+        output_size: 0
+        failure_reason: null
+        unsafe: x
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - prompt_rules: *id006
+      blocked_input_labels:
+      - []
+      blocked_output_labels: *id007
+    - *id001
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - *id002
+    - - *id003
+      - *id004
+    raises: ValueError
+hints:
+- level: 1
+  text: Qual etapa final prova a decisão?
+- level: 2
+  text: Compare a camada da decisão com o evento terminal.
+- level: 3
+  text: 'Para outra auditoria: `valid = record["stage"] == expected`. '
+solution: |
+  def apply_guardrails(request, response, policy):
+      def labels(value, keys, name):
+          if not isinstance(value, dict) or set(value) != set(keys):
+              raise ValueError("invalid " + name)
+          result = []
+          for key in keys:
+              item = value[key]
+              if not isinstance(item, list) or any(type(x) is not str or not x for x in item) or len(set(item)) != len(item):
+                  raise ValueError("invalid " + name)
+              result.append(item)
+          return result
+      inputs, = labels(request, ("input_labels",), "request")
+      outputs, = labels(response, ("output_labels",), "response")
+      rules, blocked_in, blocked_out = labels(policy, ("prompt_rules", "blocked_input_labels", "blocked_output_labels"), "policy")
+      matches = [item for item in blocked_in if item in inputs]
+      if matches:
+          return {"status": "rejected", "layer": "input", "matches": matches}
+      matches = [item for item in blocked_out if item in outputs]
+      if matches:
+          return {"status": "rejected", "layer": "output", "matches": matches}
+      return {"status": "allowed", "guidance": list(rules)}
+  
+  def build_safe_trace(events):
+      if not isinstance(events, list) or not events:
+          raise ValueError("invalid events")
+      stages = ["input", "provider", "output"]
+      clean = []
+      failed = None
+      for index, event in enumerate(events):
+          if index >= len(stages) or not isinstance(event, dict) or set(event) != {"stage", "status", "elapsed_ms", "input_size", "output_size", "failure_reason"}:
+              raise ValueError("invalid event")
+          if event["stage"] != stages[index] or type(event["status"]) is not str or event["status"] not in {"ok", "error"}:
+              raise ValueError("invalid event")
+          if any(type(event[key]) is not int or event[key] < 0 for key in ("elapsed_ms", "input_size", "output_size")):
+              raise ValueError("invalid event")
+          reason = event["failure_reason"]
+          if (event["status"] == "error") != (type(reason) is str and bool(reason)) or failed is not None:
+              raise ValueError("invalid event")
+          clean.append({key: event[key] for key in ("stage", "status", "elapsed_ms", "input_size", "output_size", "failure_reason")})
+          if event["status"] == "error":
+              failed = event
+      result = {"status": "failed" if failed else "complete", "total_elapsed_ms": sum(event["elapsed_ms"] for event in clean), "events": clean}
+      if failed:
+          result.update(failure_stage=failed["stage"], failure_reason=failed["failure_reason"])
+      return result
+  
+  def trace_guarded_run(request, response, policy, events):
+      decision = apply_guardrails(request, response, policy)
+      trace = build_safe_trace(events)
+      if decision["status"] == "allowed":
+          if trace["status"] != "complete" or len(trace["events"]) != 3:
+              raise ValueError("trace mismatch")
+          return {"status": "allowed", "layer": None, "matches": [], "trace": trace}
+      if trace["status"] != "failed" or trace["failure_stage"] != decision["layer"] or trace["failure_reason"] != "blocked_" + decision["layer"]:
+          raise ValueError("trace mismatch")
+      return {"status": "rejected", "layer": decision["layer"], "matches": decision["matches"], "trace": trace}

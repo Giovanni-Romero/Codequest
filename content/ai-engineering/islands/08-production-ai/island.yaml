@@ -1,0 +1,16 @@
+id: production-ai
+name: Production AI
+track: ai-engineering
+order: 8
+theme: Enforcing production guarantees through deterministic evidence and bounded
+  fallbacks
+description: Enforce guardrails, inspect safe traces, bound costs and latency, and
+  preserve useful behavior under provider failure.
+concepts:
+- layered-guardrails
+- observability-traces
+- latency-cost-budget
+- graceful-degradation
+unlock_requires:
+  requires_mission: ai-tools-08
+completion_reward_xp: 180

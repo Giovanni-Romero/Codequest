@@ -380,6 +380,25 @@ The required framework block applies the spine rather than replacing it.
 
 ## Island 8 — Production AI
 
+**Theme:** enforce production guarantees as deterministic code, safe evidence, bounded calls, and useful fallbacks.
+
+**Band:** moderate
+
+**Planned missions:** 8
+
+### Mission map
+
+| # | Slug | Introduces | Reinforces | Note |
+|---:|---|---|---|---|
+| 1 | `enforce-the-layers` | `layered-guardrails` | orchestration-gates | Input before output controls |
+| 2 | `build-the-safe-trace` | `observability-traces` | failure-taxonomy | Metadata-only evidence |
+| 3 | `check-the-budget` | `latency-cost-budget` | context-budget, traces | Bound planned work |
+| 4 | `keep-the-core-useful` | `graceful-degradation` | layered-guardrails | Preserve the core |
+| 5 | `trace-the-guardrail-decision` | — | guardrails, traces | Decision evidence |
+| 6 | `resolve-the-bounded-batch` | — | budgets, degradation | Ordered batch |
+| 7 | `inspect-production-evidence` | — | all four | **Relief:** diagnose only |
+| 8 | `operate-production-ai` | — | all four | Closing production pipeline |
+
 ### layered-guardrails
 - **prereqs:** trust-boundaries, orchestration-gates
 - **objective:** combine prompt guidance with deterministic input and output controls

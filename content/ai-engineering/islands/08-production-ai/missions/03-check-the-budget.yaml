@@ -1,0 +1,164 @@
+id: ai-production-03
+title: Check the budget
+track: ai-engineering
+island: production-ai
+order: 3
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- latency-cost-budget
+- context-budget
+- observability-traces
+teaching:
+  analogy: A restaurant reserves seats, ingredients, and oven time before taking orders.
+  explanation: A budget is a declared limit, not a hopeful average. Maximum output bounds a call before it runs. Half-open intervals avoid counting a handoff twice.
+  worked_example: 'prices = [2, 3]
+
+    print(sum(prices))'
+  key_points:
+  - Plan with upper bounds.
+  - Count concurrency at overlaps only.
+  - Report every exceeded limit in a stable order.
+brief: Write `check_call_budget(calls, budget) -> dict`. Validate exact call and budget records first. Tokens are input plus maximum output. Wall time is the largest end time. Concurrency uses half-open intervals, so an ending call does not overlap a starting call. Report all exceeded fields in budget order.
+signature:
+  entrypoint: check_call_budget
+  stub: "def check_call_budget(calls, budget):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - &id003
+      - &id001
+        call_id: a
+        input_tokens: 2
+        max_output_tokens: 3
+        cost_units: 1
+        start_ms: 0
+        duration_ms: 5
+    - &id002
+      max_requests: 2
+      max_tokens: 10
+      max_cost_units: 3
+      max_concurrency: 1
+      max_wall_ms: 10
+    expect:
+      status: within_budget
+      usage:
+        requests: 1
+        tokens: 5
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      exceeded: []
+  - args:
+    - - *id001
+      - call_id: b
+        input_tokens: 1
+        max_output_tokens: 1
+        cost_units: 1
+        start_ms: 2
+        duration_ms: 3
+    - *id002
+    expect:
+      status: over_budget
+      usage:
+        requests: 2
+        tokens: 7
+        cost_units: 2
+        peak_concurrency: 2
+        wall_ms: 5
+      exceeded:
+      - max_concurrency
+  - args:
+    - *id003
+    - max_requests: 1
+      max_tokens: 4
+      max_cost_units: 0
+      max_concurrency: 1
+      max_wall_ms: 4
+    raises: ValueError
+  hidden:
+  - args:
+    - []
+    - *id002
+    expect:
+      status: within_budget
+      usage:
+        requests: 0
+        tokens: 0
+        cost_units: 0
+        peak_concurrency: 0
+        wall_ms: 0
+      exceeded: []
+  - args:
+    - - call_id: ''
+        input_tokens: 2
+        max_output_tokens: 3
+        cost_units: 1
+        start_ms: 0
+        duration_ms: 5
+    - *id002
+    raises: ValueError
+  - args:
+    - - call_id: a
+        input_tokens: true
+        max_output_tokens: 3
+        cost_units: 1
+        start_ms: 0
+        duration_ms: 5
+    - *id002
+    raises: ValueError
+  - args:
+    - - *id001
+      - *id001
+    - *id002
+    raises: ValueError
+  - args:
+    - *id003
+    - max_requests: true
+      max_tokens: 1
+      max_cost_units: 1
+      max_concurrency: 1
+      max_wall_ms: 1
+    raises: ValueError
+  - args:
+    - - call_id: a
+        input_tokens: 0
+        max_output_tokens: 0
+        cost_units: 0
+        start_ms: 0
+        duration_ms: 1
+      - call_id: b
+        input_tokens: 0
+        max_output_tokens: 0
+        cost_units: 0
+        start_ms: 1
+        duration_ms: 1
+    - *id002
+    expect:
+      status: within_budget
+      usage:
+        requests: 2
+        tokens: 0
+        cost_units: 0
+        peak_concurrency: 1
+        wall_ms: 2
+      exceeded: []
+hints:
+- level: 1
+  text: Which numbers must be known before a call starts?
+- level: 2
+  text: Represent each call as a start and exclusive end interval.
+- level: 3
+  text: 'For shifts: `active = sum(a <= t < b for a, b in shifts)`. '
+solution: "def check_call_budget(calls, budget):\n    if not isinstance(calls, list) or not isinstance(budget, dict) or set(budget) != {\"max_requests\", \"max_tokens\", \"max_cost_units\", \"max_concurrency\", \"max_wall_ms\"}: raise ValueError(\"invalid input\")\n    if any(type(budget[k]) is not int or budget[k] <= 0 for k in budget): raise ValueError(\"invalid budget\")\n    ids = set(); intervals = []\n    for call in calls:\n        if not isinstance(call, dict) or set(call) != {\"call_id\", \"input_tokens\", \"max_output_tokens\", \"cost_units\", \"start_ms\", \"duration_ms\"} or type(call[\"call_id\"]) is not str or not call[\"call_id\"] or call[\"call_id\"] in ids: raise ValueError(\"invalid call\")\n        if any(type(call[k]) is not int or call[k] < 0 for k in call if k != \"call_id\"): raise ValueError(\"invalid call\")\n        ids.add(call[\"call_id\"]); intervals.append((call[\"start_ms\"], call[\"start_ms\"] + call[\"duration_ms\"]))\n    peak = max([sum(start <= point <\
+  \ end for start, end in intervals) for point in {p for pair in intervals for p in pair}] or [0])\n    usage = {\"requests\": len(calls), \"tokens\": sum(c[\"input_tokens\"] + c[\"max_output_tokens\"] for c in calls), \"cost_units\": sum(c[\"cost_units\"] for c in calls), \"peak_concurrency\": peak, \"wall_ms\": max((end for _, end in intervals), default=0)}\n    limits = [(\"max_requests\", \"requests\"), (\"max_tokens\", \"tokens\"), (\"max_cost_units\", \"cost_units\"), (\"max_concurrency\", \"peak_concurrency\"), (\"max_wall_ms\", \"wall_ms\")]\n    exceeded = [limit for limit, key in limits if usage[key] > budget[limit]]\n    return {\"status\": \"over_budget\" if exceeded else \"within_budget\", \"usage\": usage, \"exceeded\": exceeded}\n"

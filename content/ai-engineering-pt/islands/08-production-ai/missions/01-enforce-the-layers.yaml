@@ -1,0 +1,141 @@
+id: ai-production-01
+title: Aplique as camadas
+track: ai-engineering
+island: production-ai
+order: 1
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- layered-guardrails
+- orchestration-gates
+teaching:
+  analogy: Uma portaria tem placa, revista de entrada e revista de saída. A placa orienta; as revistas decidem.
+  explanation: Guardrails em camadas unem orientação e controles executáveis. O bloqueio de entrada vem antes do de saída. Valide todos os formulários antes de aceitar ou rejeitar um.
+  worked_example: 'etiquetas = ["público"]
+
+    bloqueada = "segredo"
+
+    print(bloqueada in etiquetas)'
+  key_points:
+  - Orientação não é autorização.
+  - Controle de entrada tem precedência.
+  - A ordem da policy explica a decisão.
+brief: 'Escreva `apply_guardrails(request, response, policy) -> dict`. Valide os formatos exatos de requisição, resposta e política antes de decidir. Retorne primeiro as correspondências de entrada na ordem da política; depois as de saída; caso contrário, retorne as orientações do prompt. Regras de prompt explicam o comportamento, mas nunca substituem bloqueios determinísticos. Todos os dados são fornecidos: sem rede, provedor, arquivos, relógio ou mutação.'
+signature:
+  entrypoint: apply_guardrails
+  stub: "def apply_guardrails(request, response, policy):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - input_labels:
+      - topic
+    - output_labels:
+      - answer
+    - &id001
+      prompt_rules:
+      - be concise
+      blocked_input_labels:
+      - secret
+      blocked_output_labels:
+      - unsafe
+    expect:
+      status: allowed
+      guidance:
+      - be concise
+  - args:
+    - input_labels:
+      - secret
+    - output_labels:
+      - unsafe
+    - *id001
+    expect:
+      status: rejected
+      layer: input
+      matches:
+      - secret
+  - args:
+    - input_labels:
+      - topic
+    - output_labels:
+      - unsafe
+    - *id001
+    expect:
+      status: rejected
+      layer: output
+      matches:
+      - unsafe
+  hidden:
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - *id001
+    expect:
+      status: allowed
+      guidance:
+      - be concise
+  - args:
+    - input_labels:
+      - []
+    - output_labels: []
+    - *id001
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - prompt_rules: []
+      blocked_input_labels: []
+      blocked_output_labels: []
+    expect:
+      status: allowed
+      guidance: []
+  - args:
+    - {}
+    - output_labels: []
+    - *id001
+    raises: ValueError
+  - args:
+    - input_labels: []
+    - output_labels: []
+    - prompt_rules:
+      - x
+      blocked_input_labels:
+      - x
+      - x
+      blocked_output_labels: []
+    raises: ValueError
+  - args:
+    - input_labels:
+      - b
+      - a
+    - output_labels: []
+    - prompt_rules:
+      - x
+      blocked_input_labels:
+      - a
+      - b
+      blocked_output_labels: []
+    expect:
+      status: rejected
+      layer: input
+      matches:
+      - a
+      - b
+hints:
+- level: 1
+  text: Qual camada vê entrada insegura primeiro?
+- level: 2
+  text: Monte uma lista de policy validada antes de comparar etiquetas.
+- level: 3
+  text: 'Em outra lista: `hits = [x for x in rules if x in labels]`. '
+solution: "def apply_guardrails(request, response, policy):\n    def labels(value, keys, name):\n        if not isinstance(value, dict) or set(value) != set(keys): raise ValueError(\"invalid \" + name)\n        result = []\n        for key in keys:\n            item = value[key]\n            if not isinstance(item, list) or any(type(x) is not str or not x for x in item) or len(set(item)) != len(item): raise ValueError(\"invalid \" + name)\n            result.append(item)\n        return result\n    inputs, = labels(request, (\"input_labels\",), \"request\")\n    outputs, = labels(response, (\"output_labels\",), \"response\")\n    rules, blocked_in, blocked_out = labels(policy, (\"prompt_rules\", \"blocked_input_labels\", \"blocked_output_labels\"), \"policy\")\n    matches = [x for x in blocked_in if x in inputs]\n    if matches: return {\"status\": \"rejected\", \"layer\": \"input\", \"matches\": matches}\n    matches = [x for x in blocked_out if x in outputs]\n    if matches: return {\"\
+  status\": \"rejected\", \"layer\": \"output\", \"matches\": matches}\n    return {\"status\": \"allowed\", \"guidance\": list(rules)}\n"
