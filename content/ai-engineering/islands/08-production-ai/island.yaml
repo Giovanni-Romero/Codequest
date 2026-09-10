@@ -11,6 +11,9 @@ concepts:
 - observability-traces
 - latency-cost-budget
 - graceful-degradation
+- orchestration-gates
+- failure-taxonomy
+- context-budget
 unlock_requires:
   requires_mission: ai-tools-08
 completion_reward_xp: 180

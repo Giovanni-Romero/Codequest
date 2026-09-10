@@ -231,3 +231,17 @@ def test_mission_concepts_are_declared_by_its_island(path):
 
     unknown = set(mission.concepts) - set(island.concepts)
     assert not unknown, f"{path.name} teaches {unknown}, not listed in island '{island.id}'"
+
+
+@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
+def test_ai_math_capstone_integrates_every_island_concept(track_id):
+    """Island 9 closes by combining math, statistics, probability, and optimization."""
+    from codequest.engine.loader import load_island
+
+    island_path = CONTENT_ROOT / track_id / "islands" / "09-mathematical-statistical-foundations"
+    island = load_island(island_path / "island.yaml")
+    capstone = load_mission(island_path / "missions" / "08-take-one-gradient-step.yaml")
+
+    assert set(capstone.concepts) == set(island.concepts), (
+        f"capstone covers {capstone.concepts}, expected {island.concepts}"
+    )

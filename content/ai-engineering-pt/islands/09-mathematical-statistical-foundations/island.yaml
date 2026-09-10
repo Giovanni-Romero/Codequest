@@ -1,0 +1,14 @@
+id: mathematical-statistical-foundations
+name: Fundamentos Matemáticos e Estatísticos
+track: ai-engineering
+order: 9
+theme: Cálculos auditáveis e premissas validadas para sistemas de IA
+description: Calcule vetores, resuma amostras, valide distribuições e inspecione uma atualização de otimização.
+concepts:
+- vector-operations
+- descriptive-statistics
+- probability-distributions
+- optimization-steps
+unlock_requires:
+  requires_mission: ai-production-08
+completion_reward_xp: 210

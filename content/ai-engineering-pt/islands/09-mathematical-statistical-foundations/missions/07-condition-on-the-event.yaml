@@ -1,0 +1,45 @@
+id: ai-math-07
+title: Classifique dois eventos
+track: ai-engineering
+island: mathematical-statistical-foundations
+order: 7
+difficulty: challenging
+tags: [ai-engineering, probability, conditioning]
+xp: 45
+concepts: [probability-distributions]
+teaching:
+  analogy: Duas portas podem nunca abrir juntas, enquanto dois lançamentos independentes de moeda podem dar cara ao mesmo tempo. São relações diferentes.
+  explanation: Probabilidade condicional restringe o grupo de referência a um evento que você já sabe que ocorreu. Eventos independentes satisfazem `P(A and B) = P(A) * P(B)`. Eventos mutuamente exclusivos satisfazem `P(A and B) = 0`; exceto para eventos de probabilidade zero, eles não podem ser independentes. A probabilidade do evento à direita precisa ser positiva para calcular `P(left | right)`.
+  worked_example: "vermelho_e_redondo = 2\nvermelho = 5\nprint(vermelho_e_redondo / vermelho)"
+  key_points: ["O denominador é o evento conhecido à direita.", "Independência compara a probabilidade conjunta com um produto.", "Exclusão mútua torna a probabilidade conjunta zero.", "Zero não pode ser denominador de condicionamento."]
+brief: 'Escreva `classify_events(joint, left, right) -> dict`. As entradas são probabilidades numéricas finitas em `[0, 1]`, exceto bool. Exija uma probabilidade conjunta viável e `right` positivo. Retorne `{"conditional_on_right": number, "independent": bool, "mutually_exclusive": bool}`. Considere iguais valores a até `1e-9`; caso contrário, lance `ValueError`.'
+signature:
+  entrypoint: classify_events
+  stub: "def classify_events(joint, left, right):\n    # Retorne evidências validadas de condicionamento e relação entre eventos.\n    pass\n"
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+  - args: [0.2, 0.5, 0.4]
+    expect: {conditional_on_right: 0.5, independent: true, mutually_exclusive: false}
+  - args: [0, 0.5, 0.3]
+    expect: {conditional_on_right: 0.0, independent: false, mutually_exclusive: true}
+  hidden:
+  - args: [0.25, 0.5, 0.5]
+    expect: {conditional_on_right: 0.5, independent: true, mutually_exclusive: false}
+  - args: [0.4, 0.5, 0]
+    raises: ValueError
+  - args: [0.6, 0.5, 0.8]
+    raises: ValueError
+  - args: [-0.1, 0.5, 0.5]
+    raises: ValueError
+  - args: [true, 1, 1]
+    raises: ValueError
+  - args: [.nan, 0.5, 0.5]
+    raises: ValueError
+  - args: [0.2, 0.5, .inf]
+    raises: ValueError
+hints:
+- {level: 1, text: "Dois eventos podem ocorrer juntos, e saber um altera o outro?"}
+- {level: 2, text: Compare a probabilidade conjunta com zero e com `left * right` após validar.}
+- {level: 3, text: "Padrão: `abs(joint - left * right) <= 1e-9`."}
+solution: "def classify_events(joint, left, right):\n    import math\n    if any(type(x) not in (int, float) or not math.isfinite(x) or not 0 <= x <= 1 for x in (joint, left, right)) or right <= 0 or joint > left or joint > right or joint < left + right - 1: raise ValueError('invalid probability')\n    return {'conditional_on_right': joint / right, 'independent': abs(joint - left * right) <= 1e-9, 'mutually_exclusive': joint == 0}\n"
