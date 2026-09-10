@@ -1,0 +1,9 @@
+id: reasoning-and-decision-making
+name: Raciocínio e Tomada de Decisão
+track: ai-engineering
+order: 11
+theme: Busca explícita, planos com restrições e atualizações de valor baseadas em evidências
+concepts: [state-space-search, heuristic-search, constraint-planning, reinforcement-updates]
+unlock_requires:
+  requires_mission: ai-ml-08
+completion_reward_xp: 220

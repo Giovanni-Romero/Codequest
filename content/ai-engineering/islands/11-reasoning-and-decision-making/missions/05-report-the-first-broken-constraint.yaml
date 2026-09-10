@@ -1,0 +1,131 @@
+id: ai-reasoning-05
+title: Report the first broken constraint
+track: ai-engineering
+island: reasoning-and-decision-making
+order: 5
+difficulty: challenging
+tags: [ai-engineering, reasoning, planning, constraints]
+xp: 45
+concepts: [constraint-planning]
+teaching:
+  analogy: A voyage checklist fails at the first impossible step, not after pretending the ship completed later steps. The remaining supplies at that point explain the failure.
+  explanation: A plan is more than an ordering. Every action can require earlier actions, consume resources, produce resources, and exclude incompatible choices. Sequential validation applies only successful actions and returns the earliest stable failure reason.
+  worked_example: |
+    resources = {"fuel": 1}
+    cost = {"fuel": 2}
+    print(resources["fuel"] >= cost["fuel"])
+  key_points:
+    - Validate action definitions before simulating a plan.
+    - Stop at the earliest broken constraint.
+    - Never apply the effects of a failed action.
+    - Exclusions conflict in either declaration direction.
+brief: >
+  Write `validate_plan(actions, plan, resources) -> dict`. `actions` maps string names to
+  dictionaries with exactly `requires` (list of action names), `costs` and `produces`
+  (resource-to-nonnegative-integer mappings), and `excludes` (list of action names).
+  Resources are nonnegative integers and `bool` is invalid. Process `plan` in order and
+  return `valid`, `failed_index`, `action`, `reason`, and remaining `resources`. Reasons are
+  `unknown-action`, `repeated-action`, `missing-prerequisite`, `excluded-action`, or
+  `insufficient-resource`. A valid plan uses null failure fields. Raise `ValueError` when
+  the action catalogue, references, plan container, or resource mapping is malformed.
+signature:
+  entrypoint: validate_plan
+  stub: |
+    def validate_plan(actions, plan, resources):
+        # Stop at the first action whose declared constraints do not hold.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - gather: {requires: [], costs: {fuel: 1}, produces: {ore: 2}, excludes: []}
+          build: {requires: [gather], costs: {ore: 2}, produces: {signal: 1}, excludes: []}
+        - [gather, build]
+        - {fuel: 1}
+      expect: {valid: true, failed_index: null, action: null, reason: null, resources: {fuel: 0, ore: 0, signal: 1}}
+    - args:
+        - gather: {requires: [], costs: {}, produces: {ore: 1}, excludes: []}
+          build: {requires: [gather], costs: {ore: 1}, produces: {}, excludes: []}
+        - [build, gather]
+        - {}
+      expect: {valid: false, failed_index: 0, action: build, reason: missing-prerequisite, resources: {}}
+  hidden:
+    - args:
+        - sail: {requires: [], costs: {fuel: 2}, produces: {}, excludes: []}
+        - [sail]
+        - {fuel: 1}
+      expect: {valid: false, failed_index: 0, action: sail, reason: insufficient-resource, resources: {fuel: 1}}
+    - args:
+        - north: {requires: [], costs: {}, produces: {}, excludes: [south]}
+          south: {requires: [], costs: {}, produces: {}, excludes: []}
+        - [north, south]
+        - {}
+      expect: {valid: false, failed_index: 1, action: south, reason: excluded-action, resources: {}}
+    - args:
+        - scan: {requires: [], costs: {}, produces: {}, excludes: []}
+        - [scan, scan]
+        - {}
+      expect: {valid: false, failed_index: 1, action: scan, reason: repeated-action, resources: {}}
+    - args:
+        - scan: {requires: [], costs: {}, produces: {}, excludes: []}
+        - [missing]
+        - {}
+      expect: {valid: false, failed_index: 0, action: missing, reason: unknown-action, resources: {}}
+    - args: [not-a-catalogue, [], {}]
+      raises: ValueError
+    - args:
+        - scan: {requires: [], costs: {fuel: true}, produces: {}, excludes: []}
+        - [scan]
+        - {fuel: 1}
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which checks must pass before an action is allowed to change resources?"
+  - level: 2
+    text: "Track completed actions and a copied resource dictionary while iterating with `enumerate`."
+  - level: 3
+    text: "Check unknown, repeated, prerequisites, exclusions, and affordability in that order; mutate resources only afterward."
+solution: |
+  def validate_plan(actions, plan, resources):
+      required_fields = {"requires", "costs", "produces", "excludes"}
+      if not isinstance(actions, dict) or not actions or not isinstance(plan, list) or not isinstance(resources, dict):
+          raise ValueError("invalid plan input")
+      def valid_amounts(values):
+          return isinstance(values, dict) and all(isinstance(name, str) and type(amount) is int and amount >= 0 for name, amount in values.items())
+      if not valid_amounts(resources):
+          raise ValueError("invalid resources")
+      for name, spec in actions.items():
+          if not isinstance(name, str) or not isinstance(spec, dict) or set(spec) != required_fields:
+              raise ValueError("invalid action")
+          if not isinstance(spec["requires"], list) or not isinstance(spec["excludes"], list) or not all(isinstance(item, str) for item in spec["requires"] + spec["excludes"]):
+              raise ValueError("invalid action")
+          if not valid_amounts(spec["costs"]) or not valid_amounts(spec["produces"]):
+              raise ValueError("invalid action")
+      if any(reference not in actions for spec in actions.values() for reference in spec["requires"] + spec["excludes"]):
+          raise ValueError("unknown action reference")
+      if not all(isinstance(name, str) for name in plan):
+          raise ValueError("invalid plan")
+      remaining = dict(resources)
+      completed = []
+      for index, name in enumerate(plan):
+          if name not in actions:
+              return {"valid": False, "failed_index": index, "action": name, "reason": "unknown-action", "resources": remaining}
+          spec = actions[name]
+          if name in completed:
+              reason = "repeated-action"
+          elif any(requirement not in completed for requirement in spec["requires"]):
+              reason = "missing-prerequisite"
+          elif any(item in completed for item in spec["excludes"]) or any(name in actions[item]["excludes"] for item in completed):
+              reason = "excluded-action"
+          elif any(remaining.get(resource, 0) < amount for resource, amount in spec["costs"].items()):
+              reason = "insufficient-resource"
+          else:
+              reason = None
+          if reason:
+              return {"valid": False, "failed_index": index, "action": name, "reason": reason, "resources": remaining}
+          for resource, amount in spec["costs"].items():
+              remaining[resource] = remaining.get(resource, 0) - amount
+          for resource, amount in spec["produces"].items():
+              remaining[resource] = remaining.get(resource, 0) + amount
+          completed.append(name)
+      return {"valid": True, "failed_index": None, "action": None, "reason": None, "resources": remaining}

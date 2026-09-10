@@ -268,3 +268,17 @@ def test_ai_machine_learning_capstone_integrates_every_island_concept(track_id):
     assert set(capstone.concepts) == set(island.concepts), (
         f"capstone covers {capstone.concepts}, expected {island.concepts}"
     )
+
+
+@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
+def test_ai_reasoning_capstone_integrates_every_island_concept(track_id):
+    """Island 11 closes with one audit spanning search, planning, and learning."""
+    from codequest.engine.loader import load_island
+
+    island_path = CONTENT_ROOT / track_id / "islands" / "11-reasoning-and-decision-making"
+    island = load_island(island_path / "island.yaml")
+    capstone = load_mission(island_path / "missions" / "08-audit-a-decision-process.yaml")
+
+    assert set(capstone.concepts) == set(island.concepts), (
+        f"capstone covers {capstone.concepts}, expected {island.concepts}"
+    )

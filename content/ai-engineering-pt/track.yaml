@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  As dez primeiras ilhas cobrem sistemas de IA confiáveis e fundamentos matemáticos, estatísticos e de machine learning.
+  As onze primeiras ilhas cobrem sistemas de IA confiáveis e fundamentos matemáticos, estatísticos, de machine learning e de tomada de decisão.
 
 runner: python
 file_extension: .py
@@ -20,3 +20,4 @@ islands:
   - 08-production-ai
   - 09-mathematical-statistical-foundations
   - 10-machine-learning-foundations
+  - 11-reasoning-and-decision-making

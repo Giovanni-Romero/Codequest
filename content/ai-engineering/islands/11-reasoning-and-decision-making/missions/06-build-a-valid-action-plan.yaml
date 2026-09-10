@@ -1,0 +1,137 @@
+id: ai-reasoning-06
+title: Build a valid action plan
+track: ai-engineering
+island: reasoning-and-decision-making
+order: 6
+difficulty: challenging
+tags: [ai-engineering, reasoning, planning, search]
+xp: 45
+concepts: [constraint-planning]
+teaching:
+  analogy: Instead of checking one proposed voyage, the planner tries only currently legal maneuvers until the required supplies or signal exist. The first successful short itinerary is enough.
+  explanation: Planning is search over action histories and resource states. Each action may run at most once, which keeps the state space finite. Breadth-first exploration returns the fewest-action valid plan, while pruning illegal actions avoids histories that cannot be executed.
+  worked_example: |
+    goals = {"signal": 1}
+    resources = {"signal": 0}
+    print(all(resources.get(name, 0) >= amount for name, amount in goals.items()))
+  key_points:
+    - Search only through actions legal in the current state.
+    - Apply costs before production.
+    - Never reuse an action.
+    - Queue order makes equal-length choices deterministic.
+brief: >
+  Write `build_valid_plan(actions, goals, resources) -> list`. Use the same action schema
+  and validation as the previous mission. `goals` is a nonempty mapping of resources to
+  nonnegative integer minimums. Breadth-first search plans in action catalogue order, with
+  each action usable once. Return the first fewest-action plan whose resulting resources
+  meet every goal, or `[]` if impossible. An already satisfied goal also returns `[]`.
+  Raise `ValueError` for malformed catalogues, references, goals, or resources.
+signature:
+  entrypoint: build_valid_plan
+  stub: |
+    def build_valid_plan(actions, goals, resources):
+        # Search the finite space of legal action sequences.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - gather: {requires: [], costs: {fuel: 1}, produces: {ore: 2}, excludes: []}
+          build: {requires: [gather], costs: {ore: 2}, produces: {signal: 1}, excludes: []}
+        - {signal: 1}
+        - {fuel: 1}
+      expect: [gather, build]
+    - args:
+        - wait: {requires: [], costs: {}, produces: {}, excludes: []}
+        - {signal: 1}
+        - {}
+      expect: []
+  hidden:
+    - args:
+        - slow: {requires: [], costs: {}, produces: {ore: 1}, excludes: []}
+          finish: {requires: [slow], costs: {ore: 1}, produces: {signal: 1}, excludes: []}
+          direct: {requires: [], costs: {fuel: 1}, produces: {signal: 1}, excludes: []}
+        - {signal: 1}
+        - {fuel: 1}
+      expect: [direct]
+    - args:
+        - north: {requires: [], costs: {}, produces: {map: 1}, excludes: [south]}
+          south: {requires: [], costs: {}, produces: {key: 1}, excludes: []}
+          finish: {requires: [north, south], costs: {}, produces: {signal: 1}, excludes: []}
+        - {signal: 1}
+        - {}
+      expect: []
+    - args:
+        - scan: {requires: [], costs: {}, produces: {signal: 1}, excludes: []}
+        - {signal: 0}
+        - {}
+      expect: []
+    - args:
+        - scan: {requires: [missing], costs: {}, produces: {}, excludes: []}
+        - {signal: 1}
+        - {}
+      raises: ValueError
+    - args:
+        - scan: {requires: [], costs: {}, produces: {signal: 1}, excludes: []}
+        - {signal: true}
+        - {}
+      raises: ValueError
+hints:
+  - level: 1
+    text: "What constitutes one planning state, and why is the search finite?"
+  - level: 2
+    text: "Queue `(plan, completed, resources)` and append only legal unused actions."
+  - level: 3
+    text: "After applying one action to a copied resource mapping, test the goals before enqueueing the new state."
+solution: |
+  def build_valid_plan(actions, goals, resources):
+      from collections import deque
+      required_fields = {"requires", "costs", "produces", "excludes"}
+      if not isinstance(actions, dict) or not actions or not isinstance(goals, dict) or not goals or not isinstance(resources, dict):
+          raise ValueError("invalid planning input")
+      def valid_amounts(values):
+          return isinstance(values, dict) and all(isinstance(name, str) and type(amount) is int and amount >= 0 for name, amount in values.items())
+      if not valid_amounts(goals) or not valid_amounts(resources):
+          raise ValueError("invalid resources")
+      for name, spec in actions.items():
+          if not isinstance(name, str) or not isinstance(spec, dict) or set(spec) != required_fields:
+              raise ValueError("invalid action")
+          if not isinstance(spec["requires"], list) or not isinstance(spec["excludes"], list) or not all(isinstance(item, str) for item in spec["requires"] + spec["excludes"]):
+              raise ValueError("invalid action")
+          if not valid_amounts(spec["costs"]) or not valid_amounts(spec["produces"]):
+              raise ValueError("invalid action")
+      if any(reference not in actions for spec in actions.values() for reference in spec["requires"] + spec["excludes"]):
+          raise ValueError("unknown action reference")
+      def complete(current):
+          return all(current.get(resource, 0) >= amount for resource, amount in goals.items())
+      if complete(resources):
+          return []
+      action_names = list(actions)
+      queue = deque([([], frozenset(), dict(resources))])
+      visited = {(frozenset(), tuple(sorted(resources.items())))}
+      while queue:
+          plan, completed, current = queue.popleft()
+          for name in action_names:
+              if name in completed:
+                  continue
+              spec = actions[name]
+              if any(requirement not in completed for requirement in spec["requires"]):
+                  continue
+              if any(item in completed for item in spec["excludes"]) or any(name in actions[item]["excludes"] for item in completed):
+                  continue
+              if any(current.get(resource, 0) < amount for resource, amount in spec["costs"].items()):
+                  continue
+              updated = dict(current)
+              for resource, amount in spec["costs"].items():
+                  updated[resource] = updated.get(resource, 0) - amount
+              for resource, amount in spec["produces"].items():
+                  updated[resource] = updated.get(resource, 0) + amount
+              next_plan = plan + [name]
+              if complete(updated):
+                  return next_plan
+              next_completed = completed | {name}
+              state = (next_completed, tuple(sorted(updated.items())))
+              if state not in visited:
+                  visited.add(state)
+                  queue.append((next_plan, next_completed, updated))
+      return []
