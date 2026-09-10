@@ -1,0 +1,160 @@
+id: ai-ml-08
+title: Audite um experimento de aprendizado
+track: ai-engineering
+island: machine-learning-foundations
+order: 8
+difficulty: challenging
+tags: [ai-engineering, machine-learning, experiment, capstone]
+xp: 45
+concepts: [dataset-splits, supervised-learning-contract, baselines-and-generalization, unsupervised-patterns]
+teaching:
+  analogy: Um teste no mar registra quais viagens treinaram o navegador, quais ajustaram a rota, quais a testaram, se ela superou a carta antiga e como os navios de teste se agrupam sem rótulos. Um relatório mantém cada afirmação rastreável.
+  explanation: Um experimento de aprendizado auditável conecta partições de dados, ajuste, inferência, baselines e estrutura sem rótulos. A ordenação determinística por id cria fatias separadas de treino, validação e teste. Um modelo linear é ajustado apenas nas linhas de treino e medido nas linhas intocadas contra a média dos targets de treino. Uma atribuição separada ao centroide mais próximo agrupa features de teste sem usar seus targets.
+  worked_example: |
+    pratica = [2, 4, 6]
+    prova = [8, 10]
+    palpite_antigo = sum(pratica) / len(pratica)
+    erros_antigos = [(valor - palpite_antigo) ** 2 for valor in prova]
+    grupos = [0 if valor < 9 else 1 for valor in prova]
+    print(erros_antigos, grupos)
+  key_points:
+    - Divida primeiro; estatísticas de treino nunca leem targets de validação ou teste.
+    - Modelo e baseline usam linhas reservadas e perdas idênticas.
+    - Grupos não supervisionados usam features sem fingir que são classes de target.
+    - Um relatório expõe as evidências por trás de cada conclusão.
+brief: >
+  Escreva `audit_learning_experiment(records, train_count, validation_count, centroids) -> dict`.
+  Cada registro tem `id` inteiro único e `feature` e `target` numéricos finitos, excluindo
+  `bool`. Exija fatias não vazias de treino, validação e teste após ordenar por id, variação
+  nas features de treino e uma lista não vazia de centroides numéricos finitos unidimensionais.
+  Ajuste uma reta de mínimos quadrados somente nas linhas de treino. Retorne `split_ids`,
+  `model`, perdas quadráticas médias de validação e teste, `baseline_test_loss` baseado na
+  média de treino, `beats_baseline`, além de `cluster_assignments` e `cluster_sizes` pelo
+  centroide mais próximo para as features de teste. Empates escolhem o menor índice.
+  Lance `ValueError` para entrada inválida ou aritmética não finita.
+signature:
+  entrypoint: audit_learning_experiment
+  stub: |
+    def audit_learning_experiment(records, train_count, validation_count, centroids):
+        # Retorne um relatório rastreável de experimento supervisionado e não supervisionado.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 4, feature: 4, target: 9}, {id: 1, feature: 1, target: 3}, {id: 6, feature: 6, target: 13}, {id: 2, feature: 2, target: 5}, {id: 5, feature: 5, target: 11}, {id: 3, feature: 3, target: 7}]
+        - 3
+        - 1
+        - [0, 10]
+      expect:
+        split_ids: {train: [1, 2, 3], validation: [4], test: [5, 6]}
+        model: {slope: 2.0, intercept: 1.0}
+        validation_loss: 0.0
+        test_loss: 0.0
+        baseline_test_loss: 50.0
+        beats_baseline: true
+        cluster_assignments: [0, 1]
+        cluster_sizes: [1, 1]
+    - args:
+        - [{id: 1, feature: 0, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}, {id: 4, feature: 3, target: 3}]
+        - 2
+        - 1
+        - [0, 5]
+      expect:
+        split_ids: {train: [1, 2], validation: [3], test: [4]}
+        model: {slope: 1.0, intercept: 0.0}
+        validation_loss: 0.0
+        test_loss: 0.0
+        baseline_test_loss: 6.25
+        beats_baseline: true
+        cluster_assignments: [1]
+        cluster_sizes: [0, 1]
+  hidden:
+    - args:
+        - [{id: 1, feature: -1, target: 1}, {id: 2, feature: 0, target: 1}, {id: 3, feature: 1, target: 1}, {id: 4, feature: 2, target: 1}]
+        - 2
+        - 1
+        - [-1, 2]
+      expect:
+        split_ids: {train: [1, 2], validation: [3], test: [4]}
+        model: {slope: 0.0, intercept: 1.0}
+        validation_loss: 0.0
+        test_loss: 0.0
+        baseline_test_loss: 0.0
+        beats_baseline: false
+        cluster_assignments: [1]
+        cluster_sizes: [0, 1]
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 1, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 2, feature: 1, target: 1}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 2, feature: 0, target: 1}, {id: 3, feature: 2, target: 2}, {id: 4, feature: 3, target: 3}], 2, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: true, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: .inf}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, []]
+      raises: ValueError
+    - args: [not-a-list, 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: -1, target: 0}, {id: 2, feature: 1, target: 0}, {id: 3, feature: 0, target: 0}, {id: 4, feature: -1.0e+308, target: 0}], 2, 1, [1.0e+308]]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Quais evidências provam que a divisão ficou isolada, o modelo superou sua referência e o agrupamento sem rótulos ignorou os targets?"
+  - level: 2
+    text: "Valide e divida primeiro, ajuste apenas a fatia de treino, avalie linhas intocadas e então agrupe somente features de teste."
+  - level: 3
+    text: "Padrão: `ordenados = sorted(linhas, key=lambda linha: linha['id'])`; derive todas as fatias seguintes dessa única ordem."
+solution: |
+  def audit_learning_experiment(records, train_count, validation_count, centroids):
+      import math
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      if not isinstance(records, list) or not records or type(train_count) is not int or type(validation_count) is not int or train_count <= 0 or validation_count <= 0 or train_count + validation_count >= len(records):
+          raise ValueError("invalid split")
+      if not isinstance(centroids, list) or not centroids or not all(finite_number(value) for value in centroids):
+          raise ValueError("invalid centroids")
+      if any(not isinstance(record, dict) or type(record.get("id")) is not int or not finite_number(record.get("feature")) or not finite_number(record.get("target")) for record in records):
+          raise ValueError("invalid record")
+      ids = [record["id"] for record in records]
+      if len(set(ids)) != len(ids):
+          raise ValueError("duplicate id")
+      ordered = sorted(records, key=lambda record: record["id"])
+      boundary = train_count + validation_count
+      train = ordered[:train_count]
+      validation = ordered[train_count:boundary]
+      test = ordered[boundary:]
+      try:
+          feature_mean = sum(record["feature"] for record in train) / len(train)
+          target_mean = sum(record["target"] for record in train) / len(train)
+          spread = sum((record["feature"] - feature_mean) ** 2 for record in train)
+          if spread == 0:
+              raise ValueError("training features do not vary")
+          slope = sum((record["feature"] - feature_mean) * (record["target"] - target_mean) for record in train) / spread
+          intercept = target_mean - slope * feature_mean
+          def loss(rows):
+              return sum((slope * record["feature"] + intercept - record["target"]) ** 2 for record in rows) / len(rows)
+          validation_loss = loss(validation)
+          test_loss = loss(test)
+          baseline_test_loss = sum((target_mean - record["target"]) ** 2 for record in test) / len(test)
+          assignments = []
+          for record in test:
+              distances = [(record["feature"] - centroid) ** 2 for centroid in centroids]
+              if not all(math.isfinite(distance) for distance in distances):
+                  raise ValueError("non-finite distance")
+              assignments.append(min(range(len(centroids)), key=lambda index: distances[index]))
+          results = [slope, intercept, validation_loss, test_loss, baseline_test_loss]
+          if not all(math.isfinite(value) for value in results):
+              raise ValueError("non-finite result")
+      except OverflowError as error:
+          raise ValueError("non-finite result") from error
+      return {"split_ids": {"train": [record["id"] for record in train], "validation": [record["id"] for record in validation], "test": [record["id"] for record in test]}, "model": {"slope": slope, "intercept": intercept}, "validation_loss": validation_loss, "test_loss": test_loss, "baseline_test_loss": baseline_test_loss, "beats_baseline": test_loss < baseline_test_loss, "cluster_assignments": assignments, "cluster_sizes": [assignments.count(index) for index in range(len(centroids))]}

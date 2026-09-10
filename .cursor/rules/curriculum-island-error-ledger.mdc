@@ -1,0 +1,47 @@
+---
+description: Prevent previously observed curriculum-island authoring and review failures
+alwaysApply: true
+---
+
+# Curriculum Island Error Ledger
+
+Read this file before planning, authoring, reviewing, or committing any curriculum island.
+Treat every prevention and detection item below as a required preflight, not advice.
+
+## Mandatory delivery loop
+
+1. Define a mission-to-concept matrix and the capstone integration contract.
+2. Author the English source, then mirror every executable field exactly in Portuguese.
+3. Run YAML/schema, parity, trust-boundary, metadata, and UI-count preflights.
+4. Run targeted mission/content/snapshot checks while editing.
+5. Run the full suite once on the final candidate, then request a fresh read-only `ADVANCE`/`REVISE` review.
+6. For every new review finding, update this ledger before the island commit.
+7. Commit only after `ADVANCE`, with this ledger staged when it changed.
+
+## Failures observed through Island 9
+
+- **CQ-I01 — Duplicate incomplete cloud island:** a second Island 9 used a similar slug but contained only one manifest. Prevention: compare local/remote trees and select one canonical slug; require manifest, eight EN missions, eight PT missions, and both track entries. Detection: `rtk git status`, `rtk git log --left-right HEAD...origin/ai-engineer`, and file-count/parity checks before integration.
+- **CQ-I02 — Manifest drift:** mission concepts were not all declared by the island manifest. Prevention: verify the union of mission concepts against the manifest, while explicitly allowing intentional reinforced concepts. Detection: automated EN/PT content tests.
+- **CQ-I03 — Capstone declared only one of four concepts:** M08 optimized a value but did not contractually integrate vectors, statistics, probability, and optimization. Prevention: the capstone must declare and behaviorally exercise every concept required by its island integration contract. Detection: concept-set assertion plus executable capstone cases.
+- **CQ-I04 — Over-generalized regression test:** a rule intended for Island 9 was initially applied to every AI island and falsely rejected Island 8's reinforced concepts. Prevention: scope invariants to the contract that owns them; do not universalize a local rule without checking every existing island model.
+- **CQ-I05 — Weak trust-boundary tests:** invalid containers and zero/negative learning rates could pass after validation was removed. Prevention: hidden cases must cover wrong container type, empty/misaligned vectors, `bool`, NaN/infinity, invalid distributions, and zero/negative/infinite rates. Detection: mutation-style review: mentally remove each guard and ensure a test fails.
+- **CQ-I06 — Huge integer raised `OverflowError`:** `math.isfinite` was called on an arbitrarily large integer. Prevention: numeric guards must exclude `bool` and convert representability failures to the mission's declared `ValueError`. Detection: include a huge-integer hidden case.
+- **CQ-I07 — Unquoted YAML punctuation truncated a hint:** commas inside a flow mapping became extra keys while the loader silently kept only the first text fragment. Prevention: quote punctuation-heavy YAML strings. Detection: parse every hint and assert its keys are exactly `level` and `text`, then compare the loaded full text.
+- **CQ-I08 — Portuguese wording drift:** literal translation produced wrong agreement and ambiguous “equal lists.” Prevention: review PT pedagogy for meaning and grammar after structural parity; prefer “listas de mesmo tamanho” and correct noun agreement.
+- **CQ-I09 — Stale cross-cutting counts:** UI still advertised eight islands/64 missions after Island 9. Prevention: update track catalogs, roadmap, UI copy, and snapshots from the same final island/mission totals. Detection: search old totals and run TUI snapshots.
+- **CQ-I10 — Partial format check missed a file:** checking only the modified test left `strings.py` unformatted. Prevention: the final gate always runs `rtk ruff check .` and `rtk ruff format --check .`.
+- **CQ-I11 — Obsolete CLI syntax wasted a validation cycle:** `codequest check <path>` was used instead of the current flags. Prevention: use `rtk proxy .venv\\Scripts\\codequest.exe check --track ai-engineering` and `--track ai-engineering-pt`; consult `--help` before guessing syntax.
+- **CQ-I12 — Full-suite repetition caused most delay:** expensive global tests ran before cheap structural issues were exhausted. Prevention: run cheap preflights and targeted checks first; run the full suite only on a review-ready candidate and again only when a cross-cutting correction can affect it.
+- **CQ-I13 — Malformed command payloads wasted retries:** stray quoting/tokens and one wrong working directory prevented commands from starting. Prevention: keep tool payloads minimal, verify the repository workdir, and run uncertain commands separately before chaining them.
+- **CQ-I14 — Unix/file-write assumptions failed on Windows:** `rtk ls` was unavailable and direct patching outside the writable root failed. Prevention: use `rtk proxy powershell` for Windows inspection/copy operations; create edits with `apply_patch` in an authorized work path, then copy to the verified repository target.
+- **CQ-I15 — Island 10 manifests omitted a required field:** both first candidates lacked `track`, so `load_island` rejected them before mission validation. Prevention: clone the complete manifest field checklist from the immediately previous island. Detection: load both manifests in the first RED/GREEN contract before running expensive suites.
+- **CQ-I16 — Nested float evidence failed exact comparison:** M05 returned binary artifacts such as `0.04999999999999999` inside a dictionary, where the evaluator's top-level tolerance does not recurse. Prevention: normalize declared nested float outputs at the mission boundary. Detection: include decimal subtraction cases such as `0.45 - 0.4` and assert the complete returned mapping.
+- **CQ-I17 — A finite-input check missed a non-finite derived distance:** M08 validated raw numbers and losses but allowed centroid subtraction to produce `inf`. Its huge-integer case failed earlier and never exercised clustering. Prevention: validate every derived numeric stage, not only inputs and final headline metrics. Detection: use stage-specific fixtures that keep earlier stages finite while forcing the targeted stage to overflow.
+
+## Required final gate
+
+Run both track checks, content tests, affected snapshots, `rtk ruff check .`, `rtk ruff format --check .`, `rtk git diff --check`, and one full `pytest` suite with a unique `--basetemp`. A fresh read-only reviewer must return `ADVANCE`.
+
+## Append-before-commit contract
+
+Do not duplicate entries. For a genuinely new failure, append `CQ-Ixx` with: island/date, symptom, root cause, prevention, and an executable detection command or test. Before committing, reconcile every `REVISE` finding against this ledger; if a finding is absent, add it and stage this file with the island.

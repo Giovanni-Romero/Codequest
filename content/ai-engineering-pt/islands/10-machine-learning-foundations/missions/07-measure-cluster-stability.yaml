@@ -1,0 +1,102 @@
+id: ai-ml-07
+title: Meça a estabilidade dos clusters
+track: ai-engineering
+island: machine-learning-foundations
+order: 7
+difficulty: challenging
+tags: [ai-engineering, machine-learning, clustering, stability]
+xp: 45
+concepts: [unsupervised-patterns]
+teaching:
+  analogy: Mova dois faróis e alguns barcos trocarão a luz mais próxima. Os barcos que mudaram revelam quanto o agrupamento dependia da posição dos faróis.
+  explanation: Um resultado de clustering pode ser sensível à inicialização. Compare atribuições de duas configurações de centroides nos mesmos pontos em vez de tratar um agrupamento como verdade. A ordem dos centroides precisa manter a mesma identidade pretendida de grupo nas duas configurações. A concordância relata estabilidade, enquanto os índices alterados mostram exatamente onde o agrupamento mudou.
+  worked_example: |
+    primeiras_rotas = [0, 0, 1, 1]
+    segundas_rotas = [0, 1, 1, 1]
+    alterados = [indice for indice, par in enumerate(zip(primeiras_rotas, segundas_rotas)) if par[0] != par[1]]
+    concordancia = 1 - len(alterados) / len(primeiras_rotas)
+    print(alterados, concordancia)
+  key_points:
+    - Uma atribuição de clusters resulta de escolhas, não de verdade absoluta.
+    - Compare os mesmos pontos sob mudanças controladas de centroides.
+    - Relate exemplos alterados junto de uma métrica agregada de concordância.
+brief: >
+  Escreva `measure_cluster_stability(points, first_centroids, second_centroids) -> dict`.
+  Aceite vetores numéricos finitos e não vazios, excluindo `bool`. Todos os vetores
+  compartilham uma dimensão e as duas listas de centroides têm o mesmo tamanho não nulo.
+  Atribua pontos pela menor distância euclidiana quadrada com desempate pelo menor índice
+  em cada configuração. Retorne as duas listas de atribuições, `changed_indices` e
+  `agreement` como a fração inalterada. Lance `ValueError` para entrada inválida ou
+  aritmética não finita.
+signature:
+  entrypoint: measure_cluster_stability
+  stub: |
+    def measure_cluster_stability(points, first_centroids, second_centroids):
+        # Compare duas atribuições determinísticas de clusters nos mesmos pontos.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[[0], [4], [10]], [[0], [10]], [[0], [6]]]
+      expect: {first_assignments: [0, 0, 1], second_assignments: [0, 1, 1], changed_indices: [1], agreement: 0.6666666666666666}
+    - args: [[[0], [4], [10]], [[0], [10]], [[1], [9]]]
+      expect: {first_assignments: [0, 0, 1], second_assignments: [0, 0, 1], changed_indices: [], agreement: 1.0}
+  hidden:
+    - args: [[[1]], [[0], [2]], [[0], [4]]]
+      expect: {first_assignments: [0], second_assignments: [0], changed_indices: [], agreement: 1.0}
+    - args: [[[-5], [5]], [[-4], [4]], [[-2], [2]]]
+      expect: {first_assignments: [0, 1], second_assignments: [0, 1], changed_indices: [], agreement: 1.0}
+    - args: [[], [[0]], [[0]]]
+      raises: ValueError
+    - args: [[[0]], [], [[0]]]
+      raises: ValueError
+    - args: [[[0]], [[0]], [[0], [1]]]
+      raises: ValueError
+    - args: [[[0, 1]], [[0, 1]], [[0]]]
+      raises: ValueError
+    - args: [[[true]], [[0]], [[0]]]
+      raises: ValueError
+    - args: [[[.nan]], [[0]], [[0]]]
+      raises: ValueError
+    - args: [[[0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF]], [[0]], [[1]]]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Quais pontos mudaram de grupo quando apenas a configuração dos centroides mudou?"
+  - level: 2
+    text: "Reutilize duas vezes a mesma regra determinística de atribuição e então compare as posições."
+  - level: 3
+    text: "Padrão: `alterados = [i for i, par in enumerate(zip(antes, depois)) if par[0] != par[1]]`."
+solution: |
+  def measure_cluster_stability(points, first_centroids, second_centroids):
+      import math
+      def valid_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      if not isinstance(points, list) or not points or not isinstance(first_centroids, list) or not first_centroids or not isinstance(second_centroids, list) or len(first_centroids) != len(second_centroids):
+          raise ValueError("invalid vectors")
+      vectors = points + first_centroids + second_centroids
+      if any(not isinstance(vector, list) or not vector for vector in vectors):
+          raise ValueError("invalid vector")
+      dimension = len(vectors[0])
+      if any(len(vector) != dimension or not all(valid_number(value) for value in vector) for vector in vectors):
+          raise ValueError("invalid vector")
+      def assign(centroids):
+          result = []
+          for point in points:
+              distances = [sum((value - center) ** 2 for value, center in zip(point, centroid)) for centroid in centroids]
+              if not all(math.isfinite(distance) for distance in distances):
+                  raise ValueError("non-finite distance")
+              result.append(min(range(len(distances)), key=lambda index: distances[index]))
+          return result
+      try:
+          first = assign(first_centroids)
+          second = assign(second_centroids)
+      except OverflowError as error:
+          raise ValueError("non-finite distance") from error
+      changed = [index for index, pair in enumerate(zip(first, second)) if pair[0] != pair[1]]
+      return {"first_assignments": first, "second_assignments": second, "changed_indices": changed, "agreement": (len(points) - len(changed)) / len(points)}

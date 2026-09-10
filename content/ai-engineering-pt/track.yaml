@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  As oito primeiras ilhas cobrem contexto rastreável, contratos de prompt, recuperação, RAG, saídas estruturadas, evals, ferramentas e garantias de produção.
+  As dez primeiras ilhas cobrem sistemas de IA confiáveis e fundamentos matemáticos, estatísticos e de machine learning.
 
 runner: python
 file_extension: .py
@@ -19,3 +19,4 @@ islands:
   - 07-tools-and-agents
   - 08-production-ai
   - 09-mathematical-statistical-foundations
+  - 10-machine-learning-foundations

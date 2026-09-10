@@ -1,0 +1,113 @@
+id: ai-ml-02
+title: Audite uma divisão de dataset
+track: ai-engineering
+island: machine-learning-foundations
+order: 2
+difficulty: challenging
+tags: [ai-engineering, machine-learning, leakage, data-quality]
+xp: 45
+concepts: [dataset-splits]
+teaching:
+  analogy: Três envelopes de prova podem ter rótulos diferentes e ainda conter a mesma folha de perguntas. Você inspeciona o conteúdo e as datas, não apenas os nomes dos envelopes.
+  explanation: Partições reproduzíveis ainda podem vazar exemplos ou informação futura. A sobreposição de identidades permite que exemplos de avaliação influenciem o ajuste. Um timestamp de treino posterior ao de validação ou teste inverte a direção do tempo. A cobertura dos rótulos também importa porque uma métrica agregada pode esconder uma partição que nunca contém uma classe.
+  worked_example: |
+    equipes = {"manha": ["Ana", "Beto"], "noite": ["Caio", "Dora"]}
+    sobreposicao = set(equipes["manha"]) & set(equipes["noite"])
+    contagens = {turno: len(nomes) for turno, nomes in equipes.items()}
+    print(sorted(sobreposicao), contagens)
+  key_points:
+    - Reprodutibilidade não detecta sobreposição de identidades.
+    - Dados temporais precisam preservar a ordem do passado para o futuro.
+    - Contagens por rótulo são evidências; uma única métrica total de equilíbrio não é.
+brief: >
+  Escreva `audit_dataset_split(train, validation, test) -> dict`. Cada argumento é uma
+  lista não vazia de registros contendo `id` inteiro único dentro daquela partição, uma
+  string `label` não vazia e um `timestamp` numérico finito. Retorne `overlap_ids` ordenados,
+  `label_counts` para cada partição e todo rótulo observado, `label_coverage_equal` e
+  `temporal_leakage`. Há vazamento temporal quando o último timestamp de treino não é
+  anterior ao primeiro de validação, ou quando o último de validação não é anterior ao
+  primeiro de teste. Lance `ValueError` para entrada inválida.
+signature:
+  entrypoint: audit_dataset_split
+  stub: |
+    def audit_dataset_split(train, validation, test):
+        # Retorne evidências de identidade, rótulo e tempo das três partições.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 1, label: A, timestamp: 1}, {id: 2, label: B, timestamp: 2}]
+        - [{id: 3, label: A, timestamp: 3}, {id: 4, label: B, timestamp: 4}]
+        - [{id: 5, label: A, timestamp: 5}, {id: 6, label: B, timestamp: 6}]
+      expect:
+        overlap_ids: []
+        label_counts: {train: {A: 1, B: 1}, validation: {A: 1, B: 1}, test: {A: 1, B: 1}}
+        label_coverage_equal: true
+        temporal_leakage: false
+    - args:
+        - [{id: 1, label: A, timestamp: 1}, {id: 2, label: B, timestamp: 3}]
+        - [{id: 2, label: B, timestamp: 2}, {id: 3, label: A, timestamp: 4}]
+        - [{id: 4, label: A, timestamp: 5}, {id: 5, label: B, timestamp: 6}]
+      expect:
+        overlap_ids: [2]
+        label_counts: {train: {A: 1, B: 1}, validation: {A: 1, B: 1}, test: {A: 1, B: 1}}
+        label_coverage_equal: true
+        temporal_leakage: true
+  hidden:
+    - args:
+        - [{id: 1, label: A, timestamp: 1}, {id: 2, label: B, timestamp: 2}]
+        - [{id: 3, label: A, timestamp: 3}]
+        - [{id: 4, label: A, timestamp: 4}, {id: 5, label: B, timestamp: 5}]
+      expect:
+        overlap_ids: []
+        label_counts: {train: {A: 1, B: 1}, validation: {A: 1, B: 0}, test: {A: 1, B: 1}}
+        label_coverage_equal: false
+        temporal_leakage: false
+    - args: [[], [{id: 2, label: A, timestamp: 2}], [{id: 3, label: A, timestamp: 3}]]
+      raises: ValueError
+    - args: [[{id: 1, label: A, timestamp: 1}, {id: 1, label: A, timestamp: 2}], [{id: 2, label: A, timestamp: 3}], [{id: 3, label: A, timestamp: 4}]]
+      raises: ValueError
+    - args: [[{id: true, label: A, timestamp: 1}], [{id: 2, label: A, timestamp: 2}], [{id: 3, label: A, timestamp: 3}]]
+      raises: ValueError
+    - args: [[{id: 1, label: "", timestamp: 1}], [{id: 2, label: A, timestamp: 2}], [{id: 3, label: A, timestamp: 3}]]
+      raises: ValueError
+    - args: [[{id: 1, label: A, timestamp: .inf}], [{id: 2, label: A, timestamp: 2}], [{id: 3, label: A, timestamp: 3}]]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Quais evidências revelam que três partições nomeadas não são realmente independentes?"
+  - level: 2
+    text: "Compare conjuntos de ids, conte cada rótulo por partição e verifique as duas fronteiras cronológicas."
+  - level: 3
+    text: "Padrão: `compartilhados = sorted((a & b) | (a & c) | (b & c))`."
+solution: |
+  def audit_dataset_split(train, validation, test):
+      import math
+      partitions = {"train": train, "validation": validation, "test": test}
+      ids = {}
+      for name, records in partitions.items():
+          if not isinstance(records, list) or not records:
+              raise ValueError("invalid partition")
+          current_ids = []
+          for record in records:
+              if not isinstance(record, dict) or type(record.get("id")) is not int or not isinstance(record.get("label"), str) or not record["label"]:
+                  raise ValueError("invalid record")
+              timestamp = record.get("timestamp")
+              if type(timestamp) not in (int, float):
+                  raise ValueError("invalid timestamp")
+              try:
+                  if not math.isfinite(timestamp):
+                      raise ValueError("invalid timestamp")
+              except OverflowError as error:
+                  raise ValueError("invalid timestamp") from error
+              current_ids.append(record["id"])
+          if len(set(current_ids)) != len(current_ids):
+              raise ValueError("duplicate id")
+          ids[name] = set(current_ids)
+      overlap_ids = sorted((ids["train"] & ids["validation"]) | (ids["train"] & ids["test"]) | (ids["validation"] & ids["test"]))
+      labels = sorted({record["label"] for records in partitions.values() for record in records})
+      label_counts = {name: {label: sum(record["label"] == label for record in records) for label in labels} for name, records in partitions.items()}
+      coverage = [set(record["label"] for record in records) for records in partitions.values()]
+      temporal_leakage = max(record["timestamp"] for record in train) >= min(record["timestamp"] for record in validation) or max(record["timestamp"] for record in validation) >= min(record["timestamp"] for record in test)
+      return {"overlap_ids": overlap_ids, "label_counts": label_counts, "label_coverage_equal": coverage[0] == coverage[1] == coverage[2], "temporal_leakage": temporal_leakage}

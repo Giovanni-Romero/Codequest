@@ -2,6 +2,9 @@
 
 This file tells any AI agent (Claude Code, or another) how to behave in this repository.
 Read it fully before the first action of every session.
+Before curriculum-island work, also read `.cursor/rules/curriculum-island-error-ledger.mdc`
+and enforce its preflight and append-before-commit contract.
+
 
 > ## ⚠️ Section 0 is SUSPENDED as of 2026-08-03
 >
@@ -206,10 +209,11 @@ The last item is not decoration. If he cannot explain it, the work is not done.
 At the start of every session, the agent should:
 
 1. Read `PROJECT_PLAN.md` to see which phase is active
-2. Run `git status` and `git branch --show-current`
-3. Ask which phase item Giovanni wants to work on, if it is not obvious
-4. Load the matching skill from `.claude/skills/`
-5. Confirm the teaching contract applies before writing anything
+2. For curriculum islands, read `.cursor/rules/curriculum-island-error-ledger.mdc`
+3. Run `git status` and `git branch --show-current`
+4. Ask which phase item Giovanni wants to work on, if it is not obvious
+5. Load the matching skill from `.claude/skills/`
+6. Confirm the teaching contract applies before writing anything
 
 ---
 

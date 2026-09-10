@@ -87,6 +87,15 @@ def test_mission_has_a_full_hint_ladder(path):
     assert levels == [1, 2, 3], f"{path.name} has hint levels {levels}"
 
 
+@pytest.mark.parametrize("path", MISSION_PATHS, ids=_ids(MISSION_PATHS))
+def test_mission_hints_do_not_hide_unknown_yaml_keys(path):
+    """Flow-mapping punctuation must not truncate text into silently ignored keys."""
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    for hint in raw["hints"]:
+        assert set(hint) == {"level", "text"}, f"{path.name} has malformed hint keys {set(hint)}"
+
+
 @pytest.mark.parametrize("path", SOURCE_MISSION_PATHS, ids=_ids(SOURCE_MISSION_PATHS))
 def test_the_declared_solution_passes_its_own_tests(path):
     """Run canonical solutions; mirror parity below proves their copies are identical."""
@@ -241,6 +250,20 @@ def test_ai_math_capstone_integrates_every_island_concept(track_id):
     island_path = CONTENT_ROOT / track_id / "islands" / "09-mathematical-statistical-foundations"
     island = load_island(island_path / "island.yaml")
     capstone = load_mission(island_path / "missions" / "08-take-one-gradient-step.yaml")
+
+    assert set(capstone.concepts) == set(island.concepts), (
+        f"capstone covers {capstone.concepts}, expected {island.concepts}"
+    )
+
+
+@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
+def test_ai_machine_learning_capstone_integrates_every_island_concept(track_id):
+    """Island 10 closes with one auditable experiment spanning all ML concepts."""
+    from codequest.engine.loader import load_island
+
+    island_path = CONTENT_ROOT / track_id / "islands" / "10-machine-learning-foundations"
+    island = load_island(island_path / "island.yaml")
+    capstone = load_mission(island_path / "missions" / "08-audit-a-learning-experiment.yaml")
 
     assert set(capstone.concepts) == set(island.concepts), (
         f"capstone covers {capstone.concepts}, expected {island.concepts}"
