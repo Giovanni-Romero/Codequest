@@ -1,0 +1,145 @@
+id: ai-data-01
+title: Validate a record contract
+track: ai-engineering
+island: data-engineering-for-ai
+order: 1
+difficulty: challenging
+tags: [ai-engineering, data, contract, validation]
+xp: 45
+concepts: [data-contracts]
+teaching:
+  analogy: A cargo manifest declares what every crate must contain before loading begins. A parseable label is not enough when the contents violate weight, type, or allowed-value rules.
+  explanation: A data contract makes field names, types, nullability, ranges, and semantic choices executable. Stable validation checks fields in declaration order and reports the first broken rule, so producers and consumers diagnose the same defect.
+  worked_example: |
+    contract = {"age": {"type": "integer", "nullable": False}}
+    record = {"age": 12}
+    print(type(record["age"]) is int)
+  key_points:
+    - Parsing proves syntax, not semantic validity.
+    - Boolean values are not integers at this boundary.
+    - Nullability is independent from field presence.
+    - Stable reasons make contract failures traceable.
+brief: >
+  Write `validate_record(record, contract) -> dict`. `contract` is a nonempty mapping whose
+  field specifications contain exactly `type`, `nullable`, `min`, `max`, and `allowed`.
+  Supported types are `string`, `integer`, `number`, and `boolean`. Bounds are finite numeric
+  values or null; `allowed` is null or a list of scalar values. Check contract fields in
+  declaration order, then reject unexpected record fields. Return `valid`, `field`, and
+  `reason`; valid records use null failure fields. Reasons are `missing`, `null`, `type`,
+  `min`, `max`, `allowed`, and `unexpected`. Raise `ValueError` for malformed contracts or
+  non-dictionary records.
+signature:
+  entrypoint: validate_record
+  stub: |
+    def validate_record(record, contract):
+        # Return the first stable contract violation for one record.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {id: 1, tier: gold, score: 8.5}
+        - id: {type: integer, nullable: false, min: 1, max: null, allowed: null}
+          tier: {type: string, nullable: false, min: null, max: null, allowed: [gold, silver]}
+          score: {type: number, nullable: true, min: 0, max: 10, allowed: null}
+      expect: {valid: true, field: null, reason: null}
+    - args:
+        - {id: 1, tier: bronze}
+        - id: {type: integer, nullable: false, min: 1, max: null, allowed: null}
+          tier: {type: string, nullable: false, min: null, max: null, allowed: [gold, silver]}
+      expect: {valid: false, field: tier, reason: allowed}
+  hidden:
+    - args:
+        - {id: true}
+        - id: {type: integer, nullable: false, min: 0, max: null, allowed: null}
+      expect: {valid: false, field: id, reason: type}
+    - args:
+        - {name: null}
+        - name: {type: string, nullable: false, min: null, max: null, allowed: null}
+      expect: {valid: false, field: name, reason: "null"}
+    - args:
+        - {id: 1, extra: x}
+        - id: {type: integer, nullable: false, min: 0, max: null, allowed: null}
+      expect: {valid: false, field: extra, reason: unexpected}
+    - args:
+        - {}
+        - id: {type: integer, nullable: false, min: 0, max: null, allowed: null}
+      expect: {valid: false, field: id, reason: missing}
+    - args:
+        - {score: .inf}
+        - score: {type: number, nullable: false, min: 0, max: 10, allowed: null}
+      expect: {valid: false, field: score, reason: type}
+    - args: [not-a-record, {}]
+      raises: ValueError
+    - args:
+        - {id: 1}
+        - id: {type: integer, nullable: false, min: 2, max: 1, allowed: null}
+      raises: ValueError
+    - args:
+        - {name: a}
+        - name: {type: string, nullable: false, min: 0, max: null, allowed: null}
+      raises: ValueError
+    - args:
+        - {id: 1}
+        - id: {type: integer, nullable: false, min: null, max: null, allowed: [true]}
+      expect: {valid: false, field: id, reason: allowed}
+hints:
+  - level: 1
+    text: "Which rules describe the contract itself, and which rules inspect one record?"
+  - level: 2
+    text: "Validate every field specification first; only then walk contract fields in order."
+  - level: 3
+    text: "Use exact type checks for integers and booleans, `math.isfinite` for numbers, and return immediately on the first failure."
+solution: |
+  def validate_record(record, contract):
+      import math
+      if not isinstance(record, dict) or not isinstance(contract, dict) or not contract:
+          raise ValueError("invalid contract input")
+      expected = {"type", "nullable", "min", "max", "allowed"}
+      supported = {"string", "integer", "number", "boolean"}
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      def scalar(value):
+          return value is None or type(value) in (str, int, bool) or (type(value) is float and math.isfinite(value))
+      for field, spec in contract.items():
+          if not isinstance(field, str) or not isinstance(spec, dict) or set(spec) != expected:
+              raise ValueError("invalid field contract")
+          if spec["type"] not in supported or type(spec["nullable"]) is not bool:
+              raise ValueError("invalid field contract")
+          if spec["type"] not in {"integer", "number"} and (spec["min"] is not None or spec["max"] is not None):
+              raise ValueError("invalid bound")
+          if spec["min"] is not None and not finite_number(spec["min"]):
+              raise ValueError("invalid bound")
+          if spec["max"] is not None and not finite_number(spec["max"]):
+              raise ValueError("invalid bound")
+          if spec["min"] is not None and spec["max"] is not None and spec["min"] > spec["max"]:
+              raise ValueError("invalid bounds")
+          if spec["allowed"] is not None and (not isinstance(spec["allowed"], list) or not all(scalar(value) for value in spec["allowed"])):
+              raise ValueError("invalid allowed values")
+      for field, spec in contract.items():
+          if field not in record:
+              return {"valid": False, "field": field, "reason": "missing"}
+          value = record[field]
+          if value is None:
+              if spec["nullable"]:
+                  continue
+              return {"valid": False, "field": field, "reason": "null"}
+          kind = spec["type"]
+          matches = (kind == "string" and isinstance(value, str)) or (kind == "integer" and type(value) is int) or (kind == "number" and finite_number(value)) or (kind == "boolean" and type(value) is bool)
+          if not matches:
+              return {"valid": False, "field": field, "reason": "type"}
+          if spec["min"] is not None and value < spec["min"]:
+              return {"valid": False, "field": field, "reason": "min"}
+          if spec["max"] is not None and value > spec["max"]:
+              return {"valid": False, "field": field, "reason": "max"}
+          if spec["allowed"] is not None and not any(type(value) is type(candidate) and value == candidate for candidate in spec["allowed"]):
+              return {"valid": False, "field": field, "reason": "allowed"}
+      for field in record:
+          if field not in contract:
+              return {"valid": False, "field": field, "reason": "unexpected"}
+      return {"valid": True, "field": None, "reason": None}

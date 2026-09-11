@@ -1,0 +1,125 @@
+id: ai-data-07
+title: Run a reproducible pipeline
+track: ai-engineering
+island: data-engineering-for-ai
+order: 7
+difficulty: challenging
+tags: [ai-engineering, data, pipeline, reproducibility]
+xp: 45
+concepts: [reproducible-pipelines]
+teaching:
+  analogy: A route is reproducible when the same chart and declared instructions produce the same ordered manifest, not merely when someone reruns a notebook and sees plausible cargo.
+  explanation: A deterministic pipeline declares its inputs, selected fields, ordering rule, and transformation version. Canonical input and output hashes make a rerun comparable, while a stable sort removes incidental ingestion order from the declared output artifact.
+  worked_example: |
+    rows = [{"id": 2}, {"id": 1}]
+    output = sorted(rows, key=lambda row: row["id"])
+    print(output)
+  key_points:
+    - Declare transformation inputs and ordering.
+    - Hash both source and output artifacts.
+    - A rerun is evidence only when versions match.
+    - Never mutate the source rows.
+brief: >
+  Write `run_reproducible_pipeline(records, selected_fields, sort_field,
+  transformation_version) -> dict`. Require a list of dictionaries, a nonempty unique list
+  of string selected fields, a sort field among them, and a nonempty transformation version.
+  Every row must contain every selected field; sort values must be scalar. Project selected
+  fields, sort deterministically by `(type name, value)`, and return `input_version`, `output`,
+  `output_version`, and `transformation_version`. Hash canonical JSON exactly as mission 5.
+  Raise `ValueError` for malformed or non-canonical data. Do not mutate inputs.
+signature:
+  entrypoint: run_reproducible_pipeline
+  stub: |
+    def run_reproducible_pipeline(records, selected_fields, sort_field, transformation_version):
+        # Produce one deterministically ordered and versioned artifact.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 2, score: 4}, {id: 1, score: 3}]
+        - [id, score]
+        - id
+        - select-sort-v1
+      expect:
+        input_version: 086e29faa660a0587cf86cd42d040cbac60e4a07679625407cfc0a1010370ef8
+        output: [{id: 1, score: 3}, {id: 2, score: 4}]
+        output_version: 05fb1013da50b04e5a5a41fd513f2c31a6d85dca01416a833aeb14afc058399a
+        transformation_version: select-sort-v1
+    - args:
+        - [{id: 2, score: 4, ignored: x}, {id: 1, score: 3, ignored: y}]
+        - [id, score]
+        - id
+        - select-sort-v1
+      expect:
+        input_version: 7d93d043b15c39237fe1ac794000252174a7be0a075673de12ed50f29e186ebc
+        output: [{id: 1, score: 3}, {id: 2, score: 4}]
+        output_version: 05fb1013da50b04e5a5a41fd513f2c31a6d85dca01416a833aeb14afc058399a
+        transformation_version: select-sort-v1
+  hidden:
+    - args: [[], [id], id, v1]
+      expect:
+        input_version: 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+        output: []
+        output_version: 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+        transformation_version: v1
+    - args: [[{id: 1}], [id, id], id, v1]
+      raises: ValueError
+    - args: [[{other: 1}], [id], id, v1]
+      raises: ValueError
+    - args: [[{id: [1]}], [id], id, v1]
+      raises: ValueError
+    - args: [[{id: .nan}], [id], id, v1]
+      raises: ValueError
+    - args: [not-a-list, [id], id, v1]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which declared choices remove accidental variation from the output artifact?"
+  - level: 2
+    text: "Hash the untouched input, project fresh dictionaries, sort the projection, then hash the output."
+  - level: 3
+    text: "Use `(type(row[sort_field]).__name__, row[sort_field])` as the key and canonical JSON for both digests."
+solution: |
+  def run_reproducible_pipeline(records, selected_fields, sort_field, transformation_version):
+      import hashlib
+      import json
+      if not isinstance(records, list) or any(not isinstance(record, dict) for record in records):
+          raise ValueError("invalid records")
+      if not isinstance(selected_fields, list) or not selected_fields or not all(isinstance(field, str) for field in selected_fields) or len(set(selected_fields)) != len(selected_fields):
+          raise ValueError("invalid fields")
+      if not isinstance(sort_field, str) or sort_field not in selected_fields or not isinstance(transformation_version, str) or not transformation_version:
+          raise ValueError("invalid pipeline")
+      if any(any(field not in record for field in selected_fields) for record in records):
+          raise ValueError("missing field")
+      if any(type(record[sort_field]) not in (str, int, float, bool) for record in records):
+          raise ValueError("invalid sort value")
+      def json_value(value):
+          if value is None or type(value) in (str, int, float, bool):
+              return True
+          if isinstance(value, list):
+              return all(json_value(item) for item in value)
+          if isinstance(value, dict):
+              return all(type(key) is str and json_value(item) for key, item in value.items())
+          return False
+      def fingerprint(value):
+          if not json_value(value):
+              raise ValueError("non-canonical data")
+          try:
+              payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+              digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+          except (TypeError, ValueError, OverflowError, UnicodeError) as caught:
+              raise ValueError("non-canonical data") from caught
+          return digest
+      input_version = fingerprint(records)
+      output = [{field: record[field] for field in selected_fields} for record in records]
+      try:
+          output.sort(key=lambda record: (type(record[sort_field]).__name__, record[sort_field]))
+      except TypeError as caught:
+          raise ValueError("unsortable value") from caught
+      return {
+          "input_version": input_version,
+          "output": output,
+          "output_version": fingerprint(output),
+          "transformation_version": transformation_version,
+      }

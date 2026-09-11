@@ -49,8 +49,8 @@ _STRINGS: dict[str, dict[Language, str]] = {
         "pt": "do básico ao assíncrono, dez ilhas",
     },
     "track.ai_engineering.note": {
-        "en": "eleven islands, 88 missions",
-        "pt": "onze ilhas, 88 missões",
+        "en": "twelve islands, 96 missions",
+        "pt": "doze ilhas, 96 missões",
     },
     "track.java.note": {"en": "planned for v1.1", "pt": "planejado para v1.1"},
     "track.typescript.note": {"en": "planned for v1.2", "pt": "planejado para v1.2"},

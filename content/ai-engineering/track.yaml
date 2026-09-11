@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Build reliable AI systems from deterministic foundations to production frameworks.
-  The first eleven islands cover reliable AI systems plus mathematical, statistical, machine learning, and decision-making foundations.
+  The first twelve islands cover reliable AI systems plus mathematical, statistical, machine learning, decision-making, and data foundations.
 
 runner: python
 file_extension: .py
@@ -21,3 +21,4 @@ islands:
   - 09-mathematical-statistical-foundations
   - 10-machine-learning-foundations
   - 11-reasoning-and-decision-making
+  - 12-data-engineering-for-ai

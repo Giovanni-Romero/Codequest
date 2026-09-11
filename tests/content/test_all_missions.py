@@ -282,3 +282,90 @@ def test_ai_reasoning_capstone_integrates_every_island_concept(track_id):
     assert set(capstone.concepts) == set(island.concepts), (
         f"capstone covers {capstone.concepts}, expected {island.concepts}"
     )
+
+
+@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
+def test_ai_data_engineering_capstone_integrates_every_island_concept(track_id):
+    """Island 12 closes with one reproducible audit spanning every data concept."""
+    from codequest.engine.loader import load_island
+
+    island_path = CONTENT_ROOT / track_id / "islands" / "12-data-engineering-for-ai"
+    island = load_island(island_path / "island.yaml")
+    capstone = load_mission(island_path / "missions" / "08-audit-a-data-pipeline.yaml")
+
+    assert set(capstone.concepts) == set(island.concepts), (
+        f"capstone covers {capstone.concepts}, expected {island.concepts}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("mission_name", "args"),
+    (
+        ("05-fingerprint-a-dataset.yaml", ([{1: "x"}],)),
+        ("05-fingerprint-a-dataset.yaml", ([{"value": (1, 2)}],)),
+        (
+            "06-record-dataset-lineage.yaml",
+            ([{"value": (1, 2)}], {"raw": "a" * 64}, "v1"),
+        ),
+        (
+            "07-run-a-reproducible-pipeline.yaml",
+            ([{"id": 1, "value": (1, 2)}], ["id", "value"], "id", "v1"),
+        ),
+        (
+            "08-audit-a-data-pipeline.yaml",
+            (
+                [{"id": 1, "value": (1, 2)}],
+                {
+                    "id": {
+                        "type": "integer",
+                        "nullable": False,
+                        "min": None,
+                        "max": None,
+                        "allowed": None,
+                    },
+                    "value": {
+                        "type": "string",
+                        "nullable": False,
+                        "min": None,
+                        "max": None,
+                        "allowed": None,
+                    },
+                },
+                "id",
+                "v1",
+            ),
+        ),
+    ),
+)
+def test_ai_data_hashing_rejects_values_outside_json(mission_name, args):
+    mission_path = (
+        CONTENT_ROOT
+        / "ai-engineering"
+        / "islands"
+        / "12-data-engineering-for-ai"
+        / "missions"
+        / mission_name
+    )
+    mission = load_mission(mission_path)
+    namespace = {}
+    exec(mission.solution, namespace)
+
+    with pytest.raises(ValueError):
+        namespace[mission.signature.entrypoint](*args)
+
+
+def test_ai_data_fingerprint_translates_unicode_encoding_errors():
+    mission_path = (
+        CONTENT_ROOT
+        / "ai-engineering"
+        / "islands"
+        / "12-data-engineering-for-ai"
+        / "missions"
+        / "05-fingerprint-a-dataset.yaml"
+    )
+    mission = load_mission(mission_path)
+    namespace = {}
+    exec(mission.solution, namespace)
+
+    with pytest.raises(ValueError):
+        namespace[mission.signature.entrypoint]([{"text": "\ud800"}])

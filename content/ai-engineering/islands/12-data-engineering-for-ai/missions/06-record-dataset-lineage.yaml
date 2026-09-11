@@ -1,0 +1,101 @@
+id: ai-data-06
+title: Record dataset lineage
+track: ai-engineering
+island: data-engineering-for-ai
+order: 6
+difficulty: challenging
+tags: [ai-engineering, data, versioning, lineage]
+xp: 45
+concepts: [dataset-versioning]
+teaching:
+  analogy: A derived chart must name both the source charts and the navigation rule that produced it. Its own seal alone cannot explain where it came from.
+  explanation: Lineage connects an output content version to immutable input versions and a transformation version. Sorting source names makes the report stable, while validating digest shape prevents filenames or informal labels from masquerading as content identities.
+  worked_example: |
+    lineage = {"inputs": {"raw": "a" * 64}, "transformation_version": "clean-v1"}
+    print(lineage["transformation_version"])
+  key_points:
+    - Output identity and provenance are different fields.
+    - Every input must use an immutable content digest.
+    - Transformation logic needs its own version.
+    - Stable source ordering keeps reports reproducible.
+brief: >
+  Write `record_lineage(dataset, input_versions, transformation_version) -> dict`. Fingerprint
+  `dataset` with the canonical SHA-256 contract from mission 5. Require a nonempty mapping
+  from nonempty string source names to lowercase 64-character hexadecimal digests, and a
+  nonempty string transformation version. Return `output_version`, alphabetically ordered
+  `inputs`, and `transformation_version`. Raise `ValueError` for malformed data or lineage.
+signature:
+  entrypoint: record_lineage
+  stub: |
+    def record_lineage(dataset, input_versions, transformation_version):
+        # Connect one output version to immutable inputs and transformation logic.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 1, text: a}]
+        - raw: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        - clean-v1
+      expect:
+        output_version: 3d156891e14d20c2e390a896744e57d69751a209cc187e572afe2b187503d278
+        inputs: {raw: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}
+        transformation_version: clean-v1
+    - args:
+        - []
+        - zeta: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          alpha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        - merge-v2
+      expect:
+        output_version: 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+        inputs: {alpha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, zeta: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb}
+        transformation_version: merge-v2
+  hidden:
+    - args: [[{id: 1}], {}, clean-v1]
+      raises: ValueError
+    - args: [[{id: 1}], {raw: filename.csv}, clean-v1]
+      raises: ValueError
+    - args: [[{id: 1}], {raw: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}, clean-v1]
+      raises: ValueError
+    - args: [[{id: 1}], {raw: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}, ""]
+      raises: ValueError
+    - args: [[{score: .nan}], {raw: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}, clean-v1]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which three versions are needed to explain a derived dataset?"
+  - level: 2
+    text: "Validate source names and lowercase digest shape before hashing the output."
+  - level: 3
+    text: "Use `string.hexdigits` carefully or compare each character with `0123456789abcdef`, then return `dict(sorted(input_versions.items()))`."
+solution: |
+  def record_lineage(dataset, input_versions, transformation_version):
+      import hashlib
+      import json
+      if not isinstance(dataset, list) or any(not isinstance(record, dict) for record in dataset):
+          raise ValueError("invalid dataset")
+      if not isinstance(input_versions, dict) or not input_versions or not isinstance(transformation_version, str) or not transformation_version:
+          raise ValueError("invalid lineage")
+      hexadecimal = set("0123456789abcdef")
+      if any(not isinstance(name, str) or not name or not isinstance(version, str) or len(version) != 64 or any(character not in hexadecimal for character in version) for name, version in input_versions.items()):
+          raise ValueError("invalid input version")
+      def json_value(value):
+          if value is None or type(value) in (str, int, float, bool):
+              return True
+          if isinstance(value, list):
+              return all(json_value(item) for item in value)
+          if isinstance(value, dict):
+              return all(type(key) is str and json_value(item) for key, item in value.items())
+          return False
+      if not json_value(dataset):
+          raise ValueError("non-canonical dataset")
+      try:
+          payload = json.dumps(dataset, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+          output_version = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+      except (TypeError, ValueError, OverflowError, UnicodeError) as caught:
+          raise ValueError("non-canonical dataset") from caught
+      return {
+          "output_version": output_version,
+          "inputs": dict(sorted(input_versions.items())),
+          "transformation_version": transformation_version,
+      }

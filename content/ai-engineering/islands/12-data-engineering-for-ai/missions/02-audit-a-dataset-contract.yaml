@@ -1,0 +1,139 @@
+id: ai-data-02
+title: Audit a dataset contract
+track: ai-engineering
+island: data-engineering-for-ai
+order: 2
+difficulty: challenging
+tags: [ai-engineering, data, contract, audit]
+xp: 45
+concepts: [data-contracts]
+teaching:
+  analogy: Inspecting one crate proves only one crate. A dataset audit keeps every failed row index and reason so a producer can repair the shipment without guessing.
+  explanation: Dataset validation applies one stable contract to every record without mutating the source. Counts summarize scope, while ordered violation records preserve the exact row, field, and reason behind the result.
+  worked_example: |
+    violations = [{"index": 1, "field": "score", "reason": "null"}]
+    print(len(violations))
+  key_points:
+    - Validate the contract before processing rows.
+    - Preserve source order in violation evidence.
+    - Count valid and invalid records separately.
+    - Do not clean or mutate input during measurement.
+brief: >
+  Write `audit_dataset(records, contract) -> dict`. `records` is a list of dictionaries and
+  `contract` uses the exact field schema from mission 1. Validate the complete contract before
+  inspecting rows. Apply the same first-violation rules to each record and return `total_rows`,
+  `valid_rows`, `invalid_rows`, and ordered `violations`; each violation contains `index`,
+  `field`, and `reason`. Do not mutate inputs. Raise `ValueError` for malformed containers,
+  contracts, or non-dictionary rows.
+signature:
+  entrypoint: audit_dataset
+  stub: |
+    def audit_dataset(records, contract):
+        # Preserve row-level evidence for every contract failure.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 1, score: 8}, {id: 2, score: null}, {id: true, score: 4}]
+        - id: {type: integer, nullable: false, min: 1, max: null, allowed: null}
+          score: {type: number, nullable: false, min: 0, max: 10, allowed: null}
+      expect:
+        total_rows: 3
+        valid_rows: 1
+        invalid_rows: 2
+        violations:
+          - {index: 1, field: score, reason: "null"}
+          - {index: 2, field: id, reason: type}
+    - args:
+        - []
+        - id: {type: integer, nullable: false, min: 1, max: null, allowed: null}
+      expect: {total_rows: 0, valid_rows: 0, invalid_rows: 0, violations: []}
+  hidden:
+    - args:
+        - [{id: 0}, {id: 3}, {id: 2, extra: x}]
+        - id: {type: integer, nullable: false, min: 1, max: 2, allowed: null}
+      expect:
+        total_rows: 3
+        valid_rows: 0
+        invalid_rows: 3
+        violations:
+          - {index: 0, field: id, reason: min}
+          - {index: 1, field: id, reason: max}
+          - {index: 2, field: extra, reason: unexpected}
+    - args: [not-a-list, {}]
+      raises: ValueError
+    - args:
+        - [not-a-record]
+        - id: {type: integer, nullable: false, min: 1, max: null, allowed: null}
+      raises: ValueError
+    - args:
+        - [{score: 1}]
+        - score: {type: number, nullable: false, min: .nan, max: null, allowed: null}
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which evidence lets a producer locate every failed record without rerunning the audit?"
+  - level: 2
+    text: "Validate the field specifications once, then reuse one row-checking helper."
+  - level: 3
+    text: "Iterate with `enumerate`, append only failed reports, and derive both counts from the list length."
+solution: |
+  def audit_dataset(records, contract):
+      import math
+      if not isinstance(records, list) or not isinstance(contract, dict) or not contract or any(not isinstance(record, dict) for record in records):
+          raise ValueError("invalid dataset")
+      expected = {"type", "nullable", "min", "max", "allowed"}
+      supported = {"string", "integer", "number", "boolean"}
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      def scalar(value):
+          return value is None or type(value) in (str, int, bool) or (type(value) is float and math.isfinite(value))
+      for field, spec in contract.items():
+          if not isinstance(field, str) or not isinstance(spec, dict) or set(spec) != expected or spec["type"] not in supported or type(spec["nullable"]) is not bool:
+              raise ValueError("invalid field contract")
+          if spec["type"] not in {"integer", "number"} and (spec["min"] is not None or spec["max"] is not None):
+              raise ValueError("invalid bound")
+          if spec["min"] is not None and not finite_number(spec["min"]):
+              raise ValueError("invalid bound")
+          if spec["max"] is not None and not finite_number(spec["max"]):
+              raise ValueError("invalid bound")
+          if spec["min"] is not None and spec["max"] is not None and spec["min"] > spec["max"]:
+              raise ValueError("invalid bounds")
+          if spec["allowed"] is not None and (not isinstance(spec["allowed"], list) or not all(scalar(value) for value in spec["allowed"])):
+              raise ValueError("invalid allowed values")
+      def check(record):
+          for field, spec in contract.items():
+              if field not in record:
+                  return field, "missing"
+              value = record[field]
+              if value is None:
+                  if spec["nullable"]:
+                      continue
+                  return field, "null"
+              kind = spec["type"]
+              matches = (kind == "string" and isinstance(value, str)) or (kind == "integer" and type(value) is int) or (kind == "number" and finite_number(value)) or (kind == "boolean" and type(value) is bool)
+              if not matches:
+                  return field, "type"
+              if spec["min"] is not None and value < spec["min"]:
+                  return field, "min"
+              if spec["max"] is not None and value > spec["max"]:
+                  return field, "max"
+              if spec["allowed"] is not None and not any(type(value) is type(candidate) and value == candidate for candidate in spec["allowed"]):
+                  return field, "allowed"
+          for field in record:
+              if field not in contract:
+                  return field, "unexpected"
+          return None, None
+      violations = []
+      for index, record in enumerate(records):
+          field, reason = check(record)
+          if reason:
+              violations.append({"index": index, "field": field, "reason": reason})
+      invalid = len(violations)
+      return {"total_rows": len(records), "valid_rows": len(records) - invalid, "invalid_rows": invalid, "violations": violations}
