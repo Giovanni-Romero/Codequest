@@ -404,23 +404,27 @@ def load_island(path: str | Path) -> Island:
     )
 
 
-def iter_mission_paths(content_dir: str | Path, track: str) -> Iterator[Path]:
-    """Yield every mission file of a track, sorted, so runs are reproducible.
+def iter_mission_paths(track_root: str | Path) -> Iterator[Path]:
+    """Yield every mission file below one localized track root, sorted.
 
     Sorting matters more than it looks: an unsorted ``glob`` makes test ids and error
     output depend on filesystem order, which differs between Windows and Linux CI.
+
+    Accepting the resolved track root keeps repository layout out of the engine. The
+    service owns track and locale selection; the loader only knows how a catalogue is
+    shaped once selected.
     """
-    root = Path(content_dir) / track / "islands"
+    root = Path(track_root) / "islands"
     if not root.is_dir():
         return
     yield from sorted(root.glob("*/missions/*.yaml"))
 
 
-def discover_missions(content_dir: str | Path, track: str) -> list[Mission]:
+def discover_missions(track_root: str | Path) -> list[Mission]:
     """Load every mission of a track, ordered by island then by ``order``.
 
     Raises the first validation failure it hits. Callers that want to survey all broken
     content should iterate ``iter_mission_paths`` and call ``load_mission`` themselves.
     """
-    missions = [load_mission(path) for path in iter_mission_paths(content_dir, track)]
+    missions = [load_mission(path) for path in iter_mission_paths(track_root)]
     return sorted(missions, key=lambda m: (m.island, m.order))

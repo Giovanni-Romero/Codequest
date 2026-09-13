@@ -21,7 +21,17 @@ from codequest.services.progress_service import ProgressService
 from codequest.storage.db import init_db
 from helpers import CONTENT_ROOT
 
-SUM_LIST = CONTENT_ROOT / "python" / "islands" / "01-foundations" / "missions" / "06-sum-list.yaml"
+SUM_LIST = (
+    CONTENT_ROOT
+    / "tracks"
+    / "python"
+    / "locales"
+    / "en"
+    / "islands"
+    / "01-foundations"
+    / "missions"
+    / "06-sum-list.yaml"
+)
 
 CORRECT = """
 def sum_list(numbers):

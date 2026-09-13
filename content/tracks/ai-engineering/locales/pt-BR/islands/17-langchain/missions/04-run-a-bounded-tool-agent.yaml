@@ -1,0 +1,93 @@
+id: ai-langchain-04
+title: Execute um agente de ferramentas limitado
+track: ai-engineering
+island: langchain
+order: 4
+difficulty: expert
+tags: [ai-engineering, langchain, agents, tools, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-tools-agents]
+teaching:
+  analogy: Um despachante do porto pode escolher um guindaste, mas o supervisor decide quais estão ligados e quantos movimentos são permitidos.
+  explanation: Um agente propõe chamadas de ferramentas; ele não concede autoridade. Orquestração segura expõe apenas ferramentas permitidas, valida argumentos antes da execução e limita recursão mesmo com modelo falso determinístico.
+  worked_example: |
+    from langchain_core.tools import tool
+    @tool
+    def lookup(value: str) -> str:
+        """Find one local value."""
+        return "found:" + value
+    print(lookup.invoke({"value": "map"}))
+  key_points:
+    - Disponibilidade de ferramenta é uma decisão de autorização da aplicação.
+    - Modelos de chat falsos tornam o agente determinístico e offline.
+    - Limite todo loop de agente com recursão explícita.
+brief: >
+  Escreva `run_bounded_agent(tool_name, argument, allowed_tools, max_steps) -> dict`.
+  As ferramentas conhecidas são `lookup` e `publish`. Exija strings não vazias, lista
+  única composta apenas por ferramentas conhecidas e max_steps de 1 a 4, excluindo
+  booleanos. Se a ferramenta pedida não for permitida, retorne bloqueado sem chamadas e
+  answer nulo. Caso contrário, defina ambas com `@tool`, exponha apenas as permitidas a
+  `create_agent` e use subclasse de `FakeMessagesListChatModel` cujo `bind_tools` retorna
+  a própria instância. Programe uma chamada seguida de `done`, invoque com limite de
+  recursão derivado de max_steps e retorne status, chamada executada e resposta final.
+signature:
+  entrypoint: run_bounded_agent
+  stub: |
+    def run_bounded_agent(tool_name, argument, allowed_tools, max_steps):
+        # Authorize first, then run a deterministic fake-model agent.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [lookup, chart, [lookup], 1], expect: {status: completed, calls: [{tool: lookup, argument: chart}], answer: done}}
+    - {args: [publish, notice, [lookup], 2], expect: {status: blocked, calls: [], answer: null}}
+  hidden:
+    - {args: [publish, notice, [publish], 1], expect: {status: completed, calls: [{tool: publish, argument: notice}], answer: done}}
+    - {args: [delete, x, [lookup], 1], raises: ValueError}
+    - {args: [lookup, '', [lookup], 1], raises: ValueError}
+    - {args: [lookup, x, [lookup, lookup], 1], raises: ValueError}
+    - {args: [lookup, x, [lookup, [lookup]], 1], raises: ValueError}
+    - {args: [lookup, x, [unknown], 1], raises: ValueError}
+    - {args: [lookup, x, [lookup], true], raises: ValueError}
+    - {args: [lookup, x, [lookup], 0], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual camada autoriza a ferramenta antes que o modelo proponha uma chamada?"}
+  - {level: 2, text: "Passe somente ferramentas permitidas a `create_agent` e defina `recursion_limit` na configuração de invoke."}
+  - {level: 3, text: "Um objeto de teste pode implementar `bind_tools` retornando a si mesmo quando as respostas já estão programadas."}
+solution: |
+  def run_bounded_agent(tool_name, argument, allowed_tools, max_steps):
+      from langchain.agents import create_agent
+      from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+      from langchain_core.messages import AIMessage
+      from langchain_core.tools import tool
+      known = {"lookup", "publish"}
+      if type(tool_name) is not str or tool_name not in known or type(argument) is not str or not argument.strip():
+          raise ValueError("invalid request")
+      if type(allowed_tools) is not list or any(type(name) is not str or name not in known for name in allowed_tools):
+          raise ValueError("invalid allowlist")
+      if len(set(allowed_tools)) != len(allowed_tools):
+          raise ValueError("invalid allowlist")
+      if type(max_steps) is not int or not 1 <= max_steps <= 4:
+          raise ValueError("invalid step limit")
+      if tool_name not in allowed_tools:
+          return {"status": "blocked", "calls": [], "answer": None}
+      calls = []
+      @tool
+      def lookup(value: str) -> str:
+          """Find one value in the local chart."""
+          calls.append({"tool": "lookup", "argument": value})
+          return "found:" + value
+      @tool
+      def publish(value: str) -> str:
+          """Publish one local notice."""
+          calls.append({"tool": "publish", "argument": value})
+          return "published:" + value
+      class BoundFake(FakeMessagesListChatModel):
+          def bind_tools(self, tools, *, tool_choice=None, **kwargs):
+              return self
+      responses = [AIMessage(content="", tool_calls=[{"name": tool_name, "args": {"value": argument}, "id": "call-1", "type": "tool_call"}]), AIMessage(content="done")]
+      model = BoundFake(responses=responses)
+      tools = {"lookup": lookup, "publish": publish}
+      agent = create_agent(model, [tools[name] for name in allowed_tools])
+      result = agent.invoke({"messages": [{"role": "user", "content": "execute"}]}, config={"recursion_limit": max_steps * 2 + 2})
+      return {"status": "completed", "calls": calls, "answer": result["messages"][-1].content}

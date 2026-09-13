@@ -1,0 +1,60 @@
+id: ai-langchain-02
+title: Render a guarded prompt
+track: ai-engineering
+island: langchain
+order: 2
+difficulty: expert
+tags: [ai-engineering, langchain, prompts, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-prompt-templates]
+teaching:
+  analogy: A customs form has declared boxes; missing a box or inventing a new one invalidates the form before cargo moves.
+  explanation: PromptTemplate declares variables and renders them as data. Using the f-string formatter avoids executable template engines, while exact variable matching makes failures early and predictable.
+  worked_example: |
+    from langchain_core.prompts import PromptTemplate
+    prompt = PromptTemplate.from_template("Port: {name}")
+    print(prompt.invoke({"name": "Oslo"}).to_string())
+  key_points:
+    - Use the f-string template format for locally authored templates.
+    - Require exactly the variables declared by the template.
+    - Convert PromptValue to a plain string at the boundary.
+brief: >
+  Write `render_guarded_prompt(template, values) -> str`. Require a non-blank template
+  string and a mapping with non-empty string keys. Build `PromptTemplate` with the
+  `f-string` format, require values to match its input variables exactly, invoke it, and
+  return `to_string()`. Translate malformed templates or rendering failures to `ValueError`.
+signature:
+  entrypoint: render_guarded_prompt
+  stub: |
+    def render_guarded_prompt(template, values):
+        # Declare, validate, and render an f-string PromptTemplate.
+        pass
+constraints: {max_runtime_ms: 3000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: ["Question: {question}\nContext: {context}", {question: 'Where?', context: Harbor}], expect: "Question: Where?\nContext: Harbor"}
+    - {args: ['Status: {status}', {status: ready}], expect: 'Status: ready'}
+  hidden:
+    - {args: ['', {}], raises: ValueError}
+    - {args: ['Hello {name}', {}], raises: ValueError}
+    - {args: ['Hello {name}', {name: Ada, extra: x}], raises: ValueError}
+    - {args: ['Hello {name', {name: Ada}], raises: ValueError}
+    - {args: ['Hello {name}', {1: Ada}], raises: ValueError}
+hints:
+  - {level: 1, text: "Which names does the template declare, and does the mapping match them exactly?"}
+  - {level: 2, text: "Inspect `prompt.input_variables` before calling `prompt.invoke(values)`."}
+  - {level: 3, text: "A separate form can compare `set(values)` with `set(form.fields)`."}
+solution: |
+  def render_guarded_prompt(template, values):
+      from langchain_core.prompts import PromptTemplate
+      if type(template) is not str or not template.strip():
+          raise ValueError("invalid template")
+      if type(values) is not dict or any(type(key) is not str or not key for key in values):
+          raise ValueError("invalid values")
+      try:
+          prompt = PromptTemplate.from_template(template, template_format="f-string")
+          if set(values) != set(prompt.input_variables):
+              raise ValueError("variables do not match")
+          return prompt.invoke(values).to_string()
+      except (KeyError, TypeError, ValueError) as exc:
+          raise ValueError("invalid prompt") from exc

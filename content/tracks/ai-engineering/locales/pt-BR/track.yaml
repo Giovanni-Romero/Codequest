@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  As dezesseis primeiras ilhas cobrem sistemas de IA confiáveis e fundamentos matemáticos, estatísticos, de machine learning, de tomada de decisão, de dados, de deep learning, de NLP, de IA responsável e de MLOps.
+  As dezessete primeiras ilhas cobrem sistemas de IA confiáveis, fundamentos centrais e orquestração com LangChain.
 
 runner: python
 file_extension: .py
@@ -26,3 +26,4 @@ islands:
   - 14-nlp-and-transformers
   - 15-responsible-ai
   - 16-mlops-and-model-lifecycle
+  - 17-langchain

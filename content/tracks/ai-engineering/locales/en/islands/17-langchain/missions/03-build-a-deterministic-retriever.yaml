@@ -1,0 +1,79 @@
+id: ai-langchain-03
+title: Build a deterministic retriever
+track: ai-engineering
+island: langchain
+order: 3
+difficulty: expert
+tags: [ai-engineering, langchain, retrieval, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-retrievers]
+teaching:
+  analogy: A harbor clerk accepts one request and returns traceable folders, regardless of which filing cabinet sits behind the desk.
+  explanation: A retriever is a query-to-Document contract, not a vector store. A runnable retriever can use any deterministic local ranking while preserving page content and metadata for consumers.
+  worked_example: |
+    from langchain_core.documents import Document
+    from langchain_core.runnables import chain
+    @chain
+    def retriever(query):
+        return [Document(page_content=query, metadata={"id": "demo"})]
+  key_points:
+    - Keep retrieval behind a query-to-Document contract.
+    - Preserve stable IDs and scores in metadata.
+    - Define deterministic tie-breaking and no-match behavior.
+brief: >
+  Write `retrieve_documents(query, records, k) -> list[dict]`. Each record must contain
+  exactly non-empty string `id` and `text`, with unique IDs. Require a non-blank query
+  and integer k from 1 through the corpus size, excluding booleans. Rank by the count of
+  distinct whitespace-delimited lowercase query words shared with text, discard zero
+  scores, and break ties by input order. Implement the query-to-Document step with
+  LangChain's `@chain`, invoke it, and return dictionaries with id, text, and score.
+signature:
+  entrypoint: retrieve_documents
+  stub: |
+    def retrieve_documents(query, records, k):
+        # Expose deterministic local ranking through a runnable retriever.
+        pass
+constraints: {max_runtime_ms: 3000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [red harbor, [{id: a, text: red boat at harbor}, {id: b, text: harbor map}, {id: c, text: blue hill}], 2]
+      expect: [{id: a, text: red boat at harbor, score: 2}, {id: b, text: harbor map, score: 1}]
+    - args: [missing, [{id: a, text: red boat}], 1]
+      expect: []
+  hidden:
+    - {args: ['', [{id: a, text: x}], 1], raises: ValueError}
+    - {args: [x, [], 1], raises: ValueError}
+    - {args: [x, [{id: a, text: x}, {id: a, text: x}], 1], raises: ValueError}
+    - {args: [x, [{id: a, text: x, extra: y}], 1], raises: ValueError}
+    - {args: [x, [{id: a, text: x}], true], raises: ValueError}
+hints:
+  - {level: 1, text: "What stable contract should the consumer see regardless of the ranking implementation?"}
+  - {level: 2, text: "Decorate a query function with `@chain` and return `Document` objects from it."}
+  - {level: 3, text: "Another search can sort tuples by `(-score, original_index)`."}
+solution: |
+  def retrieve_documents(query, records, k):
+      from langchain_core.documents import Document
+      from langchain_core.runnables import chain
+      if type(query) is not str or not query.strip() or type(records) is not list or not records:
+          raise ValueError("invalid retrieval input")
+      if type(k) is not int or not 1 <= k <= len(records):
+          raise ValueError("invalid k")
+      seen = set()
+      for record in records:
+          if type(record) is not dict or set(record) != {"id", "text"}:
+              raise ValueError("invalid record")
+          if any(type(record[key]) is not str or not record[key].strip() for key in ("id", "text")) or record["id"] in seen:
+              raise ValueError("invalid record")
+          seen.add(record["id"])
+      query_terms = set(query.lower().split())
+      @chain
+      def retriever(_query):
+          ranked = []
+          for index, record in enumerate(records):
+              score = len(query_terms & set(record["text"].lower().split()))
+              if score:
+                  ranked.append((-score, index, record))
+          ranked.sort(key=lambda item: (item[0], item[1]))
+          return [Document(page_content=record["text"], metadata={"id": record["id"], "score": -score}) for score, _, record in ranked[:k]]
+      documents = retriever.invoke(query)
+      return [{"id": doc.metadata["id"], "text": doc.page_content, "score": doc.metadata["score"]} for doc in documents]

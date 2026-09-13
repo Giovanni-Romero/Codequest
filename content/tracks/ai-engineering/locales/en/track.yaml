@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Build reliable AI systems from deterministic foundations to production frameworks.
-  The first sixteen islands cover reliable AI systems plus mathematical, statistical, machine learning, decision-making, data, deep learning, NLP, responsible AI, and MLOps foundations.
+  The first seventeen islands cover reliable AI systems, core foundations, and LangChain orchestration.
 
 runner: python
 file_extension: .py
@@ -26,3 +26,4 @@ islands:
   - 14-nlp-and-transformers
   - 15-responsible-ai
   - 16-mlops-and-model-lifecycle
+  - 17-langchain

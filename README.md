@@ -288,7 +288,7 @@ Missions are YAML files. You do not need to touch the engine to write one.
 
 1. Read `docs/mission-schema.md`
 2. Read `docs/curriculum/python-syllabus.md` and pick a concept that needs coverage
-3. Copy an existing mission from `content/python/islands/01-foundations/missions/`
+3. Copy an existing mission from `content/tracks/python/locales/en/islands/01-foundations/missions/`
 4. Fill in the teaching block, the brief, the tests, the hints, and a working solution
 5. Run `pytest tests/content` — it verifies your solution actually passes your own tests
 6. Open a pull request

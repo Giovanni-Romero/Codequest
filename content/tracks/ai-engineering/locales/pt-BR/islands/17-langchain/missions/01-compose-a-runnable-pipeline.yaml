@@ -1,0 +1,54 @@
+id: ai-langchain-01
+title: Componha um pipeline runnable
+track: ai-engineering
+island: langchain
+order: 1
+difficulty: expert
+tags: [ai-engineering, langchain, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-runnables]
+teaching:
+  analogy: Uma esteira do porto tem estações nomeadas; cada estação recebe um formato de carga e entrega um formato previsível à próxima.
+  explanation: Runnables do LangChain compõem transformações comuns sob um contrato único de invoke. A composição não elimina validação, então as entradas devem ser verificadas antes da primeira etapa.
+  worked_example: |
+    from langchain_core.runnables import RunnableLambda
+    pipeline = RunnableLambda(str.strip) | RunnableLambda(str.upper)
+    print(pipeline.invoke("  tide "))
+  key_points:
+    - Componha etapas pequenas e determinísticas com o operador pipe.
+    - Valide na fronteira de confiança antes de invocar a cadeia.
+    - Mantenha valores do framework atrás de um retorno de dados simples.
+brief: >
+  Escreva `compose_pipeline(text, prefix, repeats) -> str`. Exija strings em text e
+  prefix, text não vazio e repeats inteiro de 1 a 5, excluindo booleanos. Monte um
+  pipeline de `RunnableLambda` que remova espaços, adicione o prefixo e repita o
+  resultado. Invoque uma vez e retorne a string. Rejeite entradas inválidas com `ValueError`.
+signature:
+  entrypoint: compose_pipeline
+  stub: |
+    def compose_pipeline(text, prefix, repeats):
+        # Compose and invoke three deterministic RunnableLambda stages.
+        pass
+constraints: {max_runtime_ms: 3000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: ['  tide  ', 'AI:', 2], expect: 'AI:tideAI:tide'}
+    - {args: [signal, '', 1], expect: signal}
+  hidden:
+    - {args: ['', 'AI:', 1], raises: ValueError}
+    - {args: [signal, 'AI:', true], raises: ValueError}
+    - {args: [signal, 'AI:', 0], raises: ValueError}
+    - {args: [signal, 'AI:', 6], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual valor cada estação deve receber e devolver?"}
+  - {level: 2, text: "Envolva cada transformação em `RunnableLambda`, componha com `|` e chame `invoke`."}
+  - {level: 3, text: "Outro pipeline pode ser `RunnableLambda(abs) | RunnableLambda(str)`."}
+solution: |
+  def compose_pipeline(text, prefix, repeats):
+      from langchain_core.runnables import RunnableLambda
+      if type(text) is not str or not text.strip() or type(prefix) is not str:
+          raise ValueError("invalid text")
+      if type(repeats) is not int or not 1 <= repeats <= 5:
+          raise ValueError("invalid repeats")
+      pipeline = RunnableLambda(str.strip) | RunnableLambda(lambda value: prefix + value) | RunnableLambda(lambda value: value * repeats)
+      return pipeline.invoke(text)

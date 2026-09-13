@@ -37,6 +37,10 @@ ai-ml = [
     "torch>=2.14,<2.15",
     "transformers>=5.17,<5.18",
 ]
+ai-orchestration = [
+    "langchain>=1.4,<1.5",
+    "langgraph>=1.2,<1.3",
+]
 # Build-only: never installed for someone who just plays the game. Produces the
 # portable --onedir executable (see codequest.spec) for the pendrive use case.
 build = [

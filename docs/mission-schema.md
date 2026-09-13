@@ -3,9 +3,9 @@
 A mission is one YAML file. This document is the contract between the content and the
 engine. If the loader and this document disagree, one of them is a bug.
 
-**Location:** `content/<track>/islands/<NN>-<island>/missions/<NN>-<slug>.yaml`
+**Location:** `content/tracks/<track>/locales/<locale>/islands/<NN>-<island>/missions/<NN>-<slug>.yaml`
 
-**Working example:** `content/python/islands/01-foundations/missions/02-sum-list.yaml`
+**Working example:** `content/tracks/python/locales/en/islands/01-foundations/missions/06-sum-list.yaml`
 
 ---
 
@@ -15,7 +15,7 @@ engine. If the loader and this document disagree, one of them is a bug.
 |---|---|---|---|
 | `id` | string | yes | Unique across the whole repo. Format `<track>-<island>-<NN>` |
 | `title` | string | yes | Shown in the map and the mission header |
-| `track` | string | yes | Must match a track id in `content/<track>/track.yaml` |
+| `track` | string | yes | Must match a track id in `content/tracks/<track>/locales/<locale>/track.yaml` |
 | `island` | string | yes | Must match an island id |
 | `order` | int | yes | Position inside the island, starting at 1 |
 | `difficulty` | enum | yes | `elementary`, `simple`, `moderate`, `challenging`, `expert` |

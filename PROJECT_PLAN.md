@@ -5,7 +5,7 @@
 
 **Owner:** Giovanni
 **Status:** Phase 5.1 complete; Phase 6 awaits the final Python playtest. Phase 7 has an
-AI Engineering syllabus and sixteen complete islands; Island 17 is next.
+AI Engineering syllabus and seventeen complete islands; Island 18 is next.
 **License:** MIT (suggested)
 
 ---
@@ -530,16 +530,16 @@ Python: code calculates, simulates, validates assumptions, and produces auditabl
 The graded artifact remains deterministic and offline; written interpretation appears in
 the brief and expected return structure rather than requiring subjective grading.
 
-**Status, 2026-09-12: Islands 1 to 16 have shipped.** Each has eight bilingual missions.
+**Status, 2026-09-13: Islands 1 to 17 have shipped.** Each has eight bilingual missions.
 Island 1 covers bounded traceable context, Island 2 prompt contracts and trust boundaries,
 and Island 3 sparse retrieval, cosine similarity, stable top-k ranking, thresholds, and a
 closing retrieval pipeline. Island 4 adds deterministic RAG assembly, citation provenance,
 and abstention. Islands unlock only after the final mission of the previous island is
-completed. Island 6 adds deterministic eval datasets, capability metrics, adversarial cases, and held-out leakage checks. Island 7 adds explicit tool contracts, least-authority routing, ordered orchestration gates, and idempotent effect plans. Island 8 adds deterministic guardrails, safe traces, bounded latency and cost plans, and graceful provider fallbacks. Island 9 adds vector operations, descriptive statistics, finite probability distributions, and explicit optimization steps. Island 10 adds reproducible dataset splits, supervised learning contracts, honest baselines, generalization diagnostics, and deterministic unsupervised grouping. Island 11 adds explicit state-space search, heuristic comparisons, constrained action planning, and temporal-difference updates. Island 12 adds executable data contracts, multidimensional quality reports, immutable lineage, and reproducible transformations. Islands 13 and 14 add tiny offline PyTorch training and Transformers inference through the separately installed `ai-ml` extra; they download no model weights. Island 15 adds group fairness metrics, privacy boundaries, explainability records, and human oversight. Island 16 adds experiment tracking, model versioning, deployment strategies, and drift monitoring.
+completed. Island 6 adds deterministic eval datasets, capability metrics, adversarial cases, and held-out leakage checks. Island 7 adds explicit tool contracts, least-authority routing, ordered orchestration gates, and idempotent effect plans. Island 8 adds deterministic guardrails, safe traces, bounded latency and cost plans, and graceful provider fallbacks. Island 9 adds vector operations, descriptive statistics, finite probability distributions, and explicit optimization steps. Island 10 adds reproducible dataset splits, supervised learning contracts, honest baselines, generalization diagnostics, and deterministic unsupervised grouping. Island 11 adds explicit state-space search, heuristic comparisons, constrained action planning, and temporal-difference updates. Island 12 adds executable data contracts, multidimensional quality reports, immutable lineage, and reproducible transformations. Islands 13 and 14 add tiny offline PyTorch training and Transformers inference through the separately installed `ai-ml` extra; they download no model weights. Island 15 adds group fairness metrics, privacy boundaries, explainability records, and human oversight. Island 16 adds experiment tracking, model versioning, deployment strategies, and drift monitoring. Island 17 adds runnable composition, prompt templates, deterministic retrieval, and bounded tool agents with LangChain.
 
 Future framework missions use deterministic local fixtures, tiny CPU workloads, and fake
 providers. Model-backed exercises may be optional labs, but do not replace the mandatory
-graded framework missions. Island 17 is next. Islands 1 to 16 do not close Phase 7, so
+graded framework missions. Island 18 is next. Islands 1 to 17 do not close Phase 7, so
 there is no HTML phase lesson yet.
 
 ---

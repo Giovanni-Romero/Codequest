@@ -1,0 +1,8 @@
+id: langchain
+name: LangChain
+track: ai-engineering
+order: 17
+theme: Explicit framework contracts for prompts, retrieval, tools, and bounded agents
+concepts: [langchain-runnables, langchain-prompt-templates, langchain-retrievers, langchain-tools-agents]
+unlock_requires: {requires_mission: ai-mlops-08}
+completion_reward_xp: 300

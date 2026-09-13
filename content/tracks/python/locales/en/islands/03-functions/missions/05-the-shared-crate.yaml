@@ -1,0 +1,168 @@
+# Mission 5 of Functions. Introduces: mutable-default-trap.
+# Reinforces: default-arguments, lists.
+#
+# STRUCTURAL NOTE FOR FUTURE AUTHORS: the engine runs one fresh subprocess per test
+# case, so a mutable default is rebuilt for every case and the classic bug is invisible
+# ACROSS cases. That is why this mission's entrypoint must call its helper more than
+# once inside a single invocation - it is the only place the shared list can be seen.
+# See docs/curriculum/python/syllabus.md, Island 3 "Engine limits".
+# Schema reference: docs/mission-schema.md
+
+id: py-functions-05
+title: The shared crate
+track: python
+island: functions
+order: 5
+difficulty: simple
+tags: [default-arguments, mutable-default, gotcha]
+xp: 20
+
+concepts:
+  - mutable-default-trap
+  - default-arguments
+
+teaching:
+  analogy: |
+    A dockhand is told: "pack these items into a crate. If I do not hand you a crate,
+    take a fresh one." Reasonable. Except the dockhand hears it once, walks to the
+    corner, picks up one specific empty crate, and from then on "a fresh one" always
+    means that same crate.
+
+    The second batch goes into the first batch's crate. So does the third. Nobody
+    notices until someone opens them.
+
+  explanation: |
+    A default value is created once, when the def line runs - not each time the function
+    is called. For a number that is invisible: 2 is 2 forever. For a list it is a trap,
+    because a list can be *changed*, and every call that falls back to the default is
+    working on the very same list object.
+
+    def pack(items, crate=[]) does not mean "a new empty list each call". It means "this
+    one list, created once, shared by every call that does not pass its own".
+
+    The fix is a sentinel: default the parameter to None, and build the real list inside
+    the body. That runs on every call, which is what you wanted all along.
+
+        def pack(items, crate=None):
+            if crate is None:
+                crate = []
+
+    Use "is None", not "== None". You are asking whether it is that exact object.
+
+  worked_example: |
+    # The trap and the fix, on a guest list rather than a crate
+    def invite_bad(name, guests=[]):      # created ONCE
+        guests.append(name)
+        return guests
+
+    print(invite_bad("Ana"))              # ['Ana']
+    print(invite_bad("Bo"))               # ['Ana', 'Bo']   <- Ana is still there
+
+    def invite_ok(name, guests=None):     # created per call
+        if guests is None:
+            guests = []
+        guests.append(name)
+        return guests
+
+    print(invite_ok("Ana"))               # ['Ana']
+    print(invite_ok("Bo"))                # ['Bo']          <- as expected
+
+  key_points:
+    - A default is evaluated once at definition time, and every call that uses it shares that one object.
+    - "This only bites for values you can change: lists, dicts and sets. Numbers, strings and tuples are safe."
+    - "The fix is always the same: default to None, then build the real value inside the body."
+    - "Compare with 'is None' rather than '== None' - you are asking about identity, not equality."
+
+brief: |
+  Cargo arrives in batches. Each batch is a list of item names, and each batch must end
+  up in its own separate crate.
+
+  Write a function called pack_batches that takes batches (a list of batches) and
+  returns a list of crates, one crate per batch, in the same order. A crate is just a
+  list of the item names from that batch.
+
+  pack_batches([["rope"], ["salt", "nails"]]) returns [["rope"], ["salt", "nails"]].
+
+  Write a helper called pack that takes items and an optional crate, packs the items
+  into the crate, and returns it. When no crate is handed in, pack must start a genuinely
+  fresh one - and getting that part right is the whole mission.
+
+  An empty list of batches returns an empty list. A batch with no items still gets its
+  own crate, which is empty.
+
+signature:
+  entrypoint: pack_batches
+  stub: |
+    def pack(items, crate=None):
+        # A fresh crate every time nobody hands you one. Mind how you do that.
+        # your code here
+        pass
+
+
+    def pack_batches(batches):
+        # Call pack once per batch and collect what comes back.
+        # your code here
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[["rope"]]]
+      expect: [["rope"]]
+    # Two batches is where a shared crate first shows itself.
+    - args: [[["rope"], ["salt", "nails"]]]
+      expect: [["rope"], ["salt", "nails"]]
+  hidden:
+    - args: [[]]
+      expect: []
+    - args: [[[], []]]
+      expect: [[], []]
+    - args: [[["a"], ["b"], ["c"]]]
+      expect: [["a"], ["b"], ["c"]]
+    - args: [[["a", "b"], [], ["c"]]]
+      expect: [["a", "b"], [], ["c"]]
+    - args: [[["x"], ["x"], ["x"]]]
+      expect: [["x"], ["x"], ["x"]]
+
+hints:
+  - level: 1
+    text: |
+      Work out on paper what pack(["a"]) then pack(["b"]) returns if the crate parameter
+      defaults to an empty list written directly in the def line. When exactly was that
+      list created?
+  - level: 2
+    text: |
+      Give crate the default None. First thing in the body, check whether it is None and
+      if so assign a new empty list to it. Then append every item and return the crate.
+      pack_batches just loops over the batches, calls pack on each, and appends the
+      result to its own list.
+  - level: 3
+    text: |
+      The sentinel shape, collecting scores rather than cargo:
+
+          def record(score, sheet=None):
+              if sheet is None:
+                  sheet = []
+              sheet.append(score)
+              return sheet
+
+      Yours appends several items instead of one, and something else calls it once per
+      batch.
+
+solution: |
+  def pack(items, crate=None):
+      if crate is None:
+          crate = []
+      for item in items:
+          crate.append(item)
+      return crate
+
+
+  def pack_batches(batches):
+      crates = []
+      for batch in batches:
+          crates.append(pack(batch))
+      return crates

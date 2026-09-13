@@ -1,0 +1,97 @@
+id: ai-langchain-07
+title: Proteja um retriever de agente
+track: ai-engineering
+island: langchain
+order: 7
+difficulty: expert
+tags: [ai-engineering, langchain, agents, retrieval, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-retrievers, langchain-tools-agents]
+teaching:
+  analogy: Um despachante só pede pastas ao arquivo depois que o portão de acesso abre; um pedido não é um crachá.
+  explanation: Um retriever exposto como ferramenta continua atrás da autorização da aplicação. O agente recebe a ferramenta apenas no caminho permitido, e um modelo falso local mantém a execução reproduzível.
+  worked_example: |
+    if not allowed:
+        return {"status": "blocked", "calls": 0}
+    agent = create_agent(fake_model, [retrieve])
+  key_points:
+    - Autorize antes de construir o conjunto de ferramentas do agente.
+    - Preserve IDs recuperados fora do texto gerado pelo modelo.
+    - Conte efeitos executados, não intenções inferidas.
+brief: >
+  Escreva `gate_agent_retrieval(question, records, allow_retrieval, max_steps) -> dict`.
+  Valide question não vazia, registros id/text exatos e únicos, autorização booleana e
+  max_steps de 1 a 4. Se negado, retorne bloqueado, zero chamadas, nenhuma fonte e answer
+  nulo. Caso permitido, crie retriever `@chain` por sobreposição, exponha-o em um `@tool`,
+  execute `create_agent` com o fake model da missão 04 e retorne status, chamadas, fontes
+  ordenadas e `done`.
+signature:
+  entrypoint: gate_agent_retrieval
+  stub: |
+    def gate_agent_retrieval(question, records, allow_retrieval, max_steps):
+        # Gate the retriever tool before the fake-model agent sees it.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [red harbor, [{id: a, text: red harbor map}, {id: b, text: harbor gate}, {id: c, text: blue hill}], true, 1]
+      expect: {status: completed, calls: 1, sources: [a, b], answer: done}
+    - args: [red harbor, [{id: a, text: red harbor map}], false, 2]
+      expect: {status: blocked, calls: 0, sources: [], answer: null}
+  hidden:
+    - args: [missing, [{id: a, text: red harbor map}], true, 1]
+      expect: {status: completed, calls: 1, sources: [], answer: done}
+    - {args: ['', [{id: a, text: x}], true, 1], raises: ValueError}
+    - {args: [x, [{id: a, text: x}, {id: a, text: y}], true, 1], raises: ValueError}
+    - {args: [x, [{id: a, text: x}], 1, 1], raises: ValueError}
+    - {args: [x, [{id: a, text: x}], true, 0], raises: ValueError}
+hints:
+  - {level: 1, text: "O agente precisa existir no caminho negado?"}
+  - {level: 2, text: "Retorne antes de `create_agent` quando a autorização for falsa; caso contrário exponha um retriever tool."}
+  - {level: 3, text: "Uma oficina trancada pode retornar antes de ligar máquinas, provando zero efeitos."}
+solution: |
+  def gate_agent_retrieval(question, records, allow_retrieval, max_steps):
+      from langchain.agents import create_agent
+      from langchain_core.documents import Document
+      from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+      from langchain_core.messages import AIMessage
+      from langchain_core.runnables import chain
+      from langchain_core.tools import tool
+      if type(question) is not str or not question.strip() or type(records) is not list or not records or type(allow_retrieval) is not bool:
+          raise ValueError("invalid input")
+      if type(max_steps) is not int or not 1 <= max_steps <= 4:
+          raise ValueError("invalid step limit")
+      seen = set()
+      for record in records:
+          if type(record) is not dict or set(record) != {"id", "text"} or any(type(record[key]) is not str or not record[key].strip() for key in ("id", "text")) or record["id"] in seen:
+              raise ValueError("invalid record")
+          seen.add(record["id"])
+      if not allow_retrieval:
+          return {"status": "blocked", "calls": 0, "sources": [], "answer": None}
+      terms = set(question.lower().split())
+      sources = []
+      calls = 0
+      @chain
+      def retriever(_query):
+          ranked = []
+          for index, record in enumerate(records):
+              score = len(terms & set(record["text"].lower().split()))
+              if score:
+                  ranked.append((-score, index, record))
+          ranked.sort(key=lambda item: (item[0], item[1]))
+          return [Document(page_content=record["text"], metadata={"id": record["id"]}) for _, _, record in ranked]
+      @tool
+      def retrieve(value: str) -> str:
+          """Retrieve traceable local evidence for one question."""
+          nonlocal calls
+          calls += 1
+          documents = retriever.invoke(value)
+          sources.extend(doc.metadata["id"] for doc in documents)
+          return "\n".join(doc.page_content for doc in documents)
+      class BoundFake(FakeMessagesListChatModel):
+          def bind_tools(self, tools, *, tool_choice=None, **kwargs):
+              return self
+      model = BoundFake(responses=[AIMessage(content="", tool_calls=[{"name": "retrieve", "args": {"value": question}, "id": "call-1", "type": "tool_call"}]), AIMessage(content="done")])
+      agent = create_agent(model, [retrieve])
+      result = agent.invoke({"messages": [{"role": "user", "content": question}]}, config={"recursion_limit": max_steps * 2 + 2})
+      return {"status": "completed", "calls": calls, "sources": sources, "answer": result["messages"][-1].content}

@@ -19,7 +19,7 @@ from codequest.engine.loader import (
 )
 from codequest.models.mission import Difficulty
 
-CONTENT_DIR = "content"
+PYTHON_EN_ROOT = "content/tracks/python/locales/en"
 
 
 # ------------------------------------------------------------------ the happy path
@@ -324,7 +324,7 @@ def test_files_that_is_not_a_mapping_is_rejected(mission_factory):
 
 def test_loads_the_shipped_example_mission():
     """The example in content/ is the reference every new mission is copied from."""
-    path = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
+    path = f"{PYTHON_EN_ROOT}/islands/01-foundations/missions/06-sum-list.yaml"
 
     mission = load_mission(path)
 
@@ -336,7 +336,7 @@ def test_loads_the_shipped_example_mission():
 
 
 def test_loads_the_python_track():
-    track = load_track("content/python/track.yaml")
+    track = load_track(f"{PYTHON_EN_ROOT}/track.yaml")
 
     assert track.id == "python"
     assert track.runner == "python"
@@ -344,7 +344,7 @@ def test_loads_the_python_track():
 
 
 def test_loads_the_foundations_island():
-    island = load_island("content/python/islands/01-foundations/island.yaml")
+    island = load_island(f"{PYTHON_EN_ROOT}/islands/01-foundations/island.yaml")
 
     assert island.id == "foundations"
     assert island.order == 1
@@ -371,18 +371,18 @@ unlock_requires:
 
 
 def test_discovery_finds_the_shipped_missions():
-    missions = discover_missions(CONTENT_DIR, "python")
+    missions = discover_missions(PYTHON_EN_ROOT)
 
     assert any(mission.id == "py-foundations-06" for mission in missions)
 
 
 def test_discovery_is_sorted_so_runs_are_reproducible():
     """Unsorted glob makes test ids depend on filesystem order, which differs per OS."""
-    paths = list(iter_mission_paths(CONTENT_DIR, "python"))
+    paths = list(iter_mission_paths(PYTHON_EN_ROOT))
 
     assert paths == sorted(paths)
 
 
 def test_discovery_of_an_unknown_track_is_empty_not_an_error():
     """Java content does not exist yet; asking for it is a normal, empty answer."""
-    assert discover_missions(CONTENT_DIR, "klingon") == []
+    assert discover_missions("content/tracks/klingon/locales/en") == []

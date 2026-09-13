@@ -17,11 +17,9 @@ from codequest.models.mission import Mission
 class MissionService:
     """The loaded catalogue for one track: its islands and their missions.
 
-    ``language`` picks which content tree to read - ``content/<track_id>/`` for
-    English, ``content/<track_id>-pt/`` for Portuguese. It is a directory suffix, not a
-    property of the track: mission and island ids stay identical between the two
-    trees, which is what lets a save's progress (keyed by those ids in SQLite) survive
-    a language switch mid-game.
+    ``track_id`` selects a curriculum and ``language`` selects its localized catalogue.
+    Mission and island ids stay identical between locales, which lets a save's progress
+    (keyed by those ids in SQLite) survive a language switch mid-game.
     """
 
     def __init__(
@@ -36,8 +34,9 @@ class MissionService:
         self._load()
 
     @property
-    def _content_folder(self) -> str:
-        return f"{self.track_id}-pt" if self.language == "pt" else self.track_id
+    def _track_root(self) -> Path:
+        locale = "pt-BR" if self.language == "pt" else "en"
+        return self.content_dir / "tracks" / self.track_id / "locales" / locale
 
     def set_language(self, language: str) -> None:
         """Switch which content tree is loaded, and reload the catalogue from it."""
@@ -56,12 +55,12 @@ class MissionService:
         again on every ``set_language`` call, and a stale entry left over from the
         previous language is a bug a reload should never be able to reintroduce.
         """
-        folder = self._content_folder
-        self.track = load_track(self.content_dir / folder / "track.yaml")
-        islands_root = self.content_dir / folder / "islands"
+        track_root = self._track_root
+        self.track = load_track(track_root / "track.yaml")
+        islands_root = track_root / "islands"
         self._islands = {}
 
-        missions = discover_missions(self.content_dir, folder)
+        missions = discover_missions(track_root)
         self._missions = {mission.id: mission for mission in missions}
 
         by_island: dict[str, list[Mission]] = {}

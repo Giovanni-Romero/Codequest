@@ -63,7 +63,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     """Run every mission's own declared solution against its own tests."""
-    service = MissionService(args.content or get_settings().content_dir, args.track)
+    service = MissionService(args.content or get_settings().content_dir, args.track, args.language)
     session = GameSession()
 
     failures = 0
@@ -81,7 +81,7 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 def cmd_missions(args: argparse.Namespace) -> int:
     """List the catalogue of a track."""
-    service = MissionService(args.content or get_settings().content_dir, args.track)
+    service = MissionService(args.content or get_settings().content_dir, args.track, args.language)
 
     for island in service.islands:
         print(f"\n{island.order}. {island.name}  [{island.id}]")
@@ -144,7 +144,7 @@ def cmd_unlock(args: argparse.Namespace) -> int:
     """
     settings = get_settings()
     progress = _open_service(args)
-    missions = MissionService(args.content or settings.content_dir, args.track)
+    missions = MissionService(args.content or settings.content_dir, args.track, args.language)
 
     profile = progress.profiles.get_by_name(args.save)
     if profile is None:
@@ -189,7 +189,7 @@ def cmd_play(args: argparse.Namespace) -> int:
     """Attempt a mission as a saved profile, persisting the result."""
     settings = get_settings()
     progress = _open_service(args)
-    missions = MissionService(args.content or settings.content_dir, args.track)
+    missions = MissionService(args.content or settings.content_dir, args.track, args.language)
 
     profile = progress.profiles.get_by_name(args.save)
     if profile is None:
@@ -245,6 +245,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     def add_content_options(sub: argparse.ArgumentParser) -> None:
         sub.add_argument("--track", default="python", help="track id (default: python)")
+        sub.add_argument(
+            "--language",
+            choices=("en", "pt"),
+            default="en",
+            help="content language (default: en)",
+        )
         sub.add_argument("--content", default=None, help="content directory override")
 
     ui = subcommands.add_parser("ui", help="launch the game (the normal way to play)")

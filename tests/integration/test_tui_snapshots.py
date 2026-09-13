@@ -20,8 +20,11 @@ for no real reason.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
+from codequest.config import Settings
 from codequest.services.bootstrap import create_context
 from codequest.tui.app import CodeQuestApp
 from codequest.tui.screens.mission import MissionScreen
@@ -38,7 +41,8 @@ SHORT = (110, 22)
 
 @pytest.fixture
 def context(tmp_path):
-    ctx = create_context(database=tmp_path / "save.db")
+    settings = Settings(content_dir=Path("content"), save_dir=Path("saves"))
+    ctx = create_context(settings=settings, database=tmp_path / "save.db")
     yield ctx
     ctx.close()
 

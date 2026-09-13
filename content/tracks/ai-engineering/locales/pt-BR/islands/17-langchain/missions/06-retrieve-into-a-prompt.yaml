@@ -1,0 +1,80 @@
+id: ai-langchain-06
+title: Recupere evidência para um prompt
+track: ai-engineering
+island: langchain
+order: 6
+difficulty: expert
+tags: [ai-engineering, langchain, prompts, retrieval, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-prompt-templates, langchain-retrievers]
+teaching:
+  analogy: O atendente seleciona as pastas de origem primeiro e só então coloca essas pastas na seção declarada de evidências do relatório.
+  explanation: Recuperação e renderização continuam contratos separados. Documents carregam proveniência; o prompt recebe contexto determinístico e não decide quais registros merecem inclusão.
+  worked_example: |
+    context = "\n".join(f"[{doc.metadata['id']}] {doc.page_content}" for doc in documents)
+    prompt.invoke({"question": question, "context": context})
+  key_points:
+    - Selecione evidência antes de renderizar o prompt.
+    - Preserve IDs estáveis junto do texto dos documentos.
+    - Exija que o prompt declare exatamente question e context.
+brief: >
+  Escreva `retrieve_into_prompt(question, records, k, template) -> dict`. Valide question,
+  registros, IDs, texto e k como na missão 03. Exija template f-string com exatamente
+  question e context. Use retriever `@chain` com o mesmo score, descarte de zero e
+  desempate. Una Documents em linhas `[id] text`, renderize e retorne prompt e IDs fonte.
+signature:
+  entrypoint: retrieve_into_prompt
+  stub: |
+    def retrieve_into_prompt(question, records, k, template):
+        # Retrieve traceable Documents before rendering their context.
+        pass
+constraints: {max_runtime_ms: 3000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [red harbor, [{id: a, text: red harbor map}, {id: b, text: harbor gate}, {id: c, text: blue hill}], 2, "Q: {question}\nC:\n{context}"]
+      expect: {prompt: "Q: red harbor\nC:\n[a] red harbor map\n[b] harbor gate", sources: [a, b]}
+    - args: [missing, [{id: a, text: red harbor}], 1, '{question}|{context}']
+      expect: {prompt: 'missing|', sources: []}
+  hidden:
+    - {args: [x, [{id: a, text: x}], 1, '{question}'], raises: ValueError}
+    - {args: [x, [{id: a, text: x}], 1, '{question}{context}{extra}'], raises: ValueError}
+    - {args: [x, [{id: a, text: x}, {id: a, text: y}], 1, '{question}{context}'], raises: ValueError}
+    - {args: [x, [{id: a, text: x}], true, '{question}{context}'], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual etapa escolhe a evidência e qual apenas a formata?"}
+  - {level: 2, text: "Invoque o retriever, monte o contexto com Documents e então invoque PromptTemplate."}
+  - {level: 3, text: "Um relatório pode unir citações como `f'[{source}] {text}'` antes da formatação."}
+solution: |
+  def retrieve_into_prompt(question, records, k, template):
+      from langchain_core.documents import Document
+      from langchain_core.prompts import PromptTemplate
+      from langchain_core.runnables import chain
+      if type(question) is not str or not question.strip() or type(records) is not list or not records or type(template) is not str or not template.strip():
+          raise ValueError("invalid input")
+      if type(k) is not int or not 1 <= k <= len(records):
+          raise ValueError("invalid k")
+      seen = set()
+      for record in records:
+          if type(record) is not dict or set(record) != {"id", "text"} or any(type(record[key]) is not str or not record[key].strip() for key in ("id", "text")) or record["id"] in seen:
+              raise ValueError("invalid record")
+          seen.add(record["id"])
+      try:
+          prompt = PromptTemplate.from_template(template, template_format="f-string")
+          if set(prompt.input_variables) != {"question", "context"}:
+              raise ValueError("invalid variables")
+      except (TypeError, ValueError) as exc:
+          raise ValueError("invalid template") from exc
+      terms = set(question.lower().split())
+      @chain
+      def retriever(_query):
+          ranked = []
+          for index, record in enumerate(records):
+              score = len(terms & set(record["text"].lower().split()))
+              if score:
+                  ranked.append((-score, index, record))
+          ranked.sort(key=lambda item: (item[0], item[1]))
+          return [Document(page_content=record["text"], metadata={"id": record["id"]}) for _, _, record in ranked[:k]]
+      documents = retriever.invoke(question)
+      context = "\n".join(f"[{doc.metadata['id']}] {doc.page_content}" for doc in documents)
+      rendered = prompt.invoke({"question": question, "context": context}).to_string()
+      return {"prompt": rendered, "sources": [doc.metadata["id"] for doc in documents]}

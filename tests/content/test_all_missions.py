@@ -14,6 +14,7 @@ names the file instead of saying "content is broken".
 from __future__ import annotations
 
 import importlib.util
+import tomllib
 
 import pytest
 import yaml
@@ -21,7 +22,7 @@ import yaml
 from codequest.engine.loader import iter_mission_paths, load_island, load_mission, load_track
 from codequest.models.mission import XP_BY_DIFFICULTY
 from codequest.services.game_session import GameSession
-from helpers import CONTENT_ROOT
+from helpers import CONTENT_ROOT, PROJECT_ROOT
 
 TRACKS_ROOT = CONTENT_ROOT / "tracks"
 
@@ -42,6 +43,7 @@ AI_EN_ROOT = AI_CATALOGUES[0]
 AI_NEW_CONCEPT_ISLANDS = (
     "15-responsible-ai",
     "16-mlops-and-model-lifecycle",
+    "17-langchain",
 )
 MISSION_PATHS = [path for catalogue in CATALOGUES for path in iter_mission_paths(catalogue)]
 SOURCE_MISSION_PATHS = [
@@ -116,6 +118,10 @@ def test_the_declared_solution_passes_its_own_tests(path):
         importlib.util.find_spec(package) is None for package in ("torch", "transformers")
     ):
         pytest.skip("install the ai-ml extra to execute this mission")
+    if "requires-ai-orchestration" in mission.tags and any(
+        importlib.util.find_spec(package) is None for package in ("langchain", "langgraph")
+    ):
+        pytest.skip("install the ai-orchestration extra to execute this mission")
 
     outcome = GameSession().check_solution(mission)
 
@@ -240,7 +246,16 @@ def test_ai_engineering_ships_complete_islands_in_order(locale):
     assert [
         island.unlock_requires.requires_mission for island in service.islands
     ] == expected_unlocks
-    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-mlops-08"
+    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-langchain-08"
+
+
+def test_ai_orchestration_extra_pins_the_shipped_frameworks():
+    project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert project["project"]["optional-dependencies"]["ai-orchestration"] == [
+        "langchain>=1.4,<1.5",
+        "langgraph>=1.2,<1.3",
+    ]
 
 
 @pytest.mark.parametrize("locale", ("en", "pt-BR"))

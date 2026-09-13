@@ -1,9 +1,0 @@
-id: machine-learning-foundations
-name: Fundamentos de Machine Learning
-track: ai-engineering
-order: 10
-theme: Experimentos reproduzíveis, baselines honestos e comportamento de aprendizado explícito
-concepts: [dataset-splits, supervised-learning-contract, baselines-and-generalization, unsupervised-patterns]
-unlock_requires:
-  requires_mission: ai-math-08
-completion_reward_xp: 220

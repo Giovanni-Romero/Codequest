@@ -1,0 +1,59 @@
+id: ai-langchain-05
+title: Rastreie uma cadeia de prompt
+track: ai-engineering
+island: langchain
+order: 5
+difficulty: expert
+tags: [ai-engineering, langchain, prompts, runnables, requires-ai-orchestration]
+xp: 60
+concepts: [langchain-runnables, langchain-prompt-templates]
+teaching:
+  analogy: Um formulário carimbado passa da mesa de preenchimento à de medição, e o comprovante registra ambas as etapas.
+  explanation: Templates de prompt são etapas runnable. Conectar PromptTemplate a RunnableLambda preserva um contrato invoke único, enquanto um trace explícito mantém os limites observáveis.
+  worked_example: |
+    from langchain_core.prompts import PromptTemplate
+    from langchain_core.runnables import RunnableLambda
+    chain = PromptTemplate.from_template("Item: {item}") | RunnableLambda(lambda value: value.to_string())
+  key_points:
+    - PromptTemplate participa diretamente da composição runnable.
+    - Converta valores de prompt do framework antes do retorno.
+    - Preserve um trace estável para diagnóstico.
+brief: >
+  Escreva `trace_prompt_chain(template, values) -> dict`. Aplique as regras de fronteira
+  da missão 02. Componha o `PromptTemplate` f-string com um `RunnableLambda` que converta
+  PromptValue em string. Invoque uma vez e retorne rendered, quantidade de caracteres e
+  trace `prompt`, `render`. Converta falhas do framework em ValueError.
+signature:
+  entrypoint: trace_prompt_chain
+  stub: |
+    def trace_prompt_chain(template, values):
+        # Compose PromptTemplate with a plain-string boundary stage.
+        pass
+constraints: {max_runtime_ms: 3000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: ['Port {name}', {name: Oslo}], expect: {rendered: 'Port Oslo', characters: 9, trace: [prompt, render]}}
+    - {args: ['{a}-{b}', {a: x, b: y}], expect: {rendered: x-y, characters: 3, trace: [prompt, render]}}
+  hidden:
+    - {args: ['', {}], raises: ValueError}
+    - {args: ['{name}', {}], raises: ValueError}
+    - {args: ['{name}', {name: x, extra: y}], raises: ValueError}
+    - {args: ['{name', {name: x}], raises: ValueError}
+hints:
+  - {level: 1, text: "O próprio template pode ser a primeira etapa runnable?"}
+  - {level: 2, text: "Conecte `PromptTemplate` a `RunnableLambda(lambda value: value.to_string())`."}
+  - {level: 3, text: "Um pipeline de arquivo pode retornar o resultado e `['read', 'parse']` como evidência."}
+solution: |
+  def trace_prompt_chain(template, values):
+      from langchain_core.prompts import PromptTemplate
+      from langchain_core.runnables import RunnableLambda
+      if type(template) is not str or not template.strip() or type(values) is not dict or any(type(key) is not str or not key for key in values):
+          raise ValueError("invalid prompt input")
+      try:
+          prompt = PromptTemplate.from_template(template, template_format="f-string")
+          if set(values) != set(prompt.input_variables):
+              raise ValueError("variables do not match")
+          rendered = (prompt | RunnableLambda(lambda value: value.to_string())).invoke(values)
+      except (KeyError, TypeError, ValueError) as exc:
+          raise ValueError("invalid prompt") from exc
+      return {"rendered": rendered, "characters": len(rendered), "trace": ["prompt", "render"]}

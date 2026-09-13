@@ -111,7 +111,7 @@ def test_every_subcommand_is_bound_to_a_function(command):
 
 def test_missing_solution_file_is_a_readable_error(capsys, tmp_path):
     """A typo in a path is the most likely CLI mistake. It must not print a traceback."""
-    mission = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
+    mission = "content/tracks/python/locales/en/islands/01-foundations/missions/06-sum-list.yaml"
 
     exit_code = main(["run", mission, str(tmp_path / "nope.py")])
 
@@ -130,7 +130,7 @@ def test_run_reports_a_passing_solution(capsys, tmp_path):
         "    return total\n",
         encoding="utf-8",
     )
-    mission = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
+    mission = "content/tracks/python/locales/en/islands/01-foundations/missions/06-sum-list.yaml"
 
     exit_code = main(["run", mission, str(solution)])
 
@@ -142,7 +142,7 @@ def test_run_returns_one_for_a_failing_solution(capsys, tmp_path):
     """Exit code 1 is what lets a script or CI act on the result."""
     solution = tmp_path / "solution.py"
     solution.write_text("def sum_list(numbers):\n    return 6\n", encoding="utf-8")
-    mission = "content/python/islands/01-foundations/missions/06-sum-list.yaml"
+    mission = "content/tracks/python/locales/en/islands/01-foundations/missions/06-sum-list.yaml"
 
     exit_code = main(["run", mission, str(solution)])
 
@@ -155,6 +155,14 @@ def test_missions_lists_the_catalogue(capsys):
 
     assert exit_code == 0
     assert "py-foundations-06" in capsys.readouterr().out
+
+
+def test_catalogue_commands_select_language_separately_from_track():
+    """A locale is not a second curriculum track and must have its own option."""
+    args = build_parser().parse_args(["missions", "--track", "python", "--language", "pt"])
+
+    assert args.track == "python"
+    assert args.language == "pt"
 
 
 def test_saves_and_play_round_trip(capsys, tmp_path):

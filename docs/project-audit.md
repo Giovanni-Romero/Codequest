@@ -31,7 +31,7 @@ The contrast is what made it a finding rather than a nit. `[AI-ENG:concurrency-c
 promised the same way for Island 11, **was** delivered. The pattern existed and Island 6
 had been skipped.
 
-Now attached to `content/python/islands/06-debugging/missions/04-halve-the-search.yaml`
+Now attached to `content/tracks/python/locales/en/islands/06-debugging/missions/04-halve-the-search.yaml`
 and its Portuguese mirror.
 
 ### 3. Bridges that live in content had no index and no verification

@@ -1,0 +1,141 @@
+# Missao 8 de Strings e Texto. Introduz: encoding-basics.
+# Reforca: string-methods.
+#
+# RESTRICAO DO MOTOR: `bytes` nao atravessa a fronteira JSON entre o jogo e o sandbox -
+# engine/harness.py cai para repr em qualquer coisa que json.dumps nao carrega. Entao
+# esta missao nunca entrega um objeto bytes ao jogador nem pede um de volta. Ela trabalha
+# em CONTAGENS, que e a parte da licao que importa de qualquer forma e atravessa limpo
+# como inteiros. Ver docs/curriculum/python/syllabus.md, Ilha 4.
+# Schema reference: docs/mission-schema.md
+
+id: py-strings-08
+title: O peso das palavras
+track: python
+island: strings-and-text
+order: 8
+difficulty: simple
+tags: [encoding, utf-8, bytes]
+xp: 20
+
+concepts:
+  - encoding-basics
+
+teaching:
+  analogy: |
+    Um telegrafista é pago por caractere mas cobrado por pulso. Para letras latinas
+    simples os dois coincidem e ninguém pensa nisso. No dia em que uma mensagem sai com
+    um nome acentuado, a contagem de caracteres não muda e a conta é mais alta, porque
+    alguns caracteres simplesmente demoram mais para transmitir.
+
+  explanation: |
+    Uma string é uma sequência de caracteres. Ela não tem codificação - isso não é algo
+    que uma string carrega consigo.
+
+    Bytes são o que um arquivo ou uma rede de fato armazena, e *esses* têm codificação.
+    Uma codificação é a regra para transformar caracteres em bytes e de volta.
+
+    texto.encode("utf-8") aplica essa regra e te dá bytes. Em UTF-8 os caracteres ASCII
+    simples custam um byte cada, que é exatamente por que a diferença fica invisível até
+    você escrever um nome como "José" ou uma palavra em grego. Letras acentuadas custam
+    dois, e muitos outros sistemas de escrita custam três ou quatro.
+
+    Então len(texto) e len(texto.encode("utf-8")) respondem perguntas diferentes. A
+    primeira é "quantos caracteres". A segunda é "quanto espaço isso ocupa". Confundir as
+    duas é o que corta um nome no meio de um caractere e deixa um símbolo quebrado na
+    tela de alguém.
+
+  worked_example: |
+    # Medindo uma saudacao em vez de uma palavra de manifesto
+    simples = "hello"
+    acentuada = "olá"
+
+    print(len(simples), len(simples.encode("utf-8")))       # 5 5 - identicos
+    print(len(acentuada), len(acentuada.encode("utf-8")))   # 3 4 - um caractere custa 2
+
+    # Um caractere por vez:
+    for ch in acentuada:
+        print(ch, len(ch.encode("utf-8")))                  # o 1 / l 1 / a 2
+
+  key_points:
+    - Uma string é caracteres. Bytes são armazenamento. Uma codificação é a regra entre os dois.
+    - "Em UTF-8 um caractere ASCII custa um byte; acentuados e não-latinos custam mais."
+    - "len(texto) e len(texto.encode('utf-8')) respondem perguntas diferentes e frequentemente discordam."
+    - Medir um limite em bytes quando você queria caracteres é como nomes acabam cortados pela metade.
+
+brief: |
+  Escreva uma função chamada text_weight que recebe um texto e retorna uma lista com
+  exatamente três números inteiros, em ordem:
+
+    - quantos caracteres o texto tem
+    - quantos bytes ele ocupa codificado como UTF-8
+    - quantos dos caracteres dele custam mais de um byte
+
+  text_weight("cafe") retorna [4, 4, 0], e text_weight("café") retorna [4, 5, 1].
+
+  Texto vazio retorna [0, 0, 0].
+
+signature:
+  entrypoint: text_weight
+  stub: |
+    def text_weight(text):
+        # Duas medidas do texto inteiro, depois uma contagem por caractere.
+        # seu codigo aqui
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["cafe"]
+      expect: [4, 4, 0]
+    - args: ["café"]
+      expect: [4, 5, 1]
+  hidden:
+    - args: [""]
+      expect: [0, 0, 0]
+    - args: ["abc"]
+      expect: [3, 3, 0]
+    - args: ["ãé"]
+      expect: [2, 4, 2]
+    - args: ["a b"]
+      expect: [3, 3, 0]
+    - args: ["Ação"]
+      expect: [4, 6, 2]
+    - args: ["ç"]
+      expect: [1, 2, 1]
+
+hints:
+  - level: 1
+    text: |
+      Os dois primeiros números são uma medida cada no texto inteiro. O terceiro não pode
+      ser - ele precisa que você olhe os caracteres um por vez. O que dá para medir num
+      caractere sozinho?
+  - level: 2
+    text: |
+      len(text) dá o primeiro. len(text.encode("utf-8")) dá o segundo. Para o terceiro,
+      percorra os caracteres e conte aqueles em que len(caractere.encode("utf-8")) é
+      maior que 1.
+  - level: 3
+    text: |
+      A metade por caractere, contando outra coisa:
+
+          largos = 0
+          for ch in texto:
+              if len(ch.encode("utf-8")) > 2:
+                  largos = largos + 1
+
+      A sua usa um limite diferente e junta a contagem com duas medidas do texto inteiro.
+
+solution: |
+  def text_weight(text):
+      characters = len(text)
+      byte_count = len(text.encode("utf-8"))
+
+      multibyte = 0
+      for character in text:
+          if len(character.encode("utf-8")) > 1:
+              multibyte = multibyte + 1
+
+      return [characters, byte_count, multibyte]

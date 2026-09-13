@@ -1,9 +1,0 @@
-id: machine-learning-foundations
-name: Machine Learning Foundations
-track: ai-engineering
-order: 10
-theme: Reproducible experiments, honest baselines, and explicit learning behavior
-concepts: [dataset-splits, supervised-learning-contract, baselines-and-generalization, unsupervised-patterns]
-unlock_requires:
-  requires_mission: ai-math-08
-completion_reward_xp: 220

@@ -1,0 +1,154 @@
+# Mission 2 of Debugging. Introduces: logic-vs-data. Reinforces: reading-tracebacks.
+#
+# FIRST BUG-FIX MISSION. The stub is complete and WRONG on purpose - the player's job is
+# to find and fix it, not to fill in a skeleton. The engine supports this without change:
+# `stub` is only pre-filled editor content, and the content suite verifies the SOLUTION
+# passes, never that the stub fails. See docs/curriculum/python/syllabus.md, Island 6.
+# Schema reference: docs/mission-schema.md
+
+id: py-debug-02
+title: The wrong question
+track: python
+island: debugging
+order: 2
+difficulty: moderate
+tags: [bug-fix, logic-vs-data]
+xp: 30
+
+concepts:
+  - logic-vs-data
+  - reading-tracebacks
+
+teaching:
+  analogy: |
+    An instrument reads wrong. There are exactly two explanations and they need different
+    people: the instrument is broken, or someone is holding it upside down.
+
+    Sending it to the workshop when the problem is how it is being held wastes a week and
+    comes back with "no fault found". Every debugging session starts by picking one of
+    those two doors, and picking it on evidence rather than on habit.
+
+  explanation: |
+    A failure is either in the **code** or in the **data**. Ask which before you change
+    anything, because the two need opposite fixes:
+
+      - wrong code, correct data -> fix the logic
+      - correct code, wrong data -> the logic may be fine and the caller is at fault, or
+        the function should have refused the input (which is Island 5's job)
+
+    The fastest way to tell them apart is to find one input where you already know the
+    right answer, run it, and see whether the code produces it. If the code gets the easy
+    case wrong, the code is wrong. If the code handles every case you can construct by
+    hand but fails in production, look at the input.
+
+    A traceback usually answers this for you. It names the line and shows the value that
+    reached it, and that value is either impossible (data) or mishandled (logic).
+
+    The habit to build: **first change nothing.** Read, form a hypothesis, then test it.
+    Editing before you have a hypothesis produces a program that fails differently.
+
+  worked_example: |
+    # Same symptom, two different causes
+    def average(values):
+        return sum(values) / len(values)
+
+    print(average([2, 4]))       # 3.0 - the easy case is right, so the logic is sound
+    # print(average([]))         # ZeroDivisionError - the DATA was empty, not the code wrong
+
+    def average_broken(values):
+        return sum(values) / (len(values) - 1)
+
+    print(average_broken([2, 4]))  # 4.0 - the easy case is wrong, so the CODE is wrong
+
+    # One call each, and you know which door to open.
+
+  key_points:
+    - "Two doors: wrong code, or wrong data. Pick one on evidence, not on habit."
+    - Run an input whose answer you already know. If that comes out wrong, the code is wrong.
+    - The traceback names the line and the value. An impossible value points at the data.
+    - Change nothing until you have a hypothesis. Editing first just makes it fail differently.
+
+brief: |
+  The function below is meant to return the percentage of readings that came in below a
+  safe limit, rounded to one decimal place.
+
+  It is already written, and it is wrong. On breach_rate([1, 2, 8, 9], 5) it should give
+  50.0, because two of the four readings are under 5.
+
+  Find the bug and fix it. The rest of the function is correct - resist rewriting what
+  already works.
+
+  An empty list of readings has no percentage to report, so it returns 0.0.
+
+signature:
+  entrypoint: breach_rate
+  stub: |
+    def breach_rate(readings, limit):
+        if not readings:
+            return 0.0
+
+        breaches = 0
+        for reading in readings:
+            if reading > limit:
+                breaches = breaches + 1
+
+        return round(breaches / len(readings) * 100, 1)
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: [[1, 2, 8, 9], 5]
+      expect: 50.0
+    - args: [[1, 1, 1, 1], 5]
+      expect: 100.0
+  hidden:
+    - args: [[], 5]
+      expect: 0.0
+    - args: [[9, 9], 5]
+      expect: 0.0
+    - args: [[5, 5], 5]
+      expect: 0.0
+    - args: [[4], 5]
+      expect: 100.0
+    - args: [[1, 2, 3], 5]
+      expect: 100.0
+    - args: [[1, 9, 9], 5]
+      expect: 33.3
+
+hints:
+  - level: 1
+    text: |
+      Do not read the whole function looking for something that looks odd. Take the
+      example from the brief, walk the loop by hand with those four readings, and write
+      down what breaches holds after each pass. Compare that with what it should hold.
+  - level: 2
+    text: |
+      The counting loop is where the count goes wrong, and it is one character. The brief
+      says "below the limit". Read the comparison in the if out loud and check it says
+      the same thing.
+  - level: 3
+    text: |
+      The same class of bug, in a different counter:
+
+          # counts items that are IN stock, but the brief asked for out of stock
+          for item in items:
+              if item["left"] > 0:
+                  missing = missing + 1
+
+      Yours is the same kind of mismatch between what the brief asks and what the
+      condition tests.
+
+solution: |
+  def breach_rate(readings, limit):
+      if not readings:
+          return 0.0
+
+      breaches = 0
+      for reading in readings:
+          if reading < limit:
+              breaches = breaches + 1
+
+      return round(breaches / len(readings) * 100, 1)

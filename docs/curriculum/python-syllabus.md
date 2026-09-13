@@ -446,7 +446,7 @@ it is what makes `join-vs-concat` matter two missions later.
 
 ### What the player has already seen
 
-A grep of `content/python/` before designing: `.upper()` appears in the worked example of
+A grep of `content/tracks/python/locales/en/` before designing: `.upper()` appears in the worked example of
 Island 1 mission 5 and `.upper()`/`.lower()` in Island 3 mission 10's, but **never in a
 `solution` the player had to write**. `.join`, `.split`, `.strip`, `.replace` and
 f-strings appear nowhere at all. So this island genuinely introduces all six, and the two
