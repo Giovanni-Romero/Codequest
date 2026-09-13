@@ -1,0 +1,122 @@
+id: ai-mlops-07
+title: Select a drift response
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 7
+difficulty: challenging
+tags: [ai-engineering, mlops, deployment, drift, response]
+xp: 45
+concepts: [deployment-strategies, drift-monitoring]
+teaching:
+  analogy: Strong wind may only require watching the harbor, a changed channel may require new charts, and grounded ships may require returning to the old route. The response follows the kind of evidence, not the loudness of one gauge.
+  explanation: Drift signals support observe, retrain, or rollback decisions. Input and prediction distribution changes do not prove degraded outcomes, so they remain under observation. Concept drift calls for retraining, while critical measured performance drift can justify rollback to an approved fallback. Without an approved fallback, retraining is safer than activating an unknown version.
+  worked_example: |
+    signal = {"kind": "weather", "severity": "high"}
+    action = "observe" if signal["kind"] == "weather" else "reroute"
+    route = "current"
+    if action == "reroute":
+        route = "backup"
+    print(action)
+    print(route)
+  key_points:
+    - Do not convert distribution change alone into rollback.
+    - Retrain when the input-outcome relationship changes.
+    - Roll back critical performance only to an approved fallback.
+brief: >
+  Write `select_drift_response(signal, deployed_version, fallback_version) -> dict`.
+  `signal` is an exact mission-04 output with a positive comparable window, finite
+  non-negative changes, valid type, and matching severity. Each version is an exact
+  `version` and `state` mapping with a non-empty version and state from `pending`,
+  `approved`, `rejected`, or `retired`; IDs differ and the deployed version is approved.
+  No drift returns `observe/stable`. Input or prediction drift returns
+  `observe/distribution-only`. Concept drift returns `retrain/concept-drift`.
+  Performance warning returns `retrain/performance-warning`. Critical performance drift
+  returns `rollback/performance-critical` only when the fallback is approved; otherwise
+  return `retrain/no-approved-fallback`. Return action, reason, active version, deployed
+  version, and fallback version. Reject malformed input and do not mutate arguments.
+signature:
+  entrypoint: select_drift_response
+  stub: |
+    def select_drift_response(signal, deployed_version, fallback_version):
+        # Choose evidence-matched observation, retraining, or rollback.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [{window: {baseline: 100, current: 100}, changes: {input: 0.3, prediction: 0.1, performance: 0.0, concept: 0.0}, type: input, severity: critical}, {version: model-v2, state: approved}, {version: model-v1, state: approved}]
+      expect: {action: observe, reason: distribution-only, active_version: model-v2, deployed_version: model-v2, fallback_version: model-v1}
+    - args: [{window: {baseline: 100, current: 100}, changes: {input: 0.0, prediction: 0.0, performance: 0.2, concept: 0.0}, type: performance, severity: critical}, {version: model-v2, state: approved}, {version: model-v1, state: approved}]
+      expect: {action: rollback, reason: performance-critical, active_version: model-v1, deployed_version: model-v2, fallback_version: model-v1}
+    - args: [{window: {baseline: 50, current: 50}, changes: {input: 0.0, prediction: 0.0, performance: 0.0, concept: 0.1}, type: concept, severity: warning}, {version: model-v2, state: approved}, {version: model-v1, state: approved}]
+      expect: {action: retrain, reason: concept-drift, active_version: model-v2, deployed_version: model-v2, fallback_version: model-v1}
+  hidden:
+    - {args: [{window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}, {version: v2, state: approved}, {version: v1, state: approved}], expect: {action: observe, reason: stable, active_version: v2, deployed_version: v2, fallback_version: v1}}
+    - {args: [{window: {baseline: 10, current: 10}, changes: {input: 0, prediction: 0, performance: 0.2, concept: 0}, type: performance, severity: critical}, {version: v2, state: approved}, {version: v1, state: pending}], expect: {action: retrain, reason: no-approved-fallback, active_version: v2, deployed_version: v2, fallback_version: v1}}
+    - {args: [{window: {baseline: 10, current: 20}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}, {version: v2, state: approved}, {version: v1, state: approved}], raises: ValueError}
+    - {args: [{window: {baseline: 10, current: 10}, changes: {input: true, prediction: 0, performance: 0, concept: 0}, type: input, severity: warning}, {version: v2, state: approved}, {version: v1, state: approved}], raises: ValueError}
+    - {args: [{window: {baseline: 10, current: 10}, changes: {input: 0.1, prediction: 0, performance: 0, concept: 0}, type: none, severity: warning}, {version: v2, state: approved}, {version: v1, state: approved}], raises: ValueError}
+    - {args: [{window: {baseline: 100, current: 100}, changes: {input: 0, prediction: 0, performance: 10, concept: 0}, type: input, severity: critical}, {version: v2, state: approved}, {version: v1, state: approved}], raises: ValueError}
+    - {args: [{window: {baseline: 10, current: 10}, changes: {input: 0.1, prediction: 0, performance: 0, concept: 0}, type: input, severity: warning}, {version: v2, state: pending}, {version: v1, state: approved}], raises: ValueError}
+    - {args: [{window: {baseline: 10, current: 10}, changes: {input: 0.1, prediction: 0, performance: 0, concept: 0}, type: input, severity: warning}, {version: same, state: approved}, {version: same, state: approved}], raises: ValueError}
+    - args: [{window: {baseline: 50, current: 50}, changes: {input: 0.01, prediction: 0, performance: 0.01, concept: 0}, type: none, severity: none}, {version: v2, state: approved}, {version: v1, state: approved}]
+      expect: {action: observe, reason: stable, active_version: v2, deployed_version: v2, fallback_version: v1}
+    - args: [{window: {baseline: 10, current: 10}, changes: {input: 0.001, prediction: 0, performance: 0, concept: 0}, type: input, severity: critical}, {version: v2, state: approved}, {version: v1, state: approved}]
+      expect: {action: observe, reason: distribution-only, active_version: v2, deployed_version: v2, fallback_version: v1}
+    - args: [{window: {baseline: 10, current: 10}, changes: {input: 0.0, prediction: 0, performance: 0, concept: 0}, type: input, severity: critical}, {version: v2, state: approved}, {version: v1, state: approved}]
+      expect: {action: observe, reason: distribution-only, active_version: v2, deployed_version: v2, fallback_version: v1}
+hints:
+  - {level: 1, text: "Does the signal show changed distributions, changed relationships, or measured performance harm?"}
+  - {level: 2, text: "Handle no drift and distribution drift before concept and performance branches."}
+  - {level: 3, text: "A policy can branch on an alert without mutating its input: `action = fallback if alarm else current`."}
+solution: |
+  def select_drift_response(signal, deployed_version, fallback_version):
+      import math
+      names = {"input", "prediction", "performance", "concept"}
+      if type(signal) is not dict or set(signal) != {"window", "changes", "type", "severity"}:
+          raise ValueError("invalid signal")
+      window = signal["window"]
+      changes = signal["changes"]
+      if type(window) is not dict or set(window) != {"baseline", "current"} or any(type(window[key]) is not int or window[key] <= 0 for key in window) or window["baseline"] != window["current"]:
+          raise ValueError("invalid window")
+      if type(changes) is not dict or set(changes) != names:
+          raise ValueError("invalid changes")
+      for value in changes.values():
+          if type(value) not in (int, float):
+              raise ValueError("invalid change")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite or value < 0:
+              raise ValueError("invalid change")
+      if any(round(value, 3) != value for value in changes.values()):
+          raise ValueError("invalid change precision")
+      drift_type = signal["type"]
+      severity = signal["severity"]
+      if drift_type == "none":
+          if severity != "none":
+              raise ValueError("invalid signal state")
+      elif type(drift_type) is not str or drift_type not in names or severity not in ("warning", "critical"):
+          raise ValueError("invalid signal state")
+      elif any(value > changes[drift_type] for value in changes.values()):
+          raise ValueError("inconsistent drift type")
+      states = {"pending", "approved", "rejected", "retired"}
+      for version in (deployed_version, fallback_version):
+          if type(version) is not dict or set(version) != {"version", "state"} or type(version["version"]) is not str or not version["version"].strip() or type(version["state"]) is not str or version["state"] not in states:
+              raise ValueError("invalid version")
+      if deployed_version["state"] != "approved" or deployed_version["version"] == fallback_version["version"]:
+          raise ValueError("invalid deployed version")
+      if drift_type == "none":
+          action, reason = "observe", "stable"
+      elif drift_type in ("input", "prediction"):
+          action, reason = "observe", "distribution-only"
+      elif drift_type == "concept":
+          action, reason = "retrain", "concept-drift"
+      elif severity == "warning":
+          action, reason = "retrain", "performance-warning"
+      elif fallback_version["state"] == "approved":
+          action, reason = "rollback", "performance-critical"
+      else:
+          action, reason = "retrain", "no-approved-fallback"
+      active = fallback_version["version"] if action == "rollback" else deployed_version["version"]
+      return {"action": action, "reason": reason, "active_version": active, "deployed_version": deployed_version["version"], "fallback_version": fallback_version["version"]}

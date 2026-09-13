@@ -1,0 +1,126 @@
+id: ai-mlops-02
+title: Registre uma versão de modelo
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 2
+difficulty: challenging
+tags: [ai-engineering, mlops, model-registry, lineage]
+xp: 45
+concepts: [model-versioning]
+teaching:
+  analogy: Um registro naval guarda número do casco, recibos de construção, diário de viagem e decisão da inspeção. Apenas o nome pintado não identifica a embarcação exata.
+  explanation: O versionamento de modelos liga o digest imutável de um artefato à execução que o produziu. Aprovação é um estado revisado, não um sinônimo de mais recente. Uma execução incompleta ou com falha pode permanecer no histórico, mas não pode produzir uma versão aprovada.
+  worked_example: |
+    recibo = {"lote": "B-4", "digest": "selo-91"}
+    registro = {}
+    registro["item"] = "caixa-v2"
+    registro["recibo"] = dict(recibo)
+    recibo["digest"] = "alterado"
+    print(registro)
+  key_points:
+    - Use o digest do artefato porque nomes de arquivo podem ser sobrescritos.
+    - Preserve a linhagem da execução para resolver código, dados, configuração e métricas.
+    - Mantenha a aprovação explícita porque ser recente não prova prontidão.
+brief: >
+  Escreva `register_model_version(model_id, artifact_digest, run_record, approval) -> dict`.
+  IDs e digests são strings não vazias. `run_record` tem exatamente os sete campos
+  retornados pela missão 01 e deve cumprir aquele contrato. O digest deve aparecer nos
+  valores de seus artefatos. `approval` tem exatamente `state` (`pending`, `approved` ou
+  `rejected`) e `reviewer`; pendente usa null, enquanto aprovado ou rejeitado usa uma
+  string de revisor não vazia. Apenas uma execução concluída pode ser aprovada. Retorne
+  identidade, digest, linhagem completa, cópias de configuração e métricas, estado e
+  revisor como mostram os testes. Rejeite dados malformados, inconsistentes ou não
+  finitos e não altere nenhum mapeamento.
+signature:
+  entrypoint: register_model_version
+  stub: |
+    def register_model_version(model_id, artifact_digest, run_record, approval):
+        # Bind an immutable artifact to its run lineage and review state.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - model-v2
+        - sha256:abc
+        - {run_id: run-7, code_version: code-a1, data_version: data-v3, config: {epochs: 3}, metrics: {loss: 0.25}, artifacts: {weights: sha256:abc}, status: completed}
+        - {state: approved, reviewer: release-team}
+      expect: {model_id: model-v2, artifact_digest: sha256:abc, run_id: run-7, code_version: code-a1, data_version: data-v3, config: {epochs: 3}, metrics: {loss: 0.25}, state: approved, reviewer: release-team}
+    - args:
+        - model-failed
+        - sha256:bad
+        - {run_id: run-fail, code_version: code-a2, data_version: data-v3, config: {epochs: 1}, metrics: {}, artifacts: {trace: sha256:bad}, status: failed}
+        - {state: rejected, reviewer: release-team}
+      expect: {model_id: model-failed, artifact_digest: sha256:bad, run_id: run-fail, code_version: code-a2, data_version: data-v3, config: {epochs: 1}, metrics: {}, state: rejected, reviewer: release-team}
+  hidden:
+    - {args: ['', digest, {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {trace: digest}, status: failed}, {state: rejected, reviewer: team}], raises: ValueError}
+    - {args: [m, missing, {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {loss: 1}, artifacts: {weights: digest}, status: completed}, {state: approved, reviewer: team}], raises: ValueError}
+    - {args: [m, digest, {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {trace: digest}, status: failed}, {state: approved, reviewer: team}], raises: ValueError}
+    - {args: [m, digest, {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {loss: true}, artifacts: {weights: digest}, status: completed}, {state: approved, reviewer: team}], raises: ValueError}
+    - {args: [m, digest, {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {loss: 1}, artifacts: {weights: digest}, status: completed}, {state: pending, reviewer: team}], raises: ValueError}
+    - {args: [m, digest, {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {loss: 1}, artifacts: {weights: digest}, status: completed}, {state: approved, reviewer: ''}], raises: ValueError}
+    - {args: [m, digest, {run_id: r, code_version: c, data_version: d, config: {x: [1, .inf]}, metrics: {}, artifacts: {trace: digest}, status: failed}, {state: rejected, reviewer: team}], raises: ValueError}
+hints:
+  - {level: 1, text: "É possível rastrear este artefato exato até uma execução válida e uma decisão nominal de aprovação?"}
+  - {level: 2, text: "Valide separadamente a linhagem da execução e a aprovação antes de ligar o digest."}
+  - {level: 3, text: "Outro registro pode testar pertencimento antes de copiar: `ticket in crate['tickets']`."}
+solution: |
+  def register_model_version(model_id, artifact_digest, run_record, approval):
+      import math
+      def copy_json(value):
+          if value is None or type(value) in (str, bool):
+              return value
+          if type(value) in (int, float):
+              try:
+                  if math.isfinite(value):
+                      return value
+              except (OverflowError, TypeError):
+                  pass
+              raise ValueError("invalid JSON number")
+          if type(value) is list:
+              return [copy_json(item) for item in value]
+          if type(value) is dict and all(type(key) is str for key in value):
+              return {key: copy_json(item) for key, item in value.items()}
+          raise ValueError("invalid JSON value")
+      run_keys = {"run_id", "code_version", "data_version", "config", "metrics", "artifacts", "status"}
+      if type(model_id) is not str or not model_id.strip() or type(artifact_digest) is not str or not artifact_digest.strip():
+          raise ValueError("invalid model identity")
+      if type(run_record) is not dict or set(run_record) != run_keys:
+          raise ValueError("invalid run")
+      if any(type(run_record[key]) is not str or not run_record[key].strip() for key in ("run_id", "code_version", "data_version")):
+          raise ValueError("invalid run")
+      config = run_record["config"]
+      metrics = run_record["metrics"]
+      artifacts = run_record["artifacts"]
+      if type(config) is not dict or not config or any(type(key) is not str or not key.strip() for key in config):
+          raise ValueError("invalid run")
+      copied_config = copy_json(config)
+      if type(metrics) is not dict or any(type(key) is not str or not key.strip() for key in metrics):
+          raise ValueError("invalid run")
+      for value in metrics.values():
+          if type(value) not in (int, float):
+              raise ValueError("invalid metric")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid metric")
+      if type(artifacts) is not dict or any(type(key) is not str or not key.strip() or type(value) is not str or not value.strip() for key, value in artifacts.items()):
+          raise ValueError("invalid artifacts")
+      status = run_record["status"]
+      if status not in ("running", "completed", "failed") or status == "completed" and (not metrics or not artifacts):
+          raise ValueError("invalid run")
+      if artifact_digest not in artifacts.values():
+          raise ValueError("unknown artifact")
+      if type(approval) is not dict or set(approval) != {"state", "reviewer"} or approval["state"] not in ("pending", "approved", "rejected"):
+          raise ValueError("invalid approval")
+      reviewer = approval["reviewer"]
+      if approval["state"] == "pending":
+          if reviewer is not None:
+              raise ValueError("invalid approval")
+      elif type(reviewer) is not str or not reviewer.strip():
+          raise ValueError("invalid approval")
+      if approval["state"] == "approved" and status != "completed":
+          raise ValueError("failed or unfinished run cannot be approved")
+      return {"model_id": model_id, "artifact_digest": artifact_digest, "run_id": run_record["run_id"], "code_version": run_record["code_version"], "data_version": run_record["data_version"], "config": copied_config, "metrics": dict(metrics), "state": approval["state"], "reviewer": reviewer}

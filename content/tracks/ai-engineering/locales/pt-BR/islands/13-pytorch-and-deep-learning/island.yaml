@@ -1,0 +1,8 @@
+id: pytorch-and-deep-learning
+name: PyTorch e Deep Learning
+track: ai-engineering
+order: 13
+theme: Tensores, lotes determinísticos, módulos registrados e estado explícito de treinamento
+concepts: [tensors-and-shapes, datasets-and-batches, modules-and-forward, autograd-training-loop]
+unlock_requires: {requires_mission: ai-data-08}
+completion_reward_xp: 220

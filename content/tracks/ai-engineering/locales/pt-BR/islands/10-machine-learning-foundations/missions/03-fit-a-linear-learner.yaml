@@ -1,0 +1,92 @@
+id: ai-ml-03
+title: Ajuste um modelo linear
+track: ai-engineering
+island: machine-learning-foundations
+order: 3
+difficulty: challenging
+tags: [ai-engineering, machine-learning, supervised-learning, regression]
+xp: 45
+concepts: [supervised-learning-contract]
+teaching:
+  analogy: Um construtor naval traça a reta que melhor acompanha carga e calado medidos. As medições ajustam a reta; medições posteriores apenas a testam.
+  explanation: O aprendizado supervisionado conecta features a targets conhecidos. O ajuste escolhe parâmetros do modelo a partir dos pares de treino, enquanto a inferência aplica esses parâmetros fixos a features sem targets. A perda mede a diferença entre previsões e targets. Uma reta de mínimos quadrados com uma feature deixa as quatro etapas visíveis sem um framework escondê-las.
+  worked_example: |
+    distancias = [1, 2, 3]
+    combustivel = [4, 7, 10]
+    distancia_media = sum(distancias) / len(distancias)
+    combustivel_medio = sum(combustivel) / len(combustivel)
+    print(distancia_media, combustivel_medio)
+  key_points:
+    - Features entram no modelo; targets supervisionam o ajuste.
+    - O treino escolhe parâmetros, enquanto a inferência os reutiliza.
+    - A perda é evidência explícita, não uma propriedade escondida em um objeto de modelo.
+brief: >
+  Escreva `fit_linear_learner(features, targets) -> dict`. Aceite listas de mesmo tamanho
+  com pelo menos dois números finitos, excluindo `bool`, e exija variação nas features.
+  Ajuste a reta de mínimos quadrados `prediction = slope * feature + intercept`. Retorne
+  `slope`, `intercept`, `train_predictions` e a perda quadrática média `train_loss`.
+  Lance `ValueError` para entrada inválida ou aritmética não finita.
+signature:
+  entrypoint: fit_linear_learner
+  stub: |
+    def fit_linear_learner(features, targets):
+        # Ajuste uma reta determinística e exponha as evidências do treino.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[1, 2, 3], [3, 5, 7]]
+      expect: {slope: 2.0, intercept: 1.0, train_predictions: [3.0, 5.0, 7.0], train_loss: 0.0}
+    - args: [[-1, 0, 1], [0, 2, 4]]
+      expect: {slope: 2.0, intercept: 2.0, train_predictions: [0.0, 2.0, 4.0], train_loss: 0.0}
+  hidden:
+    - args: [[1, 2], [2, 2]]
+      expect: {slope: 0.0, intercept: 2.0, train_predictions: [2.0, 2.0], train_loss: 0.0}
+    - args: [[1], [2]]
+      raises: ValueError
+    - args: [[1, 2], [2]]
+      raises: ValueError
+    - args: [[1, 1], [2, 3]]
+      raises: ValueError
+    - args: [[true, 2], [2, 3]]
+      raises: ValueError
+    - args: [[1, .nan], [2, 3]]
+      raises: ValueError
+    - args: [not-a-list, [2, 3]]
+      raises: ValueError
+    - args: [[0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, 1], [2, 3]]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Quais quatro valores tornam ajuste, inferência e perda visíveis em vez de implícitos?"
+  - level: 2
+    text: "Calcule as médias de features e targets, a covariância sobre a variância das features e então preveja cada feature de treino."
+  - level: 3
+    text: "Padrão: `coeficiente = sum((x - media_x) * (y - media_y) for x, y in pares) / dispersao`."
+solution: |
+  def fit_linear_learner(features, targets):
+      import math
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      if not isinstance(features, list) or not isinstance(targets, list) or len(features) < 2 or len(features) != len(targets) or not all(finite_number(value) for value in features + targets):
+          raise ValueError("invalid training data")
+      try:
+          feature_mean = sum(features) / len(features)
+          target_mean = sum(targets) / len(targets)
+          spread = sum((feature - feature_mean) ** 2 for feature in features)
+          if spread == 0:
+              raise ValueError("features do not vary")
+          slope = sum((feature - feature_mean) * (target - target_mean) for feature, target in zip(features, targets)) / spread
+          intercept = target_mean - slope * feature_mean
+          predictions = [slope * feature + intercept for feature in features]
+          loss = sum((prediction - target) ** 2 for prediction, target in zip(predictions, targets)) / len(targets)
+          if not all(math.isfinite(value) for value in [slope, intercept, loss] + predictions):
+              raise ValueError("non-finite result")
+      except OverflowError as error:
+          raise ValueError("non-finite result") from error
+      return {"slope": slope, "intercept": intercept, "train_predictions": predictions, "train_loss": loss}

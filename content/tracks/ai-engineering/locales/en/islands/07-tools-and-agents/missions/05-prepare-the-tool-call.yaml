@@ -1,0 +1,85 @@
+id: ai-tools-05
+title: Prepare the tool call
+track: ai-engineering
+island: tools-and-agents
+order: 5
+difficulty: moderate
+tags: [ai-engineering, tools, contracts]
+xp: 30
+concepts: [tool-contracts, tool-routing]
+teaching:
+  analogy: |
+    A dispatcher checks both a driver's license and the parcel form before loading a van.
+  explanation: |
+    A route is not enough: the chosen tool also needs a matching input contract. Validate all catalogues before a refusal or route. Route first only after declarations are sound, then validate the selected call. Preparation authorizes no execution.
+  worked_example: |
+    contracts = {"lookup": {"query": "str"}}
+    print(contracts["lookup"])
+  key_points:
+    - Every exposed tool has one matching contract.
+    - Structural validation happens before routing.
+    - A ready call is only data.
+brief: |
+  Write `prepare_tool_call(task, tools, contracts)`. Use the task/tool schemas from routing and
+  contracts keyed by tool name. Every exposed tool needs exactly one contract and no orphan is
+  allowed. Return invalid_contracts with ordered names, routing refusals, invalid_call fields,
+  or a ready call and effect. Validate all inputs before choosing any outcome.
+signature:
+  entrypoint: prepare_tool_call
+  stub: |
+    def prepare_tool_call(task, tools, contracts):
+        # Route a structurally valid request, then validate its call shape.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [{capability: search, arguments: {query: birds}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [query], effect: read}], {lookup: {name: lookup, inputs: {query: str}, output: dict, errors: [], effect: read}}]
+      expect: {status: ready, call: {tool: lookup, arguments: {query: birds}}, effect: read}
+    - args: [{capability: search, arguments: {}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [], effect: read}], {lookup: {name: lookup, inputs: {query: str}, output: dict, errors: [], effect: read}}]
+      expect: {status: invalid_call, fields: [query]}
+  hidden:
+    - args: [{capability: search, arguments: {}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [], effect: read}], {}]
+      expect: {status: invalid_contracts, tools: [lookup]}
+    - args: [{capability: search, arguments: {}, allowed_tools: []}, [], {orphan: {name: orphan, inputs: {}, output: none, errors: [], effect: read}}]
+      expect: {status: invalid_contracts, tools: [orphan]}
+    - args: [{capability: search, arguments: {}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [], effect: read}], {lookup: {name: lookup, inputs: {x: int}, output: none, errors: [], effect: read}}]
+      expect: {status: invalid_call, fields: [x]}
+    - args: [{capability: search, arguments: {query: true}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [], effect: read}], {lookup: {name: lookup, inputs: {query: int}, output: none, errors: [], effect: read}}]
+      expect: {status: invalid_call, fields: [query]}
+    - args: [{capability: search, arguments: {}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [], effect: read}, {name: late, capabilities: [x], required_arguments: [], effect: 1}], {lookup: {name: lookup, inputs: {}, output: none, errors: [], effect: read}, late: {name: late, inputs: {}, output: none, errors: [], effect: read}}]
+      raises: ValueError
+    - args: [{capability: search, arguments: {}, allowed_tools: [lookup]}, [{name: lookup, capabilities: [search], required_arguments: [], effect: read}], {lookup: {name: wrong, inputs: {}, output: none, errors: [], effect: read}}]
+      expect: {status: invalid_contracts, tools: [lookup]}
+hints:
+  - {level: 1, text: "What must match between an exposed tool and its contract?"}
+  - {level: 2, text: "Validate associations first, route second, and validate selected arguments last."}
+  - {level: 3, text: "For a van form, find its named form before comparing each parcel field."}
+solution: |
+  def prepare_tool_call(task, tools, contracts):
+      def bad_input():
+          if not isinstance(task, dict) or set(task) != {"capability", "arguments", "allowed_tools"} or not isinstance(tools, list) or not isinstance(contracts, dict): return True
+          if not isinstance(task["capability"], str) or not task["capability"] or not isinstance(task["arguments"], dict) or not isinstance(task["allowed_tools"], list) or any(not isinstance(x, str) or not x for x in task["allowed_tools"]) or len(set(task["allowed_tools"])) != len(task["allowed_tools"]): return True
+          names = set()
+          for tool in tools:
+              if not isinstance(tool, dict) or set(tool) != {"name", "capabilities", "required_arguments", "effect"} or not isinstance(tool["name"], str) or not tool["name"] or tool["name"] in names or not isinstance(tool["effect"], str) or not tool["effect"]: return True
+              names.add(tool["name"])
+              for key in ("capabilities", "required_arguments"):
+                  if not isinstance(tool[key], list) or any(not isinstance(x, str) or not x for x in tool[key]) or len(set(tool[key])) != len(tool[key]): return True
+          return False
+      if bad_input(): raise ValueError("invalid input")
+      names = [tool["name"] for tool in tools]; invalid = []
+      for name in names + [name for name in contracts if name not in names]:
+          contract = contracts.get(name)
+          ok = name in names and isinstance(contract, dict) and set(contract) == {"name", "inputs", "output", "errors", "effect"} and contract.get("name") == name and isinstance(contract.get("inputs"), dict) and all(isinstance(k, str) and k and isinstance(v, str) and v in {"str", "int", "float", "bool", "list", "dict", "none"} for k, v in contract.get("inputs", {}).items()) and isinstance(contract.get("output"), str) and contract.get("output") in {"str", "int", "float", "bool", "list", "dict", "none"} and isinstance(contract.get("errors"), list) and all(isinstance(x, str) and x for x in contract.get("errors", [])) and len(set(contract.get("errors", []))) == len(contract.get("errors", [])) and isinstance(contract.get("effect"), str) and contract.get("effect")
+          if not ok: invalid.append(name)
+      if invalid: return {"status": "invalid_contracts", "tools": invalid}
+      eligible = [tool for tool in tools if task["capability"] in tool["capabilities"] and tool["name"] in task["allowed_tools"] and all(key in task["arguments"] for key in tool["required_arguments"])]
+      capable = [tool for tool in tools if task["capability"] in tool["capabilities"]]
+      if not eligible: return {"status": "refused", "reason": "unauthorized" if capable and not any(tool["name"] in task["allowed_tools"] for tool in capable) else "no_match"}
+      if len(eligible) > 1: return {"status": "refused", "reason": "ambiguous", "candidates": [tool["name"] for tool in eligible]}
+      tool = eligible[0]; inputs = contracts[tool["name"]]["inputs"]; bad = []
+      for key, declared in inputs.items():
+          value = task["arguments"].get(key, object()); types = {"str": str, "int": int, "float": float, "bool": bool, "list": list, "dict": dict}
+          if not (value is None if declared == "none" else type(value) is types[declared]): bad.append(key)
+      bad.extend(key for key in task["arguments"] if key not in inputs)
+      return {"status": "invalid_call", "fields": bad} if bad else {"status": "ready", "call": {"tool": tool["name"], "arguments": dict(task["arguments"])}, "effect": tool["effect"]}

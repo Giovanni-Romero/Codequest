@@ -1,0 +1,232 @@
+id: ai-production-07
+title: Inspecione a evidência de produção
+track: ai-engineering
+island: production-ai
+order: 7
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- latency-cost-budget
+- graceful-degradation
+teaching:
+  analogy: Um inspetor lê o manifesto antes de abrir qualquer caixa.
+  explanation: Evidência de produção é julgada na ordem do pipeline. Problema de orçamento posterior não esconde incompatibilidade anterior de trace. Diagnóstico é útil justamente por não reparar o registro.
+  worked_example: 'checagens = [True, True]
+
+    print(all(checagens))'
+  key_points:
+  - Valide antes de diagnosticar.
+  - Ordem do pipeline define precedência.
+  - Evidência relata fatos, não reparos.
+brief: 'Escreva `inspect_production_evidence(evidence) -> dict`. Valide primeiro o registro completo de evidência e então informe apenas o primeiro problema: divergência entre guardrail e trace, trace inseguro, orçamento excedido ou fallback ausente. Retorne `sound` quando a evidência fornecida for coerente. Esta missão diagnostica dados fornecidos; ela não chama um provedor.'
+signature:
+  entrypoint: inspect_production_evidence
+  stub: "def inspect_production_evidence(evidence):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - guardrail: &id001
+        status: allowed
+        layer: null
+      trace: &id002
+      - stage: input
+        status: ok
+        elapsed_ms: 1
+        input_size: 2
+        output_size: 0
+        failure_reason: null
+      - stage: provider
+        status: ok
+        elapsed_ms: 3
+        input_size: 2
+        output_size: 4
+        failure_reason: null
+      - stage: output
+        status: ok
+        elapsed_ms: 1
+        input_size: 4
+        output_size: 4
+        failure_reason: null
+      usage: &id003
+        requests: 1
+        tokens: 5
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      limits: &id004
+        max_requests: 2
+        max_tokens: 10
+        max_cost_units: 3
+        max_concurrency: 1
+        max_wall_ms: 10
+      provider_status: offline
+      fallback_used: true
+    expect:
+      status: sound
+  - args:
+    - guardrail: *id001
+      trace: *id002
+      usage: *id003
+      limits: *id004
+      provider_status: offline
+      fallback_used: false
+    expect:
+      status: issue
+      kind: missing_fallback
+  - args:
+    - guardrail:
+        status: rejected
+        layer: output
+      trace:
+      - stage: input
+        status: error
+        elapsed_ms: 1
+        input_size: 2
+        output_size: 0
+        failure_reason: blocked_input
+      - stage: provider
+        status: ok
+        elapsed_ms: 3
+        input_size: 2
+        output_size: 4
+        failure_reason: null
+      - stage: output
+        status: ok
+        elapsed_ms: 1
+        input_size: 4
+        output_size: 4
+        failure_reason: null
+      usage: *id003
+      limits: *id004
+      provider_status: offline
+      fallback_used: true
+    expect:
+      status: issue
+      kind: unsafe_or_broken_trace
+  hidden:
+  - args:
+    - guardrail:
+        status: rejected
+        layer: input
+      trace: *id002
+      usage: *id003
+      limits: *id004
+      provider_status: offline
+      fallback_used: true
+    expect:
+      status: issue
+      kind: guardrail_trace_mismatch
+  - args:
+    - guardrail: *id001
+      trace: *id002
+      usage:
+        requests: 1
+        tokens: 99
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      limits: *id004
+      provider_status: offline
+      fallback_used: true
+    expect:
+      status: issue
+      kind: budget_exceeded
+  - args:
+    - guardrail: *id001
+      trace: *id002
+      usage:
+        requests: 1
+        tokens: true
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      limits: *id004
+      provider_status: offline
+      fallback_used: true
+    raises: ValueError
+  - args:
+    - guardrail: *id001
+      trace: []
+      usage: *id003
+      limits: *id004
+      provider_status: offline
+      fallback_used: true
+    raises: ValueError
+  - args:
+    - guardrail: *id001
+      trace: *id002
+      usage: *id003
+      limits: *id004
+      provider_status: offline
+      fallback_used: true
+      extra: 1
+    raises: ValueError
+  - args:
+    - guardrail: *id001
+      trace: *id002
+      usage: *id003
+      limits: *id004
+      provider_status: ok
+      fallback_used: true
+    expect:
+      status: issue
+      kind: missing_fallback
+hints:
+- level: 1
+  text: Qual problema deve aparecer primeiro?
+- level: 2
+  text: Verifique acordo entre guardrail e trace antes do orçamento.
+- level: 3
+  text: 'Para inspeções: `first_bad = next((x for x in checks if not x), None)`. '
+solution: |
+  def inspect_production_evidence(evidence):
+      event_keys = {"stage", "status", "elapsed_ms", "input_size", "output_size", "failure_reason"}
+      if not isinstance(evidence, dict) or set(evidence) != {"guardrail", "trace", "usage", "limits", "provider_status", "fallback_used"}:
+          raise ValueError("invalid evidence")
+      guard = evidence["guardrail"]
+      if not isinstance(guard, dict) or set(guard) != {"status", "layer"} or type(guard["status"]) is not str or guard["status"] not in {"allowed", "rejected"} or guard["layer"] not in {None, "input", "output"}:
+          raise ValueError("invalid guardrail")
+      if type(evidence["provider_status"]) is not str or evidence["provider_status"] not in {"ok", "offline", "timeout", "rejected"} or type(evidence["fallback_used"]) is not bool:
+          raise ValueError("invalid evidence")
+      events = evidence["trace"]
+      if not isinstance(events, list) or not events:
+          raise ValueError("invalid trace")
+      for event in events:
+          if not isinstance(event, dict) or set(event) != event_keys or type(event["stage"]) is not str or event["stage"] not in {"input", "provider", "output"} or type(event["status"]) is not str or event["status"] not in {"ok", "error"} or any(type(event[key]) is not int or event[key] < 0 for key in ("elapsed_ms", "input_size", "output_size")) or ((event["status"] == "error") != (type(event["failure_reason"]) is str and bool(event["failure_reason"]))):
+              raise ValueError("invalid trace")
+      usage = evidence["usage"]
+      limits = evidence["limits"]
+      limit_keys = {"max_requests", "max_tokens", "max_cost_units", "max_concurrency", "max_wall_ms"}
+      usage_keys = {"requests", "tokens", "cost_units", "peak_concurrency", "wall_ms"}
+      if not isinstance(usage, dict) or set(usage) != usage_keys or any(type(value) is not int or value < 0 for value in usage.values()) or not isinstance(limits, dict) or set(limits) != limit_keys or any(type(value) is not int or value <= 0 for value in limits.values()):
+          raise ValueError("invalid usage")
+      stages = ["input", "provider", "output"]
+      ordered = len(events) <= 3 and all(event["stage"] == stages[index] for index, event in enumerate(events))
+      errors = [event for event in events if event["status"] == "error"]
+      terminal = len(errors) <= 1 and (not errors or events[-1] is errors[0])
+      complete = ordered and not errors and len(events) == 3
+      failed = ordered and terminal and bool(errors)
+      last = events[-1]
+      mismatch = (guard["status"] == "allowed" and bool(errors)) or (guard["status"] == "rejected" and (guard["layer"] is None or last["status"] != "error" or last["stage"] != guard["layer"] or last["failure_reason"] != "blocked_" + guard["layer"]))
+      if not complete and not failed:
+          return {"status": "issue", "kind": "unsafe_or_broken_trace"}
+      if failed and last["failure_reason"] not in {"blocked_input", "blocked_output", "offline", "timeout", "rejected"}:
+          return {"status": "issue", "kind": "unsafe_or_broken_trace"}
+      if mismatch:
+          return {"status": "issue", "kind": "guardrail_trace_mismatch"}
+      pairs = [("requests", "max_requests"), ("tokens", "max_tokens"), ("cost_units", "max_cost_units"), ("peak_concurrency", "max_concurrency"), ("wall_ms", "max_wall_ms")]
+      if any(usage[key] > limits[limit] for key, limit in pairs):
+          return {"status": "issue", "kind": "budget_exceeded"}
+      if (evidence["provider_status"] == "ok") == evidence["fallback_used"]:
+          return {"status": "issue", "kind": "missing_fallback"}
+      return {"status": "sound"}

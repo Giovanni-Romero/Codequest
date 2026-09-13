@@ -1,0 +1,61 @@
+id: ai-structured-outputs-02
+title: Analise, não execute
+track: ai-engineering
+island: structured-outputs
+order: 2
+difficulty: moderate
+tags: [ai-engineering, structured-outputs, json, parsing]
+xp: 30
+concepts: [safe-output-parsing]
+teaching:
+  analogy: |
+    Um fiscal da alfândega lê uma declaração. Ele não executa comandos escritos no formulário.
+  explanation: |
+    A saída de um modelo é texto não confiável. `json.loads` transforma texto JSON em dados e
+    rejeita sintaxe malformada. `eval` interpretaria expressões Python e daria à entrada um poder
+    que ela nunca deve ter. Análise sintática e validação são etapas separadas.
+  worked_example: |
+    import json
+    raw = '{"items": ["tea", "rice"]}'
+    value = json.loads(raw)
+    first_item = value["items"][0]
+    print(first_item)
+    print(value["items"])
+  key_points:
+    - Analise o texto inteiro como JSON, sem extrair um trecho conveniente.
+    - Converta falhas do decoder no erro estável `parse` exigido pelo contrato.
+    - Um parse bem-sucedido não prova que o schema está correto.
+brief: |
+  Escreva `parse_object(text)`. Analise uma string que contém um objeto JSON com `json.loads` e
+  retorne o dicionário resultante. Lance `ValueError("parse")` para entrada não textual, JSON
+  malformado ou JSON válido cujo valor de nível superior não seja um dicionário. Nunca execute a entrada.
+signature:
+  entrypoint: parse_object
+  stub: |
+    def parse_object(text):
+        # Leia saída não confiável apenas como dado.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: ['{"ok": true}'], expect: {ok: true}}, {args: ['{"items": [1, 2]}'], expect: {items: [1, 2]}}]
+  hidden: [{args: [null], raises: ValueError}, {args: [''], raises: ValueError}, {args: ['[1, 2]'], raises: ValueError}, {args: ['{"a": 1} trailing'], raises: ValueError}, {args: ['{"a": {"b": 2}}'], expect: {a: {b: 2}}}, {args: ['{"n": 7}'], expect: {n: 7}}]
+hints:
+  - {level: 1, text: "Qual operação lê JSON sem dar ao texto a chance de virar código?"}
+  - {level: 2, text: "Use `json.loads`, capture a falha do decoder e confirme o container superior."}
+  - level: 3
+    text: |
+      Um leitor de encomendas pode chamar `json.loads(raw)` dentro de `try`, capturar
+      `json.JSONDecodeError` e testar `isinstance(valor, dict)` antes de devolver os dados.
+solution: |
+  import json
+
+  def parse_object(text):
+      if not isinstance(text, str):
+          raise ValueError("parse")
+      try:
+          value = json.loads(text)
+      except (json.JSONDecodeError, TypeError):
+          raise ValueError("parse")
+      if not isinstance(value, dict):
+          raise ValueError("parse")
+      return value

@@ -1,0 +1,131 @@
+id: ai-documents-06
+title: Budget the context
+track: ai-engineering
+island: documents-into-context
+order: 6
+difficulty: moderate
+tags: [ai-engineering, context-window, budgeting, metadata]
+xp: 30
+
+concepts:
+  - context-budget
+
+teaching:
+  analogy: |
+    A traveller packs items in priority order under a strict weight allowance. An item
+    that is too heavy stays behind, but a lighter item later in the list may still fit.
+    The suitcase never gets permission to exceed the limit.
+
+    Context assembly has the same hard boundary. Candidate chunks arrive in a useful
+    order, and only the ones that fit may enter the request.
+
+  explanation: |
+    A context budget is the maximum cost allowed for selected evidence. This mission
+    uses words as a deterministic stand-in for model tokens. Scan chunks in their given
+    order and keep a chunk only when its whole cost fits. Skipping one does not reorder
+    the chunks that are selected, and overlap counts again because repeated words still
+    occupy context space.
+
+  worked_example: |
+    # Pack priority parcels under a six-kilogram limit.
+    parcels = [{"name": "A", "kg": 4}, {"name": "B", "kg": 3}, {"name": "C", "kg": 2}]
+    packed = []
+    used = 0
+    for parcel in parcels:
+        if used + parcel["kg"] <= 6:
+            packed.append(parcel)
+            used += parcel["kg"]
+    print(packed)  # A and C
+
+  key_points:
+    - A hard budget is never exceeded, even by one word.
+    - Count the full chunk text; overlap consumes budget like every other word.
+    - Skipping a chunk does not prevent a later, smaller chunk from fitting.
+    - Preserve the input order and metadata of selected chunks.
+
+brief: |
+  Write `fit_context_budget`. It receives ordered chunk dictionaries and a word budget.
+  Each chunk has a `text` field. Return the original chunk dictionaries that fit while
+  scanning from first to last.
+
+  A chunk fits when adding all its words does not exceed `max_words`. Skip chunks that
+  do not fit and continue scanning. Preserve relative order and metadata. A zero budget
+  returns an empty list. Raise `ValueError` for a negative budget.
+
+signature:
+  entrypoint: fit_context_budget
+  stub: |
+    def fit_context_budget(chunks, max_words):
+        # Keep each whole chunk only when its cost remains inside the budget.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args:
+        - [{id: A, text: "one two three"}, {id: B, text: "four five"}, {id: C, text: six}]
+        - 4
+      expect: [{id: A, text: "one two three"}, {id: C, text: six}]
+    - args:
+        - [{id: A, text: "one two"}, {id: B, text: "three four"}]
+        - 4
+      expect: [{id: A, text: "one two"}, {id: B, text: "three four"}]
+  hidden:
+    - args: [[], 5]
+      expect: []
+    - args:
+        - [{id: A, text: one}]
+        - 0
+      expect: []
+    - args:
+        - [{id: large, text: "one two three four"}, {id: small, text: five}]
+        - 2
+      expect: [{id: small, text: five}]
+    - args:
+        - [{id: overlap-1, text: "a b c"}, {id: overlap-2, text: "c d e"}]
+        - 5
+      expect: [{id: overlap-1, text: "a b c"}]
+    - args:
+        - [{chunk_id: "doc:0", source_id: doc, position: 0, text: "alpha beta"}]
+        - 2
+      expect: [{chunk_id: "doc:0", source_id: doc, position: 0, text: "alpha beta"}]
+    - args: [[], -1]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      What number must you know before deciding whether the next whole chunk can enter?
+  - level: 2
+    text: |
+      Keep a running `used` word count. Add a chunk only when `used + cost` stays at or
+      below the budget.
+  - level: 3
+    text: |
+      Here is the pattern for choosing downloads under a storage limit:
+
+          chosen = []
+          used = 0
+          for file in files:
+              if used + file["size"] <= capacity:
+                  chosen.append(file)
+                  used += file["size"]
+
+      Your cost comes from splitting each chunk's text into words.
+
+solution: |
+  def fit_context_budget(chunks, max_words):
+      if max_words < 0:
+          raise ValueError("max_words must not be negative")
+
+      selected = []
+      used = 0
+      for chunk in chunks:
+          cost = len(chunk["text"].split())
+          if used + cost <= max_words:
+              selected.append(chunk)
+              used += cost
+      return selected

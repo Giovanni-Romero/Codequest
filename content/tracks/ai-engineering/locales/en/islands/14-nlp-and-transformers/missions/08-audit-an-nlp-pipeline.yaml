@@ -1,0 +1,76 @@
+id: ai-nlp-08
+title: Audit an NLP pipeline
+track: ai-engineering
+island: nlp-and-transformers
+order: 8
+difficulty: challenging
+tags: [ai-engineering, transformers, nlp, capstone, requires-ai-ml]
+xp: 45
+concepts: [tokenizer-boundaries, model-config-and-weights, inference-pipelines, fine-tuning-boundaries]
+teaching:
+  analogy: A complete sea-trial record binds the cargo encoding, ship blueprint, instrument reading, and maintenance decision. A label alone cannot reproduce the voyage.
+  explanation: An auditable NLP system pins tokenizer boundaries, architecture and weights, inference state, and the adaptation decision. A tiny offline model makes every stage executable without pretending that fresh random weights contain knowledge.
+  worked_example: |
+    audit = {"tokens": [2, 5, 3], "model": "tiny-local", "strategy": "retrieval"}
+    print(audit)
+  key_points:
+    - Pin tokenizer and model state together.
+    - Trace preprocessing through postprocessing.
+    - Choose adaptation from evidence, not fashion.
+brief: >
+  Write `audit_nlp_pipeline(text, max_length, external_knowledge, labeled_examples,
+  limited_compute) -> dict`. Tokenize with the local vocabulary, build the tiny classifier,
+  zero all parameters and set classifier bias to `[0.25, 0.75]`, then run controlled inference.
+  Select adaptation using mission 04's rules. Return token IDs, mask, config, parameter count,
+  logits, label, and strategy. Reject invalid inputs.
+signature:
+  entrypoint: audit_nlp_pipeline
+  stub: |
+    def audit_nlp_pipeline(text, max_length, external_knowledge, labeled_examples, limited_compute):
+        # Bind every reproducibility and adaptation boundary into one audit.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [Hello seas, 6, true, 0, false]
+      expect: {input_ids: [2, 5, 7, 8, 3, 0], attention_mask: [1, 1, 1, 1, 1, 0], config: {vocab_size: 10, hidden_size: 8, layers: 1}, parameter_count: 930, logits: [0.25, 0.75], label: positive, strategy: retrieval}
+    - args: [hello world, 5, false, 0, false]
+      expect: {input_ids: [2, 5, 6, 3, 0], attention_mask: [1, 1, 1, 1, 0], config: {vocab_size: 10, hidden_size: 8, layers: 1}, parameter_count: 930, logits: [0.25, 0.75], label: positive, strategy: prompting}
+  hidden:
+    - args: [hello, 4, false, 100, true]
+      expect: {input_ids: [2, 5, 3, 0], attention_mask: [1, 1, 1, 0], config: {vocab_size: 10, hidden_size: 8, layers: 1}, parameter_count: 930, logits: [0.25, 0.75], label: positive, strategy: adapters}
+    - args: [hello, 4, false, 100, false]
+      expect: {input_ids: [2, 5, 3, 0], attention_mask: [1, 1, 1, 0], config: {vocab_size: 10, hidden_size: 8, layers: 1}, parameter_count: 930, logits: [0.25, 0.75], label: positive, strategy: weight-update}
+    - {args: ['', 4, false, 0, false], raises: ValueError}
+    - {args: [hello, 17, false, 0, false], raises: ValueError}
+    - {args: [hello, 4, 0, 0, false], raises: ValueError}
+    - {args: [hello, 4, false, -1, false], raises: ValueError}
+hints:
+  - {level: 1, text: "What evidence pins tokenization, model state, inference, and adaptation?"}
+  - {level: 2, text: "Create each stage once and preserve its boundary values in the returned audit."}
+  - {level: 3, text: "Reuse the fixed tokenizer, tiny config, zeroed model with fixed bias, eval inference, and ordered strategy rules."}
+solution: |
+  def audit_nlp_pipeline(text, max_length, external_knowledge, labeled_examples, limited_compute):
+      from pathlib import Path
+      from tempfile import TemporaryDirectory
+      import torch
+      from transformers import BertConfig, BertForSequenceClassification, BertTokenizer
+      if not isinstance(text, str) or not text.strip() or type(max_length) is not int or not 2 <= max_length <= 16 or type(external_knowledge) is not bool or type(limited_compute) is not bool or type(labeled_examples) is not int or labeled_examples < 0:
+          raise ValueError("invalid pipeline input")
+      vocabulary = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world", "sea", "##s", "model"]
+      with TemporaryDirectory() as folder:
+          path = Path(folder) / "vocab.txt"; path.write_text("\n".join(vocabulary), encoding="utf-8")
+          tokenizer = BertTokenizer(vocab=str(path), do_lower_case=True)
+          encoded = tokenizer(text, max_length=max_length, truncation=True, padding="max_length", return_tensors="pt")
+      config = BertConfig(vocab_size=10, hidden_size=8, num_hidden_layers=1, num_attention_heads=2, intermediate_size=16, num_labels=2, max_position_embeddings=16)
+      model = BertForSequenceClassification(config)
+      with torch.no_grad():
+          for parameter in model.parameters(): parameter.zero_()
+          model.classifier.bias.copy_(torch.tensor([0.25, 0.75]))
+      model.eval()
+      with torch.inference_mode(): logits = model(**encoded).logits
+      if external_knowledge: strategy = "retrieval"
+      elif labeled_examples == 0: strategy = "prompting"
+      elif limited_compute: strategy = "adapters"
+      else: strategy = "weight-update"
+      return {"input_ids": encoded["input_ids"][0].tolist(), "attention_mask": encoded["attention_mask"][0].tolist(), "config": {"vocab_size": config.vocab_size, "hidden_size": config.hidden_size, "layers": config.num_hidden_layers}, "parameter_count": sum(parameter.numel() for parameter in model.parameters()), "logits": [round(value, 6) for value in logits[0].tolist()], "label": ["negative", "positive"][logits.argmax(dim=-1).item()], "strategy": strategy}

@@ -1,0 +1,81 @@
+id: ai-pytorch-03
+title: Run a registered module
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 3
+difficulty: challenging
+tags: [ai-engineering, pytorch, module, forward, requires-ai-ml]
+xp: 45
+concepts: [modules-and-forward, tensors-and-shapes]
+teaching:
+  analogy: A ship registry lists engines installed in the hull, not tools assembled temporarily on deck. Only registered equipment appears in inspection records.
+  explanation: An `nn.Module` creates layers in `__init__` so PyTorch registers their parameters. `forward` defines how tensors flow through those layers. Raw outputs are scores, not probabilities. Stable weights make this exercise auditable.
+  worked_example: |
+    import torch
+    from torch import nn
+    layer = nn.Linear(2, 1)
+    with torch.no_grad():
+        layer.weight.fill_(1)
+        layer.bias.zero_()
+    print(layer(torch.tensor([[2.0, 3.0]])).tolist())
+  key_points:
+    - Layers assigned in `__init__` register parameters.
+    - "`forward` describes computation, not setup."
+    - Linear outputs are scores until a task applies an activation.
+brief: >
+  Write `run_registered_module(rows) -> dict`. Define an `nn.Module` containing one
+  `nn.Linear(2, 1)` layer in `__init__`; its forward method calls that layer. Set weight
+  to `[0.5, -0.25]` and bias to `0.1` under `torch.no_grad()`. Return sorted parameter
+  names, output shape, and outputs rounded to six decimals. Reject invalid rows.
+signature:
+  entrypoint: run_registered_module
+  stub: |
+    def run_registered_module(rows):
+        # Register one layer and run its forward computation.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[[2, 4], [0, 2]]]
+      expect: {parameters: [linear.bias, linear.weight], output_shape: [2, 1], outputs: [0.1, -0.4]}
+    - args: [[[1, 1]]]
+      expect: {parameters: [linear.bias, linear.weight], output_shape: [1, 1], outputs: [0.35]}
+  hidden:
+    - args: [[]]
+      raises: ValueError
+    - args: [[[1]]]
+      raises: ValueError
+    - args: [[[1, 2, 3]]]
+      raises: ValueError
+    - args: [[[true, 1]]]
+      raises: ValueError
+    - args: [[[.nan, 1]]]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Where must a layer live for `named_parameters()` to discover it?"}
+  - {level: 2, text: "Subclass `nn.Module`, assign `nn.Linear` in `__init__`, and implement `forward`."}
+  - {level: 3, text: "For another model, initialize registered parameters inside `torch.no_grad()` and inspect `named_parameters()`."}
+solution: |
+  def run_registered_module(rows):
+      import math
+      import torch
+      from torch import nn
+      if not isinstance(rows, list) or not rows or any(not isinstance(row, list) or len(row) != 2 for row in rows):
+          raise ValueError("invalid rows")
+      limit = torch.finfo(torch.float32).max
+      if any(type(value) not in (int, float) or not -limit <= value <= limit for row in rows for value in row):
+          raise ValueError("invalid values")
+      class ScoreModule(nn.Module):
+          def __init__(self):
+              super().__init__()
+              self.linear = nn.Linear(2, 1)
+          def forward(self, inputs):
+              return self.linear(inputs)
+      model = ScoreModule()
+      with torch.no_grad():
+          model.linear.weight.copy_(torch.tensor([[0.5, -0.25]]))
+          model.linear.bias.fill_(0.1)
+      output = model(torch.tensor(rows, dtype=torch.float32))
+      if not torch.isfinite(output).all():
+          raise ValueError("non-finite model output")
+      return {"parameters": sorted(name for name, _ in model.named_parameters()), "output_shape": list(output.shape), "outputs": [round(value, 6) for value in output.flatten().tolist()]}

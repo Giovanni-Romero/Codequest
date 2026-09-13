@@ -1,0 +1,76 @@
+id: ai-responsible-03
+title: Construa um registro de decisão
+track: ai-engineering
+island: responsible-ai
+order: 3
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, explainability, audit]
+xp: 45
+concepts: [explainability-records]
+teaching:
+  analogy: O diário de um navio cita recibos de carga e a versão da embarcação sem copiar cartas privadas dos passageiros. Um auditor consegue refazer o caminho da decisão enquanto os dados brutos protegidos continuam lacrados.
+  explanation: Um registro de explicabilidade preserva fatos verificáveis, não uma história fluente criada depois da decisão. Referências estáveis apontam para fontes governadas. A versão do modelo identifica o sistema decisório, e fatores numéricos nomeados mostram quais sinais declarados foram usados. Referências não provam causalidade, mas tornam a revisão possível.
+  worked_example: |
+    receipt_ids = ["receipt:17", "receipt:21"]
+    manifest_version = "v3"
+    references = list(receipt_ids)
+    shipment = {"manifest": manifest_version, "references": references}
+    print(shipment)
+    print("receipts:", len(references))
+  key_points:
+    - Armazene referências de evidência em vez de copiar registros brutos protegidos.
+    - Fixe a versão exata do modelo porque o comportamento pode mudar entre versões.
+    - Registre fatores declarados sem afirmar que correlação prova causalidade.
+brief: >
+  Escreva `build_decision_record(decision_id, model_version, evidence, factors) -> dict`.
+  Os dois primeiros argumentos são strings não vazias. `evidence` é uma lista não vazia
+  de strings únicas e não vazias iniciadas por `evidence:`. `factors` é um dicionário não
+  vazio com chaves de string não vazias e valores inteiros ou floats finitos; booleanos
+  não são números aqui. Retorne `decision_id`, `model_version`, uma cópia da lista
+  `evidence_refs` e uma cópia do dicionário `factors`. Rejeite entradas malformadas,
+  não finitas ou numericamente não representáveis e não altere nenhum contêiner.
+signature:
+  entrypoint: build_decision_record
+  stub: |
+    def build_decision_record(decision_id, model_version, evidence, factors):
+        # Preserve referências auditáveis sem copiar dados brutos protegidos.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [decision-7, model-v3, ['evidence:invoice-7', 'evidence:policy-2'], {amount_score: 0.75, history_count: 4}]
+      expect: {decision_id: decision-7, model_version: model-v3, evidence_refs: ['evidence:invoice-7', 'evidence:policy-2'], factors: {amount_score: 0.75, history_count: 4}}
+    - args: [decision-8, model-v3, ['evidence:case-8'], {risk_delta: -0.25}]
+      expect: {decision_id: decision-8, model_version: model-v3, evidence_refs: ['evidence:case-8'], factors: {risk_delta: -0.25}}
+  hidden:
+    - {args: ['', model-v1, ['evidence:x'], {score: 1.0}], raises: ValueError}
+    - {args: [d1, model-v1, [], {score: 1.0}], raises: ValueError}
+    - {args: [d1, model-v1, [raw-value], {score: 1.0}], raises: ValueError}
+    - {args: [d1, model-v1, ['evidence:x', 'evidence:x'], {score: 1.0}], raises: ValueError}
+    - {args: [d1, model-v1, ['evidence:x'], {score: true}], raises: ValueError}
+    - {args: [d1, model-v1, ['evidence:x'], {score: .inf}], raises: ValueError}
+    - {args: [d1, model-v1, ['evidence:x'], {score: 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}], raises: ValueError}
+    - {args: [d1, model-v1, ['evidence:x'], []], raises: ValueError}
+hints:
+  - {level: 1, text: "Um auditor consegue localizar as evidências e o modelo sem receber o registro de origem protegido?"}
+  - {level: 2, text: "Valide os prefixos das referências e cada fator antes de criar um novo dicionário."}
+  - {level: 3, text: "Em outro diário, `copy = {'refs': list(refs), 'weights': dict(weights)}` separa os contêineres do resultado."}
+solution: |
+  def build_decision_record(decision_id, model_version, evidence, factors):
+      import math
+      if type(decision_id) is not str or not decision_id.strip() or type(model_version) is not str or not model_version.strip():
+          raise ValueError("invalid identity")
+      if type(evidence) is not list or not evidence or any(type(ref) is not str or not ref.startswith("evidence:") or len(ref) == 9 for ref in evidence) or len(set(evidence)) != len(evidence):
+          raise ValueError("invalid evidence")
+      if type(factors) is not dict or not factors or any(type(name) is not str or not name.strip() for name in factors):
+          raise ValueError("invalid factors")
+      for value in factors.values():
+          if type(value) not in (int, float):
+              raise ValueError("invalid factor")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid factor")
+      return {"decision_id": decision_id, "model_version": model_version, "evidence_refs": list(evidence), "factors": dict(factors)}

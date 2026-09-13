@@ -1,0 +1,88 @@
+id: ai-retrieval-02
+title: Measure the angle
+track: ai-engineering
+island: retrieval
+order: 2
+difficulty: moderate
+tags: [ai-engineering, retrieval, cosine-similarity]
+xp: 30
+
+concepts: [sparse-representation, similarity-scoring]
+
+teaching:
+  analogy: |
+    Two compasses can point in the same direction even when one arrow is longer. The
+    angle compares direction; it does not reward the bigger drawing.
+  explanation: |
+    Cosine similarity compares the direction of two sparse vectors. The dot product
+    measures shared weight and each magnitude removes document-length advantage. A zero
+    vector has no direction, so its similarity is defined here as zero.
+  worked_example: |
+    from math import sqrt
+    a = [1, 1]
+    b = [2, 0]
+    dot = sum(left * right for left, right in zip(a, b))
+    cosine = dot / (sqrt(sum(x * x for x in a)) * sqrt(sum(x * x for x in b)))
+    print(cosine)
+  key_points:
+    - Similarity is a score, not a probability.
+    - Missing sparse terms contribute zero.
+    - Magnitude normalization prevents long documents winning by size alone.
+
+brief: |
+  Write `cosine_similarity(left, right)` for dictionaries of non-negative numeric term
+  weights. Return a float between 0 and 1. Return `0.0` if either vector has zero
+  magnitude. Raise `ValueError` for a negative or non-numeric weight.
+
+signature:
+  entrypoint: cosine_similarity
+  stub: |
+    def cosine_similarity(left, right):
+        # Compare sparse vector direction, not raw size.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [{port: 1, tide: 1}, {port: 2, tide: 2}]
+      expect: 1.0
+      tolerance: 0.000001
+    - args: [{port: 1}, {tide: 4}]
+      expect: 0.0
+      tolerance: 0.000001
+  hidden:
+    - args: [{}, {}]
+      expect: 0.0
+    - args: [{port: 0}, {port: 1}]
+      expect: 0.0
+    - args: [{a: 1, b: 1}, {a: 1}]
+      expect: 0.7071067811865475
+      tolerance: 0.000001
+    - args: [{a: 1}, {a: -1}]
+      raises: ValueError
+    - args: [{a: high}, {a: 1}]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Which terms contribute to the dot product, and what makes a vector's magnitude?"}
+  - {level: 2, text: "Validate both maps, compute the shared dot product, then divide by both square-root magnitudes."}
+  - level: 3
+    text: |
+      For two numeric lists, direction similarity divides their dot product by
+      `sqrt(sum(x*x)) * sqrt(sum(y*y))`, unless either magnitude is zero.
+
+solution: |
+  def cosine_similarity(left, right):
+      from math import sqrt
+
+      for vector in (left, right):
+          for weight in vector.values():
+              if not isinstance(weight, (int, float)) or weight < 0:
+                  raise ValueError("weights must be non-negative numbers")
+      left_size = sqrt(sum(weight * weight for weight in left.values()))
+      right_size = sqrt(sum(weight * weight for weight in right.values()))
+      if left_size == 0 or right_size == 0:
+          return 0.0
+      dot = sum(weight * right.get(term, 0) for term, weight in left.items())
+      return dot / (left_size * right_size)

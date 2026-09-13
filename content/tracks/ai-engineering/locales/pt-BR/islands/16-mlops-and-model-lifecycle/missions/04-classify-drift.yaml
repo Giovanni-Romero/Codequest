@@ -1,0 +1,97 @@
+id: ai-mlops-04
+title: Classifique o drift
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 4
+difficulty: challenging
+tags: [ai-engineering, mlops, drift, monitoring]
+xp: 45
+concepts: [drift-monitoring]
+teaching:
+  analogy: Um porto compara turnos iguais de observação para vento, tráfego, atrasos e precisão das rotas. Uma mudança no vento não é automaticamente uma falha de navegação, mas o registro ainda nomeia o que mudou e com qual intensidade.
+  explanation: O monitoramento de drift compara janelas declaradas de referência e atuais. Drift de entrada muda os dados recebidos, drift de previsão muda as saídas, drift de desempenho muda a qualidade medida e drift de conceito muda a relação entre entradas e resultados. Tipo e severidade são evidências; sozinhos, não decidem a resposta.
+  worked_example: |
+    antigo = {"temperatura": 18.0, "pressao": 1.0}
+    novo = {"temperatura": 18.4, "pressao": 1.0}
+    nomes = ["temperatura", "pressao"]
+    mudancas = {nome: abs(novo[nome] - antigo[nome]) for nome in nomes}
+    vencedor = max(nomes, key=mudancas.__getitem__)
+    print(mudancas)
+    print("maior:", vencedor)
+  key_points:
+    - Compare janelas positivas e iguais para dar uma base significativa às mudanças.
+    - Nomeie o tipo de drift em vez de tratar todo alerta como a mesma falha.
+    - Separe severidade de ação porque uma mudança de distribuição pode ser inofensiva.
+brief: >
+  Escreva `classify_drift(baseline, current, window, tolerance) -> dict`. Baseline e
+  current são mapeamentos exatos com `input`, `prediction`, `performance` e `concept`,
+  cada um contendo um número finito sem booleanos. `window` tem exatamente contagens
+  inteiras positivas `baseline` e `current`; elas devem ser iguais e booleanos são
+  inválidos. Tolerância é um número finito de 0 a 1. Calcule mudanças absolutas
+  arredondadas para três casas. Se nenhuma mudança bruta superar a tolerância, tipo e
+  severidade são `none`. Caso contrário, escolha a maior mudança, desempatando na ordem
+  input, prediction, performance e concept. A severidade é `warning` até duas vezes a
+  tolerância e `critical` acima disso; qualquer mudança positiva é crítica quando a
+  tolerância é zero. Retorne janela, mudanças, tipo e severidade. Rejeite dados
+  malformados ou não finitos e não altere mapeamentos.
+signature:
+  entrypoint: classify_drift
+  stub: |
+    def classify_drift(baseline, current, window, tolerance):
+        # Compare explicit windows before naming drift type and severity.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [{input: 0.1, prediction: 0.4, performance: 0.8, concept: 0.2}, {input: 0.25, prediction: 0.42, performance: 0.78, concept: 0.2}, {baseline: 100, current: 100}, 0.05]
+      expect: {window: {baseline: 100, current: 100}, changes: {input: 0.15, prediction: 0.02, performance: 0.02, concept: 0.0}, type: input, severity: critical}
+    - args: [{input: 0.1, prediction: 0.2, performance: 0.3, concept: 0.4}, {input: 0.11, prediction: 0.2, performance: 0.29, concept: 0.4}, {baseline: 50, current: 50}, 0.02]
+      expect: {window: {baseline: 50, current: 50}, changes: {input: 0.01, prediction: 0.0, performance: 0.01, concept: 0.0}, type: none, severity: none}
+    - args: [{input: 0, prediction: 0, performance: 0.9, concept: 0}, {input: 0, prediction: 0, performance: 0.82, concept: 0}, {baseline: 20, current: 20}, 0.05]
+      expect: {window: {baseline: 20, current: 20}, changes: {input: 0, prediction: 0, performance: 0.08, concept: 0}, type: performance, severity: warning}
+  hidden:
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: 1, current: 1}, 0], expect: {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}}
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: 0.1, prediction: 0.1, performance: 0, concept: 0}, {baseline: 10, current: 10}, 0.05], expect: {window: {baseline: 10, current: 10}, changes: {input: 0.1, prediction: 0.1, performance: 0, concept: 0}, type: input, severity: warning}}
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: 0, current: 0}, 0], raises: ValueError}
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: 10, current: 20}, 0], raises: ValueError}
+    - {args: [{input: true, prediction: 0, performance: 0, concept: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: 10, current: 10}, 0], raises: ValueError}
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: .nan, prediction: 0, performance: 0, concept: 0}, {baseline: 10, current: 10}, 0], raises: ValueError}
+    - {args: [{input: 0, prediction: 0, performance: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: 10, current: 10}, 0], raises: ValueError}
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: true, current: true}, 0], raises: ValueError}
+    - {args: [{input: 0, prediction: 0, performance: 0, concept: 0}, {input: 0, prediction: 0, performance: 0, concept: 0}, {baseline: 10, current: 10}, true], raises: ValueError}
+hints:
+  - {level: 1, text: "As duas janelas são comparáveis e qual sinal mais mudou além da tolerância?"}
+  - {level: 2, text: "Valide os quatro sinais numéricos e compare as diferenças absolutas brutas."}
+  - {level: 3, text: "Preserve a ordem do desempate com uma lista e uma função-chave: `vencedor = max(nomes, key=notas.__getitem__)`."}
+solution: |
+  def classify_drift(baseline, current, window, tolerance):
+      import math
+      names = ["input", "prediction", "performance", "concept"]
+      required = set(names)
+      def finite(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except (OverflowError, TypeError):
+              return False
+      if type(baseline) is not dict or type(current) is not dict or set(baseline) != required or set(current) != required:
+          raise ValueError("invalid signals")
+      if any(not finite(baseline[name]) or not finite(current[name]) for name in names):
+          raise ValueError("invalid signals")
+      if type(window) is not dict or set(window) != {"baseline", "current"}:
+          raise ValueError("invalid window")
+      if any(type(window[name]) is not int or window[name] <= 0 for name in ("baseline", "current")) or window["baseline"] != window["current"]:
+          raise ValueError("incomparable windows")
+      if not finite(tolerance) or not 0 <= tolerance <= 1:
+          raise ValueError("invalid tolerance")
+      raw = {name: abs(current[name] - baseline[name]) for name in names}
+      if any(not finite(value) for value in raw.values()):
+          raise ValueError("invalid derived change")
+      largest = max(names, key=lambda name: raw[name])
+      if raw[largest] <= tolerance:
+          drift_type, severity = "none", "none"
+      else:
+          drift_type = largest
+          severity = "critical" if tolerance == 0 or raw[largest] > tolerance * 2 else "warning"
+      return {"window": dict(window), "changes": {name: round(raw[name], 3) for name in names}, "type": drift_type, "severity": severity}

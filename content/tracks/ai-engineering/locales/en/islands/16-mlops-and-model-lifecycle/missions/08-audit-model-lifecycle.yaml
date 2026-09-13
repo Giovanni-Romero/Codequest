@@ -1,0 +1,207 @@
+id: ai-mlops-08
+title: Audit a model lifecycle
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 8
+difficulty: challenging
+tags: [ai-engineering, mlops, experiments, model-versioning, deployment, drift, capstone]
+xp: 45
+concepts: [experiment-tracking, model-versioning, deployment-strategies, drift-monitoring]
+teaching:
+  analogy: A harbor authority closes a vessel file only after linking its voyage log, hull registry, traffic decision, and monitoring watch. The final stamp says active, returned to port, or retired.
+  explanation: A lifecycle audit joins experiment evidence, immutable model identity, rollout state, and monitoring signals. Lineage must agree across run and model records before deployment evidence is trusted. Rollback decisions and harmful drift change the operational state, while distribution drift alone does not. Failed runs remain auditable but cannot support an approved active model.
+  worked_example: |
+    file = {"inspection": "passed", "route": "active", "weather": "changed"}
+    checks = [file["inspection"], file["weather"]]
+    failed = "failed" in checks
+    status = "retired" if failed else "active"
+    file["route"] = status
+    print(status)
+  key_points:
+    - Reconcile run and model lineage before deciding lifecycle state.
+    - Honor rollout rollback evidence before declaring a model active.
+    - Keep distribution-only drift under observation instead of forcing rollback.
+    - End every audit with one explicit active, rolled-back, or retired state.
+brief: >
+  Write `audit_model_lifecycle(run, model, rollout, monitoring) -> dict`. `run` is an
+  exact mission-01 record. `model` is an exact mission-02 result whose run ID, code
+  version, data version, config, metrics, and artifact digest agree with `run`. `rollout`
+  is an exact mission-06 result: decisions are `continue` or `rollback`, all versions and
+  observed metric names are non-empty, numeric values are finite and exclude booleans,
+  rollback activates its rollback version, and continue activates this model. `monitoring`
+  is an exact mission-04 signal with positive comparable windows and valid finite changes.
+  A non-completed run or non-approved model ends `retired`. A rollout rollback or critical
+  performance drift ends `rolled-back`. Critical concept drift ends `retired`. Other
+  monitoring, including critical input or prediction drift alone, leaves the model
+  `active`. Return identity, rollout decision, a copied monitoring summary, final status,
+  and active version; retired uses null. Reject malformed or inconsistent input and do
+  not mutate any argument.
+signature:
+  entrypoint: audit_model_lifecycle
+  stub: |
+    def audit_model_lifecycle(run, model, rollout, monitoring):
+        # Reconcile experiment, registry, rollout, and monitoring evidence.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {run_id: run-1, code_version: c1, data_version: d1, config: {lr: 0.1}, metrics: {accuracy: 0.9}, artifacts: {weights: hash-1}, status: completed}
+        - {model_id: model-v2, artifact_digest: hash-1, run_id: run-1, code_version: c1, data_version: d1, config: {lr: 0.1}, metrics: {accuracy: 0.9}, state: approved, reviewer: team}
+        - {decision: continue, active_version: model-v2, observed: {metric: error_rate, value: 0.05}, limit: 0.1, rollback_version: model-v1}
+        - {window: {baseline: 100, current: 100}, changes: {input: 0.3, prediction: 0.0, performance: 0.0, concept: 0.0}, type: input, severity: critical}
+      expect: {run_id: run-1, model_id: model-v2, artifact_digest: hash-1, rollout_decision: continue, monitoring: {type: input, severity: critical, window: {baseline: 100, current: 100}}, status: active, active_version: model-v2}
+    - args:
+        - {run_id: run-2, code_version: c2, data_version: d2, config: {lr: 0.2}, metrics: {accuracy: 0.8}, artifacts: {weights: hash-2}, status: completed}
+        - {model_id: model-v3, artifact_digest: hash-2, run_id: run-2, code_version: c2, data_version: d2, config: {lr: 0.2}, metrics: {accuracy: 0.8}, state: approved, reviewer: team}
+        - {decision: rollback, active_version: model-v1, observed: {metric: error_rate, value: 0.2}, limit: 0.1, rollback_version: model-v1}
+        - {window: {baseline: 50, current: 50}, changes: {input: 0.0, prediction: 0.0, performance: 0.2, concept: 0.0}, type: performance, severity: critical}
+      expect: {run_id: run-2, model_id: model-v3, artifact_digest: hash-2, rollout_decision: rollback, monitoring: {type: performance, severity: critical, window: {baseline: 50, current: 50}}, status: rolled-back, active_version: model-v1}
+    - args:
+        - {run_id: run-fail, code_version: c3, data_version: d3, config: {lr: 0.3}, metrics: {}, artifacts: {trace: hash-f}, status: failed}
+        - {model_id: model-f, artifact_digest: hash-f, run_id: run-fail, code_version: c3, data_version: d3, config: {lr: 0.3}, metrics: {}, state: rejected, reviewer: team}
+        - {decision: continue, active_version: model-f, observed: {metric: error_rate, value: 0}, limit: 0.1, rollback_version: model-v1}
+        - {window: {baseline: 10, current: 10}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}
+      expect: {run_id: run-fail, model_id: model-f, artifact_digest: hash-f, rollout_decision: continue, monitoring: {type: none, severity: none, window: {baseline: 10, current: 10}}, status: retired, active_version: null}
+  hidden:
+    - args:
+        - {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {model_id: m2, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}
+        - {decision: continue, active_version: m2, observed: {metric: score, value: 1}, limit: 2, rollback_version: m1}
+        - {window: {baseline: 10, current: 10}, changes: {input: 0, prediction: 0, performance: 0, concept: 0.2}, type: concept, severity: critical}
+      expect: {run_id: r, model_id: m2, artifact_digest: h, rollout_decision: continue, monitoring: {type: concept, severity: critical, window: {baseline: 10, current: 10}}, status: retired, active_version: null}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: wrong, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {trace: h}, status: failed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: rollback, active_version: wrong, observed: {metric: score, value: 3}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: true}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}, {window: {baseline: 0, current: 0}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}, {window: {baseline: 100, current: 100}, changes: {input: 0, prediction: 0, performance: 10, concept: 0}, type: input, severity: critical}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: missing}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - args:
+        - {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}
+        - {decision: rollback, active_version: old, observed: {metric: score, value: 3}, limit: 2, rollback_version: old}
+        - {window: {baseline: 10, current: 10}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}
+      expect: {run_id: r, model_id: m, artifact_digest: h, rollout_decision: rollback, monitoring: {type: none, severity: none, window: {baseline: 10, current: 10}}, status: rolled-back, active_version: old}
+    - args:
+        - {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}
+        - {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}
+        - {window: {baseline: 10, current: 10}, changes: {input: 0, prediction: 0, performance: 0.2, concept: 0}, type: performance, severity: critical}
+      expect: {run_id: r, model_id: m, artifact_digest: h, rollout_decision: continue, monitoring: {type: performance, severity: critical, window: {baseline: 10, current: 10}}, status: rolled-back, active_version: old}
+    - args:
+        - {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}
+        - {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}
+        - {window: {baseline: 50, current: 50}, changes: {input: 0.01, prediction: 0, performance: 0.01, concept: 0}, type: none, severity: none}
+      expect: {run_id: r, model_id: m, artifact_digest: h, rollout_decision: continue, monitoring: {type: none, severity: none, window: {baseline: 50, current: 50}}, status: active, active_version: m}
+    - args:
+        - {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}
+        - {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}
+        - {window: {baseline: 10, current: 10}, changes: {input: 0.001, prediction: 0, performance: 0, concept: 0}, type: input, severity: critical}
+      expect: {run_id: r, model_id: m, artifact_digest: h, rollout_decision: continue, monitoring: {type: input, severity: critical, window: {baseline: 10, current: 10}}, status: active, active_version: m}
+    - args:
+        - {run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}
+        - {decision: continue, active_version: m, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}
+        - {window: {baseline: 10, current: 10}, changes: {input: 0.0, prediction: 0, performance: 0, concept: 0}, type: input, severity: critical}
+      expect: {run_id: r, model_id: m, artifact_digest: h, rollout_decision: continue, monitoring: {type: input, severity: critical, window: {baseline: 10, current: 10}}, status: active, active_version: m}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: rollback, active_version: old, observed: {metric: score, value: 1}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+    - {args: [{run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}, {model_id: m, artifact_digest: h, run_id: r, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, state: approved, reviewer: team}, {decision: continue, active_version: m, observed: {metric: score, value: 3}, limit: 2, rollback_version: old}, {window: {baseline: 1, current: 1}, changes: {input: 0, prediction: 0, performance: 0, concept: 0}, type: none, severity: none}], raises: ValueError}
+hints:
+  - {level: 1, text: "Do run, model, rollout, and monitoring records describe one consistent operational history?"}
+  - {level: 2, text: "Validate each boundary, reconcile lineage, then apply terminal-state rules in priority order."}
+  - {level: 3, text: "A review can prioritize terminal states: `status = 'retired' if failed else 'active'`."}
+solution: |
+  def audit_model_lifecycle(run, model, rollout, monitoring):
+      import math
+      def finite(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except (OverflowError, TypeError):
+              return False
+      def json_ok(value):
+          if value is None or type(value) in (str, bool):
+              return True
+          if type(value) in (int, float):
+              return finite(value)
+          if type(value) is list:
+              return all(json_ok(item) for item in value)
+          return type(value) is dict and all(type(key) is str and json_ok(item) for key, item in value.items())
+      def same_json(left, right):
+          if type(left) is not type(right):
+              return False
+          if type(left) is dict:
+              return set(left) == set(right) and all(same_json(left[key], right[key]) for key in left)
+          if type(left) is list:
+              return len(left) == len(right) and all(same_json(a, b) for a, b in zip(left, right))
+          return left == right
+      run_keys = {"run_id", "code_version", "data_version", "config", "metrics", "artifacts", "status"}
+      if type(run) is not dict or set(run) != run_keys or any(type(run[key]) is not str or not run[key].strip() for key in ("run_id", "code_version", "data_version")):
+          raise ValueError("invalid run")
+      if type(run["config"]) is not dict or not run["config"] or not json_ok(run["config"]):
+          raise ValueError("invalid run")
+      if type(run["metrics"]) is not dict or any(type(key) is not str or not key.strip() or not finite(value) for key, value in run["metrics"].items()):
+          raise ValueError("invalid run")
+      if type(run["artifacts"]) is not dict or any(type(key) is not str or not key.strip() or type(value) is not str or not value.strip() for key, value in run["artifacts"].items()):
+          raise ValueError("invalid run")
+      if run["status"] not in ("running", "completed", "failed") or run["status"] == "completed" and (not run["metrics"] or not run["artifacts"]):
+          raise ValueError("invalid run")
+      model_keys = {"model_id", "artifact_digest", "run_id", "code_version", "data_version", "config", "metrics", "state", "reviewer"}
+      if type(model) is not dict or set(model) != model_keys or any(type(model[key]) is not str or not model[key].strip() for key in ("model_id", "artifact_digest", "run_id", "code_version", "data_version")):
+          raise ValueError("invalid model")
+      if model["state"] not in ("pending", "approved", "rejected") or model["state"] == "pending" and model["reviewer"] is not None or model["state"] != "pending" and (type(model["reviewer"]) is not str or not model["reviewer"].strip()):
+          raise ValueError("invalid model")
+      if type(model["config"]) is not dict or not model["config"] or any(type(key) is not str or not key.strip() for key in model["config"]) or not json_ok(model["config"]):
+          raise ValueError("invalid model")
+      if type(model["metrics"]) is not dict or any(type(key) is not str or not key.strip() or not finite(value) for key, value in model["metrics"].items()):
+          raise ValueError("invalid model")
+      lineage = (model["run_id"], model["code_version"], model["data_version"], model["config"], model["metrics"])
+      expected = (run["run_id"], run["code_version"], run["data_version"], run["config"], run["metrics"])
+      if lineage[:3] != expected[:3] or not same_json(lineage[3], expected[3]) or not same_json(lineage[4], expected[4]) or model["artifact_digest"] not in run["artifacts"].values() or model["state"] == "approved" and run["status"] != "completed":
+          raise ValueError("inconsistent lineage")
+      rollout_keys = {"decision", "active_version", "observed", "limit", "rollback_version"}
+      if type(rollout) is not dict or set(rollout) != rollout_keys or rollout["decision"] not in ("continue", "rollback"):
+          raise ValueError("invalid rollout")
+      if any(type(rollout[key]) is not str or not rollout[key].strip() for key in ("active_version", "rollback_version")) or rollout["rollback_version"] == model["model_id"]:
+          raise ValueError("invalid rollout")
+      if type(rollout["observed"]) is not dict or set(rollout["observed"]) != {"metric", "value"} or type(rollout["observed"]["metric"]) is not str or not rollout["observed"]["metric"].strip() or not finite(rollout["observed"]["value"]) or not finite(rollout["limit"]):
+          raise ValueError("invalid rollout")
+      if (rollout["decision"] == "rollback") != (rollout["observed"]["value"] > rollout["limit"]):
+          raise ValueError("inconsistent rollout decision")
+      if rollout["decision"] == "rollback" and rollout["active_version"] != rollout["rollback_version"] or rollout["decision"] == "continue" and rollout["active_version"] != model["model_id"]:
+          raise ValueError("inconsistent rollout")
+      signal_keys = {"window", "changes", "type", "severity"}
+      names = {"input", "prediction", "performance", "concept"}
+      if type(monitoring) is not dict or set(monitoring) != signal_keys or type(monitoring["window"]) is not dict or set(monitoring["window"]) != {"baseline", "current"}:
+          raise ValueError("invalid monitoring")
+      window = monitoring["window"]
+      if any(type(window[key]) is not int or window[key] <= 0 for key in window) or window["baseline"] != window["current"]:
+          raise ValueError("invalid monitoring")
+      changes = monitoring["changes"]
+      if type(changes) is not dict or set(changes) != names or any(not finite(value) or value < 0 for value in changes.values()):
+          raise ValueError("invalid monitoring")
+      if any(round(value, 3) != value for value in changes.values()):
+          raise ValueError("invalid monitoring")
+      drift_type = monitoring["type"]
+      severity = monitoring["severity"]
+      if drift_type == "none":
+          if severity != "none":
+              raise ValueError("invalid monitoring")
+      elif type(drift_type) is not str or drift_type not in names or severity not in ("warning", "critical"):
+          raise ValueError("invalid monitoring")
+      elif any(value > changes[drift_type] for value in changes.values()):
+          raise ValueError("inconsistent monitoring")
+      if run["status"] != "completed" or model["state"] != "approved":
+          status, active = "retired", None
+      elif rollout["decision"] == "rollback" or drift_type == "performance" and severity == "critical":
+          status, active = "rolled-back", rollout["rollback_version"]
+      elif drift_type == "concept" and severity == "critical":
+          status, active = "retired", None
+      else:
+          status, active = "active", model["model_id"]
+      summary = {"type": drift_type, "severity": severity, "window": dict(window)}
+      return {"run_id": run["run_id"], "model_id": model["model_id"], "artifact_digest": model["artifact_digest"], "rollout_decision": rollout["decision"], "monitoring": summary, "status": status, "active_version": active}

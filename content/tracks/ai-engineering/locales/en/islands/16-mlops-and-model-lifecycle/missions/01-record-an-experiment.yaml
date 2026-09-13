@@ -1,0 +1,99 @@
+id: ai-mlops-01
+title: Record an experiment
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 1
+difficulty: challenging
+tags: [ai-engineering, mlops, experiments, lineage]
+xp: 45
+concepts: [experiment-tracking]
+teaching:
+  analogy: A harbor log records the ship, chart edition, cargo manifest, readings, receipts, and outcome for every voyage. A photo of one gauge cannot recreate the trip.
+  explanation: Experiment tracking binds results to the code, data, configuration, and artifacts that produced them. Failed runs matter because they explain discarded paths and recurring faults. A complete record copies its inputs so later changes cannot rewrite history.
+  worked_example: |
+    source = {"crew": {"lead": "Mara"}, "tags": ["night"]}
+    snapshot = {"crew": dict(source["crew"]), "tags": list(source["tags"])}
+    source["crew"]["lead"] = "Niko"
+    source["tags"].append("storm")
+    print(source["crew"]["lead"])
+    print(snapshot["crew"]["lead"], snapshot["tags"])
+  key_points:
+    - Pin code and data versions because metrics alone cannot reproduce a run.
+    - Track failed runs because missing failures create false confidence.
+    - Copy nested inputs so the stored record remains stable.
+brief: >
+  Write `record_experiment(run_id, code_version, data_version, config, metrics,
+  artifacts, status) -> dict`. IDs and versions are non-empty strings. `config` is a
+  non-empty JSON-like mapping with string keys; nested values may be null, booleans,
+  strings, finite numbers, lists, or mappings of the same kind. `metrics` maps unique
+  non-empty string names to finite numbers excluding booleans. `artifacts` maps unique
+  non-empty string names to non-empty digest strings. Status is `running`, `completed`,
+  or `failed`; a completed run needs at least one metric and artifact. Return a deep,
+  independent record with exactly the seven input fields. Reject malformed or non-finite
+  input and do not mutate any argument.
+signature:
+  entrypoint: record_experiment
+  stub: |
+    def record_experiment(run_id, code_version, data_version, config, metrics, artifacts, status):
+        # Bind every result to reproducible inputs and artifacts.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [run-7, code-a1, data-v3, {epochs: 3, model: {width: 8}, flags: [fast, true]}, {loss: 0.25, accuracy: 0.9}, {weights: sha256:abc}, completed]
+      expect: {run_id: run-7, code_version: code-a1, data_version: data-v3, config: {epochs: 3, model: {width: 8}, flags: [fast, true]}, metrics: {loss: 0.25, accuracy: 0.9}, artifacts: {weights: sha256:abc}, status: completed}
+    - args: [run-fail, code-a2, data-v3, {epochs: 1}, {}, {}, failed]
+      expect: {run_id: run-fail, code_version: code-a2, data_version: data-v3, config: {epochs: 1}, metrics: {}, artifacts: {}, status: failed}
+  hidden:
+    - {args: ['', code-a1, data-v1, {x: 1}, {loss: 1}, {weights: digest}, completed], raises: ValueError}
+    - {args: [run, code, data, {}, {}, {}, running], raises: ValueError}
+    - {args: [run, code, data, {x: .nan}, {}, {}, failed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {loss: true}, {}, failed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {loss: .inf}, {}, failed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {loss: 1}, {weights: ''}, completed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {}, {}, completed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {}, {}, unknown], raises: ValueError}
+hints:
+  - {level: 1, text: "Which facts would another engineer need to distinguish and reproduce this run?"}
+  - {level: 2, text: "Validate the complete record, then recursively copy JSON-like containers."}
+  - {level: 3, text: "For another manifest, rebuild nested containers explicitly: `copy = {'crew': dict(source['crew'])}`."}
+solution: |
+  def record_experiment(run_id, code_version, data_version, config, metrics, artifacts, status):
+      import math
+      def copy_json(value):
+          if value is None or type(value) in (str, bool):
+              return value
+          if type(value) in (int, float):
+              try:
+                  if math.isfinite(value):
+                      return value
+              except (OverflowError, TypeError):
+                  pass
+              raise ValueError("invalid JSON number")
+          if type(value) is list:
+              return [copy_json(item) for item in value]
+          if type(value) is dict and all(type(key) is str for key in value):
+              return {key: copy_json(item) for key, item in value.items()}
+          raise ValueError("invalid JSON value")
+      if any(type(value) is not str or not value.strip() for value in (run_id, code_version, data_version)):
+          raise ValueError("invalid run identity")
+      if type(config) is not dict or not config or any(type(key) is not str or not key.strip() for key in config):
+          raise ValueError("invalid config")
+      if type(metrics) is not dict or any(type(key) is not str or not key.strip() for key in metrics):
+          raise ValueError("invalid metrics")
+      for value in metrics.values():
+          if type(value) not in (int, float):
+              raise ValueError("invalid metric")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid metric")
+      if type(artifacts) is not dict or any(type(key) is not str or not key.strip() or type(value) is not str or not value.strip() for key, value in artifacts.items()):
+          raise ValueError("invalid artifacts")
+      if status not in ("running", "completed", "failed") or type(status) is not str:
+          raise ValueError("invalid status")
+      if status == "completed" and (not metrics or not artifacts):
+          raise ValueError("incomplete completed run")
+      return {"run_id": run_id, "code_version": code_version, "data_version": data_version, "config": copy_json(config), "metrics": dict(metrics), "artifacts": dict(artifacts), "status": status}

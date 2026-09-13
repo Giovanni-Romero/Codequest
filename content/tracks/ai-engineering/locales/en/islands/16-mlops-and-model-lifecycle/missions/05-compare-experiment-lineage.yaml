@@ -1,0 +1,118 @@
+id: ai-mlops-05
+title: Compare experiment lineage
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 5
+difficulty: challenging
+tags: [ai-engineering, mlops, experiments, model-versioning]
+xp: 45
+concepts: [experiment-tracking, model-versioning]
+teaching:
+  analogy: Two voyage logs may show different fuel use. Comparing the charts, cargo manifests, engine settings, and receipts reveals whether the voyages truly shared a route.
+  explanation: Comparing experiments means comparing lineage before interpreting metric deltas. Code, data, configuration, and artifacts identify what changed. Run status remains evidence too, including failures. A deterministic comparison keeps field and metric order stable for review.
+  worked_example: |
+    left = {"route": "north", "hours": 8}
+    right = {"route": "south", "hours": 10}
+    fields = ["route", "hours"]
+    changed = [key for key in fields if left[key] != right[key]]
+    same = not changed
+    print(changed)
+    print("same:", same)
+  key_points:
+    - Compare lineage before attributing a metric difference.
+    - Preserve failed statuses because they explain missing or partial metrics.
+    - Report missing metrics explicitly instead of inventing a numeric delta.
+brief: >
+  Write `compare_experiment_lineage(left_run, right_run) -> dict`. Each argument is an
+  exact mission-01 run record. Return run IDs, whether code version, data version, config,
+  and artifacts are all equal as `same_lineage`, changed fields in fixed code version,
+  data version, config, artifacts, status order, and `metric_deltas` for the sorted union
+  of metric names. A delta is right minus left rounded to three decimals when both runs
+  contain the metric, otherwise null. Return the two statuses. Reject malformed,
+  non-finite, or incomplete records and do not mutate either argument.
+signature:
+  entrypoint: compare_experiment_lineage
+  stub: |
+    def compare_experiment_lineage(left_run, right_run):
+        # Compare lineage before interpreting differences in metrics.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {run_id: left, code_version: c1, data_version: d1, config: {lr: 0.1}, metrics: {accuracy: 0.8, loss: 0.4}, artifacts: {weights: hash-a}, status: completed}
+        - {run_id: right, code_version: c2, data_version: d1, config: {lr: 0.1}, metrics: {accuracy: 0.85, loss: 0.3}, artifacts: {weights: hash-b}, status: completed}
+      expect: {left_run_id: left, right_run_id: right, same_lineage: false, changed: [code_version, artifacts], metric_deltas: {accuracy: 0.05, loss: -0.1}, statuses: [completed, completed]}
+    - args:
+        - {run_id: left-fail, code_version: c1, data_version: d1, config: {lr: 0.1}, metrics: {}, artifacts: {}, status: failed}
+        - {run_id: right-fail, code_version: c1, data_version: d1, config: {lr: 0.1}, metrics: {error_count: 1}, artifacts: {}, status: failed}
+      expect: {left_run_id: left-fail, right_run_id: right-fail, same_lineage: true, changed: [], metric_deltas: {error_count: null}, statuses: [failed, failed]}
+  hidden:
+    - args:
+        - {run_id: a, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+        - {run_id: b, code_version: c, data_version: d, config: {x: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: completed}
+      expect: {left_run_id: a, right_run_id: b, same_lineage: true, changed: [], metric_deltas: {score: 0}, statuses: [completed, completed]}
+    - {args: [[], {run_id: b, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: failed}], raises: ValueError}
+    - {args: [{run_id: '', code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: failed}, {run_id: b, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: failed}], raises: ValueError}
+    - {args: [{run_id: a, code_version: c, data_version: d, config: {x: 1}, metrics: {score: true}, artifacts: {}, status: failed}, {run_id: b, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: failed}], raises: ValueError}
+    - {args: [{run_id: a, code_version: c, data_version: d, config: {x: .inf}, metrics: {}, artifacts: {}, status: failed}, {run_id: b, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: failed}], raises: ValueError}
+    - {args: [{run_id: a, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: completed}, {run_id: b, code_version: c, data_version: d, config: {x: 1}, metrics: {}, artifacts: {}, status: failed}], raises: ValueError}
+    - args:
+        - {run_id: a, code_version: c, data_version: d, config: {flag: 1}, metrics: {score: 1}, artifacts: {weights: h}, status: failed}
+        - {run_id: b, code_version: c, data_version: d, config: {flag: true}, metrics: {score: 1}, artifacts: {weights: h}, status: failed}
+      expect: {left_run_id: a, right_run_id: b, same_lineage: false, changed: [config], metric_deltas: {score: 0}, statuses: [failed, failed]}
+hints:
+  - {level: 1, text: "Which changed inputs could explain the changed metrics before you compare scores?"}
+  - {level: 2, text: "Validate both records, compare lineage fields in a fixed order, then walk sorted metric names."}
+  - {level: 3, text: "For optional fields, choose an explicit sentinel: `delta = None if key not in right else right[key]`."}
+solution: |
+  def compare_experiment_lineage(left_run, right_run):
+      import math
+      run_keys = {"run_id", "code_version", "data_version", "config", "metrics", "artifacts", "status"}
+      def json_ok(value):
+          if value is None or type(value) in (str, bool):
+              return True
+          if type(value) in (int, float):
+              try:
+                  return math.isfinite(value)
+              except (OverflowError, TypeError):
+                  return False
+          if type(value) is list:
+              return all(json_ok(item) for item in value)
+          return type(value) is dict and all(type(key) is str and json_ok(item) for key, item in value.items())
+      def same_json(left, right):
+          if type(left) is not type(right):
+              return False
+          if type(left) is dict:
+              return set(left) == set(right) and all(same_json(left[key], right[key]) for key in left)
+          if type(left) is list:
+              return len(left) == len(right) and all(same_json(a, b) for a, b in zip(left, right))
+          return left == right
+      def valid(run):
+          if type(run) is not dict or set(run) != run_keys:
+              return False
+          if any(type(run[key]) is not str or not run[key].strip() for key in ("run_id", "code_version", "data_version")):
+              return False
+          if type(run["config"]) is not dict or not run["config"] or any(type(key) is not str or not key.strip() for key in run["config"]) or not json_ok(run["config"]):
+              return False
+          metrics = run["metrics"]
+          if type(metrics) is not dict or any(type(key) is not str or not key.strip() or type(value) not in (int, float) for key, value in metrics.items()):
+              return False
+          try:
+              if any(not math.isfinite(value) for value in metrics.values()):
+                  return False
+          except (OverflowError, TypeError):
+              return False
+          artifacts = run["artifacts"]
+          if type(artifacts) is not dict or any(type(key) is not str or not key.strip() or type(value) is not str or not value.strip() for key, value in artifacts.items()):
+              return False
+          return run["status"] in ("running", "completed", "failed") and (run["status"] != "completed" or bool(metrics) and bool(artifacts))
+      if not valid(left_run) or not valid(right_run):
+          raise ValueError("invalid run")
+      fields = ["code_version", "data_version", "config", "artifacts", "status"]
+      changed = [field for field in fields if not same_json(left_run[field], right_run[field])]
+      names = sorted(set(left_run["metrics"]) | set(right_run["metrics"]))
+      deltas = {name: round(right_run["metrics"][name] - left_run["metrics"][name], 3) if name in left_run["metrics"] and name in right_run["metrics"] else None for name in names}
+      if any(value is not None and not math.isfinite(value) for value in deltas.values()):
+          raise ValueError("invalid metric delta")
+      return {"left_run_id": left_run["run_id"], "right_run_id": right_run["run_id"], "same_lineage": not any(field in changed for field in fields[:4]), "changed": changed, "metric_deltas": deltas, "statuses": [left_run["status"], right_run["status"]]}

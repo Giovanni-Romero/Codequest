@@ -1,0 +1,264 @@
+id: ai-responsible-08
+title: Audite uma decisão responsável
+track: ai-engineering
+island: responsible-ai
+order: 8
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, fairness, privacy, explainability, oversight, capstone]
+xp: 45
+concepts: [group-fairness-metrics, privacy-boundaries, explainability-records, human-oversight-governance]
+teaching:
+  analogy: Uma liberação portuária final reúne resultados por cais, um manifesto de passageiros minimizado, o diário do navio com recibos e uma rota de inspeção identificada. Sem qualquer uma dessas partes, a liberação fica insegura ou impossível de auditar.
+  explanation: Decisões responsáveis precisam de várias fronteiras aplicáveis ao mesmo tempo. Métricas por grupo expõem disparidades sob uma tolerância declarada. A política de privacidade minimiza e oculta dados do sujeito antes da revisão. Referências de evidência e a versão do modelo preservam rastreabilidade, enquanto impacto e incerteza determinam a supervisão responsável. Nenhum resultado isolado substitui a auditoria combinada.
+  worked_example: |
+    clearance = {
+        "safety_check": "passed",
+        "public_manifest": {"cargo": "tea"},
+        "inspector": "harbor-team",
+    }
+    print(clearance)
+  key_points:
+    - Meça a escolha de equidade declarada sobre o candidato e os registros anteriores juntos.
+    - Aplique regras de privacidade antes de montar o artefato de auditoria.
+    - Vincule evidências e versão do modelo à decisão.
+    - Encaminhe impacto ou incerteza a um revisor identificado com um resultado registrado.
+brief: >
+  Escreva `audit_responsible_decision(records, candidate, policy, review_event) -> dict`.
+  `records` anteriores formam uma lista de dicionários exatos com `id`, `group`, `selected`,
+  `prediction` e `actual`, usando IDs únicos. `candidate` contém esses campos mais
+  `decision_id`, `model_version`, `evidence_refs` únicos iniciados por `evidence:`, `factors`
+  numéricos finitos, `subject` com valores escalares, `impact` válido e `confidence` finita
+  entre 0 e 1. O ID precisa ser novo. `policy` contém exatamente `fairness_metric`,
+  `fairness_tolerance`, `allowed_subject_fields`, `redact_subject_fields`, `retention_days`,
+  `review_impacts`, `min_automatic_confidence` e `reviewer`, conforme os contratos anteriores.
+  Audite a equidade sobre registros anteriores mais o candidato; minimize e oculte dados do
+  sujeito; construa o registro de explicabilidade; depois encaminhe a supervisão por impacto
+  primeiro e confiança depois. Rotas automáticas exigem `review_event` nulo. Rotas humanas
+  exigem um mapeamento exato de `event`, `actor` e `occurred_at` em UTC; o evento é `approve`,
+  `reject` ou `timeout`, e o ator precisa ser o revisor da política. Retorne as quatro seções
+  mostradas pelos testes. Rejeite entradas malformadas, inconsistentes, não finitas ou não
+  representáveis e não altere nenhum argumento.
+signature:
+  entrypoint: audit_responsible_decision
+  stub: |
+    def audit_responsible_decision(records, candidate, policy, review_event):
+        # Integre equidade, privacidade, rastreabilidade e supervisão responsável.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - - {id: old-1, group: north, selected: true, prediction: true, actual: true}
+        - id: new-1
+          decision_id: decision-1
+          group: south
+          selected: true
+          prediction: false
+          actual: false
+          model_version: model-v3
+          evidence_refs: ['evidence:new-1']
+          factors: {risk_score: 0.2}
+          subject: {region: south, email: s@example.com}
+          impact: low
+          confidence: 0.9
+        - fairness_metric: error_rate
+          fairness_tolerance: 0
+          allowed_subject_fields: [region]
+          redact_subject_fields: []
+          retention_days: 7
+          review_impacts: [high]
+          min_automatic_confidence: 0.8
+          reviewer: risk-team
+        - null
+      expect:
+        fairness: {metric: error_rate, rates: {north: 0.0, south: 0.0}, gap: 0.0, within_tolerance: true}
+        privacy: {subject: {region: south}, retention_days: 7}
+        decision_record: {decision_id: decision-1, model_version: model-v3, evidence_refs: ['evidence:new-1'], factors: {risk_score: 0.2}}
+        oversight: {route: automatic, reason: eligible, reviewer: null, status: automatic, event: null}
+    - args:
+        - - {id: old-2, group: a, selected: false, prediction: false, actual: true}
+        - id: new-2
+          decision_id: decision-2
+          group: b
+          selected: true
+          prediction: true
+          actual: true
+          model_version: model-v4
+          evidence_refs: ['evidence:new-2', 'evidence:policy-4']
+          factors: {risk_score: 0.8}
+          subject: {region: east, email: e@example.com}
+          impact: high
+          confidence: 0.95
+        - fairness_metric: error_rate
+          fairness_tolerance: 0.5
+          allowed_subject_fields: [region, email]
+          redact_subject_fields: [email]
+          retention_days: 30
+          review_impacts: [high]
+          min_automatic_confidence: 0.8
+          reviewer: risk-team
+        - {event: approve, actor: risk-team, occurred_at: '2026-02-01T12:00:00Z'}
+      expect:
+        fairness: {metric: error_rate, rates: {a: 1.0, b: 0.0}, gap: 1.0, within_tolerance: false}
+        privacy: {subject: {region: east, email: '[REDACTED]'}, retention_days: 30}
+        decision_record: {decision_id: decision-2, model_version: model-v4, evidence_refs: ['evidence:new-2', 'evidence:policy-4'], factors: {risk_score: 0.8}}
+        oversight: {route: human-review, reason: impact, reviewer: risk-team, status: approved, event: {event: approve, actor: risk-team, occurred_at: '2026-02-01T12:00:00Z'}}
+  hidden:
+    - args:
+        - []
+        - {id: new, decision_id: d, group: only, selected: false, prediction: true, actual: false, model_version: v, evidence_refs: ['evidence:new'], factors: {score: 0}, subject: {}, impact: medium, confidence: 0.1}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: reject, actor: team, occurred_at: '2026-03-01T00:00:00Z'}
+      expect:
+        fairness: {metric: selection_rate, rates: {only: 0.0}, gap: 0.0, within_tolerance: true}
+        privacy: {subject: {}, retention_days: 0}
+        decision_record: {decision_id: d, model_version: v, evidence_refs: ['evidence:new'], factors: {score: 0}}
+        oversight: {route: human-review, reason: confidence, reviewer: team, status: rejected, event: {event: reject, actor: team, occurred_at: '2026-03-01T00:00:00Z'}}
+    - args:
+        - []
+        - {id: timeout-case, decision_id: d-timeout, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:timeout'], factors: {score: 1}, subject: {}, impact: high, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: timeout, actor: team, occurred_at: '2026-03-02T00:00:00Z'}
+      expect:
+        fairness: {metric: selection_rate, rates: {only: 1.0}, gap: 0.0, within_tolerance: true}
+        privacy: {subject: {}, retention_days: 0}
+        decision_record: {decision_id: d-timeout, model_version: v, evidence_refs: ['evidence:timeout'], factors: {score: 1}}
+        oversight: {route: human-review, reason: impact, reviewer: team, status: timed_out, event: {event: timeout, actor: team, occurred_at: '2026-03-02T00:00:00Z'}}
+    - args:
+        - []
+        - {id: bad-time, decision_id: d-time, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:time'], factors: {score: 1}, subject: {}, impact: high, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: approve, actor: team, occurred_at: '2026-3-2T1:2:3Z'}
+      raises: ValueError
+    - args:
+        - []
+        - {id: privacy-case, decision_id: d-privacy, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:privacy'], factors: {score: 1}, subject: {region: north}, impact: high, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [missing], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: approve, actor: team, occurred_at: '2026-03-02T00:00:00Z'}
+      raises: ValueError
+
+    - args:
+        - []
+        - {id: new, decision_id: d, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:new'], factors: {score: 1}, subject: {}, impact: low, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: approve, actor: team, occurred_at: '2026-03-01T00:00:00Z'}
+      raises: ValueError
+    - args:
+        - []
+        - {id: new, decision_id: d, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:new'], factors: {score: 1}, subject: {}, impact: high, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: approve, actor: wrong-team, occurred_at: '2026-03-01T00:00:00Z'}
+      raises: ValueError
+    - args:
+        - []
+        - {id: new, decision_id: d, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:new'], factors: {score: true}, subject: {}, impact: high, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: approve, actor: team, occurred_at: '2026-03-01T00:00:00Z'}
+      raises: ValueError
+    - args:
+        - []
+        - {id: new, decision_id: d, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:new'], factors: {score: 1}, subject: {}, impact: high, confidence: .nan}
+        - {fairness_metric: selection_rate, fairness_tolerance: 0, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: approve, actor: team, occurred_at: '2026-03-01T00:00:00Z'}
+      raises: ValueError
+    - args:
+        - []
+        - {id: new, decision_id: d, group: only, selected: true, prediction: true, actual: true, model_version: v, evidence_refs: ['evidence:new'], factors: {score: 1}, subject: {}, impact: high, confidence: 0.9}
+        - {fairness_metric: selection_rate, fairness_tolerance: .inf, allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, review_impacts: [high], min_automatic_confidence: 0.8, reviewer: team}
+        - {event: timeout, actor: team, occurred_at: '2026-03-01T00:00:00Z'}
+      raises: ValueError
+hints:
+  - {level: 1, text: "Onde evidências de equidade, dados protegidos do sujeito, linhagem da decisão e responsabilidade de revisão se encontram?"}
+  - {level: 2, text: "Valide cada fronteira primeiro e depois monte quatro seções novas a partir de um candidato."}
+  - {level: 3, text: "Depois de validar cada etapa, outro fluxo pode montar `packet = {'check': check, 'safe_view': dict(view), 'gate': gate}`."}
+solution: |
+  def audit_responsible_decision(records, candidate, policy, review_event):
+      import math
+      from datetime import datetime
+      record_keys = {"id", "group", "selected", "prediction", "actual"}
+      candidate_keys = record_keys | {"decision_id", "model_version", "evidence_refs", "factors", "subject", "impact", "confidence"}
+      policy_keys = {"fairness_metric", "fairness_tolerance", "allowed_subject_fields", "redact_subject_fields", "retention_days", "review_impacts", "min_automatic_confidence", "reviewer"}
+      impacts = {"low", "medium", "high"}
+      def finite_number(value, lower=None, upper=None):
+          if type(value) not in (int, float):
+              return False
+          try:
+              if not math.isfinite(value):
+                  return False
+          except (OverflowError, TypeError):
+              return False
+          return (lower is None or value >= lower) and (upper is None or value <= upper)
+      def valid_outcome(item, expected_keys):
+          return type(item) is dict and set(item) == expected_keys and type(item["id"]) is str and bool(item["id"].strip()) and type(item["group"]) is str and bool(item["group"].strip()) and all(type(item[key]) is bool for key in ("selected", "prediction", "actual"))
+      if type(records) is not list or any(not valid_outcome(item, record_keys) for item in records) or type(candidate) is not dict or set(candidate) != candidate_keys or not valid_outcome(candidate, candidate_keys):
+          raise ValueError("invalid decision data")
+      ids = [item["id"] for item in records]
+      if len(set(ids)) != len(ids) or candidate["id"] in ids:
+          raise ValueError("duplicate id")
+      if type(candidate["decision_id"]) is not str or not candidate["decision_id"].strip() or type(candidate["model_version"]) is not str or not candidate["model_version"].strip():
+          raise ValueError("invalid decision record")
+      evidence = candidate["evidence_refs"]
+      factors = candidate["factors"]
+      subject = candidate["subject"]
+      if type(evidence) is not list or not evidence or any(type(ref) is not str or not ref.startswith("evidence:") or len(ref) == 9 for ref in evidence) or len(set(evidence)) != len(evidence):
+          raise ValueError("invalid evidence")
+      if type(factors) is not dict or not factors or any(type(name) is not str or not name.strip() or not finite_number(value) for name, value in factors.items()):
+          raise ValueError("invalid factors")
+      if type(subject) is not dict or any(type(key) is not str or not key for key in subject):
+          raise ValueError("invalid subject")
+      for value in subject.values():
+          if value is None or type(value) in (str, bool):
+              continue
+          if not finite_number(value):
+              raise ValueError("invalid subject")
+      if type(candidate["impact"]) is not str or candidate["impact"] not in impacts or not finite_number(candidate["confidence"], 0, 1):
+          raise ValueError("invalid routing input")
+      if type(policy) is not dict or set(policy) != policy_keys or policy["fairness_metric"] not in ("selection_rate", "error_rate"):
+          raise ValueError("invalid policy")
+      if not finite_number(policy["fairness_tolerance"], 0, 1) or not finite_number(policy["min_automatic_confidence"], 0, 1):
+          raise ValueError("invalid policy")
+      allowed = policy["allowed_subject_fields"]
+      redact = policy["redact_subject_fields"]
+      review_impacts = policy["review_impacts"]
+      if type(allowed) is not list or type(redact) is not list or any(type(key) is not str or not key for key in allowed + redact) or len(set(allowed)) != len(allowed) or len(set(redact)) != len(redact) or not set(redact) <= set(allowed) <= set(subject):
+          raise ValueError("invalid privacy policy")
+      if type(review_impacts) is not list or any(type(item) is not str or item not in impacts for item in review_impacts) or len(set(review_impacts)) != len(review_impacts):
+          raise ValueError("invalid oversight policy")
+      if type(policy["retention_days"]) is not int or policy["retention_days"] < 0 or type(policy["reviewer"]) is not str or not policy["reviewer"].strip():
+          raise ValueError("invalid policy")
+      combined = records + [{key: candidate[key] for key in record_keys}]
+      counts = {}
+      for item in combined:
+          total, selections, errors = counts.get(item["group"], (0, 0, 0))
+          counts[item["group"]] = (total + 1, selections + item["selected"], errors + (item["prediction"] != item["actual"]))
+      raw_rates = {}
+      for group, (total, selections, errors) in counts.items():
+          numerator = selections if policy["fairness_metric"] == "selection_rate" else errors
+          raw_rates[group] = numerator / total
+      gap = max(raw_rates.values()) - min(raw_rates.values())
+      fairness = {"metric": policy["fairness_metric"], "rates": {group: round(raw_rates[group], 3) for group in sorted(raw_rates)}, "gap": round(gap, 3), "within_tolerance": gap <= policy["fairness_tolerance"]}
+      safe_subject = {key: "[REDACTED]" if key in redact else subject[key] for key in allowed}
+      privacy = {"subject": safe_subject, "retention_days": policy["retention_days"]}
+      decision_record = {"decision_id": candidate["decision_id"], "model_version": candidate["model_version"], "evidence_refs": list(evidence), "factors": dict(factors)}
+      if candidate["impact"] in review_impacts:
+          route, reason = "human-review", "impact"
+      elif candidate["confidence"] < policy["min_automatic_confidence"]:
+          route, reason = "human-review", "confidence"
+      else:
+          route, reason = "automatic", "eligible"
+      if route == "automatic":
+          if review_event is not None:
+              raise ValueError("automatic decisions cannot have a review event")
+          oversight = {"route": route, "reason": reason, "reviewer": None, "status": "automatic", "event": None}
+      else:
+          if type(review_event) is not dict or set(review_event) != {"event", "actor", "occurred_at"} or review_event["event"] not in ("approve", "reject", "timeout") or review_event["actor"] != policy["reviewer"] or type(review_event["occurred_at"]) is not str or len(review_event["occurred_at"]) != 20:
+              raise ValueError("invalid review event")
+          try:
+              parsed_event_time = datetime.strptime(review_event["occurred_at"], "%Y-%m-%dT%H:%M:%SZ")
+          except ValueError as error:
+              raise ValueError("invalid review event") from error
+          if parsed_event_time.strftime("%Y-%m-%dT%H:%M:%SZ") != review_event["occurred_at"]:
+              raise ValueError("invalid review event")
+          statuses = {"approve": "approved", "reject": "rejected", "timeout": "timed_out"}
+          oversight = {"route": route, "reason": reason, "reviewer": policy["reviewer"], "status": statuses[review_event["event"]], "event": dict(review_event)}
+      return {"fairness": fairness, "privacy": privacy, "decision_record": decision_record, "oversight": oversight}

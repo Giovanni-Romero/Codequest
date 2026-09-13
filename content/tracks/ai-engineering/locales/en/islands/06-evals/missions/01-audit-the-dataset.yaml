@@ -1,0 +1,83 @@
+id: ai-evals-01
+title: Audit the dataset
+track: ai-engineering
+island: evals
+order: 1
+difficulty: moderate
+tags: [ai-engineering, evals, dataset]
+xp: 30
+concepts: [eval-datasets]
+teaching:
+  analogy: |
+    A fire drill roster is useful only when every floor appears often enough and no person is counted twice.
+  explanation: |
+    An evaluation dataset is a declared sample of the capability you want to measure. Count each capability in a stable order before trusting a score. Duplicate examples can make one behavior look stronger than it is. Payloads can be nested, so compare them by equality instead of using them as hash keys.
+  worked_example: |
+    shelves = ["fiction", "science", "fiction"]
+    counts = {name: shelves.count(name) for name in ["fiction", "science"]}
+    print(counts)
+  key_points:
+    - Count declared capabilities in their declared order so reports stay comparable.
+    - Reject malformed rows before returning a partial audit.
+    - Equality works for nested lists and dictionaries; hashing them does not.
+brief: |
+  Write `audit_eval_dataset(cases, required_capabilities, max_per_capability)`. Each case must be
+  exactly `case_id`, `capability`, `input`, and `expected`; IDs are non-empty strings and unique.
+  Every required capability is a unique non-empty string, and every case uses one of them. Return
+  `counts`, `missing`, `overrepresented`, and `duplicates` in declared or input order. A duplicate
+  has equal `input` and `expected` to an earlier case, even when those payloads are lists or dicts.
+  Validate every input before returning and raise `ValueError` for invalid data.
+signature:
+  entrypoint: audit_eval_dataset
+  stub: |
+    def audit_eval_dataset(cases, required_capabilities, max_per_capability):
+        # Measure whether the evidence represents each declared capability.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{case_id: a, capability: search, input: [a], expected: 1}, {case_id: b, capability: answer, input: {q: x}, expected: yes}], [search, answer], 2]
+      expect: {counts: {search: 1, answer: 1}, missing: [], overrepresented: [], duplicates: []}
+    - args: [[{case_id: a, capability: search, input: {q: x}, expected: [one]}, {case_id: b, capability: search, input: {q: x}, expected: [one]}], [search, answer], 1]
+      expect: {counts: {search: 2, answer: 0}, missing: [answer], overrepresented: [search], duplicates: [b]}
+  hidden:
+    - args: [[], [search], 0]
+      expect: {counts: {search: 0}, missing: [search], overrepresented: [], duplicates: []}
+    - args: [[{case_id: a, capability: search, input: 1, expected: 1}, {case_id: a, capability: search, input: 2, expected: 2}], [search], 2]
+      raises: ValueError
+    - args: [[{case_id: a, capability: search, input: 1, expected: 1}], [search, search], 2]
+      raises: ValueError
+    - args: [[{case_id: a, capability: search, input: 1, expected: 1}], [search], true]
+      raises: ValueError
+    - args: [[{case_id: a, capability: search, input: 1, expected: 1}, {case_id: z, capability: search, input: [], expected: {ok: true}, extra: x}], [search], 2]
+      raises: ValueError
+hints:
+  - {level: 1, text: "What must be true of every row before its count can be trusted?"}
+  - {level: 2, text: "Validate all rows first, then use ordered loops for counts and equality checks for payload pairs."}
+  - {level: 3, text: "For library slips, keep a list of earlier `(book, due_date)` values and compare each new pair with `==`."}
+solution: |
+  def audit_eval_dataset(cases, required_capabilities, max_per_capability):
+      if not isinstance(cases, list) or not isinstance(required_capabilities, list):
+          raise ValueError("cases and capabilities must be lists")
+      if not isinstance(max_per_capability, int) or isinstance(max_per_capability, bool) or max_per_capability < 0:
+          raise ValueError("invalid maximum")
+      if any(not isinstance(capability, str) or not capability for capability in required_capabilities):
+          raise ValueError("invalid capability")
+      if len(set(required_capabilities)) != len(required_capabilities):
+          raise ValueError("duplicate capability")
+      seen_ids = set()
+      seen_payloads = []
+      duplicates = []
+      for case in cases:
+          if not isinstance(case, dict) or set(case) != {"case_id", "capability", "input", "expected"}:
+              raise ValueError("invalid case")
+          case_id, capability = case["case_id"], case["capability"]
+          if not isinstance(case_id, str) or not case_id or not isinstance(capability, str) or capability not in required_capabilities or case_id in seen_ids:
+              raise ValueError("invalid case identity")
+          seen_ids.add(case_id)
+          payload = (case["input"], case["expected"])
+          if any(payload == previous for previous in seen_payloads):
+              duplicates.append(case_id)
+          seen_payloads.append(payload)
+      counts = {capability: sum(case["capability"] == capability for case in cases) for capability in required_capabilities}
+      return {"counts": counts, "missing": [capability for capability in required_capabilities if counts[capability] == 0], "overrepresented": [capability for capability in required_capabilities if counts[capability] > max_per_capability], "duplicates": duplicates}

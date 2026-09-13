@@ -1,0 +1,16 @@
+id: tools-and-agents
+name: Tools and Agents
+track: ai-engineering
+order: 7
+theme: Planning deterministic tool work through explicit contracts and ordered gates
+description: |
+  Define tool contracts, route only authorized requests, stop at explicit gates,
+  and plan idempotent effects as data without executing them.
+concepts:
+  - tool-contracts
+  - tool-routing
+  - orchestration-gates
+  - idempotent-effects
+unlock_requires:
+  requires_mission: ai-evals-08
+completion_reward_xp: 180

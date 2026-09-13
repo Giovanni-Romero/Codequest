@@ -1,0 +1,121 @@
+id: ai-documents-02
+title: Nothing lost overboard
+track: ai-engineering
+island: documents-into-context
+order: 2
+difficulty: moderate
+tags: [ai-engineering, chunking, invariants]
+xp: 30
+
+concepts:
+  - chunk-invariants
+
+teaching:
+  analogy: |
+    A harbour clerk checks a shipment against its original manifest. Counting the
+    crates is not enough: the right crates must arrive, in the right order, with no
+    duplicate labels slipped into the line.
+
+    Chunk validation works the same way. Size is only one rule. The chunks must also
+    reconstruct the original sequence exactly.
+
+  explanation: |
+    An invariant is a rule that must remain true before and after a transformation.
+    For chunking, every chunk must be non-empty and within the size limit. Flattening
+    the chunk words must produce exactly the original normalized words. That single
+    comparison catches missing, duplicated, and reordered content.
+
+  worked_example: |
+    # Check batches against the original ticket queue.
+    tickets = ["A1", "A2", "A3"]
+    batches = [["A1", "A2"], ["A3"]]
+    rebuilt = []
+    for batch in batches:
+        rebuilt.extend(batch)
+    print(rebuilt == tickets)  # True
+
+  key_points:
+    - Matching the total count does not prove that the same words survived.
+    - Compare the reconstructed sequence to catch loss, duplication, and reordering.
+    - Reject empty chunks because they carry no context and distort later counts.
+    - Overlap is not allowed yet; exact reconstruction must contain each word once.
+
+brief: |
+  Write `validate_chunks`. It receives the original text, a list of chunk strings, and
+  a positive maximum number of words per chunk.
+
+  Return `True` only when every chunk is non-empty, every chunk respects `max_words`,
+  and joining all chunk words reconstructs the original words in the same order.
+  Whitespace differences do not matter because words are separated by whitespace.
+
+  Empty text with an empty chunk list is valid. Raise `ValueError` when `max_words` is
+  zero or negative.
+
+signature:
+  entrypoint: validate_chunks
+  stub: |
+    def validate_chunks(text, chunks, max_words):
+        # Check size, coverage, and order without changing the chunks.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["one two three four five", ["one two", "three four", "five"], 2]
+      expect: true
+    - args: ["one two three", ["one two"], 2]
+      expect: false
+    - args: ["one two three", ["two one", "three"], 2]
+      expect: false
+  hidden:
+    - args: ["", [], 3]
+      expect: true
+    - args: ["", [""], 3]
+      expect: false
+    - args: ["one two", ["one", "one", "two"], 1]
+      expect: false
+    - args: ["one two three", ["one two three"], 2]
+      expect: false
+    - args: ["one\t two\nthree", ["one two", "three"], 2]
+      expect: true
+    - args: ["anchor", ["anchor"], 0]
+      raises: ValueError
+    - args: ["anchor", ["anchor"], -1]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      If you unpack every chunk back into one word list, what should that list equal?
+  - level: 2
+    text: |
+      Check each chunk's word count first. Then flatten the valid chunks and compare the
+      result directly with `text.split()`.
+  - level: 3
+    text: |
+      Here is the pattern for rebuilding grouped ticket numbers:
+
+          rebuilt = []
+          for group in groups:
+              if not group or len(group) > capacity:
+                  return False
+              rebuilt.extend(group)
+
+      Your groups are strings, so split each one before extending the list.
+
+solution: |
+  def validate_chunks(text, chunks, max_words):
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+
+      rebuilt = []
+      for chunk in chunks:
+          words = chunk.split()
+          if not words or len(words) > max_words:
+              return False
+          rebuilt.extend(words)
+
+      return rebuilt == text.split()

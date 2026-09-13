@@ -5,7 +5,7 @@
 
 **Owner:** Giovanni
 **Status:** Phase 5.1 complete; Phase 6 awaits the final Python playtest. Phase 7 has an
-AI Engineering syllabus and twelve complete islands; Island 13 is next.
+AI Engineering syllabus and sixteen complete islands; Island 17 is next.
 **License:** MIT (suggested)
 
 ---
@@ -210,22 +210,19 @@ codequest/
 │       └── policy.py            # anti-spoiler rules
 │
 ├── content/
-│   ├── python/
-│   │   ├── track.yaml
-│   │   └── islands/
-│   │       ├── 01-foundations/
-│   │       │   ├── island.yaml
-│   │       │   └── missions/
-│   │       │       ├── 01-hello-value.yaml
-│   │       │       └── 02-sum-list.yaml
-│   │       ├── 02-collections/
-│   │       └── 03-functions/
-│   ├── java/                    # v1.1
-│   ├── typescript/              # v1.2
-│   └── crosscutting/            # v1.3
-│       ├── architecture/
-│       ├── security/
+│   └── tracks/
+│       ├── python/
+│       │   └── locales/
+│       │       ├── en/
+│       │       │   ├── track.yaml
+│       │       │   └── islands/
+│       │       └── pt-BR/
+│       │           ├── track.yaml
+│       │           └── islands/
 │       └── ai-engineering/
+│           └── locales/
+│               ├── en/
+│               └── pt-BR/
 │
 ├── tests/
 │   ├── unit/                    # per module, fast, no I/O
@@ -237,7 +234,11 @@ codequest/
 │   ├── architecture.md
 │   ├── mission-schema.md
 │   └── curriculum/
-│       └── python-syllabus.md
+│       ├── python/
+│       │   └── syllabus.md
+│       └── ai-engineering/
+│           ├── syllabus.md
+│           └── bookmarks.md
 │
 └── .github/workflows/ci.yml
 ```
@@ -249,7 +250,7 @@ codequest/
 A mission is one YAML file. This is the contract between content and engine.
 Full reference lives in `docs/mission-schema.md`.
 
-See `content/python/islands/01-foundations/missions/02-sum-list.yaml` for a working example.
+See `content/tracks/python/locales/en/islands/01-foundations/missions/02-sum-list.yaml` for a working example.
 
 ### Why hidden tests exist
 
@@ -325,7 +326,7 @@ reason. Distinguish: wrong answer, exception, timeout, forbidden construct.
 
 ### Phase 3 — Content, first Python island
 
-Write the Python syllabus first (`docs/curriculum/python-syllabus.md`), then the
+Write the Python syllabus first (`docs/curriculum/python/syllabus.md`), then the
 missions. Do not write missions randomly. Every mission maps to a concept in the syllabus.
 
 Island 1 "Foundations": 8 to 10 missions covering variables, conditionals, loops,
@@ -410,8 +411,8 @@ what an exception is.
 decisions that playing the earlier ones should change. It was relaxed for the last four
 because three of them share a single constraint — what can cross the JSON boundary between
 the sandbox and the game — and finding that constraint four separate times would have been
-the same decision paid for four times. See the note at the end of `docs/curriculum/
-python-syllabus.md`.
+the same decision paid for four times. See the note at the end of
+`docs/curriculum/python/syllabus.md`.
 
 **Island 11 had engine work that shipped before its first mission was authored**, in the
 same way `raises:` preceded Island 5 and `files:` preceded Island 7. Both landed on
@@ -437,8 +438,8 @@ The authoring cycle is unchanged and still runs one island at a time:
 
 1. **Design** one island (`curriculum-designer`): concept graph, prerequisites,
    misconceptions, an 8-to-12-mission map, sawtooth difficulty curve.
-2. **Author** that island's missions (`mission-author`) — in `content/python/` **and**
-   its `content/python-pt/` mirror, ids and tests identical, only text translated.
+2. **Author** that island's missions (`mission-author`) — in `content/tracks/python/locales/en/` **and**
+   its `content/tracks/python/locales/pt-BR/` mirror, ids and tests identical, only text translated.
 3. **Validate**: `codequest check` on both language trees, `tests/content` covering the
    new island.
 4. **Playtest**: Giovanni plays the whole island in the TUI and approves it before the
@@ -495,7 +496,8 @@ Add `engine/runners/java.py`. The rest of the engine should need zero changes.
 If it does need changes, the abstraction in Phase 1 was wrong, and that lesson is
 itself worth the exercise.
 
-Then write `content/java/` with its own syllabus.
+Then add `content/tracks/java/locales/en/` with its own syllabus. Add other locales only
+when their translated content exists.
 
 ---
 
@@ -509,7 +511,7 @@ build a retrieval function. Same YAML schema, harder briefs.
 
 Added 2026-09-05 and expanded 2026-09-06 after comparing the plan with curricula from
 Carnegie Mellon, MIT, Stanford, and Georgia Tech. The authoritative concept graph is
-`docs/curriculum/ai-engineering-syllabus.md`.
+`docs/curriculum/ai-engineering/syllabus.md`.
 
 The approved sequence is:
 
@@ -528,17 +530,17 @@ Python: code calculates, simulates, validates assumptions, and produces auditabl
 The graded artifact remains deterministic and offline; written interpretation appears in
 the brief and expected return structure rather than requiring subjective grading.
 
-**Status, 2026-09-11: Islands 1 to 12 have shipped.** Each has eight bilingual missions.
+**Status, 2026-09-12: Islands 1 to 16 have shipped.** Each has eight bilingual missions.
 Island 1 covers bounded traceable context, Island 2 prompt contracts and trust boundaries,
 and Island 3 sparse retrieval, cosine similarity, stable top-k ranking, thresholds, and a
 closing retrieval pipeline. Island 4 adds deterministic RAG assembly, citation provenance,
 and abstention. Islands unlock only after the final mission of the previous island is
-completed. Island 6 adds deterministic eval datasets, capability metrics, adversarial cases, and held-out leakage checks. Island 7 adds explicit tool contracts, least-authority routing, ordered orchestration gates, and idempotent effect plans. Island 8 adds deterministic guardrails, safe traces, bounded latency and cost plans, and graceful provider fallbacks. Island 9 adds vector operations, descriptive statistics, finite probability distributions, and explicit optimization steps. Island 10 adds reproducible dataset splits, supervised learning contracts, honest baselines, generalization diagnostics, and deterministic unsupervised grouping. Island 11 adds explicit state-space search, heuristic comparisons, constrained action planning, and temporal-difference updates. Island 12 adds executable data contracts, multidimensional quality reports, immutable lineage, and reproducible transformations. The twelve islands add no runtime dependency, network requirement, or model weights.
+completed. Island 6 adds deterministic eval datasets, capability metrics, adversarial cases, and held-out leakage checks. Island 7 adds explicit tool contracts, least-authority routing, ordered orchestration gates, and idempotent effect plans. Island 8 adds deterministic guardrails, safe traces, bounded latency and cost plans, and graceful provider fallbacks. Island 9 adds vector operations, descriptive statistics, finite probability distributions, and explicit optimization steps. Island 10 adds reproducible dataset splits, supervised learning contracts, honest baselines, generalization diagnostics, and deterministic unsupervised grouping. Island 11 adds explicit state-space search, heuristic comparisons, constrained action planning, and temporal-difference updates. Island 12 adds executable data contracts, multidimensional quality reports, immutable lineage, and reproducible transformations. Islands 13 and 14 add tiny offline PyTorch training and Transformers inference through the separately installed `ai-ml` extra; they download no model weights. Island 15 adds group fairness metrics, privacy boundaries, explainability records, and human oversight. Island 16 adds experiment tracking, model versioning, deployment strategies, and drift monitoring.
 
 Future framework missions use deterministic local fixtures, tiny CPU workloads, and fake
 providers. Model-backed exercises may be optional labs, but do not replace the mandatory
-graded framework missions. Island 13 is next. Islands 1 to 12 do not close Phase 7 and do not require an HTML
-phase lesson yet.
+graded framework missions. Island 17 is next. Islands 1 to 16 do not close Phase 7, so
+there is no HTML phase lesson yet.
 
 ---
 

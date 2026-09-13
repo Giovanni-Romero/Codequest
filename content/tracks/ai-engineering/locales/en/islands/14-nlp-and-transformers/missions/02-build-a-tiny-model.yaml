@@ -1,0 +1,57 @@
+id: ai-nlp-02
+title: Build a tiny model
+track: ai-engineering
+island: nlp-and-transformers
+order: 2
+difficulty: challenging
+tags: [ai-engineering, transformers, config, weights, requires-ai-ml]
+xp: 45
+concepts: [model-config-and-weights]
+teaching:
+  analogy: A ship blueprint fixes deck count and engine layout, while installed parts carry the vessel's learned state. A blueprint alone does not contain a sailed ship.
+  explanation: A Transformers config declares architecture. Constructing a model from it creates parameter tensors with fresh weights; it does not load pretrained knowledge. Reporting both config and tensor shapes keeps that distinction explicit.
+  worked_example: |
+    from transformers import BertConfig
+    config = BertConfig(hidden_size=8, num_attention_heads=2)
+    print(config.hidden_size)
+  key_points:
+    - Config describes architecture, not learned behavior.
+    - Head count must divide hidden size.
+    - Parameter shapes follow the config.
+brief: >
+  Write `build_tiny_model(vocab_size, hidden_size, layers, heads, labels) -> dict`.
+  Construct a local `BertForSequenceClassification` with intermediate size twice the hidden
+  size and 16 positions. Return key config values, embedding and classifier shapes, and total
+  parameter count. Reject invalid or incompatible settings.
+signature:
+  entrypoint: build_tiny_model
+  stub: |
+    def build_tiny_model(vocab_size, hidden_size, layers, heads, labels):
+        # Separate the architecture declaration from its new parameter tensors.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [10, 8, 1, 2, 2]
+      expect: {config: {vocab_size: 10, hidden_size: 8, layers: 1, heads: 2, labels: 2}, embedding_shape: [10, 8], classifier_shape: [2, 8], parameter_count: 930}
+    - args: [12, 12, 2, 3, 3]
+      expect: {config: {vocab_size: 12, hidden_size: 12, layers: 2, heads: 3, labels: 3}, embedding_shape: [12, 12], classifier_shape: [3, 12], parameter_count: 3147}
+  hidden:
+    - {args: [4, 8, 1, 2, 2], raises: ValueError}
+    - {args: [10, 7, 1, 2, 2], raises: ValueError}
+    - {args: [10, 8, 0, 2, 2], raises: ValueError}
+    - {args: [10, 8, 1, 0, 2], raises: ValueError}
+    - {args: [10, 8, true, 2, 2], raises: ValueError}
+hints:
+  - {level: 1, text: "Which facts belong to the blueprint and which exist only after model construction?"}
+  - {level: 2, text: "Create `BertConfig`, then pass it directly to `BertForSequenceClassification`."}
+  - {level: 3, text: "Read embedding and classifier weight shapes; sum `parameter.numel()` for total parameters."}
+solution: |
+  def build_tiny_model(vocab_size, hidden_size, layers, heads, labels):
+      from transformers import BertConfig, BertForSequenceClassification
+      values = (vocab_size, hidden_size, layers, heads, labels)
+      if any(type(value) is not int or value <= 0 for value in values) or vocab_size < 5 or hidden_size % heads:
+          raise ValueError("invalid model config")
+      config = BertConfig(vocab_size=vocab_size, hidden_size=hidden_size, num_hidden_layers=layers, num_attention_heads=heads, intermediate_size=hidden_size * 2, num_labels=labels, max_position_embeddings=16)
+      model = BertForSequenceClassification(config)
+      return {"config": {"vocab_size": config.vocab_size, "hidden_size": config.hidden_size, "layers": config.num_hidden_layers, "heads": config.num_attention_heads, "labels": config.num_labels}, "embedding_shape": list(model.bert.embeddings.word_embeddings.weight.shape), "classifier_shape": list(model.classifier.weight.shape), "parameter_count": sum(parameter.numel() for parameter in model.parameters())}

@@ -1,0 +1,79 @@
+id: ai-evals-03
+title: Challenge shortcuts
+track: ai-engineering
+island: evals
+order: 3
+difficulty: moderate
+tags: [ai-engineering, evals, adversarial]
+xp: 30
+concepts: [adversarial-cases]
+teaching:
+  analogy: |
+    A lock is tested with its normal key and with a bent key, a copied key, and force at the door.
+  explanation: |
+    Adversarial cases target a shortcut a system might take. A benign control proves the feature still works for ordinary input. Each attack kind needs a paired control, or a rejection may hide a broken normal path. Diagnostics should name missing attacks and failed defenses separately.
+  worked_example: |
+    samples = [{"kind": "benign", "ok": True}, {"kind": "malformed", "ok": False}]
+    print([row["kind"] for row in samples if not row["ok"]])
+  key_points:
+    - A happy path cannot prove resistance to a shortcut.
+    - Keep attacks paired with a benign control for the same capability.
+    - Record a missed attack separately from a broken control.
+brief: |
+  Write `audit_adversarial_cases(cases, required_attacks)`. A case has exact keys `case_id`,
+  `capability`, `kind`, `expected`, and `actual`; kind is `benign` or one required attack kind.
+  IDs and required attack kinds are unique non-empty strings. Each `(capability, kind)` pair is
+  unique, so a repeated attack cannot hide a conflicting diagnostic. Benign cases are broken when actual
+  differs from expected. Attack cases are missed when actual differs from expected. Return ordered
+  `missing`, `broken`, `missed`, and `unpaired`; an attack is unpaired when its capability lacks
+  a benign control. Validate all data and raise `ValueError` for invalid input.
+signature:
+  entrypoint: audit_adversarial_cases
+  stub: |
+    def audit_adversarial_cases(cases, required_attacks):
+        # Check controls and attacks instead of trusting a happy path.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{case_id: b, capability: parse, kind: benign, expected: ok, actual: ok}, {case_id: a, capability: parse, kind: malformed, expected: reject, actual: reject}], [malformed, hostile]]
+      expect: {missing: [hostile], broken: [], missed: [], unpaired: []}
+    - args: [[{case_id: b, capability: parse, kind: benign, expected: ok, actual: fail}, {case_id: a, capability: route, kind: hostile, expected: reject, actual: reject}], [hostile]]
+      expect: {missing: [], broken: [b], missed: [], unpaired: [a]}
+  hidden:
+    - args: [[{case_id: b, capability: parse, kind: benign, expected: ok, actual: ok}, {case_id: a, capability: parse, kind: shortcut, expected: reject, actual: reject}], [shortcut]]
+      expect: {missing: [], broken: [], missed: [], unpaired: []}
+    - args: [[{case_id: a, capability: parse, kind: shortcut, expected: reject, actual: reject}, {case_id: z, capability: parse, kind: shortcut, expected: reject, actual: reject}], [shortcut]]
+      raises: ValueError
+    - args: [[{case_id: b, capability: parse, kind: benign, expected: ok, actual: ok}, {case_id: a, capability: parse, kind: other, expected: reject, actual: reject}], [shortcut]]
+      raises: ValueError
+    - args: [[{case_id: b, capability: parse, kind: benign, expected: ok, actual: ok}, {case_id: a, capability: parse, kind: [shortcut], expected: reject, actual: reject}], [shortcut]]
+      raises: ValueError
+    - args: [[{case_id: b, capability: parse, kind: benign, expected: ok, actual: ok}, {case_id: a, capability: parse, kind: shortcut, expected: reject, actual: reject}, {case_id: z, capability: parse, kind: benign, expected: ok, actual: ok, extra: x}], [shortcut]]
+      raises: ValueError
+hints:
+  - {level: 1, text: "What evidence says a defense works without breaking ordinary use?"}
+  - {level: 2, text: "Validate every row, collect benign capabilities, then classify attacks in input order."}
+  - {level: 3, text: "For a gate log, store normal-door locations first, then flag each forced-door row without one."}
+solution: |
+  def audit_adversarial_cases(cases, required_attacks):
+      if not isinstance(cases, list) or not isinstance(required_attacks, list) or any(not isinstance(kind, str) or not kind for kind in required_attacks) or len(set(required_attacks)) != len(required_attacks):
+          raise ValueError("invalid attacks")
+      ids = set()
+      attack_pairs = set()
+      benign = set()
+      for case in cases:
+          if not isinstance(case, dict) or set(case) != {"case_id", "capability", "kind", "expected", "actual"}:
+              raise ValueError("invalid case")
+          case_id, capability, kind = case["case_id"], case["capability"], case["kind"]
+          if not isinstance(case_id, str) or not case_id or not isinstance(capability, str) or not capability or not isinstance(kind, str) or kind not in ["benign", *required_attacks] or case_id in ids:
+              raise ValueError("invalid identity")
+          ids.add(case_id)
+          pair = (capability, kind)
+          if pair in attack_pairs:
+              raise ValueError("duplicate capability/kind")
+          attack_pairs.add(pair)
+          if kind == "benign":
+              benign.add(capability)
+      present = [kind for kind in required_attacks if any(case["kind"] == kind for case in cases)]
+      return {"missing": [kind for kind in required_attacks if kind not in present], "broken": [case["case_id"] for case in cases if case["kind"] == "benign" and case["actual"] != case["expected"]], "missed": [case["case_id"] for case in cases if case["kind"] != "benign" and case["actual"] != case["expected"]], "unpaired": [case["case_id"] for case in cases if case["kind"] != "benign" and case["capability"] not in benign]}

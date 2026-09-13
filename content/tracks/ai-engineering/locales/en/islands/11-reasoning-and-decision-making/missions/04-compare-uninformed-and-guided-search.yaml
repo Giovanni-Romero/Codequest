@@ -1,0 +1,137 @@
+id: ai-reasoning-04
+title: Compare uninformed and guided search
+track: ai-engineering
+island: reasoning-and-decision-making
+order: 4
+difficulty: challenging
+tags: [ai-engineering, reasoning, search, comparison]
+xp: 45
+concepts: [state-space-search, heuristic-search]
+teaching:
+  analogy: Two captains sail the same chart. One checks channels by distance from departure; the other follows the most promising estimate. Only their route and log reveal which trade-off occurred.
+  explanation: Breadth-first search supplies an optimal step-count reference on an unweighted graph. Greedy search may expand fewer states, yet its first goal can be longer. Comparing both on the same ordered graph separates speed evidence from optimality claims.
+  worked_example: |
+    bfs_steps = 2
+    guided_steps = 3
+    print(guided_steps == bfs_steps)
+  key_points:
+    - Use the same graph and endpoints for a fair comparison.
+    - BFS supplies the shortest-step reference.
+    - Fewer expansions do not prove an optimal route.
+    - Report facts rather than declaring every heuristic useful.
+brief: >
+  Write `compare_searches(graph, heuristics, start, goal) -> dict`. Validate inputs as in
+  the previous missions. Run breadth-first and greedy best-first search on the same graph.
+  Return `uninformed` and `heuristic` reports containing `path`, `steps` (`null` when
+  unreachable), and integer `expanded`; also return `heuristic_is_optimal` and
+  `fewer_expansions`. Both flags are false unless both searches reach the goal.
+signature:
+  entrypoint: compare_searches
+  stub: |
+    def compare_searches(graph, heuristics, start, goal):
+        # Compare optimality and expansion evidence on one graph.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {start: [short, tempting], short: [goal], tempting: [detour], detour: [goal], goal: []}
+        - {start: 3, short: 5, tempting: 1, detour: 1, goal: 0}
+        - start
+        - goal
+      expect:
+        uninformed: {path: [start, short, goal], steps: 2, expanded: 4}
+        heuristic: {path: [start, tempting, detour, goal], steps: 3, expanded: 4}
+        heuristic_is_optimal: false
+        fewer_expansions: false
+    - args:
+        - {start: [a, b], a: [dead], dead: [], b: [goal], goal: []}
+        - {start: 2, a: 5, dead: 6, b: 1, goal: 0}
+        - start
+        - goal
+      expect:
+        uninformed: {path: [start, b, goal], steps: 2, expanded: 5}
+        heuristic: {path: [start, b, goal], steps: 2, expanded: 3}
+        heuristic_is_optimal: true
+        fewer_expansions: true
+  hidden:
+    - args: [{a: [b], b: [], goal: []}, {a: 2, b: 1, goal: 0}, a, goal]
+      expect:
+        uninformed: {path: [], steps: null, expanded: 2}
+        heuristic: {path: [], steps: null, expanded: 2}
+        heuristic_is_optimal: false
+        fewer_expansions: false
+    - args: [{a: []}, {a: true}, a, a]
+      raises: ValueError
+    - args: [{a: [missing]}, {a: 1}, a, a]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which algorithm supplies the optimal step-count baseline on an unweighted graph?"
+  - level: 2
+    text: "Have each search return both its path and number of popped states."
+  - level: 3
+    text: "Set `heuristic_is_optimal` only when both paths exist and their step counts match."
+solution: |
+  def compare_searches(graph, heuristics, start, goal):
+      from collections import deque
+      import heapq
+      import math
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      if not isinstance(graph, dict) or not graph or not isinstance(heuristics, dict) or not isinstance(start, str) or not isinstance(goal, str):
+          raise ValueError("invalid input")
+      if any(not isinstance(state, str) or not isinstance(neighbors, list) or any(not isinstance(neighbor, str) for neighbor in neighbors) for state, neighbors in graph.items()):
+          raise ValueError("invalid graph")
+      if start not in graph or goal not in graph or any(neighbor not in graph for neighbors in graph.values() for neighbor in neighbors):
+          raise ValueError("unknown state")
+      if set(heuristics) != set(graph) or not all(finite_number(value) for value in heuristics.values()):
+          raise ValueError("invalid heuristics")
+      def breadth_first():
+          queue = deque([(start, [start])])
+          visited = {start}
+          expanded = 0
+          while queue:
+              state, path = queue.popleft()
+              expanded += 1
+              if state == goal:
+                  return path, expanded
+              for neighbor in graph[state]:
+                  if neighbor not in visited:
+                      visited.add(neighbor)
+                      queue.append((neighbor, path + [neighbor]))
+          return [], expanded
+      def greedy():
+          frontier = [(heuristics[start], 0, start, [start])]
+          visited = set()
+          counter = 0
+          expanded = 0
+          while frontier:
+              _, _, state, path = heapq.heappop(frontier)
+              if state in visited:
+                  continue
+              visited.add(state)
+              expanded += 1
+              if state == goal:
+                  return path, expanded
+              for neighbor in graph[state]:
+                  if neighbor not in visited:
+                      counter += 1
+                      heapq.heappush(frontier, (heuristics[neighbor], counter, neighbor, path + [neighbor]))
+          return [], expanded
+      uninformed_path, uninformed_expanded = breadth_first()
+      heuristic_path, heuristic_expanded = greedy()
+      uninformed_steps = len(uninformed_path) - 1 if uninformed_path else None
+      heuristic_steps = len(heuristic_path) - 1 if heuristic_path else None
+      both_reached = bool(uninformed_path and heuristic_path)
+      return {
+          "uninformed": {"path": uninformed_path, "steps": uninformed_steps, "expanded": uninformed_expanded},
+          "heuristic": {"path": heuristic_path, "steps": heuristic_steps, "expanded": heuristic_expanded},
+          "heuristic_is_optimal": both_reached and heuristic_steps == uninformed_steps,
+          "fewer_expansions": both_reached and heuristic_expanded < uninformed_expanded,
+      }

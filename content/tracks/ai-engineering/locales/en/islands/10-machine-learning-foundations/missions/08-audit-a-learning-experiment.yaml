@@ -1,0 +1,159 @@
+id: ai-ml-08
+title: Audit a learning experiment
+track: ai-engineering
+island: machine-learning-foundations
+order: 8
+difficulty: challenging
+tags: [ai-engineering, machine-learning, experiment, capstone]
+xp: 45
+concepts: [dataset-splits, supervised-learning-contract, baselines-and-generalization, unsupervised-patterns]
+teaching:
+  analogy: A sea trial records which voyages trained the navigator, which tuned the route, which tested it, whether it beat the old chart, and how the test ships group without labels. One report keeps every claim traceable.
+  explanation: An auditable learning experiment connects data partitions, fitting, inference, baselines, and unlabeled structure. Deterministic id ordering creates disjoint train, validation, and test slices. A linear learner is fitted only on training rows, then measured on untouched rows against the training-target mean. A separate nearest-centroid assignment groups test features without using their targets.
+  worked_example: |
+    practice = [2, 4, 6]
+    exam = [8, 10]
+    old_guess = sum(practice) / len(practice)
+    old_errors = [(value - old_guess) ** 2 for value in exam]
+    groups = [0 if value < 9 else 1 for value in exam]
+    print(old_errors, groups)
+  key_points:
+    - Split first; training statistics never read validation or test targets.
+    - Model and baseline use identical held-out rows and loss.
+    - Unsupervised groups use features without pretending they are target classes.
+    - One report exposes the evidence behind every conclusion.
+brief: >
+  Write `audit_learning_experiment(records, train_count, validation_count, centroids) -> dict`.
+  Each record has a unique integer `id` and finite numeric `feature` and `target`, excluding
+  `bool`. Require nonempty train, validation, and test slices after sorting by id, variation
+  in training features, and a nonempty list of finite numeric one-dimensional centroids.
+  Fit a least-squares line only on training rows. Return `split_ids`, `model`, validation
+  and test mean squared losses, the training-mean `baseline_test_loss`, `beats_baseline`,
+  and nearest-centroid `cluster_assignments` and `cluster_sizes` for test features. Ties
+  choose the lower centroid index. Raise `ValueError` for invalid input or non-finite arithmetic.
+signature:
+  entrypoint: audit_learning_experiment
+  stub: |
+    def audit_learning_experiment(records, train_count, validation_count, centroids):
+        # Return one traceable supervised and unsupervised experiment report.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 4, feature: 4, target: 9}, {id: 1, feature: 1, target: 3}, {id: 6, feature: 6, target: 13}, {id: 2, feature: 2, target: 5}, {id: 5, feature: 5, target: 11}, {id: 3, feature: 3, target: 7}]
+        - 3
+        - 1
+        - [0, 10]
+      expect:
+        split_ids: {train: [1, 2, 3], validation: [4], test: [5, 6]}
+        model: {slope: 2.0, intercept: 1.0}
+        validation_loss: 0.0
+        test_loss: 0.0
+        baseline_test_loss: 50.0
+        beats_baseline: true
+        cluster_assignments: [0, 1]
+        cluster_sizes: [1, 1]
+    - args:
+        - [{id: 1, feature: 0, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}, {id: 4, feature: 3, target: 3}]
+        - 2
+        - 1
+        - [0, 5]
+      expect:
+        split_ids: {train: [1, 2], validation: [3], test: [4]}
+        model: {slope: 1.0, intercept: 0.0}
+        validation_loss: 0.0
+        test_loss: 0.0
+        baseline_test_loss: 6.25
+        beats_baseline: true
+        cluster_assignments: [1]
+        cluster_sizes: [0, 1]
+  hidden:
+    - args:
+        - [{id: 1, feature: -1, target: 1}, {id: 2, feature: 0, target: 1}, {id: 3, feature: 1, target: 1}, {id: 4, feature: 2, target: 1}]
+        - 2
+        - 1
+        - [-1, 2]
+      expect:
+        split_ids: {train: [1, 2], validation: [3], test: [4]}
+        model: {slope: 0.0, intercept: 1.0}
+        validation_loss: 0.0
+        test_loss: 0.0
+        baseline_test_loss: 0.0
+        beats_baseline: false
+        cluster_assignments: [1]
+        cluster_sizes: [0, 1]
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 1, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 2, feature: 1, target: 1}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 2, feature: 0, target: 1}, {id: 3, feature: 2, target: 2}, {id: 4, feature: 3, target: 3}], 2, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: true, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: .inf}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, []]
+      raises: ValueError
+    - args: [not-a-list, 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, target: 0}, {id: 2, feature: 1, target: 1}, {id: 3, feature: 2, target: 2}], 1, 1, [0]]
+      raises: ValueError
+    - args: [[{id: 1, feature: -1, target: 0}, {id: 2, feature: 1, target: 0}, {id: 3, feature: 0, target: 0}, {id: 4, feature: -1.0e+308, target: 0}], 2, 1, [1.0e+308]]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "What evidence proves the split stayed isolated, the learner beat its reference, and the unlabeled grouping ignored targets?"
+  - level: 2
+    text: "Validate and split first, fit only the training slice, evaluate untouched rows, then cluster only test features."
+  - level: 3
+    text: "Pattern: `ordered = sorted(rows, key=lambda row: row['id'])`; derive every later slice from that one order."
+solution: |
+  def audit_learning_experiment(records, train_count, validation_count, centroids):
+      import math
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      if not isinstance(records, list) or not records or type(train_count) is not int or type(validation_count) is not int or train_count <= 0 or validation_count <= 0 or train_count + validation_count >= len(records):
+          raise ValueError("invalid split")
+      if not isinstance(centroids, list) or not centroids or not all(finite_number(value) for value in centroids):
+          raise ValueError("invalid centroids")
+      if any(not isinstance(record, dict) or type(record.get("id")) is not int or not finite_number(record.get("feature")) or not finite_number(record.get("target")) for record in records):
+          raise ValueError("invalid record")
+      ids = [record["id"] for record in records]
+      if len(set(ids)) != len(ids):
+          raise ValueError("duplicate id")
+      ordered = sorted(records, key=lambda record: record["id"])
+      boundary = train_count + validation_count
+      train = ordered[:train_count]
+      validation = ordered[train_count:boundary]
+      test = ordered[boundary:]
+      try:
+          feature_mean = sum(record["feature"] for record in train) / len(train)
+          target_mean = sum(record["target"] for record in train) / len(train)
+          spread = sum((record["feature"] - feature_mean) ** 2 for record in train)
+          if spread == 0:
+              raise ValueError("training features do not vary")
+          slope = sum((record["feature"] - feature_mean) * (record["target"] - target_mean) for record in train) / spread
+          intercept = target_mean - slope * feature_mean
+          def loss(rows):
+              return sum((slope * record["feature"] + intercept - record["target"]) ** 2 for record in rows) / len(rows)
+          validation_loss = loss(validation)
+          test_loss = loss(test)
+          baseline_test_loss = sum((target_mean - record["target"]) ** 2 for record in test) / len(test)
+          assignments = []
+          for record in test:
+              distances = [(record["feature"] - centroid) ** 2 for centroid in centroids]
+              if not all(math.isfinite(distance) for distance in distances):
+                  raise ValueError("non-finite distance")
+              assignments.append(min(range(len(centroids)), key=lambda index: distances[index]))
+          results = [slope, intercept, validation_loss, test_loss, baseline_test_loss]
+          if not all(math.isfinite(value) for value in results):
+              raise ValueError("non-finite result")
+      except OverflowError as error:
+          raise ValueError("non-finite result") from error
+      return {"split_ids": {"train": [record["id"] for record in train], "validation": [record["id"] for record in validation], "test": [record["id"] for record in test]}, "model": {"slope": slope, "intercept": intercept}, "validation_loss": validation_loss, "test_loss": test_loss, "baseline_test_loss": baseline_test_loss, "beats_baseline": test_loss < baseline_test_loss, "cluster_assignments": assignments, "cluster_sizes": [assignments.count(index) for index in range(len(centroids))]}

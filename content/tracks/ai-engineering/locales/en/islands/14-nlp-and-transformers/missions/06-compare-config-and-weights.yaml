@@ -1,0 +1,61 @@
+id: ai-nlp-06
+title: Compare config and weights
+track: ai-engineering
+island: nlp-and-transformers
+order: 6
+difficulty: challenging
+tags: [ai-engineering, transformers, config, weights, requires-ai-ml]
+xp: 45
+concepts: [model-config-and-weights]
+teaching:
+  analogy: Two ships can share one blueprint yet carry different calibrated engines. Matching dimensions do not prove matching state.
+  explanation: Reusing a config reproduces architecture, not parameters. Random initialization depends on its seed. Reproducibility records both the full config and the exact weights or checkpoint identity.
+  worked_example: |
+    same_blueprint = True
+    same_parts = False
+    print(same_blueprint, same_parts)
+  key_points:
+    - Equal configs can hold different weights.
+    - A seed controls fresh initialization, not pretrained identity.
+    - Compare tensors when weight equality matters.
+brief: >
+  Write `compare_model_states(first_seed, second_seed) -> dict`. Build the same tiny local
+  BERT classifier twice, setting `torch.manual_seed` immediately before each construction.
+  Return whether configs match, whether every state tensor matches, tensor count, and classifier
+  shape. Reject invalid seeds.
+signature:
+  entrypoint: compare_model_states
+  stub: |
+    def compare_model_states(first_seed, second_seed):
+        # Prove that architecture equality and weight equality are separate claims.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [7, 7]
+      expect: {config_equal: true, weights_equal: true, tensor_count: 25, classifier_shape: [2, 8]}
+    - args: [7, 8]
+      expect: {config_equal: true, weights_equal: false, tensor_count: 25, classifier_shape: [2, 8]}
+  hidden:
+    - {args: [true, 1], raises: ValueError}
+    - {args: [1, false], raises: ValueError}
+    - {args: [-1, 1], raises: ValueError}
+    - {args: [1, -1], raises: ValueError}
+    - {args: [1.5, 1], raises: ValueError}
+hints:
+  - {level: 1, text: "Can matching blueprints prove that every stored tensor is equal?"}
+  - {level: 2, text: "Reset the seed before each model construction and compare both state dictionaries."}
+  - {level: 3, text: "Require identical keys and use `torch.equal` for every paired state tensor."}
+solution: |
+  def compare_model_states(first_seed, second_seed):
+      import torch
+      from transformers import BertConfig, BertForSequenceClassification
+      if type(first_seed) is not int or first_seed < 0 or type(second_seed) is not int or second_seed < 0:
+          raise ValueError("invalid seed")
+      config = BertConfig(vocab_size=10, hidden_size=8, num_hidden_layers=1, num_attention_heads=2, intermediate_size=16, num_labels=2, max_position_embeddings=16)
+      torch.manual_seed(first_seed)
+      first = BertForSequenceClassification(config)
+      torch.manual_seed(second_seed)
+      second = BertForSequenceClassification(config)
+      first_state = first.state_dict(); second_state = second.state_dict()
+      return {"config_equal": first.config.to_dict() == second.config.to_dict(), "weights_equal": all(torch.equal(first_state[name], second_state[name]) for name in first_state), "tensor_count": len(first_state), "classifier_shape": list(first.classifier.weight.shape)}

@@ -1,0 +1,339 @@
+id: ai-production-08
+title: Opere a IA de produção
+track: ai-engineering
+island: production-ai
+order: 8
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- layered-guardrails
+- observability-traces
+- latency-cost-budget
+- graceful-degradation
+teaching:
+  analogy: Uma torre de controle aprova planos, confere limites de pista e trata aeronaves em ordem fixa.
+  explanation: Operação de produção une guardrails, traces, orçamento e fallback. Controles determinísticos anteriores vencem dados do provedor. Registros seguros mostram o ocorrido sem copiar payload privado de requisição ou resposta.
+  worked_example: "fila = [\"norte\", \"sul\"]\nfor pista in fila:\n    print(pista)"
+  key_points:
+  - Valide todo o lote primeiro.
+  - Orce todas as chamadas declaradas antes do trabalho.
+  - Controle de saída descarta resultado inseguro.
+brief: 'Escreva `operate_production_ai(requests, policy, budget, fallbacks) -> dict`. Valide primeiro o lote completo. Faça o orçamento das chamadas declaradas antes de processar. Depois processe na ordem de entrada: guardrail de entrada, status fornecido do provedor e guardrail de saída. Preserve apenas metadados seguros do trace; rejeições do guardrail têm resultado `None`, falhas do provedor usam um fallback e nenhuma rejeição tenta recuperação.'
+signature:
+  entrypoint: operate_production_ai
+  stub: "def operate_production_ai(requests, policy, budget, fallbacks):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - - &id008
+        request_id: a
+        input_labels: &id009
+        - ok
+        output_labels: &id002
+        - ok
+        call: &id003
+          call_id: a
+          input_tokens: 2
+          max_output_tokens: 3
+          cost_units: 1
+          start_ms: 0
+          duration_ms: 5
+        provider: &id004
+          status: ok
+          value: answer
+          reason: null
+        events: &id001
+        - stage: input
+          status: ok
+          elapsed_ms: 1
+          input_size: 2
+          output_size: 0
+          failure_reason: null
+        - stage: provider
+          status: ok
+          elapsed_ms: 3
+          input_size: 2
+          output_size: 4
+          failure_reason: null
+        - stage: output
+          status: ok
+          elapsed_ms: 1
+          input_size: 4
+          output_size: 4
+          failure_reason: null
+    - &id005
+      prompt_rules:
+      - be concise
+      blocked_input_labels:
+      - secret
+      blocked_output_labels:
+      - unsafe
+    - &id006
+      max_requests: 2
+      max_tokens: 10
+      max_cost_units: 3
+      max_concurrency: 1
+      max_wall_ms: 10
+    - &id007
+      - status: offline
+        value: cached
+      - status: timeout
+        value: later
+      - status: rejected
+        value: safe
+    expect:
+      status: completed
+      usage:
+        requests: 1
+        tokens: 5
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      records:
+      - request_id: a
+        status: ok
+        core:
+          request_id: a
+        result: answer
+        trace:
+          status: complete
+          total_elapsed_ms: 5
+          events: *id001
+  - args:
+    - - request_id: a
+        input_labels:
+        - secret
+        output_labels: *id002
+        call: *id003
+        provider: *id004
+        events:
+        - stage: input
+          status: error
+          elapsed_ms: 1
+          input_size: 2
+          output_size: 0
+          failure_reason: blocked_input
+    - *id005
+    - *id006
+    - *id007
+    expect:
+      status: completed
+      usage:
+        requests: 1
+        tokens: 5
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      records:
+      - request_id: a
+        status: input_rejected
+        core:
+          request_id: a
+        result: null
+        trace:
+          status: failed
+          total_elapsed_ms: 1
+          events:
+          - stage: input
+            status: error
+            elapsed_ms: 1
+            input_size: 2
+            output_size: 0
+            failure_reason: blocked_input
+          failure_stage: input
+          failure_reason: blocked_input
+  - args:
+    - - *id008
+    - *id005
+    - max_requests: 1
+      max_tokens: 4
+      max_cost_units: 3
+      max_concurrency: 1
+      max_wall_ms: 10
+    - *id007
+    expect:
+      status: budget_rejected
+      usage:
+        requests: 1
+        tokens: 5
+        cost_units: 1
+        peak_concurrency: 1
+        wall_ms: 5
+      exceeded:
+      - max_tokens
+      records: []
+  hidden:
+  - args:
+    - - request_id: b
+        input_labels: *id009
+        output_labels: *id002
+        call: *id003
+        provider: *id004
+        events: *id001
+    - *id005
+    - *id006
+    - *id007
+    raises: ValueError
+  - args:
+    - - request_id: a
+        input_labels: *id009
+        output_labels: *id002
+        call:
+          call_id: b
+          input_tokens: 2
+          max_output_tokens: 3
+          cost_units: 1
+          start_ms: 0
+          duration_ms: 5
+        provider: *id004
+        events: *id001
+    - *id005
+    - *id006
+    - *id007
+    raises: ValueError
+  - args:
+    - - request_id: a
+        input_labels:
+        - []
+        output_labels: *id002
+        call: *id003
+        provider: *id004
+        events: *id001
+    - *id005
+    - *id006
+    - *id007
+    raises: ValueError
+  - args:
+    - - request_id: a
+        input_labels: *id009
+        output_labels: *id002
+        call: *id003
+        provider:
+          status: offline
+          value: x
+          reason: down
+        events: *id001
+    - *id005
+    - *id006
+    - *id007
+    raises: ValueError
+  - args:
+    - - request_id: a
+        input_labels: *id009
+        output_labels: *id002
+        call: *id003
+        provider: *id004
+        events: []
+    - *id005
+    - *id006
+    - *id007
+    raises: ValueError
+  - args:
+    - - *id008
+      - *id008
+    - *id005
+    - *id006
+    - *id007
+    raises: ValueError
+hints:
+- level: 1
+  text: Qual decisão vem antes de consultar resultado do provedor?
+- level: 2
+  text: 'Use portões ordenados: entrada, status do provedor, saída.'
+- level: 3
+  text: 'Para uma fila: `for item in items: records.append({"id": item})`. '
+solution: |
+  def operate_production_ai(requests, policy, budget, fallbacks):
+      states = ["offline", "timeout", "rejected"]
+      policy_keys = {"prompt_rules", "blocked_input_labels", "blocked_output_labels"}
+      call_keys = {"call_id", "input_tokens", "max_output_tokens", "cost_units", "start_ms", "duration_ms"}
+      event_keys = {"stage", "status", "elapsed_ms", "input_size", "output_size", "failure_reason"}
+      if not isinstance(policy, dict) or set(policy) != policy_keys:
+          raise ValueError("invalid policy")
+      for value in policy.values():
+          if not isinstance(value, list) or any(type(item) is not str or not item for item in value) or len(set(value)) != len(value):
+              raise ValueError("invalid policy")
+      if not isinstance(fallbacks, list) or len(fallbacks) != 3:
+          raise ValueError("invalid fallbacks")
+      fallback_values = {}
+      for state, fallback in zip(states, fallbacks):
+          if not isinstance(fallback, dict) or set(fallback) != {"status", "value"} or fallback["status"] != state:
+              raise ValueError("invalid fallback")
+          fallback_values[state] = fallback["value"]
+      if not isinstance(requests, list):
+          raise ValueError("invalid requests")
+      prepared, call_ids = [], set()
+      for row in requests:
+          if not isinstance(row, dict) or set(row) != {"request_id", "input_labels", "output_labels", "call", "provider", "events"} or type(row["request_id"]) is not str or not row["request_id"] or row["request_id"] in call_ids or not isinstance(row["call"], dict) or set(row["call"]) != call_keys or row["call"]["call_id"] != row["request_id"]:
+              raise ValueError("invalid request")
+          for labels in (row["input_labels"], row["output_labels"]):
+              if not isinstance(labels, list) or any(type(item) is not str or not item for item in labels) or len(set(labels)) != len(labels):
+                  raise ValueError("invalid labels")
+          provider = row["provider"]
+          if not isinstance(provider, dict) or set(provider) != {"status", "value", "reason"} or type(provider["status"]) is not str or provider["status"] not in {"ok", *states}:
+              raise ValueError("invalid provider")
+          if (provider["status"] == "ok" and provider["reason"] is not None) or (provider["status"] != "ok" and (provider["value"] is not None or type(provider["reason"]) is not str or not provider["reason"])):
+              raise ValueError("invalid provider")
+          events = row["events"]
+          if not isinstance(events, list) or not events or len(events) > 3:
+              raise ValueError("invalid events")
+          trace = []
+          failed = None
+          for index, event in enumerate(events):
+              if not isinstance(event, dict) or set(event) != event_keys or event["stage"] != ["input", "provider", "output"][index] or type(event["status"]) is not str or event["status"] not in {"ok", "error"} or any(type(event[key]) is not int or event[key] < 0 for key in ("elapsed_ms", "input_size", "output_size")) or ((event["status"] == "error") != (type(event["failure_reason"]) is str and bool(event["failure_reason"]))) or failed is not None:
+                  raise ValueError("invalid event")
+              trace.append({key: event[key] for key in event_keys})
+              if event["status"] == "error":
+                  failed = event
+          safe_trace = {"status": "failed" if failed else "complete", "total_elapsed_ms": sum(event["elapsed_ms"] for event in trace), "events": trace}
+          if failed:
+              safe_trace.update(failure_stage=failed["stage"], failure_reason=failed["failure_reason"])
+          call_ids.add(row["request_id"])
+          prepared.append((row, safe_trace))
+      calls = [row["call"] for row, _ in prepared]
+      limit_keys = {"max_requests", "max_tokens", "max_cost_units", "max_concurrency", "max_wall_ms"}
+      if not isinstance(budget, dict) or set(budget) != limit_keys or any(type(value) is not int or value <= 0 for value in budget.values()):
+          raise ValueError("invalid budget")
+      intervals = []
+      for call in calls:
+          if type(call["call_id"]) is not str or not call["call_id"] or any(type(call[key]) is not int or call[key] < 0 for key in call_keys - {"call_id"}):
+              raise ValueError("invalid call")
+          intervals.append((call["start_ms"], call["start_ms"] + call["duration_ms"]))
+      usage = {"requests": len(calls), "tokens": sum(call["input_tokens"] + call["max_output_tokens"] for call in calls), "cost_units": sum(call["cost_units"] for call in calls), "peak_concurrency": max([sum(start <= point < end for start, end in intervals) for start, end in intervals for point in (start, end)] or [0]), "wall_ms": max((end for _, end in intervals), default=0)}
+      pairs = [("max_requests", "requests"), ("max_tokens", "tokens"), ("max_cost_units", "cost_units"), ("max_concurrency", "peak_concurrency"), ("max_wall_ms", "wall_ms")]
+      exceeded = [limit for limit, key in pairs if usage[key] > budget[limit]]
+      if exceeded:
+          return {"status": "budget_rejected", "usage": usage, "exceeded": exceeded, "records": []}
+      records = []
+      for row, trace in prepared:
+          input_hits = [item for item in policy["blocked_input_labels"] if item in row["input_labels"]]
+          output_hits = [item for item in policy["blocked_output_labels"] if item in row["output_labels"]]
+          provider = row["provider"]
+          if input_hits:
+              status, result, reason, expected_stage, expected_reason = "input_rejected", None, None, "input", "blocked_input"
+          elif provider["status"] != "ok":
+              status, result, reason, expected_stage, expected_reason = ("provider_rejected" if provider["status"] == "rejected" else provider["status"]), fallback_values[provider["status"]], provider["reason"], "provider", provider["reason"]
+          elif output_hits:
+              status, result, reason, expected_stage, expected_reason = "output_rejected", None, None, "output", "blocked_output"
+          else:
+              status, result, reason, expected_stage, expected_reason = "ok", provider["value"], None, None, None
+          if status == "ok":
+              if trace["status"] != "complete" or len(trace["events"]) != 3:
+                  raise ValueError("trace mismatch")
+          elif trace["status"] != "failed" or trace["failure_stage"] != expected_stage or trace["failure_reason"] != expected_reason:
+              raise ValueError("trace mismatch")
+          record = {"request_id": row["request_id"], "status": status, "core": {"request_id": row["request_id"]}, "result": result, "trace": trace}
+          if reason is not None:
+              record.update(degraded=True, reason=reason)
+          records.append(record)
+      return {"status": "degraded" if any(record["status"] in {"offline", "timeout", "provider_rejected"} for record in records) else "completed", "usage": usage, "records": records}

@@ -1,0 +1,102 @@
+id: ai-data-03
+title: Measure data quality
+track: ai-engineering
+island: data-engineering-for-ai
+order: 3
+difficulty: challenging
+tags: [ai-engineering, data, quality, metrics]
+xp: 45
+concepts: [data-quality]
+teaching:
+  analogy: A harbor report separates missing cargo, duplicate labels, and inconsistent manifests. One blended score would hide which repair the shipment needs.
+  explanation: Data quality is multidimensional. Completeness measures populated required cells, validity measures fully populated rows, uniqueness measures distinct identifiers, and consistency measures rows with exactly the declared fields. Keeping dimensions separate preserves diagnostic meaning.
+  worked_example: |
+    populated = 5
+    required_cells = 6
+    completeness = populated / required_cells
+    print(round(completeness, 6))
+  key_points:
+    - Measure dimensions separately.
+    - Missing and null values both reduce completeness.
+    - Duplicate identifiers reduce uniqueness.
+    - Measurement must not mutate source rows.
+brief: >
+  Write `measure_data_quality(records, required_fields, unique_field) -> dict`. Require a
+  nonempty list of dictionaries, a nonempty list of unique string field names, and a unique
+  field included in that list. Unique-field values must be scalar or null. Return `total_rows`,
+  `completeness`, `validity`, `uniqueness`, and `consistency`. Completeness is populated
+  required cells divided by all required cells; validity is the fraction of rows with every
+  required field populated; uniqueness is distinct populated identifiers divided by populated
+  identifiers; consistency is the fraction whose key set exactly matches required fields.
+  Round metrics to 6 decimals and do not mutate inputs. Raise `ValueError` for invalid input.
+signature:
+  entrypoint: measure_data_quality
+  stub: |
+    def measure_data_quality(records, required_fields, unique_field):
+        # Return separate diagnostic dimensions instead of one opaque score.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 1, name: a}, {id: 2, name: b}, {id: 2, name: null, extra: x}]
+        - [id, name]
+        - id
+      expect: {total_rows: 3, completeness: 0.833333, validity: 0.666667, uniqueness: 0.666667, consistency: 0.666667}
+    - args:
+        - [{id: 1, name: a}, {id: 2, name: b}]
+        - [id, name]
+        - id
+      expect: {total_rows: 2, completeness: 1.0, validity: 1.0, uniqueness: 1.0, consistency: 1.0}
+  hidden:
+    - args:
+        - [{id: null, name: a}, {name: b}]
+        - [id, name]
+        - id
+      expect: {total_rows: 2, completeness: 0.5, validity: 0.0, uniqueness: 0.0, consistency: 0.5}
+    - args: [[], [id], id]
+      raises: ValueError
+    - args: [[{id: 1}], [id, id], id]
+      raises: ValueError
+    - args: [[{id: [1]}], [id], id]
+      raises: ValueError
+    - args: [[{id: .nan}], [id], id]
+      raises: ValueError
+    - args: [not-a-list, [id], id]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which denominator belongs to each quality dimension?"
+  - level: 2
+    text: "Count populated required cells, fully populated rows, distinct present ids, and exact key sets independently."
+  - level: 3
+    text: "Copy nothing and mutate nothing; derive four counters, divide by their declared denominators, then round."
+solution: |
+  def measure_data_quality(records, required_fields, unique_field):
+      import math
+      if not isinstance(records, list) or not records or any(not isinstance(record, dict) for record in records):
+          raise ValueError("invalid records")
+      if not isinstance(required_fields, list) or not required_fields or not all(isinstance(field, str) for field in required_fields) or len(set(required_fields)) != len(required_fields):
+          raise ValueError("invalid required fields")
+      if not isinstance(unique_field, str) or unique_field not in required_fields:
+          raise ValueError("invalid unique field")
+      identifiers = []
+      for record in records:
+          value = record.get(unique_field)
+          if value is not None and not (type(value) in (str, int, bool) or (type(value) is float and math.isfinite(value))):
+              raise ValueError("invalid identifier")
+          if value is not None:
+              identifiers.append((type(value).__name__, value))
+      populated = sum(field in record and record[field] is not None for record in records for field in required_fields)
+      valid_rows = sum(all(field in record and record[field] is not None for field in required_fields) for record in records)
+      consistent_rows = sum(set(record) == set(required_fields) for record in records)
+      total = len(records)
+      cells = total * len(required_fields)
+      uniqueness = len(set(identifiers)) / len(identifiers) if identifiers else 0.0
+      return {
+          "total_rows": total,
+          "completeness": round(populated / cells, 6),
+          "validity": round(valid_rows / total, 6),
+          "uniqueness": round(uniqueness, 6),
+          "consistency": round(consistent_rows / total, 6),
+      }

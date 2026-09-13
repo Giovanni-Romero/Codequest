@@ -1,0 +1,87 @@
+id: ai-reasoning-07
+title: Calcule uma atualização por diferença temporal
+track: ai-engineering
+island: reasoning-and-decision-making
+order: 7
+difficulty: challenging
+tags: [ai-engineering, reasoning, reinforcement-learning, td]
+xp: 45
+concepts: [reinforcement-updates]
+teaching:
+  analogy: Uma estimativa de rota muda após uma viagem ao combinar sua crença anterior com a recompensa e a perspectiva do próximo porto. Uma observação ajusta a carta; ela não se torna verdade absoluta.
+  explanation: Um target de diferença temporal de um passo é a recompensa somada ao valor descontado do próximo estado. Subtrair a estimativa atual produz o erro TD. A taxa de aprendizado controla quanto desse erro altera a estimativa, enquanto o desconto controla a contribuição do valor futuro.
+  worked_example: |
+    target = 1 + 0.9 * 4
+    error = target - 2
+    updated = 2 + 0.5 * error
+    print(target, error, updated)
+  key_points:
+    - Recompensa e valor do próximo estado têm papéis diferentes.
+    - Alpha controla o tamanho da atualização; gamma desconta o valor futuro.
+    - Uma atualização é evidência, não verdade absoluta.
+    - Valide a aritmética derivada e também as entradas brutas.
+brief: >
+  Escreva `td_update(value, reward, next_value, alpha, gamma) -> dict`. Todas as entradas
+  devem ser inteiros ou floats finitos, excluindo `bool`; rejeite inteiros enormes não
+  representáveis. Exija `0 < alpha <= 1` e `0 <= gamma <= 1`. Calcule `target = reward +
+  gamma * next_value`, `td_error = target - value` e `updated_value = value + alpha *
+  td_error`. Rejeite valores derivados não finitos. Retorne os três valores arredondados
+  para 12 casas decimais. Lance `ValueError` para entrada ou aritmética inválida.
+signature:
+  entrypoint: td_update
+  stub: |
+    def td_update(value, reward, next_value, alpha, gamma):
+        # Retorne uma atualização explícita por diferença temporal.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [0, 1, 2, 0.5, 0.9]
+      expect: {target: 2.8, td_error: 2.8, updated_value: 1.4}
+    - args: [10, -2, 4, 0.25, 0.5]
+      expect: {target: 0.0, td_error: -10.0, updated_value: 7.5}
+  hidden:
+    - args: [2, 1, 4, 1, 0]
+      expect: {target: 1.0, td_error: -1.0, updated_value: 1.0}
+    - args: [0, 1, 2, 0, 0.9]
+      raises: ValueError
+    - args: [0, 1, 2, 0.5, 1.1]
+      raises: ValueError
+    - args: [true, 1, 2, 0.5, 0.9]
+      raises: ValueError
+    - args: [0, .inf, 2, 0.5, 0.9]
+      raises: ValueError
+    - args: [0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, 1, 2, 0.5, 0.9]
+      raises: ValueError
+    - args: [0, 1.0e+308, 1.0e+308, 0.5, 1]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Qual quantidade é o destino da atualização e qual é a diferença para a estimativa atual?"
+  - level: 2
+    text: "Calcule o target, depois o erro TD e então o novo valor ajustado por alpha."
+  - level: 3
+    text: "Trate overflow, verifique cada valor derivado com `math.isfinite` e então arredonde os campos retornados."
+solution: |
+  def td_update(value, reward, next_value, alpha, gamma):
+      import math
+      def finite_number(item):
+          if type(item) not in (int, float):
+              return False
+          try:
+              return math.isfinite(item)
+          except OverflowError:
+              return False
+      if not all(finite_number(item) for item in (value, reward, next_value, alpha, gamma)):
+          raise ValueError("invalid number")
+      if not 0 < alpha <= 1 or not 0 <= gamma <= 1:
+          raise ValueError("invalid rate")
+      try:
+          target = reward + gamma * next_value
+          error = target - value
+          updated = value + alpha * error
+      except OverflowError as caught:
+          raise ValueError("non-finite update") from caught
+      if not all(math.isfinite(item) for item in (target, error, updated)):
+          raise ValueError("non-finite update")
+      return {"target": round(target, 12), "td_error": round(error, 12), "updated_value": round(updated, 12)}

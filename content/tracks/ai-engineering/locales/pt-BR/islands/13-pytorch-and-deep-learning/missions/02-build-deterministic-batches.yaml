@@ -1,0 +1,75 @@
+id: ai-pytorch-02
+title: Monte lotes determinísticos
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 2
+difficulty: challenging
+tags: [ai-engineering, pytorch, dataset, batching, requires-ai-ml]
+xp: 45
+concepts: [datasets-and-batches, tensors-and-shapes]
+teaching:
+  analogy: Uma balsa embarca passageiros em grupos numerados sem trocar suas bagagens pareadas. O último grupo pode ser menor, mas ninguém muda de ordem nem perde uma mala.
+  explanation: Um Dataset mantém exemplos alinhados aos rótulos. Um DataLoader escolhe o tamanho e a ordem dos lotes. Com o embaralhamento desativado, execuções repetidas produzem os mesmos grupos. O primeiro eixo do tensor é a dimensão do lote.
+  worked_example: |
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
+    data = TensorDataset(torch.tensor([[1], [2]]), torch.tensor([10, 20]))
+    print([labels.tolist() for _, labels in DataLoader(data, batch_size=1)])
+  key_points:
+    - O tamanho do Dataset deve coincidir com o dos rótulos.
+    - O último lote pode ser menor.
+    - Desativar o embaralhamento preserva uma ordem reproduzível.
+brief: >
+  Escreva `build_batches(features, labels, batch_size) -> list`. Use `TensorDataset` e
+  `DataLoader` com `shuffle=False`. Retorne dicionários com `features`, `labels` e `size`.
+  Rejeite entradas malformadas, vazias, desalinhadas, booleanas ou tamanho de lote inválido
+  com `ValueError`.
+signature:
+  entrypoint: build_batches
+  stub: |
+    def build_batches(features, labels, batch_size):
+        # Preserve o alinhamento entre exemplo e rótulo em lotes determinísticos.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[[1, 2], [3, 4], [5, 6]], [0, 1, 0], 2]
+      expect:
+        - {features: [[1.0, 2.0], [3.0, 4.0]], labels: [0, 1], size: 2}
+        - {features: [[5.0, 6.0]], labels: [0], size: 1}
+    - args: [[[2]], [1], 4]
+      expect: [{features: [[2.0]], labels: [1], size: 1}]
+  hidden:
+    - args: [[], [], 1]
+      raises: ValueError
+    - args: [[[1]], [0, 1], 1]
+      raises: ValueError
+    - args: [[[true]], [0], 1]
+      raises: ValueError
+    - args: [[[1]], [0], 0]
+      raises: ValueError
+    - args: [[[1], [2, 3]], [0, 1], 1]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Onde o alinhamento entre exemplo e rótulo é garantido antes do agrupamento?"}
+  - {level: 2, text: "Crie tensores, envolva-os em `TensorDataset` e então percorra o `DataLoader`."}
+  - {level: 3, text: "Para medições pareadas, `DataLoader(TensorDataset(x, y), batch_size=n, shuffle=False)` preserva a ordem."}
+solution: |
+  def build_batches(features, labels, batch_size):
+      import math
+      import torch
+      from torch.utils.data import DataLoader, TensorDataset
+      if not isinstance(features, list) or not features or not isinstance(labels, list) or len(features) != len(labels) or type(batch_size) is not int or batch_size <= 0:
+          raise ValueError("invalid batch input")
+      if any(not isinstance(row, list) or not row for row in features):
+          raise ValueError("invalid features")
+      width = len(features[0])
+      if any(len(row) != width for row in features):
+          raise ValueError("ragged features")
+      values = [value for row in features for value in row]
+      float_limit = torch.finfo(torch.float32).max
+      int_limit = torch.iinfo(torch.int64)
+      if any(type(value) not in (int, float) or not -float_limit <= value <= float_limit for value in values) or any(type(label) is not int or not int_limit.min <= label <= int_limit.max for label in labels):
+          raise ValueError("invalid values")
+      dataset = TensorDataset(torch.tensor(features, dtype=torch.float32), torch.tensor(labels, dtype=torch.int64))
+      return [{"features": x.tolist(), "labels": y.tolist(), "size": len(y)} for x, y in DataLoader(dataset, batch_size=batch_size, shuffle=False)]

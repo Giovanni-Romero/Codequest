@@ -1,0 +1,41 @@
+id: ai-math-05
+title: Escolha o centro robusto
+track: ai-engineering
+island: mathematical-statistical-foundations
+order: 5
+difficulty: challenging
+tags: [ai-engineering, statistics, outliers]
+xp: 45
+concepts: [descriptive-statistics]
+teaching:
+  analogy: Um termômetro quebrado não deve decidir a temperatura usual do ambiente.
+  explanation: 'A média usa todos os valores, então um outlier distante pode puxá-la. A mediana resiste a um extremo isolado. Use uma regra explícita: escolha a mediana quando algum valor estiver além do limite em relação à média.'
+  worked_example: "temperaturas = [20, 21, 80]\nmedia = sum(temperaturas) / len(temperaturas)\nprint(media)"
+  key_points: ["Regras para outliers precisam ser explícitas.", "A mediana precisa de uma cópia ordenada.", "Não altere a lista fornecida."]
+brief: 'Escreva `choose_center(values, outlier_limit) -> dict`. Valide uma lista numérica finita não vazia e um limite numérico finito positivo. Retorne `{"method": "mean" or "median", "center": number, "has_outlier": bool}`. Um outlier fica a uma distância absoluta da média maior que o limite.'
+signature:
+  entrypoint: choose_center
+  stub: "def choose_center(values, outlier_limit):\n    # Escolha um centro com evidência explícita de outlier.\n    pass\n"
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+  - args: [[10, 11, 12], 5]
+    expect: {method: mean, center: 11.0, has_outlier: false}
+  - args: [[10, 11, 100], 20]
+    expect: {method: median, center: 11, has_outlier: true}
+  hidden:
+  - args: [[5], 1]
+    expect: {method: mean, center: 5.0, has_outlier: false}
+  - args: [[1, 3, 5, 7], 2]
+    expect: {method: median, center: 4.0, has_outlier: true}
+  - args: [[1], 0]
+    raises: ValueError
+  - args: [[1, false], 2]
+    raises: ValueError
+  - args: [[1], .inf]
+    raises: ValueError
+hints:
+- {level: 1, text: "Qual centro muda menos quando um valor está muito distante?"}
+- {level: 2, text: Compare a distância de cada valor até a média com o limite.}
+- {level: 3, text: "Padrão: `any(abs(x - mean) > limit for x in values)`."}
+solution: "def choose_center(values, outlier_limit):\n    import math\n    if not isinstance(values, list) or not values or any(type(x) not in (int, float) or not math.isfinite(x) for x in values) or type(outlier_limit) not in (int, float) or not math.isfinite(outlier_limit) or outlier_limit <= 0: raise ValueError('invalid input')\n    mean = sum(values) / len(values); has_outlier = any(abs(x - mean) > outlier_limit for x in values)\n    if not has_outlier: return {'method': 'mean', 'center': mean, 'has_outlier': False}\n    ordered = sorted(values); middle = len(values) // 2; median = ordered[middle] if len(values) % 2 else (ordered[middle - 1] + ordered[middle]) / 2\n    return {'method': 'median', 'center': median, 'has_outlier': True}\n"

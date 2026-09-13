@@ -1,0 +1,87 @@
+id: ai-pytorch-08
+title: Audite um pequeno pipeline de treinamento
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 8
+difficulty: challenging
+tags: [ai-engineering, pytorch, capstone, requires-ai-ml]
+xp: 45
+concepts: [tensors-and-shapes, datasets-and-batches, modules-and-forward, autograd-training-loop]
+teaching:
+  analogy: Um teste no mar registra a disposição da carga, os grupos de embarque, o registro do motor e as correções de rumo em um só diário. Uma chegada sem esse rastro não prova que a viagem foi controlada.
+  explanation: Um pipeline de treinamento conecta validação de tensores, lotes determinísticos, um módulo registrado e otimização ordenada. Cada fronteira deixa evidências. Trabalho pequeno e fixo na CPU mantém o resultado reproduzível. A auditoria relata estrutura e mudança de estado juntas.
+  worked_example: |
+    records = {
+        "shape": [4, 2],
+        "batches": [2, 2],
+        "parameters": ["linear.weight"],
+    }
+    print(records)
+  key_points:
+    - Valide antes de criar o estado do framework.
+    - Mantenha lotes determinísticos para um exercício auditável.
+    - Parâmetros registrados e rastros de perda provam que houve treinamento.
+brief: >
+  Escreva `audit_training_pipeline(rows, labels, batch_size, learning_rate) -> dict`.
+  Valide linhas de dois atributos e rótulos numéricos. Crie tensores float32, um
+  `TensorDataset`/`DataLoader` determinístico e um `nn.Linear(2, 1)` registrado e inicializado
+  com zeros. Treine uma época com SGD e MSE. Retorne formato da entrada, tamanhos dos lotes,
+  nomes ordenados dos parâmetros, perdas arredondadas e pesos e viés finais. Rejeite entradas inválidas.
+signature:
+  entrypoint: audit_training_pipeline
+  stub: |
+    def audit_training_pipeline(rows, labels, batch_size, learning_rate):
+        # Conecte tensores, lotes, um módulo e uma época explícita de treinamento.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[[1, 0], [0, 1]], [1, -1], 1, 0.1]
+      expect: {input_shape: [2, 2], batch_sizes: [1, 1], parameters: [linear.bias, linear.weight], losses: [1.0, 1.44], weights: [0.2, -0.24], bias: -0.04}
+    - args: [[[1, 1]], [2], 4, 0.1]
+      expect: {input_shape: [1, 2], batch_sizes: [1], parameters: [linear.bias, linear.weight], losses: [4.0], weights: [0.4, 0.4], bias: 0.4}
+  hidden:
+    - {args: [[], [], 1, 0.1], raises: ValueError}
+    - {args: [[[1, 2]], [1, 2], 1, 0.1], raises: ValueError}
+    - {args: [[[1]], [1], 1, 0.1], raises: ValueError}
+    - {args: [[[true, 1]], [1], 1, 0.1], raises: ValueError}
+    - {args: [[[1, 2]], [1], 0, 0.1], raises: ValueError}
+    - {args: [[[1, 2]], [1], 1, .inf], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual evidência prova que cada uma das quatro etapas do pipeline realmente participou?"}
+  - {level: 2, text: "Registre o formato do tensor, tamanhos do DataLoader, parâmetros nomeados e perda antes de cada atualização."}
+  - {level: 3, text: "Para outro pipeline, valide primeiro, crie o estado uma vez e registre evidências em cada fronteira."}
+solution: |
+  def audit_training_pipeline(rows, labels, batch_size, learning_rate):
+      import math
+      import torch
+      from torch import nn
+      from torch.utils.data import DataLoader, TensorDataset
+      if not isinstance(rows, list) or not rows or not isinstance(labels, list) or len(rows) != len(labels) or any(not isinstance(row, list) or len(row) != 2 for row in rows):
+          raise ValueError("invalid samples")
+      values = [value for row in rows for value in row] + labels
+      limit = torch.finfo(torch.float32).max
+      if any(type(value) not in (int, float) or not -limit <= value <= limit for value in values) or type(batch_size) is not int or batch_size <= 0 or type(learning_rate) not in (int, float) or not math.isfinite(learning_rate) or learning_rate <= 0:
+          raise ValueError("invalid settings")
+      inputs = torch.tensor(rows, dtype=torch.float32)
+      targets = torch.tensor(labels, dtype=torch.float32).reshape(-1, 1)
+      batches = list(DataLoader(TensorDataset(inputs, targets), batch_size=batch_size, shuffle=False))
+      class TinyModel(nn.Module):
+          def __init__(self):
+              super().__init__(); self.linear = nn.Linear(2, 1)
+          def forward(self, values):
+              return self.linear(values)
+      model = TinyModel()
+      with torch.no_grad():
+          model.linear.weight.zero_(); model.linear.bias.zero_()
+      optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+      loss_fn = nn.MSELoss(); losses = []
+      for features, expected in batches:
+          loss = loss_fn(model(features), expected)
+          if not torch.isfinite(loss):
+              raise ValueError("non-finite training state")
+          losses.append(round(loss.item(), 6))
+          optimizer.zero_grad(); loss.backward(); optimizer.step()
+          if any(not torch.isfinite(parameter).all() for parameter in model.parameters()):
+              raise ValueError("non-finite training state")
+      return {"input_shape": list(inputs.shape), "batch_sizes": [len(features) for features, _ in batches], "parameters": sorted(name for name, _ in model.named_parameters()), "losses": losses, "weights": [round(value, 6) for value in model.linear.weight.flatten().tolist()], "bias": round(model.linear.bias.item(), 6)}

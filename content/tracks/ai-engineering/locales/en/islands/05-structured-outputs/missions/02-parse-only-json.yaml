@@ -1,0 +1,75 @@
+id: ai-structured-outputs-02
+title: Parse, never execute
+track: ai-engineering
+island: structured-outputs
+order: 2
+difficulty: moderate
+tags: [ai-engineering, structured-outputs, json, parsing]
+xp: 30
+concepts: [safe-output-parsing]
+teaching:
+  analogy: |
+    A customs officer reads a declaration. They do not run commands written on the form.
+  explanation: |
+    Model output is untrusted text. `json.loads` turns JSON text into data and rejects malformed
+    syntax. `eval` would interpret Python expressions, which gives input power it should never have.
+    Parsing and validation are separate steps.
+  worked_example: |
+    import json
+    raw = '{"items": ["tea", "rice"]}'
+    value = json.loads(raw)
+    print(value["items"])
+  key_points:
+    - Parse the whole text as JSON instead of extracting a convenient substring.
+    - Convert decoder failures to the mission's stable `parse` error.
+    - Parsing success does not prove the schema is correct.
+brief: |
+  Write `parse_object(text)`. Parse a JSON object string with `json.loads` and return the
+  resulting dictionary. Raise `ValueError("parse")` for non-string input, malformed JSON,
+  or valid JSON whose top-level value is not a dictionary. Never execute input.
+signature:
+  entrypoint: parse_object
+  stub: |
+    def parse_object(text):
+        # Read untrusted output as data only.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: ['{"ok": true}']
+      expect: {ok: true}
+    - args: ['{"items": [1, 2]}']
+      expect: {items: [1, 2]}
+  hidden:
+    - args: [null]
+      raises: ValueError
+    - args: ['']
+      raises: ValueError
+    - args: ['[1, 2]']
+      raises: ValueError
+    - args: ['{"a": 1} trailing']
+      raises: ValueError
+    - args: ['{"a": {"b": 2}}']
+      expect: {a: {b: 2}}
+    - args: ['{"n": 7}']
+      expect: {n: 7}
+hints:
+  - {level: 1, text: "What operation reads JSON text without giving that text a chance to become code?"}
+  - {level: 2, text: "Use `json.loads`, catch its decoder failure, and check the top-level container."}
+  - level: 3
+    text: |
+      A parcel reader can call `json.loads(raw)` inside `try`, catch `json.JSONDecodeError`,
+      and then test `isinstance(value, dict)` before returning it.
+solution: |
+  import json
+
+  def parse_object(text):
+      if not isinstance(text, str):
+          raise ValueError("parse")
+      try:
+          value = json.loads(text)
+      except (json.JSONDecodeError, TypeError):
+          raise ValueError("parse")
+      if not isinstance(value, dict):
+          raise ValueError("parse")
+      return value

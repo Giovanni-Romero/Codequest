@@ -1,0 +1,111 @@
+id: ai-rag-01
+title: Prepare os registros
+track: ai-engineering
+island: rag
+order: 1
+difficulty: moderate
+tags: [ai-engineering, rag, ingestion]
+xp: 30
+
+concepts: [ingestion-pipeline]
+
+teaching:
+  analogy: |
+    Um funcionário do porto não joga toda caixa direto no navio. Cada caixa é
+    identificada, inspecionada, dividida quando preciso e preparada ou rejeitada com motivo.
+  explanation: |
+    Um pipeline de ingestão transforma documentos de origem em registros confiáveis para as
+    etapas seguintes. Cada transformação é explícita e toda saída preserva sua origem. Entrada
+    rejeitada também é dado: registre etapa e motivo em vez de descartá-la em silêncio.
+  worked_example: |
+    parcels = [{"id": "P1", "weight": 4}, {"id": "P2", "weight": 0}]
+    ready = []
+    rejected = []
+    for parcel in parcels:
+        target = ready if parcel["weight"] > 0 else rejected
+        target.append(parcel["id"])
+    print(ready, rejected)
+  key_points:
+    - Valide a identidade antes do conteúdo porque a proveniência começa na ingestão.
+    - Registre entradas rejeitadas porque perdas silenciosas impedem rastrear falhas posteriores.
+    - IDs estáveis não podem depender de uma posição acidental na lista.
+
+brief: |
+  Escreva `ingest_documents(documents, max_words)`. `documents` é uma lista cujos itens têm `source_id` único e
+  não vazio, além de `text` string. Normalize espaços e divida texto não vazio em chunks com
+  limite de palavras. Retorne `records` com `record_id`, `source_id`, `text` e `stage: ready`,
+  mais entradas `rejected` para documentos vazios. Rejeite limites, campos ou IDs inválidos.
+
+signature:
+  entrypoint: ingest_documents
+  stub: |
+    def ingest_documents(documents, max_words):
+        # Transforme fontes em registros rastreáveis e rejeições explícitas.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: [[{source_id: chart, text: "north wind rises"}], 2]
+      expect: {records: [{record_id: "chart:0", source_id: chart, text: "north wind", stage: ready}, {record_id: "chart:1", source_id: chart, text: rises, stage: ready}], rejected: []}
+    - args: [[{source_id: blank, text: "   "}], 3]
+      expect: {records: [], rejected: [{source_id: blank, stage: normalize, reason: empty}]}
+  hidden:
+    - args: [null, 2]
+      raises: ValueError
+    - args: [[], 2]
+      expect: {records: [], rejected: []}
+    - args: [[{source_id: one, text: "a b"}, {source_id: two, text: c}], 2]
+      expect: {records: [{record_id: "one:0", source_id: one, text: "a b", stage: ready}, {record_id: "two:0", source_id: two, text: c, stage: ready}], rejected: []}
+    - args: [[{source_id: x, text: a}, {source_id: x, text: b}], 1]
+      raises: ValueError
+    - args: [[{text: a}], 1]
+      raises: ValueError
+    - args: [[{source_id: x, text: 3}], 1]
+      raises: ValueError
+    - args: [[], 0]
+      raises: ValueError
+
+hints:
+  - {level: 1, text: "Quais fatos devem sobreviver a toda transformação para a resposta rastrear sua origem?"}
+  - {level: 2, text: "Valide primeiro os IDs de origem; depois normalize, rejeite vazios e divida na ordem."}
+  - level: 3
+    text: |
+      Um pipeline de encomendas pode adicionar itens aceitos a uma lista e dicionários com
+      `stage` e `reason` a outra, derivando IDs estáveis do ID da encomenda.
+
+solution: |
+  def ingest_documents(documents, max_words):
+      if not isinstance(max_words, int) or isinstance(max_words, bool) or max_words <= 0:
+          raise ValueError("max_words must be positive")
+      if not isinstance(documents, list):
+          raise ValueError("documents must be a list")
+      records = []
+      rejected = []
+      seen = set()
+      for document in documents:
+          if not isinstance(document, dict):
+              raise ValueError("documents must be mappings")
+          source_id = document.get("source_id")
+          text = document.get("text")
+          if not isinstance(source_id, str) or not source_id.strip():
+              raise ValueError("source_id must be non-empty")
+          if source_id in seen:
+              raise ValueError("source IDs must be unique")
+          if not isinstance(text, str):
+              raise ValueError("text must be a string")
+          seen.add(source_id)
+          words = text.split()
+          if not words:
+              rejected.append({"source_id": source_id, "stage": "normalize", "reason": "empty"})
+              continue
+          for start in range(0, len(words), max_words):
+              ordinal = start // max_words
+              records.append({
+                  "record_id": f"{source_id}:{ordinal}",
+                  "source_id": source_id,
+                  "text": " ".join(words[start:start + max_words]),
+                  "stage": "ready",
+              })
+      return {"records": records, "rejected": rejected}

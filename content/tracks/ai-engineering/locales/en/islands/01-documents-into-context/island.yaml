@@ -1,0 +1,22 @@
+id: documents-into-context
+name: Documents into Context
+track: ai-engineering
+order: 1
+theme: Preparing evidence before a model sees it
+description: |
+  Raw documents rarely fit a model request. You learn to split them into bounded,
+  ordered, traceable pieces without losing the source they came from.
+
+concepts:
+  - fixed-window-chunking
+  - chunk-invariants
+  - chunk-overlap
+  - chunk-metadata
+  - semantic-boundaries
+  - context-budget
+  - chunk-quality
+
+unlock_requires:
+  missions_completed: 0
+
+completion_reward_xp: 180

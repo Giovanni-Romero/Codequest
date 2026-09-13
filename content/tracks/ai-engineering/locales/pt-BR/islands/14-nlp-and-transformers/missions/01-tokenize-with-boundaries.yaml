@@ -1,0 +1,64 @@
+id: ai-nlp-01
+title: Tokenize com fronteiras
+track: ai-engineering
+island: nlp-and-transformers
+order: 1
+difficulty: challenging
+tags: [ai-engineering, transformers, tokenizer, requires-ai-ml]
+xp: 45
+concepts: [tokenizer-boundaries]
+teaching:
+  analogy: Um tradutor portuário divide etiquetas de carga em carimbos conhecidos. Etiquetas longas podem usar vários carimbos, e o manifesto reserva carimbos para início, fim e espaços vazios.
+  explanation: Um modelo lê IDs de tokens, não palavras ou caracteres. Tokens especiais delimitam a sequência, truncamento aplica seu limite, preenchimento fixa seu tamanho e a máscara de atenção separa conteúdo de preenchimento. Um vocabulário local fixo torna a fronteira reproduzível.
+  worked_example: |
+    tokens = ["[CLS]", "hello", "sea", "##s", "[SEP]", "[PAD]"]
+    mask = [1, 1, 1, 1, 1, 0]
+    print(tokens, mask)
+  key_points:
+    - Uma palavra pode virar vários tokens do modelo.
+    - Tokens especiais consomem capacidade da sequência.
+    - Máscaras de atenção marcam o preenchimento com zero.
+brief: >
+  Escreva `tokenize_local(text, max_length) -> dict`. Crie um `BertTokenizer` local com
+  este vocabulário ordenado: `[PAD]`, `[UNK]`, `[CLS]`, `[SEP]`, `[MASK]`, `hello`, `world`,
+  `sea`, `##s`, `model`. Converta para minúsculas, trunque e preencha até `max_length`.
+  Retorne tokens, IDs, máscara de atenção e texto decodificado sem tokens especiais. Rejeite entradas inválidas.
+signature:
+  entrypoint: tokenize_local
+  stub: |
+    def tokenize_local(text, max_length):
+        # Exponha cada fronteira entre o texto de origem e a entrada do modelo.
+        pass
+constraints: {max_runtime_ms: 30000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [Hello seas, 6]
+      expect: {tokens: ['[CLS]', hello, sea, '##s', '[SEP]', '[PAD]'], input_ids: [2, 5, 7, 8, 3, 0], attention_mask: [1, 1, 1, 1, 1, 0], decoded: hello seas}
+    - args: [hello world sea model, 5]
+      expect: {tokens: ['[CLS]', hello, world, sea, '[SEP]'], input_ids: [2, 5, 6, 7, 3], attention_mask: [1, 1, 1, 1, 1], decoded: hello world sea}
+  hidden:
+    - {args: ['', 5], raises: ValueError}
+    - {args: [hello, 1], raises: ValueError}
+    - {args: [hello, true], raises: ValueError}
+    - {args: [123, 5], raises: ValueError}
+    - args: [unknown, 4]
+      expect: {tokens: ['[CLS]', '[UNK]', '[SEP]', '[PAD]'], input_ids: [2, 1, 3, 0], attention_mask: [1, 1, 1, 0], decoded: ''}
+hints:
+  - {level: 1, text: "Quais posições são entrada real e quais existem apenas para preencher a janela fixa?"}
+  - {level: 2, text: "Escreva o vocabulário em um arquivo temporário e crie `BertTokenizer(vocab=path)`."}
+  - {level: 3, text: "Chame o tokenizer com tokens especiais, truncamento e `padding='max_length'`; converta os IDs com `convert_ids_to_tokens`."}
+solution: |
+  def tokenize_local(text, max_length):
+      from pathlib import Path
+      from tempfile import TemporaryDirectory
+      from transformers import BertTokenizer
+      if not isinstance(text, str) or not text.strip() or type(max_length) is not int or max_length < 2:
+          raise ValueError("invalid tokenizer input")
+      vocabulary = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world", "sea", "##s", "model"]
+      with TemporaryDirectory() as folder:
+          path = Path(folder) / "vocab.txt"
+          path.write_text("\n".join(vocabulary), encoding="utf-8")
+          tokenizer = BertTokenizer(vocab=str(path), do_lower_case=True)
+          encoded = tokenizer(text, max_length=max_length, truncation=True, padding="max_length")
+      ids = encoded["input_ids"]
+      return {"tokens": tokenizer.convert_ids_to_tokens(ids), "input_ids": ids, "attention_mask": encoded["attention_mask"], "decoded": tokenizer.decode(ids, skip_special_tokens=True)}

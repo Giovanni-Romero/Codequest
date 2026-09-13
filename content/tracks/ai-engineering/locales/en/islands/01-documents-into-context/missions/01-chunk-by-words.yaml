@@ -1,0 +1,125 @@
+# Mission 1 of Documents into Context. Introduces: fixed-window-chunking.
+# Schema reference: docs/mission-schema.md
+
+id: ai-documents-01
+title: Pack the context windows
+track: ai-engineering
+island: documents-into-context
+order: 1
+difficulty: moderate
+tags: [ai-engineering, chunking, context-window]
+xp: 30
+
+concepts:
+  - fixed-window-chunking
+
+teaching:
+  analogy: |
+    A dock has a line of labelled crates and several small boats. Each boat can carry
+    only a fixed number of crates, so the dockworker fills one boat, then the next,
+    without changing the order or leaving a crate behind.
+
+    A model context has the same problem. A document can be larger than the space
+    available for one request, so you divide it into bounded, consecutive pieces.
+
+  explanation: |
+    Chunking divides a larger input into smaller pieces that another stage can handle.
+    A fixed-window chunker uses one maximum size for every piece. In this mission the
+    unit is a word, not a character or a model token. Splitting on whitespace gives an
+    ordered list of words; slicing that list creates bounded groups. Joining each group
+    produces text chunks without losing or reordering the original words.
+
+  worked_example: |
+    # Group song ids into download batches of at most two.
+    song_ids = ["s1", "s2", "s3", "s4", "s5"]
+    batch_size = 2
+    batches = []
+    for start in range(0, len(song_ids), batch_size):
+        batches.append(song_ids[start : start + batch_size])
+    print(batches)  # [["s1", "s2"], ["s3", "s4"], ["s5"]]
+
+  key_points:
+    - The unit must be explicit. This mission counts words, not characters or model tokens.
+    - Every chunk respects the maximum because each slice ends at start plus max_words.
+    - The final chunk may be smaller. Padding would invent content that was not in the document.
+    - Splitting before grouping normalizes whitespace while preserving word content and order.
+
+brief: |
+  The archive has documents that are too large to send through one context window.
+
+  Write `chunk_by_words`. It receives a string and a positive maximum number of words.
+  Return consecutive text chunks containing at most that many words each.
+
+  A word is any sequence separated by whitespace. Join words inside an output chunk with
+  one ordinary space. Preserve every word and its order, produce no empty chunks, and
+  return an empty list for empty or whitespace-only text.
+
+  Raise `ValueError` when `max_words` is zero or negative. Do not add overlap yet.
+
+signature:
+  entrypoint: chunk_by_words
+  stub: |
+    def chunk_by_words(text, max_words):
+        # Split the text into words, then pack consecutive bounded groups.
+        pass
+
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+
+tests:
+  visible:
+    - args: ["one two three four five six seven", 3]
+      expect: ["one two three", "four five six", "seven"]
+    - args: ["alpha beta gamma", 3]
+      expect: ["alpha beta gamma"]
+  hidden:
+    - args: ["", 3]
+      expect: []
+    - args: [" \t\n ", 2]
+      expect: []
+    - args: ["anchor", 1]
+      expect: ["anchor"]
+    - args: ["one  two\tthree\nfour", 2]
+      expect: ["one two", "three four"]
+    - args: ["one two", 5]
+      expect: ["one two"]
+    - args: ["a b c d e", 2]
+      expect: ["a b", "c d", "e"]
+    - args: ["alpha, beta! gamma?", 1]
+      expect: ["alpha,", "beta!", "gamma?"]
+    - args: ["one two", 0]
+      raises: ValueError
+    - args: ["one two", -2]
+      raises: ValueError
+
+hints:
+  - level: 1
+    text: |
+      After splitting the text, where does each next group begin? What step moves you
+      exactly one full chunk forward?
+  - level: 2
+    text: |
+      Walk over the word positions in steps of `max_words`. A slice may stop beyond the
+      list safely, which naturally creates the shorter final group.
+  - level: 3
+    text: |
+      The same pattern, grouping ticket numbers instead of document words:
+
+          groups = []
+          for start in range(0, len(tickets), capacity):
+              group = tickets[start : start + capacity]
+              groups.append(group)
+
+      Your groups must be joined back into strings before they are returned.
+
+solution: |
+  def chunk_by_words(text, max_words):
+      if max_words <= 0:
+          raise ValueError("max_words must be positive")
+
+      words = text.split()
+      return [
+          " ".join(words[start : start + max_words])
+          for start in range(0, len(words), max_words)
+      ]

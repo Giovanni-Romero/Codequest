@@ -1,0 +1,45 @@
+id: ai-math-03
+title: Projete com evidências
+track: ai-engineering
+island: mathematical-statistical-foundations
+order: 3
+difficulty: challenging
+tags: [ai-engineering, mathematics, vectors]
+xp: 45
+concepts: [vector-operations]
+teaching:
+  analogy: A sombra em uma régua mostra quanto de um objeto aponta na direção daquela régua.
+  explanation: A projeção mantém a parte de um vetor que aponta na direção de um vetor-base. Seu coeficiente é dot(vector, basis) dividido por dot(basis, basis), a norma L2 ao quadrado da base. Uma base nula não tem direção, então rejeite-a.
+  worked_example: "distancia = 12\ntamanho_unidade = 3\nunidades = distancia / tamanho_unidade\nprint(unidades)"
+  key_points: ["A base fornece a direção.", "Uma base nula não define projeção.", "A projeção é um vetor, não apenas um coeficiente."]
+brief: 'Escreva `project_onto(vector, basis) -> dict`. Para vetores numéricos finitos, não vazios e do mesmo tamanho, com base não nula, retorne `{"coefficient": number, "projection": list}`. Caso contrário, lance `ValueError`.'
+signature:
+  entrypoint: project_onto
+  stub: "def project_onto(vector, basis):\n    # Retorne evidências de projeção para uma direção-base validada.\n    pass\n"
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+  - args: [[3, 4], [1, 0]]
+    expect: {coefficient: 3.0, projection: [3.0, 0.0]}
+  - args: [[2, 2], [1, 1]]
+    expect: {coefficient: 2.0, projection: [2.0, 2.0]}
+  hidden:
+  - args: [[0, 5], [0, 1]]
+    expect: {coefficient: 5.0, projection: [0.0, 5.0]}
+  - args: [[1], [0]]
+    raises: ValueError
+  - args: [[1], [1, 2]]
+    raises: ValueError
+  - args: [[], []]
+    raises: ValueError
+  - args: [[true], [1]]
+    raises: ValueError
+  - args: [[.nan], [1]]
+    raises: ValueError
+  - args: [[1], [.inf]]
+    raises: ValueError
+hints:
+- {level: 1, text: "Quanto do primeiro vetor aponta na direção do segundo?"}
+- {level: 2, text: Divida um produto escalar pelo produto escalar da base por ela mesma.}
+- {level: 3, text: "Padrão: `scale = numerator / denominator; scaled = [scale * x for x in base]`."}
+solution: "def project_onto(vector, basis):\n    import math\n    def valid(v):\n        return isinstance(v, list) and bool(v) and all(type(x) in (int, float) and math.isfinite(x) for x in v)\n    if not valid(vector) or not valid(basis) or len(vector) != len(basis): raise ValueError('invalid vectors')\n    denominator = sum(x * x for x in basis)\n    if denominator == 0: raise ValueError('zero basis')\n    coefficient = sum(a * b for a, b in zip(vector, basis)) / denominator\n    return {'coefficient': coefficient, 'projection': [coefficient * x for x in basis]}\n"

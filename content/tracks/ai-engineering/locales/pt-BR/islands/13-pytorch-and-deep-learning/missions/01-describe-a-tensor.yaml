@@ -1,0 +1,76 @@
+id: ai-pytorch-01
+title: Descreva um tensor
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 1
+difficulty: challenging
+tags: [ai-engineering, pytorch, tensor, requires-ai-ml]
+xp: 45
+concepts: [tensors-and-shapes]
+teaching:
+  analogy: Um palete de carga tem linhas, colunas e uma etiqueta de material. Contar caixas sem registrar a disposição perde informações necessárias para o próximo guindaste.
+  explanation: Um tensor armazena valores com um formato e um dtype. O PyTorch infere ambos, a menos que você declare o dtype. O formato descreve cada eixo; o dtype controla a representação e as operações válidas. Converta tensores em dados simples antes de atravessar a fronteira do jogo.
+  worked_example: |
+    import torch
+    flags = torch.tensor([[1, 0], [0, 1]], dtype=torch.int64)
+    print(list(flags.shape))
+    print(str(flags.dtype).removeprefix("torch."))
+  key_points:
+    - O formato registra cada eixo, não apenas o número de valores.
+    - Um tensor tem um único dtype para todos os elementos.
+    - Dados aninhados precisam formar um retângulo.
+brief: >
+  Escreva `describe_tensor(values, dtype) -> dict`. Aceite o dtype `float32` ou `int64`,
+  crie um tensor na CPU e retorne `shape`, `dtype` e `values` como dados compatíveis com JSON.
+  Rejeite dtype desconhecido, booleanos, entrada vazia, formato irregular ou números não finitos
+  com `ValueError`. Instale o extra `ai-ml` antes desta ilha.
+signature:
+  entrypoint: describe_tensor
+  stub: |
+    def describe_tensor(values, dtype):
+        # Crie um tensor e reporte sua descrição segura para a fronteira.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[1, 2, 3], float32]
+      expect: {shape: [3], dtype: float32, values: [1.0, 2.0, 3.0]}
+    - args: [[[1, 2], [3, 4]], int64]
+      expect: {shape: [2, 2], dtype: int64, values: [[1, 2], [3, 4]]}
+  hidden:
+    - args: [[], float32]
+      raises: ValueError
+    - args: [[[1], [2, 3]], float32]
+      raises: ValueError
+    - args: [[true, false], int64]
+      raises: ValueError
+    - args: [[.inf], float32]
+      raises: ValueError
+    - args: [[1], float16]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Quais fatos sobre um tensor precisam sobreviver quando o próprio tensor não pode atravessar o JSON?"}
+  - {level: 2, text: "Valide recursivamente, mapeie o nome do dtype e então use `torch.tensor`."}
+  - {level: 3, text: "Para outro array, `list(item.shape)`, um dtype limpo e `item.tolist()` formam um registro portátil."}
+solution: |
+  def describe_tensor(values, dtype):
+      import math
+      import torch
+      if dtype not in {"float32", "int64"} or not isinstance(values, list) or not values:
+          raise ValueError("invalid tensor input")
+      def validate(value):
+          if isinstance(value, list):
+              if not value:
+                  raise ValueError("empty axis")
+              for item in value:
+                  validate(item)
+          elif type(value) not in (int, float):
+              raise ValueError("invalid tensor value")
+      validate(values)
+      try:
+          tensor = torch.tensor(values, dtype=getattr(torch, dtype), device="cpu")
+      except (TypeError, ValueError, RuntimeError, OverflowError) as exc:
+          raise ValueError("invalid tensor shape") from exc
+      if tensor.is_floating_point() and not torch.isfinite(tensor).all():
+          raise ValueError("tensor value is outside dtype range")
+      return {"shape": list(tensor.shape), "dtype": dtype, "values": tensor.tolist()}

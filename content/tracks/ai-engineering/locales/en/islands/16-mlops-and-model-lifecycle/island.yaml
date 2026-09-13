@@ -1,0 +1,8 @@
+id: mlops-and-model-lifecycle
+name: MLOps and Model Lifecycle
+track: ai-engineering
+order: 16
+theme: Reproducible runs, immutable releases, safe rollouts, and useful monitoring
+concepts: [experiment-tracking, model-versioning, deployment-strategies, drift-monitoring]
+unlock_requires: {requires_mission: ai-responsible-08}
+completion_reward_xp: 220

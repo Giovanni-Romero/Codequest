@@ -1,0 +1,102 @@
+id: ai-data-03
+title: Meça a qualidade dos dados
+track: ai-engineering
+island: data-engineering-for-ai
+order: 3
+difficulty: challenging
+tags: [ai-engineering, data, quality, metrics]
+xp: 45
+concepts: [data-quality]
+teaching:
+  analogy: Um relatório portuário separa carga ausente, rótulos duplicados e manifestos inconsistentes. Uma única pontuação combinada esconderia qual correção a carga precisa.
+  explanation: Qualidade de dados é multidimensional. Completude mede células obrigatórias preenchidas, validade mede linhas totalmente preenchidas, unicidade mede identificadores distintos e consistência mede linhas com exatamente os campos declarados. Separar as dimensões preserva o valor diagnóstico.
+  worked_example: |
+    populated = 5
+    required_cells = 6
+    completeness = populated / required_cells
+    print(round(completeness, 6))
+  key_points:
+    - Meça as dimensões separadamente.
+    - Campos ausentes e valores nulos reduzem a completude.
+    - Identificadores duplicados reduzem a unicidade.
+    - A medição não deve alterar as linhas de origem.
+brief: >
+  Escreva `measure_data_quality(records, required_fields, unique_field) -> dict`. Exija uma
+  lista não vazia de dicionários, uma lista não vazia de nomes string únicos e um campo único
+  contido nessa lista. Valores do campo único devem ser escalares ou nulos. Retorne `total_rows`,
+  `completeness`, `validity`, `uniqueness` e `consistency`. Completude divide células obrigatórias
+  preenchidas por todas as células obrigatórias; validade é a fração de linhas com todos os
+  campos preenchidos; unicidade divide identificadores distintos pelos presentes; consistência
+  é a fração cujo conjunto de chaves corresponde exatamente aos campos obrigatórios. Arredonde
+  para 6 casas, não altere entradas e lance `ValueError` para entrada inválida.
+signature:
+  entrypoint: measure_data_quality
+  stub: |
+    def measure_data_quality(records, required_fields, unique_field):
+        # Retorne dimensões diagnósticas separadas em vez de uma pontuação opaca.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - [{id: 1, name: a}, {id: 2, name: b}, {id: 2, name: null, extra: x}]
+        - [id, name]
+        - id
+      expect: {total_rows: 3, completeness: 0.833333, validity: 0.666667, uniqueness: 0.666667, consistency: 0.666667}
+    - args:
+        - [{id: 1, name: a}, {id: 2, name: b}]
+        - [id, name]
+        - id
+      expect: {total_rows: 2, completeness: 1.0, validity: 1.0, uniqueness: 1.0, consistency: 1.0}
+  hidden:
+    - args:
+        - [{id: null, name: a}, {name: b}]
+        - [id, name]
+        - id
+      expect: {total_rows: 2, completeness: 0.5, validity: 0.0, uniqueness: 0.0, consistency: 0.5}
+    - args: [[], [id], id]
+      raises: ValueError
+    - args: [[{id: 1}], [id, id], id]
+      raises: ValueError
+    - args: [[{id: [1]}], [id], id]
+      raises: ValueError
+    - args: [[{id: .nan}], [id], id]
+      raises: ValueError
+    - args: [not-a-list, [id], id]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Qual denominador pertence a cada dimensão de qualidade?"
+  - level: 2
+    text: "Conte separadamente células obrigatórias preenchidas, linhas completas, ids distintos e conjuntos exatos de chaves."
+  - level: 3
+    text: "Não copie nem altere dados; derive quatro contadores, divida pelos denominadores declarados e arredonde."
+solution: |
+  def measure_data_quality(records, required_fields, unique_field):
+      import math
+      if not isinstance(records, list) or not records or any(not isinstance(record, dict) for record in records):
+          raise ValueError("invalid records")
+      if not isinstance(required_fields, list) or not required_fields or not all(isinstance(field, str) for field in required_fields) or len(set(required_fields)) != len(required_fields):
+          raise ValueError("invalid required fields")
+      if not isinstance(unique_field, str) or unique_field not in required_fields:
+          raise ValueError("invalid unique field")
+      identifiers = []
+      for record in records:
+          value = record.get(unique_field)
+          if value is not None and not (type(value) in (str, int, bool) or (type(value) is float and math.isfinite(value))):
+              raise ValueError("invalid identifier")
+          if value is not None:
+              identifiers.append((type(value).__name__, value))
+      populated = sum(field in record and record[field] is not None for record in records for field in required_fields)
+      valid_rows = sum(all(field in record and record[field] is not None for field in required_fields) for record in records)
+      consistent_rows = sum(set(record) == set(required_fields) for record in records)
+      total = len(records)
+      cells = total * len(required_fields)
+      uniqueness = len(set(identifiers)) / len(identifiers) if identifiers else 0.0
+      return {
+          "total_rows": total,
+          "completeness": round(populated / cells, 6),
+          "validity": round(valid_rows / total, 6),
+          "uniqueness": round(uniqueness, 6),
+          "consistency": round(consistent_rows / total, 6),
+      }

@@ -1,0 +1,139 @@
+id: ai-production-02
+title: Construa o trace seguro
+track: ai-engineering
+island: production-ai
+order: 2
+difficulty: moderate
+tags:
+- ai-engineering
+- production
+- deterministic
+xp: 30
+concepts:
+- observability-traces
+- failure-taxonomy
+teaching:
+  analogy: Um painel de voos mostra portão, tempo e atraso, não a conversa de cada passageiro.
+  explanation: Um trace de observabilidade guarda evidência segura. Um erro terminal interrompe etapas posteriores. Metadados exatos evitam que log vire vazamento.
+  worked_example: 'tempos = [2, 3]
+
+    print(sum(tempos))'
+  key_points:
+  - Trace é metadado, não payload.
+  - Falha possui uma etapa terminal.
+  - Ordem das etapas torna tempo útil.
+brief: Escreva `build_safe_trace(events) -> dict`. Cada evento possui apenas stage, status, elapsed_ms, input_size, output_size e failure_reason. Valide todo o prefixo ordenado de input/provider/output antes de retornar metadados seguros. Um erro é terminal. Nunca retorne prompts, saídas, segredos ou campos extras de payload.
+signature:
+  entrypoint: build_safe_trace
+  stub: "def build_safe_trace(events):\n    # Return deterministic production evidence; never call a provider.\n    pass\n"
+constraints:
+  max_runtime_ms: 2000
+  max_memory_mb: 128
+  forbidden_builtins:
+  - eval
+  - exec
+tests:
+  visible:
+  - args:
+    - &id001
+      - &id002
+        stage: input
+        status: ok
+        elapsed_ms: 1
+        input_size: 2
+        output_size: 0
+        failure_reason: null
+      - stage: provider
+        status: ok
+        elapsed_ms: 3
+        input_size: 2
+        output_size: 4
+        failure_reason: null
+      - &id003
+        stage: output
+        status: ok
+        elapsed_ms: 1
+        input_size: 4
+        output_size: 4
+        failure_reason: null
+    expect:
+      status: complete
+      total_elapsed_ms: 5
+      events: *id001
+  - args:
+    - - *id002
+      - stage: provider
+        status: error
+        elapsed_ms: 2
+        input_size: 2
+        output_size: 0
+        failure_reason: offline
+    expect:
+      status: failed
+      total_elapsed_ms: 3
+      events:
+      - *id002
+      - stage: provider
+        status: error
+        elapsed_ms: 2
+        input_size: 2
+        output_size: 0
+        failure_reason: offline
+      failure_stage: provider
+      failure_reason: offline
+  hidden:
+  - args:
+    - []
+    raises: ValueError
+  - args:
+    - - stage: output
+        status: ok
+        elapsed_ms: 0
+        input_size: 0
+        output_size: 0
+        failure_reason: null
+    raises: ValueError
+  - args:
+    - - stage: input
+        status: ok
+        elapsed_ms: true
+        input_size: 0
+        output_size: 0
+        failure_reason: null
+    raises: ValueError
+  - args:
+    - - stage: input
+        status: error
+        elapsed_ms: 0
+        input_size: 0
+        output_size: 0
+        failure_reason: null
+    raises: ValueError
+  - args:
+    - - stage: input
+        status: ok
+        elapsed_ms: 1
+        input_size: 2
+        output_size: 0
+        failure_reason: null
+        secret: x
+    raises: ValueError
+  - args:
+    - - *id002
+      - stage: provider
+        status: error
+        elapsed_ms: 1
+        input_size: 0
+        output_size: 0
+        failure_reason: x
+      - *id003
+    raises: ValueError
+hints:
+- level: 1
+  text: Qual é a menor evidência para depurar uma etapa?
+- level: 2
+  text: Valide ordem e a dupla status/erro antes de somar.
+- level: 3
+  text: 'Para recibos: `total = sum(row["minutes"] for row in rows)`. '
+solution: "def build_safe_trace(events):\n    if not isinstance(events, list): raise ValueError(\"invalid events\")\n    stages = [\"input\", \"provider\", \"output\"]; clean = []; failed = None\n    for index, event in enumerate(events):\n        if not isinstance(event, dict) or set(event) != {\"stage\", \"status\", \"elapsed_ms\", \"input_size\", \"output_size\", \"failure_reason\"}: raise ValueError(\"invalid event\")\n        if event[\"stage\"] != stages[index] or event[\"status\"] not in {\"ok\", \"error\"}: raise ValueError(\"invalid event\")\n        if any(type(event[k]) is not int or event[k] < 0 for k in (\"elapsed_ms\", \"input_size\", \"output_size\")): raise ValueError(\"invalid event\")\n        reason = event[\"failure_reason\"]\n        if (event[\"status\"] == \"error\") != (type(reason) is str and bool(reason)): raise ValueError(\"invalid event\")\n        if failed is not None: raise ValueError(\"continued failure\")\n        clean.append({k: event[k] for k in (\"stage\"\
+  , \"status\", \"elapsed_ms\", \"input_size\", \"output_size\", \"failure_reason\")})\n        if event[\"status\"] == \"error\": failed = event\n    if not clean: raise ValueError(\"empty trace\")\n    result = {\"status\": \"failed\" if failed else \"complete\", \"total_elapsed_ms\": sum(e[\"elapsed_ms\"] for e in clean), \"events\": clean}\n    if failed: result.update(failure_stage=failed[\"stage\"], failure_reason=failed[\"failure_reason\"])\n    return result\n"

@@ -1,0 +1,8 @@
+id: responsible-ai
+name: IA responsável
+track: ai-engineering
+order: 15
+theme: Decisões justas, dados protegidos, registros auditáveis e revisão responsável
+concepts: [group-fairness-metrics, privacy-boundaries, explainability-records, human-oversight-governance]
+unlock_requires: {requires_mission: ai-nlp-08}
+completion_reward_xp: 220

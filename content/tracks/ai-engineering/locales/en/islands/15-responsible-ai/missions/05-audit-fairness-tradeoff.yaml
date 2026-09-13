@@ -1,0 +1,115 @@
+id: ai-responsible-05
+title: Audit a fairness trade-off
+track: ai-engineering
+island: responsible-ai
+order: 5
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, fairness, explainability]
+xp: 45
+concepts: [group-fairness-metrics, explainability-records]
+teaching:
+  analogy: A port audit compares one declared delay measure across docks and keeps every ticket number behind the result. The gap is reviewable because the source receipts remain traceable.
+  explanation: A fairness audit must declare its metric before measuring disparity. The largest gap compares the highest and lowest group rates. A tolerance is a governance choice, not a universal definition of fairness. Evidence references make the calculation reproducible without embedding raw case data in the summary.
+  worked_example: |
+    temperatures = {"deck-a": 18.0, "deck-b": 18.4, "deck-c": 17.9}
+    readings = list(temperatures.values())
+    coldest = min(readings)
+    warmest = max(readings)
+    spread = round(warmest - coldest, 1)
+    print(spread)
+  key_points:
+    - Compare one declared metric at a time because metrics encode different trade-offs.
+    - Preserve evidence identifiers so an auditor can reconstruct the rates.
+    - A tolerated gap is a policy result, not proof of universal fairness.
+brief: >
+  Write `audit_fairness_tradeoff(records, metric, tolerance) -> dict`. Each item in the
+  non-empty `records` list is a dictionary with exactly `id`, `group`, `selected`,
+  `prediction`, and `actual`. IDs and groups are non-empty strings, IDs are unique, and
+  the three outcome fields are booleans. `metric` is `selection_rate` or `error_rate`.
+  `tolerance` is a finite number from 0 through 1; booleans are not numeric tolerance.
+  Return the metric, per-group rates in sorted group order rounded to three decimals,
+  the rounded largest `gap`, whether the unrounded gap is `within_tolerance`, and the
+  record IDs as `evidence_refs` in input order. Reject malformed or non-finite input and
+  do not mutate the records.
+signature:
+  entrypoint: audit_fairness_tradeoff
+  stub: |
+    def audit_fairness_tradeoff(records, metric, tolerance):
+        # Bind a declared fairness trade-off to traceable evidence.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - - {id: case-1, group: a, selected: true, prediction: true, actual: true}
+          - {id: case-2, group: a, selected: false, prediction: false, actual: false}
+          - {id: case-3, group: b, selected: true, prediction: true, actual: true}
+        - selection_rate
+        - 0.5
+      expect: {metric: selection_rate, rates: {a: 0.5, b: 1.0}, gap: 0.5, within_tolerance: true, evidence_refs: [case-1, case-2, case-3]}
+    - args:
+        - - {id: case-4, group: a, selected: true, prediction: true, actual: false}
+          - {id: case-5, group: a, selected: false, prediction: false, actual: false}
+          - {id: case-6, group: b, selected: true, prediction: true, actual: true}
+        - error_rate
+        - 0.25
+      expect: {metric: error_rate, rates: {a: 0.5, b: 0.0}, gap: 0.5, within_tolerance: false, evidence_refs: [case-4, case-5, case-6]}
+  hidden:
+    - args:
+        - - {id: only, group: solo, selected: false, prediction: true, actual: false}
+        - error_rate
+        - 0
+      expect: {metric: error_rate, rates: {solo: 1.0}, gap: 0.0, within_tolerance: true, evidence_refs: [only]}
+    - {args: [[], selection_rate, 0.1], raises: ValueError}
+    - args:
+        - - {id: case-1, group: a, selected: true, prediction: true, actual: true}
+        - accuracy
+        - 0.1
+      raises: ValueError
+    - args:
+        - - {id: case-1, group: a, selected: true, prediction: true, actual: true}
+        - selection_rate
+        - true
+      raises: ValueError
+    - args:
+        - - {id: case-1, group: a, selected: true, prediction: true, actual: true}
+        - selection_rate
+        - .nan
+      raises: ValueError
+    - args:
+        - - {id: repeated, group: a, selected: true, prediction: true, actual: true}
+          - {id: repeated, group: b, selected: false, prediction: false, actual: false}
+        - selection_rate
+        - 1
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which declared rate belongs in the comparison, and which IDs let someone reproduce it?"}
+  - {level: 2, text: "Accumulate numerator and denominator per group, then compare the highest and lowest raw rates."}
+  - {level: 3, text: "For another audit, `spread = max(values) - min(values)` measures the widest difference before rounding."}
+solution: |
+  def audit_fairness_tradeoff(records, metric, tolerance):
+      import math
+      if type(records) is not list or not records or metric not in ("selection_rate", "error_rate") or type(tolerance) not in (int, float):
+          raise ValueError("invalid audit")
+      try:
+          tolerance_ok = math.isfinite(tolerance) and 0 <= tolerance <= 1
+      except (OverflowError, TypeError):
+          tolerance_ok = False
+      if not tolerance_ok:
+          raise ValueError("invalid tolerance")
+      required = {"id", "group", "selected", "prediction", "actual"}
+      counts = {}
+      evidence = []
+      for record in records:
+          if type(record) is not dict or set(record) != required or type(record["id"]) is not str or not record["id"].strip() or type(record["group"]) is not str or not record["group"].strip():
+              raise ValueError("invalid record")
+          if any(type(record[key]) is not bool for key in ("selected", "prediction", "actual")) or record["id"] in evidence:
+              raise ValueError("invalid record")
+          evidence.append(record["id"])
+          total, selections, errors = counts.get(record["group"], (0, 0, 0))
+          counts[record["group"]] = (total + 1, selections + record["selected"], errors + (record["prediction"] != record["actual"]))
+      raw = {}
+      for group, (total, selections, errors) in counts.items():
+          raw[group] = (selections if metric == "selection_rate" else errors) / total
+      gap = max(raw.values()) - min(raw.values())
+      return {"metric": metric, "rates": {group: round(raw[group], 3) for group in sorted(raw)}, "gap": round(gap, 3), "within_tolerance": gap <= tolerance, "evidence_refs": evidence}

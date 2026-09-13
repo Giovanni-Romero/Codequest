@@ -1,0 +1,88 @@
+id: ai-responsible-04
+title: Route human oversight
+track: ai-engineering
+island: responsible-ai
+order: 4
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, oversight, governance]
+xp: 45
+concepts: [human-oversight-governance]
+teaching:
+  analogy: Routine cargo can clear an automatic gate, but hazardous cargo or an uncertain scan goes to a named inspector. A button without an accountable inspector is not oversight.
+  explanation: Human oversight routes decisions by declared impact and uncertainty. Only impacts listed by policy require review regardless of confidence. Other cases proceed automatically only when confidence is equal to or above the policy threshold. The route must name who is responsible and why the gate opened.
+  worked_example: |
+    fragile = True
+    scanner_confidence = 0.72
+    automatic_threshold = 0.8
+    needs_review = fragile or scanner_confidence < automatic_threshold
+    lane = "inspector" if needs_review else "automatic"
+    print(lane)
+  key_points:
+    - Only policy-listed impacts require review regardless of confidence.
+    - A named reviewer creates accountability.
+    - Confidence is a routing signal, not proof that a decision is correct.
+brief: >
+  Write `route_human_oversight(impact, confidence, policy) -> dict`. `impact` is `low`,
+  `medium`, or `high`. `confidence` is a finite number from 0 through 1; booleans are not
+  numeric confidence. `policy` has exactly `review_impacts` (a unique list of valid impact
+  strings), `min_automatic_confidence` (a finite number from 0 through 1), and `reviewer`
+  (a non-empty string). Route to `human-review` for a listed impact, otherwise for confidence
+  below the threshold; use reasons `impact` and `confidence` in that priority. Otherwise route
+  to `automatic` with reason `eligible`. Return the reviewer for human review and null for
+  automatic routing. Reject malformed input and do not mutate the policy.
+signature:
+  entrypoint: route_human_oversight
+  stub: |
+    def route_human_oversight(impact, confidence, policy):
+        # Route risk to a named accountable reviewer under explicit rules.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [high, 0.99, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: risk-team}]
+      expect: {route: human-review, reason: impact, reviewer: risk-team}
+    - args: [low, 0.9, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: risk-team}]
+      expect: {route: automatic, reason: eligible, reviewer: null}
+    - args: [medium, 0.6, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: risk-team}]
+      expect: {route: human-review, reason: confidence, reviewer: risk-team}
+  hidden:
+    - {args: [critical, 0.9, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: risk-team}], raises: ValueError}
+    - {args: [low, true, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: risk-team}], raises: ValueError}
+    - {args: [low, .nan, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: risk-team}], raises: ValueError}
+    - {args: [low, 0.9, {review_impacts: [high, high], min_automatic_confidence: 0.8, reviewer: risk-team}], raises: ValueError}
+    - {args: [low, 0.9, {review_impacts: [high], min_automatic_confidence: .inf, reviewer: risk-team}], raises: ValueError}
+    - {args: [low, 0.9, {review_impacts: [high], min_automatic_confidence: 0.8, reviewer: ''}], raises: ValueError}
+hints:
+  - {level: 1, text: "Which condition creates the strongest review obligation: impact or uncertainty?"}
+  - {level: 2, text: "Validate the complete policy, then check listed impact before the confidence threshold."}
+  - {level: 3, text: "A separate gate might use `reason = 'category' if category in blocked else 'score' if score < floor else 'clear'`."}
+solution: |
+  def route_human_oversight(impact, confidence, policy):
+      import math
+      impacts = {"low", "medium", "high"}
+      if type(impact) is not str or impact not in impacts or type(confidence) not in (int, float):
+          raise ValueError("invalid decision")
+      try:
+          confidence_ok = math.isfinite(confidence) and 0 <= confidence <= 1
+      except (OverflowError, TypeError):
+          confidence_ok = False
+      required = {"review_impacts", "min_automatic_confidence", "reviewer"}
+      if not confidence_ok or type(policy) is not dict or set(policy) != required:
+          raise ValueError("invalid policy")
+      review_impacts = policy["review_impacts"]
+      threshold = policy["min_automatic_confidence"]
+      if type(review_impacts) is not list or any(type(item) is not str or item not in impacts for item in review_impacts) or len(set(review_impacts)) != len(review_impacts):
+          raise ValueError("invalid policy")
+      if type(threshold) not in (int, float) or type(policy["reviewer"]) is not str or not policy["reviewer"].strip():
+          raise ValueError("invalid policy")
+      try:
+          threshold_ok = math.isfinite(threshold) and 0 <= threshold <= 1
+      except (OverflowError, TypeError):
+          threshold_ok = False
+      if not threshold_ok:
+          raise ValueError("invalid policy")
+      if impact in review_impacts:
+          return {"route": "human-review", "reason": "impact", "reviewer": policy["reviewer"]}
+      if confidence < threshold:
+          return {"route": "human-review", "reason": "confidence", "reviewer": policy["reviewer"]}
+      return {"route": "automatic", "reason": "eligible", "reviewer": None}

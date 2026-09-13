@@ -39,6 +39,34 @@ def test_forbidden_builtin_reached_through_an_attribute_is_rejected():
     assert report.reason is FailureReason.FORBIDDEN_CONSTRUCT
 
 
+def test_forbidden_builtin_reached_through_an_import_alias_is_rejected():
+    report = check("import builtins as b\n\ndef t(xs):\n    return b.sum(xs)\n", NO_SUM)
+
+    assert not report.ok
+    assert report.reason is FailureReason.FORBIDDEN_CONSTRUCT
+
+
+def test_forbidden_builtin_imported_from_builtins_under_an_alias_is_rejected():
+    report = check("from builtins import sum as s\n\ndef t(xs):\n    return s(xs)\n", NO_SUM)
+
+    assert not report.ok
+    assert report.reason is FailureReason.FORBIDDEN_CONSTRUCT
+
+
+def test_parameter_named_builtins_is_not_the_builtin_namespace():
+    report = check("def total(builtins, xs):\n    return builtins.sum(xs)\n", NO_SUM)
+
+    assert report.ok
+
+
+def test_method_named_like_a_forbidden_builtin_is_allowed():
+    report = check(
+        "def infer(model):\n    model.eval()\n", Constraints(forbidden_builtins=frozenset({"eval"}))
+    )
+
+    assert report.ok
+
+
 def test_shadowing_a_forbidden_name_is_allowed():
     """``sum = 0`` is a store, not a call. Forbidding it would ban a normal variable."""
     report = check("def total(xs):\n    sum = 0\n    return sum\n", NO_SUM)

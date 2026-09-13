@@ -1,0 +1,10 @@
+id: structured-outputs
+name: Saídas estruturadas
+track: ai-engineering
+order: 5
+theme: Transformar texto moldado por modelo em dados validados
+description: |
+  Analise texto com segurança, valide seu schema, repita falhas reparáveis e classifique cada falha.
+concepts: [output-schema, safe-output-parsing, validation-retry, failure-taxonomy]
+unlock_requires: {requires_mission: ai-rag-08}
+completion_reward_xp: 180

@@ -1,0 +1,8 @@
+id: responsible-ai
+name: Responsible AI
+track: ai-engineering
+order: 15
+theme: Fair decisions, protected data, auditable records, and accountable review
+concepts: [group-fairness-metrics, privacy-boundaries, explainability-records, human-oversight-governance]
+unlock_requires: {requires_mission: ai-nlp-08}
+completion_reward_xp: 220

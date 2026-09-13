@@ -1,0 +1,92 @@
+id: ai-ml-03
+title: Fit a linear learner
+track: ai-engineering
+island: machine-learning-foundations
+order: 3
+difficulty: challenging
+tags: [ai-engineering, machine-learning, supervised-learning, regression]
+xp: 45
+concepts: [supervised-learning-contract]
+teaching:
+  analogy: A shipwright draws the straight line that best follows measured load and draft. The measurements fit the line; later measurements only test it.
+  explanation: Supervised learning connects features to known targets. Fitting chooses model parameters from training pairs, while inference applies those fixed parameters to features without targets. Loss measures the disagreement between predictions and targets. A one-feature least-squares line makes all four stages visible without a framework hiding them.
+  worked_example: |
+    distances = [1, 2, 3]
+    fuel = [4, 7, 10]
+    average_distance = sum(distances) / len(distances)
+    average_fuel = sum(fuel) / len(fuel)
+    print(average_distance, average_fuel)
+  key_points:
+    - Features enter the model; targets supervise fitting.
+    - Training chooses parameters, while inference reuses them.
+    - Loss is explicit evidence, not a property hidden inside a model object.
+brief: >
+  Write `fit_linear_learner(features, targets) -> dict`. Accept equal lists of at least
+  two finite numbers, excluding `bool`, and require variation in the features. Fit the
+  least-squares line `prediction = slope * feature + intercept`. Return `slope`,
+  `intercept`, `train_predictions`, and mean squared `train_loss`. Raise `ValueError`
+  for invalid input or non-finite arithmetic.
+signature:
+  entrypoint: fit_linear_learner
+  stub: |
+    def fit_linear_learner(features, targets):
+        # Fit one deterministic line and expose its training evidence.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[1, 2, 3], [3, 5, 7]]
+      expect: {slope: 2.0, intercept: 1.0, train_predictions: [3.0, 5.0, 7.0], train_loss: 0.0}
+    - args: [[-1, 0, 1], [0, 2, 4]]
+      expect: {slope: 2.0, intercept: 2.0, train_predictions: [0.0, 2.0, 4.0], train_loss: 0.0}
+  hidden:
+    - args: [[1, 2], [2, 2]]
+      expect: {slope: 0.0, intercept: 2.0, train_predictions: [2.0, 2.0], train_loss: 0.0}
+    - args: [[1], [2]]
+      raises: ValueError
+    - args: [[1, 2], [2]]
+      raises: ValueError
+    - args: [[1, 1], [2, 3]]
+      raises: ValueError
+    - args: [[true, 2], [2, 3]]
+      raises: ValueError
+    - args: [[1, .nan], [2, 3]]
+      raises: ValueError
+    - args: [not-a-list, [2, 3]]
+      raises: ValueError
+    - args: [[0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF, 1], [2, 3]]
+      raises: ValueError
+hints:
+  - level: 1
+    text: "Which four values make fitting, inference, and loss visible instead of implicit?"
+  - level: 2
+    text: "Compute feature and target means, covariance over feature variance, then predict every training feature."
+  - level: 3
+    text: "Pattern: `coefficient = sum((x - x_bar) * (y - y_bar) for x, y in pairs) / spread`."
+solution: |
+  def fit_linear_learner(features, targets):
+      import math
+      def finite_number(value):
+          if type(value) not in (int, float):
+              return False
+          try:
+              return math.isfinite(value)
+          except OverflowError:
+              return False
+      if not isinstance(features, list) or not isinstance(targets, list) or len(features) < 2 or len(features) != len(targets) or not all(finite_number(value) for value in features + targets):
+          raise ValueError("invalid training data")
+      try:
+          feature_mean = sum(features) / len(features)
+          target_mean = sum(targets) / len(targets)
+          spread = sum((feature - feature_mean) ** 2 for feature in features)
+          if spread == 0:
+              raise ValueError("features do not vary")
+          slope = sum((feature - feature_mean) * (target - target_mean) for feature, target in zip(features, targets)) / spread
+          intercept = target_mean - slope * feature_mean
+          predictions = [slope * feature + intercept for feature in features]
+          loss = sum((prediction - target) ** 2 for prediction, target in zip(predictions, targets)) / len(targets)
+          if not all(math.isfinite(value) for value in [slope, intercept, loss] + predictions):
+              raise ValueError("non-finite result")
+      except OverflowError as error:
+          raise ValueError("non-finite result") from error
+      return {"slope": slope, "intercept": intercept, "train_predictions": predictions, "train_loss": loss}

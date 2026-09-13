@@ -1,0 +1,8 @@
+id: nlp-and-transformers
+name: NLP e Transformers
+track: ai-engineering
+order: 14
+theme: Fronteiras de tokens, estado local do modelo, inferência explícita e escolhas de adaptação
+concepts: [tokenizer-boundaries, model-config-and-weights, inference-pipelines, fine-tuning-boundaries]
+unlock_requires: {requires_mission: ai-pytorch-08}
+completion_reward_xp: 220

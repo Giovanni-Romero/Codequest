@@ -1,0 +1,123 @@
+id: ai-responsible-02
+title: Enforce a privacy boundary
+track: ai-engineering
+island: responsible-ai
+order: 2
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, privacy, data-policy]
+xp: 45
+concepts: [privacy-boundaries]
+teaching:
+  analogy: A harbor clerk prepares different manifests for storage and customs. Only necessary fields cross the counter, sealed details become redactions, and every copy gets a destruction date.
+  explanation: A privacy boundary applies policy before data reaches storage or a model. Minimization keeps only fields needed for the declared purpose. Classification identifies sensitivity, redaction replaces protected values, and retention limits how long the result may remain. Removing a name alone is not anonymization.
+  worked_example: |
+    parcel = {"item": "tea", "owner": "Mina"}
+    allowed = ["item"]
+    removed = set(parcel) - set(allowed)
+    public_copy = {key: parcel[key] for key in allowed}
+    print(public_copy)
+    print("removed:", removed)
+  key_points:
+    - Minimize before storage or model access because later cleanup is too late.
+    - Classify every source field instead of guessing from its name.
+    - Redaction and retention solve different privacy risks.
+brief: >
+  Write `enforce_privacy_boundary(record, policy) -> dict`. `record` is a dictionary
+  with string keys and scalar values: null, boolean, string, integer, or finite float.
+  `policy` has exactly `purpose` (`storage` or `model`), `allowed_fields`, `redact_fields`,
+  `classifications`, and non-negative integer `retention_days`. Field lists contain unique
+  source keys. `classifications` maps every source key to `public`, `internal`, `sensitive`,
+  or `prohibited`. Keep allowed non-prohibited fields, replace listed retained values with
+  `[REDACTED]`, and return `purpose`, `data`, retained `classifications`, the highest retained
+  `overall_classification`, and `retention_days`. An empty record is valid. Reject malformed,
+  non-finite, or inconsistent input, and do not mutate either argument.
+signature:
+  entrypoint: enforce_privacy_boundary
+  stub: |
+    def enforce_privacy_boundary(record, policy):
+        # Apply classification, minimization, redaction, and retention at one boundary.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {name: Ana, age: 30, diagnosis: flu}
+        - purpose: model
+          allowed_fields: [age, diagnosis]
+          redact_fields: []
+          classifications: {name: sensitive, age: public, diagnosis: prohibited}
+          retention_days: 0
+      expect: {purpose: model, data: {age: 30}, classifications: {age: public}, overall_classification: public, retention_days: 0}
+    - args:
+        - {account: A7, email: a@example.com, score: 0.75}
+        - purpose: storage
+          allowed_fields: [account, email, score]
+          redact_fields: [email]
+          classifications: {account: internal, email: sensitive, score: internal}
+          retention_days: 30
+      expect: {purpose: storage, data: {account: A7, email: '[REDACTED]', score: 0.75}, classifications: {account: internal, email: sensitive, score: internal}, overall_classification: sensitive, retention_days: 30}
+  hidden:
+    - args:
+        - {}
+        - {purpose: model, allowed_fields: [], redact_fields: [], classifications: {}, retention_days: 0}
+      expect: {purpose: model, data: {}, classifications: {}, overall_classification: public, retention_days: 0}
+    - args:
+        - {score: .nan}
+        - {purpose: model, allowed_fields: [score], redact_fields: [], classifications: {score: public}, retention_days: 1}
+      raises: ValueError
+    - args:
+        - {name: Ana}
+        - {purpose: model, allowed_fields: [missing], redact_fields: [], classifications: {name: sensitive}, retention_days: 1}
+      raises: ValueError
+    - args:
+        - {name: Ana}
+        - {purpose: model, allowed_fields: [name, name], redact_fields: [], classifications: {name: sensitive}, retention_days: 1}
+      raises: ValueError
+    - args:
+        - {name: Ana}
+        - {purpose: model, allowed_fields: [name], redact_fields: [], classifications: {name: secret}, retention_days: 1}
+      raises: ValueError
+    - args:
+        - {name: Ana}
+        - {purpose: model, allowed_fields: [name], redact_fields: [], classifications: {name: sensitive}, retention_days: true}
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which fields are necessary for this purpose, and which of those may expose their original value?"}
+  - {level: 2, text: "Validate the whole policy first, then iterate over `allowed_fields` to build new mappings."}
+  - {level: 3, text: "In a different filter, `kept = {key: source[key] for key in names if rules[key] != 'blocked'}` avoids mutation."}
+solution: |
+  def enforce_privacy_boundary(record, policy):
+      import math
+      if type(record) is not dict or any(type(key) is not str or not key for key in record):
+          raise ValueError("invalid record")
+      for value in record.values():
+          if value is None or type(value) in (str, bool):
+              continue
+          if type(value) not in (int, float):
+              raise ValueError("invalid record value")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid record value")
+      required = {"purpose", "allowed_fields", "redact_fields", "classifications", "retention_days"}
+      if type(policy) is not dict or set(policy) != required or policy["purpose"] not in ("storage", "model"):
+          raise ValueError("invalid policy")
+      allowed = policy["allowed_fields"]
+      redact = policy["redact_fields"]
+      classifications = policy["classifications"]
+      if type(allowed) is not list or type(redact) is not list or type(classifications) is not dict or type(policy["retention_days"]) is not int or policy["retention_days"] < 0:
+          raise ValueError("invalid policy")
+      if any(type(key) is not str or not key for key in allowed + redact) or len(set(allowed)) != len(allowed) or len(set(redact)) != len(redact):
+          raise ValueError("invalid policy")
+      if not set(redact) <= set(allowed) <= set(record) or set(classifications) != set(record):
+          raise ValueError("invalid policy")
+      levels = {"public": 0, "internal": 1, "sensitive": 2, "prohibited": 3}
+      if any(type(key) is not str or type(value) is not str or value not in levels for key, value in classifications.items()):
+          raise ValueError("invalid policy")
+      kept = [key for key in allowed if classifications[key] != "prohibited"]
+      data = {key: "[REDACTED]" if key in redact else record[key] for key in kept}
+      kept_classes = {key: classifications[key] for key in kept}
+      overall = max(kept_classes.values(), key=levels.get) if kept_classes else "public"
+      return {"purpose": policy["purpose"], "data": data, "classifications": kept_classes, "overall_classification": overall, "retention_days": policy["retention_days"]}

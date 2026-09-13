@@ -1,0 +1,88 @@
+id: ai-prompts-06
+title: Build the request
+track: ai-engineering
+island: prompt-contracts
+order: 6
+difficulty: moderate
+tags: [ai-engineering, prompts, templates, context]
+xp: 30
+
+concepts: [prompt-templates, context-assembly]
+
+teaching:
+  analogy: |
+    A dispatch combines a completed order form with only the cargo notes that fit in
+    its envelope. The form and evidence stay separate so either can be inspected.
+  explanation: |
+    Request construction composes a rendered task with bounded context. The result is
+    structured data, not one opaque string. Keeping parts separate makes later trust
+    labeling and provider conversion straightforward.
+  worked_example: |
+    order = "Deliver {item}".format_map({"item": "tea"})
+    notes = ["dry cargo", "dock seven"]
+    message = {"order": order, "notes": notes[:1]}
+    print(message)
+  key_points:
+    - Rendering and context selection remain separate steps.
+    - Context keeps its source order.
+    - A skipped chunk does not block later affordable evidence.
+
+brief: |
+  Write `build_context_request(template, variables, chunks, max_words)`. Render simple
+  named fields, raising `ValueError` when one is missing or the budget is negative.
+  Select relevant non-empty chunk text under the word budget using the same stable scan
+  as mission 3. Return `{"task": rendered_text, "context": selected_texts}`.
+
+signature:
+  entrypoint: build_context_request
+  stub: |
+    def build_context_request(template, variables, chunks, max_words):
+        # Compose a rendered task and bounded evidence.
+        pass
+
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+
+tests:
+  visible:
+    - args: ["Answer {question}", {question: "Where?"}, [{text: "port map", relevant: true}, {text: noise, relevant: false}], 2]
+      expect: {task: "Answer Where?", context: ["port map"]}
+    - args: ["Summarize {topic}", {topic: tides}, [{text: "three long words", relevant: true}, {text: short, relevant: true}], 1]
+      expect: {task: "Summarize tides", context: [short]}
+  hidden:
+    - args: [plain, {}, [], 0]
+      expect: {task: plain, context: []}
+    - args: ["Keep {data}", {data: "{literal}"}, [], 0]
+      expect: {task: "Keep {literal}", context: []}
+    - args: ["Need {x}", {}, [], 0]
+      raises: ValueError
+    - args: [plain, {}, [], -1]
+      raises: ValueError
+    - args: [plain, {}, [{text: " ", relevant: true}], 3]
+      expect: {task: plain, context: []}
+
+hints:
+  - {level: 1, text: "Can you finish and validate the task before scanning the evidence?"}
+  - {level: 2, text: "Format once, then reuse the running-budget scan from context assembly."}
+  - level: 3
+    text: |
+      A report builder can fill its title first, then append only selected notes whose
+      combined size remains within a limit.
+
+solution: |
+  def build_context_request(template, variables, chunks, max_words):
+      if max_words < 0:
+          raise ValueError("max_words must not be negative")
+      try:
+          task = template.format_map(variables)
+      except (KeyError, ValueError) as exc:
+          raise ValueError("cannot render template") from exc
+
+      context = []
+      used = 0
+      for chunk in chunks:
+          text = " ".join(chunk["text"].split())
+          cost = len(text.split())
+          if chunk["relevant"] and text and used + cost <= max_words:
+              context.append(text)
+              used += cost
+      return {"task": task, "context": context}

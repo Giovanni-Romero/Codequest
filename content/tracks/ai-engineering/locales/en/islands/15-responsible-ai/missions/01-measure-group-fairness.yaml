@@ -1,0 +1,82 @@
+id: ai-responsible-01
+title: Measure group fairness
+track: ai-engineering
+island: responsible-ai
+order: 1
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, fairness, metrics]
+xp: 45
+concepts: [group-fairness-metrics]
+teaching:
+  analogy: A harbor master checks pass rates and inspection mistakes at each dock. A fleet-wide average can look calm while one dock carries every delay.
+  explanation: Group fairness metrics compare outcomes within declared groups. Selection rate measures how often a group receives a positive decision. Error rate measures how often predictions disagree with known outcomes. These numbers expose differences, but the chosen metric still encodes a policy trade-off.
+  worked_example: |
+    shelves = {"north": [True, False], "south": [True]}
+    rates = {
+        name: round(sum(flags) / len(flags), 3)
+        for name, flags in shelves.items()
+    }
+    print(rates)
+  key_points:
+    - Compute each group separately because an aggregate can hide a local failure.
+    - Selection and error rates answer different questions.
+    - Declare groups and metrics before interpreting a gap.
+brief: >
+  Write `measure_group_fairness(records) -> dict`. `records` is a list of dictionaries
+  with exactly `group` (a non-empty string), `selected`, `prediction`, and `actual`
+  (booleans). Return groups in sorted order. Each group maps to its `count`,
+  `selection_rate`, and `error_rate`, with rates rounded to three decimals. An empty list
+  returns an empty dictionary. Reject every malformed container or field, and do not
+  mutate the input.
+signature:
+  entrypoint: measure_group_fairness
+  stub: |
+    def measure_group_fairness(records):
+        # Compare declared groups without hiding selection or prediction errors.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - - {group: north, selected: true, prediction: true, actual: true}
+          - {group: north, selected: false, prediction: true, actual: false}
+          - {group: south, selected: true, prediction: false, actual: false}
+      expect:
+        north: {count: 2, selection_rate: 0.5, error_rate: 0.5}
+        south: {count: 1, selection_rate: 1.0, error_rate: 0.0}
+    - args:
+        - - {group: solo, selected: false, prediction: false, actual: false}
+      expect:
+        solo: {count: 1, selection_rate: 0.0, error_rate: 0.0}
+  hidden:
+    - {args: [[]], expect: {}}
+    - {args: [{group: north}], raises: ValueError}
+    - {args: [[[north, true, true, true]]], raises: ValueError}
+    - args:
+        - - {group: north, selected: 1, prediction: true, actual: true}
+      raises: ValueError
+    - args:
+        - - {group: north, selected: true, prediction: false, actual: 0}
+      raises: ValueError
+    - args:
+        - - {group: north, selected: true, prediction: true, actual: true, note: extra}
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which totals and positive counts must remain separate for every declared group?"}
+  - {level: 2, text: "Accumulate count, selections, and mismatches per group before dividing."}
+  - {level: 3, text: "For another domain, `summary[key] = [total + 1, positives + flag]` preserves both counts."}
+solution: |
+  def measure_group_fairness(records):
+      if type(records) is not list:
+          raise ValueError("invalid records")
+      counts = {}
+      required = {"group", "selected", "prediction", "actual"}
+      for record in records:
+          if type(record) is not dict or set(record) != required:
+              raise ValueError("invalid record")
+          group = record["group"]
+          if type(group) is not str or not group.strip() or any(type(record[key]) is not bool for key in ("selected", "prediction", "actual")):
+              raise ValueError("invalid record")
+          total, selected, errors = counts.get(group, (0, 0, 0))
+          counts[group] = (total + 1, selected + record["selected"], errors + (record["prediction"] != record["actual"]))
+      return {group: {"count": total, "selection_rate": round(selected / total, 3), "error_rate": round(errors / total, 3)} for group, (total, selected, errors) in sorted(counts.items())}

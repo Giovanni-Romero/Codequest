@@ -1,0 +1,62 @@
+id: ai-nlp-05
+title: Audite uma janela de tokens
+track: ai-engineering
+island: nlp-and-transformers
+order: 5
+difficulty: challenging
+tags: [ai-engineering, transformers, tokenizer, attention-mask, requires-ai-ml]
+xp: 45
+concepts: [tokenizer-boundaries]
+teaching:
+  analogy: Uma balsa atribui o mesmo número de assentos a cada lista de passageiros. Assentos vazios continuam visíveis no mapa, mas não contam como passageiros.
+  explanation: A tokenização em lote cria linhas de mesmo tamanho. A máscara de atenção registra posições ativas, então a contagem de tokens é a soma da máscara, não o tamanho da linha preenchida. O truncamento precisa reservar espaço para tokens de fronteira.
+  worked_example: |
+    masks = [[1, 1, 1, 0], [1, 1, 1, 1]]
+    print([sum(mask) for mask in masks])
+  key_points:
+    - O preenchimento alinha linhas sem acrescentar significado.
+    - A soma da máscara informa a contagem de tokens ativos.
+    - O truncamento ocorre antes do preenchimento.
+brief: >
+  Escreva `audit_token_window(texts, max_length) -> dict` usando o mesmo vocabulário ordenado
+  da missão 01. Tokenize o lote em minúsculas, com truncamento e preenchimento até o tamanho máximo.
+  Retorne IDs, máscaras de atenção, contagens ativas e se alguma linha foi preenchida. Rejeite entradas inválidas.
+signature:
+  entrypoint: audit_token_window
+  stub: |
+    def audit_token_window(texts, max_length):
+        # Relate como truncamento e preenchimento formam um lote determinístico.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[hello, hello seas], 6]
+      expect: {input_ids: [[2, 5, 3, 0, 0, 0], [2, 5, 7, 8, 3, 0]], attention_masks: [[1, 1, 1, 0, 0, 0], [1, 1, 1, 1, 1, 0]], active_counts: [3, 5], padded: true}
+    - args: [[hello world sea model], 4]
+      expect: {input_ids: [[2, 5, 6, 3]], attention_masks: [[1, 1, 1, 1]], active_counts: [4], padded: false}
+  hidden:
+    - {args: [[], 4], raises: ValueError}
+    - {args: [[hello, ''], 4], raises: ValueError}
+    - {args: [hello, 4], raises: ValueError}
+    - {args: [[hello], 1], raises: ValueError}
+    - {args: [[hello], false], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual valor distingue um assento vazio de um token real?"}
+  - {level: 2, text: "Passe a lista inteira ao tokenizer com preenchimento fixo no tamanho máximo."}
+  - {level: 3, text: "Some cada máscara de atenção e compare com `max_length` para detectar preenchimento."}
+solution: |
+  def audit_token_window(texts, max_length):
+      from pathlib import Path
+      from tempfile import TemporaryDirectory
+      from transformers import BertTokenizer
+      if not isinstance(texts, list) or not texts or any(not isinstance(text, str) or not text.strip() for text in texts) or type(max_length) is not int or max_length < 2:
+          raise ValueError("invalid tokenizer batch")
+      vocabulary = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world", "sea", "##s", "model"]
+      with TemporaryDirectory() as folder:
+          path = Path(folder) / "vocab.txt"
+          path.write_text("\n".join(vocabulary), encoding="utf-8")
+          tokenizer = BertTokenizer(vocab=str(path), do_lower_case=True)
+          encoded = tokenizer(texts, max_length=max_length, truncation=True, padding="max_length")
+      masks = encoded["attention_mask"]
+      counts = [sum(mask) for mask in masks]
+      return {"input_ids": encoded["input_ids"], "attention_masks": masks, "active_counts": counts, "padded": any(count < max_length for count in counts)}

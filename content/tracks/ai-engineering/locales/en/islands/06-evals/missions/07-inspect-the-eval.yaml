@@ -1,0 +1,78 @@
+id: ai-evals-07
+title: Inspect the eval
+track: ai-engineering
+island: evals
+order: 7
+difficulty: moderate
+tags: [ai-engineering, evals, diagnosis]
+xp: 30
+concepts: [adversarial-cases, evaluation-leakage]
+teaching:
+  analogy: |
+    A mechanic names the first failed inspection instead of averaging every dashboard light.
+  explanation: |
+    Inspection classifies an evaluation suite before it produces a score. Leakage invalidates measurement before case quality matters. Controls and adversarial cases must both exist. This relief mission diagnoses rather than assembles.
+  worked_example: |
+    checks = ["empty", "missing_control", "sound"]
+    print(checks[0])
+  key_points:
+    - Diagnose in a declared priority order.
+    - Leakage wins over other findings.
+    - A suite needs both controls and attacks.
+brief: |
+  Write `inspect_eval_suite(cases, exposure)`. Cases are exact `case_id` and `kind`, where kind is
+  benign or adversarial and IDs are unique strings. Exposure is a list of exact `source` and
+  `case_id` records. Return one status: direct_leakage when source is `direct`, indirect_leakage
+  for another matching source, empty_suite, missing_control, missing_adversarial, or sound. Check
+  all input before choosing a status and raise `ValueError` for malformed or duplicate data.
+signature:
+  entrypoint: inspect_eval_suite
+  stub: |
+    def inspect_eval_suite(cases, exposure):
+        # Classify the first reason an eval suite cannot be trusted.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{case_id: a, kind: benign}, {case_id: b, kind: adversarial}], []]
+      expect: {status: sound}
+    - args: [[{case_id: a, kind: benign}, {case_id: b, kind: adversarial}], [{source: notes, case_id: a}]]
+      expect: {status: indirect_leakage}
+  hidden:
+    - args: [[{case_id: a, kind: benign}, {case_id: b, kind: adversarial}], [{source: direct, case_id: b}]]
+      expect: {status: direct_leakage}
+    - args: [[], []]
+      expect: {status: empty_suite}
+    - args: [[{case_id: a, kind: adversarial}], []]
+      expect: {status: missing_control}
+    - args: [[{case_id: a, kind: benign}, {case_id: a, kind: adversarial}], []]
+      raises: ValueError
+    - args: [[{case_id: a, kind: benign}], [{source: notes, case_id: [a]}]]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Which finding makes every later score untrustworthy?"}
+  - {level: 2, text: "Validate first, then use the stated priority order for leakage and case kinds."}
+  - {level: 3, text: "For exam cards, reject a leaked answer card before checking whether the exam has both easy and hard questions."}
+solution: |
+  def inspect_eval_suite(cases, exposure):
+      if not isinstance(cases, list) or not isinstance(exposure, list):
+          raise ValueError("invalid container")
+      ids = set()
+      for case in cases:
+          if not isinstance(case, dict) or set(case) != {"case_id", "kind"} or not isinstance(case["case_id"], str) or not case["case_id"] or not isinstance(case["kind"], str) or case["kind"] not in {"benign", "adversarial"} or case["case_id"] in ids:
+              raise ValueError("invalid case")
+          ids.add(case["case_id"])
+      for record in exposure:
+          if not isinstance(record, dict) or set(record) != {"source", "case_id"} or not isinstance(record["source"], str) or not record["source"] or not isinstance(record["case_id"], str) or not record["case_id"] or record["case_id"] not in ids:
+              raise ValueError("invalid exposure")
+      if any(record["source"] == "direct" for record in exposure):
+          return {"status": "direct_leakage"}
+      if exposure:
+          return {"status": "indirect_leakage"}
+      if not cases:
+          return {"status": "empty_suite"}
+      if not any(case["kind"] == "benign" for case in cases):
+          return {"status": "missing_control"}
+      if not any(case["kind"] == "adversarial" for case in cases):
+          return {"status": "missing_adversarial"}
+      return {"status": "sound"}

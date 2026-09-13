@@ -1,0 +1,116 @@
+id: ai-mlops-06
+title: Execute a rollout guardrail
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 6
+difficulty: challenging
+tags: [ai-engineering, mlops, model-versioning, deployment, guardrail]
+xp: 45
+concepts: [model-versioning, deployment-strategies]
+teaching:
+  analogy: A pilot boat watches a declared depth gauge while new ships enter the channel. Crossing the painted limit sends traffic back to the approved route immediately.
+  explanation: A rollout guardrail turns a deployment plan into a deterministic decision. The monitored metric and threshold are declared before observations arrive. A breach activates the approved rollback version; a safe result continues the plan. Shadow traffic still serves the current version because candidate output is observation only.
+  worked_example: |
+    readings = {"depth": 9.2, "wind": 4.0}
+    ceiling = 10
+    reading = readings["depth"]
+    decision = "stop" if reading < ceiling else "continue"
+    active = "safe-channel" if decision == "stop" else "new-channel"
+    print(decision)
+    print(active)
+  key_points:
+    - Bind the guardrail to one named observation.
+    - Roll back only to an approved explicit version.
+    - Keep shadow candidate output outside the served path.
+brief: >
+  Write `execute_rollout_guardrail(plan, observations, guardrail) -> dict`. `plan` is
+  exactly the valid mission-03 output. `observations` is a non-empty list of exact
+  `metric` and finite numeric `value` mappings with unique non-empty metric names;
+  booleans are not numeric. `guardrail` has exactly a non-empty `metric` and finite
+  numeric `maximum`. Its metric must be observed. A value above maximum decides
+  `rollback`; otherwise decide `continue`. Rollback activates the approved rollback
+  version. Continue activates the candidate except in shadow, which keeps the current
+  version active. Return decision, active version, copied observed pair, limit, and
+  rollback version. Reject malformed or inconsistent input and do not mutate arguments.
+signature:
+  entrypoint: execute_rollout_guardrail
+  stub: |
+    def execute_rollout_guardrail(plan, observations, guardrail):
+        # Resolve one declared online safety boundary against an approved fallback.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {strategy: canary, current_version: model-v1, candidate_version: model-v2, traffic_percent: 10, candidate_state: approved, rollback: {version: model-v1, state: approved}}
+        - [{metric: error_rate, value: 0.12}, {metric: latency, value: 80}]
+        - {metric: error_rate, maximum: 0.1}
+      expect: {decision: rollback, active_version: model-v1, observed: {metric: error_rate, value: 0.12}, limit: 0.1, rollback_version: model-v1}
+    - args:
+        - {strategy: canary, current_version: model-v1, candidate_version: model-v2, traffic_percent: 20, candidate_state: approved, rollback: {version: model-v1, state: approved}}
+        - [{metric: error_rate, value: 0.1}]
+        - {metric: error_rate, maximum: 0.1}
+      expect: {decision: continue, active_version: model-v2, observed: {metric: error_rate, value: 0.1}, limit: 0.1, rollback_version: model-v1}
+    - args:
+        - {strategy: shadow, current_version: model-v1, candidate_version: model-v2, traffic_percent: 0, candidate_state: pending, rollback: {version: model-v1, state: approved}}
+        - [{metric: latency, value: 50}]
+        - {metric: latency, maximum: 100}
+      expect: {decision: continue, active_version: model-v1, observed: {metric: latency, value: 50}, limit: 100, rollback_version: model-v1}
+  hidden:
+    - {args: [{strategy: canary, current_version: v1, candidate_version: v2, traffic_percent: 10, candidate_state: approved, rollback: {version: v1, state: pending}}, [{metric: error, value: 1}], {metric: error, maximum: 2}], raises: ValueError}
+    - {args: [{strategy: canary, current_version: v1, candidate_version: v2, traffic_percent: 0, candidate_state: approved, rollback: {version: v1, state: approved}}, [{metric: error, value: 1}], {metric: error, maximum: 2}], raises: ValueError}
+    - {args: [{strategy: batch, current_version: v1, candidate_version: v2, traffic_percent: 100, candidate_state: approved, rollback: {version: v1, state: approved}}, [], {metric: error, maximum: 2}], raises: ValueError}
+    - {args: [{strategy: batch, current_version: v1, candidate_version: v2, traffic_percent: 100, candidate_state: approved, rollback: {version: v1, state: approved}}, [{metric: error, value: true}], {metric: error, maximum: 2}], raises: ValueError}
+    - {args: [{strategy: batch, current_version: v1, candidate_version: v2, traffic_percent: 100, candidate_state: approved, rollback: {version: v1, state: approved}}, [{metric: error, value: .inf}], {metric: error, maximum: 2}], raises: ValueError}
+    - {args: [{strategy: batch, current_version: v1, candidate_version: v2, traffic_percent: 100, candidate_state: approved, rollback: {version: v1, state: approved}}, [{metric: other, value: 1}], {metric: error, maximum: 2}], raises: ValueError}
+    - {args: [{strategy: batch, current_version: v1, candidate_version: v2, traffic_percent: 100, candidate_state: approved, rollback: {version: v1, state: approved}}, [{metric: error, value: 1}, {metric: error, value: 2}], {metric: error, maximum: 2}], raises: ValueError}
+hints:
+  - {level: 1, text: "Which observation owns the stop boundary, and which approved version receives traffic after a breach?"}
+  - {level: 2, text: "Validate the plan first, index unique observations, then compare the declared metric."}
+  - {level: 3, text: "A safety gate can select one route from a comparison: `active = backup if reading > ceiling else candidate`."}
+solution: |
+  def execute_rollout_guardrail(plan, observations, guardrail):
+      import math
+      plan_keys = {"strategy", "current_version", "candidate_version", "traffic_percent", "candidate_state", "rollback"}
+      if type(plan) is not dict or set(plan) != plan_keys or plan["strategy"] not in ("batch", "shadow", "canary", "blue-green"):
+          raise ValueError("invalid plan")
+      if any(type(plan[key]) is not str or not plan[key].strip() for key in ("current_version", "candidate_version")) or plan["current_version"] == plan["candidate_version"]:
+          raise ValueError("invalid plan")
+      if type(plan["rollback"]) is not dict or set(plan["rollback"]) != {"version", "state"} or plan["rollback"] != {"version": plan["current_version"], "state": "approved"}:
+          raise ValueError("invalid fallback")
+      if plan["candidate_state"] not in ("pending", "approved") or type(plan["candidate_state"]) is not str or type(plan["traffic_percent"]) not in (int, float):
+          raise ValueError("invalid plan")
+      try:
+          traffic_ok = math.isfinite(plan["traffic_percent"]) and 0 <= plan["traffic_percent"] <= 100
+      except (OverflowError, TypeError):
+          traffic_ok = False
+      valid = plan["strategy"] == "shadow" and plan["traffic_percent"] == 0 and plan["candidate_state"] in ("pending", "approved")
+      valid = valid or plan["strategy"] == "canary" and 0 < plan["traffic_percent"] < 100 and plan["candidate_state"] == "approved"
+      valid = valid or plan["strategy"] in ("batch", "blue-green") and plan["traffic_percent"] == 100 and plan["candidate_state"] == "approved"
+      if not traffic_ok or not valid:
+          raise ValueError("invalid plan")
+      if type(observations) is not list or not observations:
+          raise ValueError("invalid observations")
+      indexed = {}
+      for item in observations:
+          if type(item) is not dict or set(item) != {"metric", "value"} or type(item["metric"]) is not str or not item["metric"].strip() or item["metric"] in indexed or type(item["value"]) not in (int, float):
+              raise ValueError("invalid observation")
+          try:
+              finite = math.isfinite(item["value"])
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid observation")
+          indexed[item["metric"]] = item["value"]
+      if type(guardrail) is not dict or set(guardrail) != {"metric", "maximum"} or type(guardrail["metric"]) is not str or not guardrail["metric"].strip() or type(guardrail["maximum"]) not in (int, float):
+          raise ValueError("invalid guardrail")
+      try:
+          limit_ok = math.isfinite(guardrail["maximum"])
+      except (OverflowError, TypeError):
+          limit_ok = False
+      if not limit_ok or guardrail["metric"] not in indexed:
+          raise ValueError("invalid guardrail")
+      value = indexed[guardrail["metric"]]
+      decision = "rollback" if value > guardrail["maximum"] else "continue"
+      active = plan["current_version"] if decision == "rollback" or plan["strategy"] == "shadow" else plan["candidate_version"]
+      return {"decision": decision, "active_version": active, "observed": {"metric": guardrail["metric"], "value": value}, "limit": guardrail["maximum"], "rollback_version": plan["current_version"]}

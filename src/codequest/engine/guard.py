@@ -108,6 +108,8 @@ class _SubmissionVisitor(ast.NodeVisitor):
     def __init__(self, constraints: Constraints, bound_names: set[str]) -> None:
         self.constraints = constraints
         self.bound_names = bound_names
+        self.builtin_aliases: set[str] = set()
+        self.forbidden_builtin_aliases: set[str] = set()
         self.violations: list[str] = []
         self.defined_functions: set[str] = set()
 
@@ -116,6 +118,8 @@ class _SubmissionVisitor(ast.NodeVisitor):
             root = alias.name.split(".")[0]
             if root in self.constraints.forbidden_imports:
                 self.violations.append(f"import of '{alias.name}' is not allowed here")
+            if alias.name == "builtins":
+                self.builtin_aliases.add(alias.asname or "builtins")
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -123,24 +127,35 @@ class _SubmissionVisitor(ast.NodeVisitor):
             root = node.module.split(".")[0]
             if root in self.constraints.forbidden_imports:
                 self.violations.append(f"import from '{node.module}' is not allowed here")
+            if node.module == "builtins":
+                for alias in node.names:
+                    if alias.name in self.constraints.forbidden_builtins:
+                        self.forbidden_builtin_aliases.add(alias.asname or alias.name)
         self.generic_visit(node)
 
     def visit_Name(self, node: ast.Name) -> None:
         # A *load* of a forbidden name is only a use of the builtin when the player has
         # not bound that name themselves. ``sum = 0`` makes every later ``sum`` their
         # own variable, and rejecting it would fail a correct accumulator solution.
+        forbidden_names = self.constraints.forbidden_builtins | self.forbidden_builtin_aliases
         if (
             isinstance(node.ctx, ast.Load)
-            and node.id in self.constraints.forbidden_builtins
+            and node.id in forbidden_names
             and node.id not in self.bound_names
         ):
             self.violations.append(f"use of '{node.id}' is not allowed in this mission")
         self.generic_visit(node)
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
-        # Catches builtins.sum and __builtins__.sum, the two obvious ways around a
-        # bare-name check. Not the string-built form; see the module docstring.
-        if node.attr in self.constraints.forbidden_builtins:
+        # Avoid confusing methods such as model.eval() with the builtin eval().
+        if (
+            isinstance(node.value, ast.Name)
+            and (
+                node.value.id in self.builtin_aliases
+                or (node.value.id == "__builtins__" and node.value.id not in self.bound_names)
+            )
+            and node.attr in self.constraints.forbidden_builtins
+        ):
             self.violations.append(f"use of '{node.attr}' is not allowed in this mission")
         self.generic_visit(node)
 

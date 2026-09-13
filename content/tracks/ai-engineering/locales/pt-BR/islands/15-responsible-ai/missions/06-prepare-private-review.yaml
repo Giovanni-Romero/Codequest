@@ -1,0 +1,143 @@
+id: ai-responsible-06
+title: Prepare uma revisão privada
+track: ai-engineering
+island: responsible-ai
+order: 6
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, privacy, explainability, oversight]
+xp: 45
+concepts: [privacy-boundaries, explainability-records, human-oversight-governance]
+teaching:
+  analogy: Um pacote de revisão entrega ao inspetor portuário identificado o diário do navio e apenas os dados dos passageiros necessários para o caso. Os demais ficam de fora, campos marcados são lacrados e o pacote tem um limite de retenção.
+  explanation: Um pacote de revisão útil combina rastreabilidade, privacidade e responsabilidade. IDs de decisão, versões do modelo, referências de evidência e fatores apoiam a revisão. A política de privacidade minimiza e oculta dados do sujeito antes de montar o pacote. Um revisor identificado e um período de retenção tornam a supervisão operacional, não cerimonial.
+  worked_example: |
+    report = {"ticket": "T-9", "owner": "Lia", "color": "blue"}
+    allowed = ["ticket", "color"]
+    visible = {key: report[key] for key in allowed}
+    packet = {"reviewer": "dock-lead", "details": visible}
+    packet["field_count"] = len(visible)
+    print(packet)
+  key_points:
+    - Entregue ao revisor evidência suficiente para agir, não todos os campos disponíveis.
+    - Crie um novo mapeamento do sujeito para manter o registro de origem intacto.
+    - Identifique o revisor e o limite de retenção como parte do fluxo.
+brief: >
+  Escreva `prepare_private_review(record, privacy_policy) -> dict`. `record` contém
+  exatamente `decision_id`, `model_version`, `evidence_refs`, `factors` e `subject`.
+  Os IDs são strings não vazias. As evidências formam uma lista não vazia e única de
+  referências `evidence:`. Os fatores são um mapeamento não vazio de strings não vazias
+  para inteiros ou floats finitos, sem booleanos. O sujeito é um mapeamento com chaves de
+  string e valores escalares nulos, booleanos, strings, inteiros ou floats finitos.
+  `privacy_policy` contém exatamente `allowed_subject_fields`, `redact_subject_fields`,
+  `retention_days`, um inteiro não negativo, e `reviewer`, não vazio. As listas contêm
+  chaves únicas do sujeito, e campos ocultados precisam ser permitidos. Retorne uma cópia
+  do registro de decisão, o sujeito minimizado com valores ocultados substituídos por
+  `[REDACTED]` e metadados de revisão com rota `human-review`, revisor e dias de retenção.
+  Rejeite entradas malformadas, não finitas ou inconsistentes e não altere nenhum argumento.
+signature:
+  entrypoint: prepare_private_review
+  stub: |
+    def prepare_private_review(record, privacy_policy):
+        # Entregue evidência rastreável a um revisor identificado por uma fronteira minimizada.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - decision_id: d-7
+          model_version: model-v2
+          evidence_refs: ['evidence:case-7']
+          factors: {risk_score: 0.8}
+          subject: {name: Ana, region: south, email: a@example.com}
+        - {allowed_subject_fields: [region, email], redact_subject_fields: [email], retention_days: 14, reviewer: risk-team}
+      expect:
+        decision_record: {decision_id: d-7, model_version: model-v2, evidence_refs: ['evidence:case-7'], factors: {risk_score: 0.8}}
+        subject: {region: south, email: '[REDACTED]'}
+        review: {route: human-review, reviewer: risk-team, retention_days: 14}
+    - args:
+        - decision_id: d-8
+          model_version: model-v2
+          evidence_refs: ['evidence:case-8', 'evidence:policy-1']
+          factors: {count: 0}
+          subject: {region: north, note: internal}
+        - {allowed_subject_fields: [region], redact_subject_fields: [], retention_days: 0, reviewer: reviewer-2}
+      expect:
+        decision_record: {decision_id: d-8, model_version: model-v2, evidence_refs: ['evidence:case-8', 'evidence:policy-1'], factors: {count: 0}}
+        subject: {region: north}
+        review: {route: human-review, reviewer: reviewer-2, retention_days: 0}
+  hidden:
+    - args:
+        - {decision_id: d, model_version: v, evidence_refs: ['evidence:x'], factors: {score: true}, subject: {region: north}}
+        - {allowed_subject_fields: [region], redact_subject_fields: [], retention_days: 1, reviewer: team}
+      raises: ValueError
+    - args:
+        - {decision_id: d, model_version: v, evidence_refs: ['evidence:x'], factors: {score: .inf}, subject: {region: north}}
+        - {allowed_subject_fields: [region], redact_subject_fields: [], retention_days: 1, reviewer: team}
+      raises: ValueError
+    - args:
+        - {decision_id: d, model_version: v, evidence_refs: ['evidence:x'], factors: {score: 1}, subject: {score: .nan}}
+        - {allowed_subject_fields: [score], redact_subject_fields: [], retention_days: 1, reviewer: team}
+      raises: ValueError
+    - args:
+        - {decision_id: d, model_version: v, evidence_refs: ['evidence:x'], factors: {score: 1}, subject: {region: north}}
+        - {allowed_subject_fields: [missing], redact_subject_fields: [], retention_days: 1, reviewer: team}
+      raises: ValueError
+    - args:
+        - {decision_id: d, model_version: v, evidence_refs: ['evidence:x'], factors: {score: 1}, subject: {region: north}}
+        - {allowed_subject_fields: [region], redact_subject_fields: [missing], retention_days: 1, reviewer: team}
+      raises: ValueError
+    - {args: [[], {allowed_subject_fields: [], redact_subject_fields: [], retention_days: 0, reviewer: team}], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais evidências o revisor precisa ver e quais campos do sujeito são necessários para a revisão?"}
+  - {level: 2, text: "Valide o registro de decisão e a política de privacidade separadamente e depois crie novos mapeamentos aninhados."}
+  - {level: 3, text: "Em outro pacote, `safe = {key: '[HIDDEN]' if key in sealed else source[key] for key in allowed}` aplica minimização e ocultação juntas."}
+solution: |
+  def prepare_private_review(record, privacy_policy):
+      import math
+      required_record = {"decision_id", "model_version", "evidence_refs", "factors", "subject"}
+      if type(record) is not dict or set(record) != required_record:
+          raise ValueError("invalid record")
+      if type(record["decision_id"]) is not str or not record["decision_id"].strip() or type(record["model_version"]) is not str or not record["model_version"].strip():
+          raise ValueError("invalid record")
+      evidence = record["evidence_refs"]
+      factors = record["factors"]
+      subject = record["subject"]
+      if type(evidence) is not list or not evidence or any(type(ref) is not str or not ref.startswith("evidence:") or len(ref) == 9 for ref in evidence) or len(set(evidence)) != len(evidence):
+          raise ValueError("invalid evidence")
+      if type(factors) is not dict or not factors or any(type(name) is not str or not name.strip() for name in factors) or type(subject) is not dict or any(type(key) is not str or not key for key in subject):
+          raise ValueError("invalid record")
+      for value in factors.values():
+          if type(value) not in (int, float):
+              raise ValueError("invalid factor")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid factor")
+      for value in subject.values():
+          if value is None or type(value) in (str, bool):
+              continue
+          if type(value) not in (int, float):
+              raise ValueError("invalid subject")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid subject")
+      required_policy = {"allowed_subject_fields", "redact_subject_fields", "retention_days", "reviewer"}
+      if type(privacy_policy) is not dict or set(privacy_policy) != required_policy:
+          raise ValueError("invalid policy")
+      allowed = privacy_policy["allowed_subject_fields"]
+      redact = privacy_policy["redact_subject_fields"]
+      if type(allowed) is not list or type(redact) is not list or any(type(key) is not str or not key for key in allowed + redact):
+          raise ValueError("invalid policy")
+      if len(set(allowed)) != len(allowed) or len(set(redact)) != len(redact) or not set(redact) <= set(allowed) <= set(subject):
+          raise ValueError("invalid policy")
+      if type(privacy_policy["retention_days"]) is not int or privacy_policy["retention_days"] < 0 or type(privacy_policy["reviewer"]) is not str or not privacy_policy["reviewer"].strip():
+          raise ValueError("invalid policy")
+      safe_subject = {key: "[REDACTED]" if key in redact else subject[key] for key in allowed}
+      decision = {"decision_id": record["decision_id"], "model_version": record["model_version"], "evidence_refs": list(evidence), "factors": dict(factors)}
+      review = {"route": "human-review", "reviewer": privacy_policy["reviewer"], "retention_days": privacy_policy["retention_days"]}
+      return {"decision_record": decision, "subject": safe_subject, "review": review}

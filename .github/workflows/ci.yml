@@ -41,6 +41,25 @@ jobs:
       - name: Integration tests
         run: pytest tests/integration
 
+  ai-ml:
+    runs-on: ubuntu-latest
+    env:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[dev,ai-ml]"
+
+      - name: AI/ML content
+        run: pytest tests/content/test_all_missions.py -k "pytorch or transformers"
+
   # The Windows fallback in engine/runners/python.py now exists: no rlimits, so the
   # runner degrades to a wall-clock timeout plus taskkill /T on the process tree.
   # That path is exactly the code that breaks silently, which is why it gets its own job

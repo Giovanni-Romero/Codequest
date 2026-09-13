@@ -1,0 +1,19 @@
+id: prompt-contracts
+name: Contratos de Prompt
+track: ai-engineering
+order: 2
+theme: Transformando intenção em requisições explícitas ao modelo
+description: |
+  Um prompt confiável é uma entrada estruturada, não uma frase de sorte. Você constrói
+  requisições tipadas e limitadas que separam regras da aplicação de dados não confiáveis.
+
+concepts:
+  - instruction-hierarchy
+  - prompt-templates
+  - context-assembly
+  - trust-boundaries
+
+unlock_requires:
+  requires_mission: ai-documents-08
+
+completion_reward_xp: 180

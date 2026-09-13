@@ -1,0 +1,57 @@
+id: ai-math-08
+title: Audit a weighted gradient step
+track: ai-engineering
+island: mathematical-statistical-foundations
+order: 8
+difficulty: challenging
+tags: [ai-engineering, mathematics, statistics, probability, optimization]
+xp: 45
+concepts: [vector-operations, descriptive-statistics, probability-distributions, optimization-steps]
+teaching:
+  analogy: A sailing crew aligns every sail with its own correction, summarizes the corrections, weights the weather scenarios, and keeps the adjustment only when the expected error falls.
+  explanation: A parameter vector and a gradient vector must have matching positions. The gradient mean and population variance summarize the direction and spread of the proposed corrections. Probabilities weight how much each coordinate contributes to expected gradient and squared loss, and they must form a valid finite distribution. Gradient descent subtracts learning_rate times each gradient coordinate. The update is accepted only when the probability-weighted loss strictly decreases.
+  worked_example: "prices = [10, 20]\nchanges = [-1, -2]\nshares = [0.4, 0.6]\nnew_prices = [price + change for price, change in zip(prices, changes)]\naverage_change = sum(changes) / len(changes)\nweighted_change = sum(share * change for share, change in zip(shares, changes))\nprint(new_prices, average_change, weighted_change)"
+  key_points: ["Aligned vectors give each correction a matching parameter.", "Mean and population variance describe the gradient before the update.", "Probabilities must be finite, bounded, and sum to one.", "A valid optimization step must reduce the declared weighted loss."]
+brief: 'Write `audited_gradient_step(weights, gradients, probabilities, learning_rate) -> dict`. Accept equal, nonempty lists of finite numbers for weights, gradients, and probabilities, excluding bool. Require each probability in `[0, 1]`, their total within `1e-9` of one, and a positive finite learning rate. Update every weight with `weight - learning_rate * gradient`. Return `new_weights`, `gradient_mean`, population `gradient_variance`, `expected_gradient`, `old_loss`, and `new_loss`, where expected gradient and both squared losses are probability-weighted. Raise `ValueError` for invalid input or a step that does not strictly reduce loss.'
+signature:
+  entrypoint: audited_gradient_step
+  stub: "def audited_gradient_step(weights, gradients, probabilities, learning_rate):\n    # Return one audited vector update with statistical and probabilistic evidence.\n    pass\n"
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+  - args: [[2, -1], [1, -0.5], [0.75, 0.25], 0.5]
+    expect: {new_weights: [1.5, -0.75], gradient_mean: 0.25, gradient_variance: 0.5625, expected_gradient: 0.625, old_loss: 3.25, new_loss: 1.828125}
+  - args: [[1, 3], [1, 1], [0.5, 0.5], 0.25]
+    expect: {new_weights: [0.75, 2.75], gradient_mean: 1.0, gradient_variance: 0.0, expected_gradient: 1.0, old_loss: 5.0, new_loss: 4.0625}
+  hidden:
+  - args: [[1], [1], [1.0], 0.1]
+    expect: {new_weights: [0.9], gradient_mean: 1.0, gradient_variance: 0.0, expected_gradient: 1.0, old_loss: 1.0, new_loss: 0.81}
+  - args: [[1, 2], [1], [0.5, 0.5], 0.1]
+    raises: ValueError
+  - args: [[1, 2], [1, 1], [0.4, 0.4], 0.1]
+    raises: ValueError
+  - args: [[1, 2], [1, 1], [-0.1, 1.1], 0.1]
+    raises: ValueError
+  - args: [[1], [true], [1.0], 0.1]
+    raises: ValueError
+  - args: [[.nan], [1], [1.0], 0.1]
+    raises: ValueError
+  - args: [[1], [1], [1.0], .inf]
+    raises: ValueError
+  - args: ["not-a-list", [1], [1.0], 0.1]
+    raises: ValueError
+  - args: [[1], [1], [1.0], 0]
+    raises: ValueError
+  - args: [[1], [-1], [1.0], -0.1]
+    raises: ValueError
+  - args: [[0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF], [1], [1.0], 0.1]
+    raises: ValueError
+  - args: [[], [], [], 0.1]
+    raises: ValueError
+  - args: [[1], [-1], [1.0], 0.1]
+    raises: ValueError
+hints:
+- {level: 1, text: "What evidence proves the aligned update is statistically described, probabilistically valid, and actually improves the loss?"}
+- {level: 2, text: "Validate all three vectors, summarize the gradients, calculate weighted evidence, then compare losses."}
+- {level: 3, text: "Pattern: `adjusted = [value - step * direction for value, direction in zip(values, directions)]`."}
+solution: "def audited_gradient_step(weights, gradients, probabilities, learning_rate):\n    import math\n    def finite_number(value):\n        if type(value) not in (int, float):\n            return False\n        try:\n            return math.isfinite(value)\n        except OverflowError:\n            return False\n    def valid_vector(values):\n        return isinstance(values, list) and bool(values) and all(finite_number(value) for value in values)\n    if not valid_vector(weights) or not valid_vector(gradients) or not valid_vector(probabilities) or len(weights) != len(gradients) or len(weights) != len(probabilities) or not finite_number(learning_rate) or learning_rate <= 0:\n        raise ValueError('invalid input')\n    if any(probability < 0 or probability > 1 for probability in probabilities) or abs(sum(probabilities) - 1) > 1e-9:\n        raise ValueError('invalid probabilities')\n    gradient_mean = sum(gradients) / len(gradients)\n    gradient_variance = sum((gradient - gradient_mean) ** 2 for gradient in gradients) / len(gradients)\n    expected_gradient = sum(probability * gradient for probability, gradient in zip(probabilities, gradients))\n    old_loss = sum(probability * weight ** 2 for probability, weight in zip(probabilities, weights))\n    new_weights = [weight - learning_rate * gradient for weight, gradient in zip(weights, gradients)]\n    new_loss = sum(probability * weight ** 2 for probability, weight in zip(probabilities, new_weights))\n    if not new_loss < old_loss:\n        raise ValueError('step does not reduce loss')\n    return {'new_weights': new_weights, 'gradient_mean': gradient_mean, 'gradient_variance': gradient_variance, 'expected_gradient': expected_gradient, 'old_loss': old_loss, 'new_loss': new_loss}\n"

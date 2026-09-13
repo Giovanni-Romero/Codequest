@@ -13,28 +13,39 @@ names the file instead of saying "content is broken".
 
 from __future__ import annotations
 
+import importlib.util
+
 import pytest
 import yaml
 
-from codequest.engine.loader import iter_mission_paths, load_mission, load_track
+from codequest.engine.loader import iter_mission_paths, load_island, load_mission, load_track
 from codequest.models.mission import XP_BY_DIFFICULTY
 from codequest.services.game_session import GameSession
 from helpers import CONTENT_ROOT
 
-#: "python-pt" is a content *directory*, not a second track id - the Portuguese mirror
-#: of the Python track lives in its own tree (see mission-author SKILL.md) so it can be
-#: validated the same way as the English one without the engine ever learning about
-#: languages. Both must independently pass every check in this file.
+TRACKS_ROOT = CONTENT_ROOT / "tracks"
+
+
+def _catalogue(track_id, locale):
+    return TRACKS_ROOT / track_id / "locales" / locale
+
+
+#: Each pair is one curriculum in two locales. Both must independently pass every
+#: content check while keeping their executable contracts identical.
 TRACK_PAIRS = (
-    ("python", "python-pt"),
-    ("ai-engineering", "ai-engineering-pt"),
+    (_catalogue("python", "en"), _catalogue("python", "pt-BR")),
+    (_catalogue("ai-engineering", "en"), _catalogue("ai-engineering", "pt-BR")),
 )
-TRACKS = [track for pair in TRACK_PAIRS for track in pair]
-MISSION_PATHS = [path for track in TRACKS for path in iter_mission_paths(CONTENT_ROOT, track)]
+CATALOGUES = [catalogue for pair in TRACK_PAIRS for catalogue in pair]
+AI_CATALOGUES = (_catalogue("ai-engineering", "en"), _catalogue("ai-engineering", "pt-BR"))
+AI_EN_ROOT = AI_CATALOGUES[0]
+AI_NEW_CONCEPT_ISLANDS = (
+    "15-responsible-ai",
+    "16-mlops-and-model-lifecycle",
+)
+MISSION_PATHS = [path for catalogue in CATALOGUES for path in iter_mission_paths(catalogue)]
 SOURCE_MISSION_PATHS = [
-    path
-    for source_track, _ in TRACK_PAIRS
-    for path in iter_mission_paths(CONTENT_ROOT, source_track)
+    path for source_catalogue, _ in TRACK_PAIRS for path in iter_mission_paths(source_catalogue)
 ]
 
 MIRROR_LOCKED_FIELDS = (
@@ -101,6 +112,11 @@ def test_the_declared_solution_passes_its_own_tests(path):
     """Run canonical solutions; mirror parity below proves their copies are identical."""
     mission = load_mission(path)
 
+    if "requires-ai-ml" in mission.tags and any(
+        importlib.util.find_spec(package) is None for package in ("torch", "transformers")
+    ):
+        pytest.skip("install the ai-ml extra to execute this mission")
+
     outcome = GameSession().check_solution(mission)
 
     assert outcome.passed, f"{path.name}: {outcome.verdict.summary}"
@@ -147,40 +163,37 @@ def test_the_solution_obeys_the_missions_own_constraints(path):
     assert report.ok, f"{path.name}: {report.violations}"
 
 
-@pytest.mark.parametrize("track", TRACKS)
-def test_mission_ids_are_unique_within_a_content_tree(track):
+@pytest.mark.parametrize("catalogue", CATALOGUES)
+def test_mission_ids_are_unique_within_a_content_tree(catalogue):
     """Duplicate ids inside one tree would make progress rows collide between lessons.
 
-    Scoped per tree, not global: the same id appearing in both ``python/`` and
-    ``python-pt/`` is not a collision, it is the point - a language mirror is keyed
-    identically on purpose, so switching language mid-game keeps the same progress row.
+    Scoped per locale, not global: a translated catalogue is keyed identically on
+    purpose, so switching language mid-game keeps the same progress row.
     """
-    ids = [load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, track)]
+    ids = [load_mission(path).id for path in iter_mission_paths(catalogue)]
 
     duplicates = {mission_id for mission_id in ids if ids.count(mission_id) > 1}
-    assert not duplicates, f"duplicate mission ids in {track}: {duplicates}"
+    assert not duplicates, f"duplicate mission ids in {catalogue}: {duplicates}"
 
 
-@pytest.mark.parametrize(("source_track", "mirror_track"), TRACK_PAIRS)
-def test_language_mirrors_declare_the_same_mission_ids(source_track, mirror_track):
+@pytest.mark.parametrize(("source_catalogue", "mirror_catalogue"), TRACK_PAIRS)
+def test_language_mirrors_declare_the_same_mission_ids(source_catalogue, mirror_catalogue):
     """The whole point of a mirror: identical id set, so a language switch never orphans
     or duplicates a save's progress."""
-    source_ids = {load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, source_track)}
-    mirror_ids = {load_mission(path).id for path in iter_mission_paths(CONTENT_ROOT, mirror_track)}
+    source_ids = {load_mission(path).id for path in iter_mission_paths(source_catalogue)}
+    mirror_ids = {load_mission(path).id for path in iter_mission_paths(mirror_catalogue)}
 
-    assert source_ids, f"{source_track} has no missions"
-    assert mirror_ids == source_ids, f"{mirror_track} declares different ids than {source_track}"
+    assert source_ids, f"{source_catalogue} has no missions"
+    assert mirror_ids == source_ids, (
+        f"{mirror_catalogue} declares different ids than {source_catalogue}"
+    )
 
 
-@pytest.mark.parametrize(("source_track", "mirror_track"), TRACK_PAIRS)
-def test_language_mirrors_keep_structural_fields_identical(source_track, mirror_track):
+@pytest.mark.parametrize(("source_catalogue", "mirror_catalogue"), TRACK_PAIRS)
+def test_language_mirrors_keep_structural_fields_identical(source_catalogue, mirror_catalogue):
     """Translated prose may differ; executable contracts and progress keys may not."""
-    source_paths = {
-        load_mission(path).id: path for path in iter_mission_paths(CONTENT_ROOT, source_track)
-    }
-    mirror_paths = {
-        load_mission(path).id: path for path in iter_mission_paths(CONTENT_ROOT, mirror_track)
-    }
+    source_paths = {load_mission(path).id: path for path in iter_mission_paths(source_catalogue)}
+    mirror_paths = {load_mission(path).id: path for path in iter_mission_paths(mirror_catalogue)}
 
     assert mirror_paths.keys() == source_paths.keys()
     for mission_id, source_path in source_paths.items():
@@ -194,26 +207,25 @@ def test_language_mirrors_keep_structural_fields_identical(source_track, mirror_
         assert mirror["signature"]["entrypoint"] == source["signature"]["entrypoint"]
 
 
-@pytest.mark.parametrize("track_id", TRACKS)
-def test_every_island_declared_by_a_track_exists_on_disk(track_id):
-    track = load_track(CONTENT_ROOT / track_id / "track.yaml")
-    islands_dir = CONTENT_ROOT / track_id / "islands"
+@pytest.mark.parametrize("catalogue", CATALOGUES)
+def test_every_island_declared_by_a_track_exists_on_disk(catalogue):
+    track = load_track(catalogue / "track.yaml")
+    islands_dir = catalogue / "islands"
 
     missing = [
         island_id
         for island_id in track.island_ids
-        if (islands_dir / island_id).is_dir()
-        and not (islands_dir / island_id / "island.yaml").is_file()
+        if not (islands_dir / island_id / "island.yaml").is_file()
     ]
     assert not missing, f"islands without an island.yaml: {missing}"
 
 
-@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
-def test_ai_engineering_ships_complete_islands_in_order(track_id):
+@pytest.mark.parametrize("locale", ("en", "pt-BR"))
+def test_ai_engineering_ships_complete_islands_in_order(locale):
     from codequest.services.mission_service import MissionService
 
-    service = MissionService(CONTENT_ROOT, track_id)
-    islands_dir = CONTENT_ROOT / track_id / "islands"
+    service = MissionService(CONTENT_ROOT, "ai-engineering", "pt" if locale == "pt-BR" else "en")
+    islands_dir = _catalogue("ai-engineering", locale) / "islands"
     disk_folders = tuple(path.name for path in sorted(islands_dir.iterdir()) if path.is_dir())
 
     assert service.track.island_ids == disk_folders
@@ -228,6 +240,58 @@ def test_ai_engineering_ships_complete_islands_in_order(track_id):
     assert [
         island.unlock_requires.requires_mission for island in service.islands
     ] == expected_unlocks
+    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-mlops-08"
+
+
+@pytest.mark.parametrize("locale", ("en", "pt-BR"))
+def test_ai_pytorch_capstone_integrates_every_island_concept(locale):
+    island_path = _catalogue("ai-engineering", locale) / "islands" / "13-pytorch-and-deep-learning"
+    island = load_island(island_path / "island.yaml")
+    capstone = load_mission(island_path / "missions" / "08-audit-a-tiny-training-pipeline.yaml")
+
+    assert set(capstone.concepts) == set(island.concepts)
+
+
+@pytest.mark.parametrize("locale", ("en", "pt-BR"))
+def test_ai_nlp_concepts_are_introduced_before_reinforcement(locale):
+    island_path = _catalogue("ai-engineering", locale) / "islands" / "14-nlp-and-transformers"
+    expected = (
+        "tokenizer-boundaries",
+        "model-config-and-weights",
+        "inference-pipelines",
+        "fine-tuning-boundaries",
+    )
+    missions = [
+        load_mission(path)
+        for path in iter_mission_paths(_catalogue("ai-engineering", locale))
+        if path.parent.parent == island_path
+    ]
+    seen = set()
+    for mission, concept in zip(missions[:4], expected, strict=True):
+        introduced = set(mission.concepts) - seen
+        assert introduced == {concept}, f"{mission.id} introduces {introduced}"
+        seen.update(mission.concepts)
+    for mission in missions[4:7]:
+        assert set(mission.concepts) <= seen, f"{mission.id} introduces a late concept"
+
+
+@pytest.mark.parametrize("locale", ("en", "pt-BR"))
+@pytest.mark.parametrize("island_id", AI_NEW_CONCEPT_ISLANDS)
+def test_ai_new_concepts_are_introduced_before_reinforcement(locale, island_id):
+    island_path = _catalogue("ai-engineering", locale) / "islands" / island_id
+    island = load_island(island_path / "island.yaml")
+    missions = [load_mission(path) for path in sorted((island_path / "missions").glob("*.yaml"))]
+
+    assert len(island.concepts) == 4
+    assert len(missions) == 8
+    seen = set()
+    for mission, concept in zip(missions[:4], island.concepts, strict=True):
+        introduced = set(mission.concepts) - seen
+        assert introduced == {concept}, f"{mission.id} introduces {introduced}"
+        seen.update(mission.concepts)
+    for mission in missions[4:7]:
+        assert set(mission.concepts) <= seen, f"{mission.id} introduces a late concept"
+    assert set(missions[7].concepts) == set(island.concepts)
 
 
 @pytest.mark.parametrize("path", MISSION_PATHS, ids=_ids(MISSION_PATHS))
@@ -242,12 +306,12 @@ def test_mission_concepts_are_declared_by_its_island(path):
     assert not unknown, f"{path.name} teaches {unknown}, not listed in island '{island.id}'"
 
 
-@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
-def test_ai_math_capstone_integrates_every_island_concept(track_id):
+@pytest.mark.parametrize("catalogue", AI_CATALOGUES)
+def test_ai_math_capstone_integrates_every_island_concept(catalogue):
     """Island 9 closes by combining math, statistics, probability, and optimization."""
     from codequest.engine.loader import load_island
 
-    island_path = CONTENT_ROOT / track_id / "islands" / "09-mathematical-statistical-foundations"
+    island_path = catalogue / "islands" / "09-mathematical-statistical-foundations"
     island = load_island(island_path / "island.yaml")
     capstone = load_mission(island_path / "missions" / "08-take-one-gradient-step.yaml")
 
@@ -256,12 +320,12 @@ def test_ai_math_capstone_integrates_every_island_concept(track_id):
     )
 
 
-@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
-def test_ai_machine_learning_capstone_integrates_every_island_concept(track_id):
+@pytest.mark.parametrize("catalogue", AI_CATALOGUES)
+def test_ai_machine_learning_capstone_integrates_every_island_concept(catalogue):
     """Island 10 closes with one auditable experiment spanning all ML concepts."""
     from codequest.engine.loader import load_island
 
-    island_path = CONTENT_ROOT / track_id / "islands" / "10-machine-learning-foundations"
+    island_path = catalogue / "islands" / "10-machine-learning-foundations"
     island = load_island(island_path / "island.yaml")
     capstone = load_mission(island_path / "missions" / "08-audit-a-learning-experiment.yaml")
 
@@ -270,12 +334,12 @@ def test_ai_machine_learning_capstone_integrates_every_island_concept(track_id):
     )
 
 
-@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
-def test_ai_reasoning_capstone_integrates_every_island_concept(track_id):
+@pytest.mark.parametrize("catalogue", AI_CATALOGUES)
+def test_ai_reasoning_capstone_integrates_every_island_concept(catalogue):
     """Island 11 closes with one audit spanning search, planning, and learning."""
     from codequest.engine.loader import load_island
 
-    island_path = CONTENT_ROOT / track_id / "islands" / "11-reasoning-and-decision-making"
+    island_path = catalogue / "islands" / "11-reasoning-and-decision-making"
     island = load_island(island_path / "island.yaml")
     capstone = load_mission(island_path / "missions" / "08-audit-a-decision-process.yaml")
 
@@ -284,12 +348,12 @@ def test_ai_reasoning_capstone_integrates_every_island_concept(track_id):
     )
 
 
-@pytest.mark.parametrize("track_id", ("ai-engineering", "ai-engineering-pt"))
-def test_ai_data_engineering_capstone_integrates_every_island_concept(track_id):
+@pytest.mark.parametrize("catalogue", AI_CATALOGUES)
+def test_ai_data_engineering_capstone_integrates_every_island_concept(catalogue):
     """Island 12 closes with one reproducible audit spanning every data concept."""
     from codequest.engine.loader import load_island
 
-    island_path = CONTENT_ROOT / track_id / "islands" / "12-data-engineering-for-ai"
+    island_path = catalogue / "islands" / "12-data-engineering-for-ai"
     island = load_island(island_path / "island.yaml")
     capstone = load_mission(island_path / "missions" / "08-audit-a-data-pipeline.yaml")
 
@@ -338,14 +402,7 @@ def test_ai_data_engineering_capstone_integrates_every_island_concept(track_id):
     ),
 )
 def test_ai_data_hashing_rejects_values_outside_json(mission_name, args):
-    mission_path = (
-        CONTENT_ROOT
-        / "ai-engineering"
-        / "islands"
-        / "12-data-engineering-for-ai"
-        / "missions"
-        / mission_name
-    )
+    mission_path = AI_EN_ROOT / "islands" / "12-data-engineering-for-ai" / "missions" / mission_name
     mission = load_mission(mission_path)
     namespace = {}
     exec(mission.solution, namespace)
@@ -356,8 +413,7 @@ def test_ai_data_hashing_rejects_values_outside_json(mission_name, args):
 
 def test_ai_data_fingerprint_translates_unicode_encoding_errors():
     mission_path = (
-        CONTENT_ROOT
-        / "ai-engineering"
+        AI_EN_ROOT
         / "islands"
         / "12-data-engineering-for-ai"
         / "missions"

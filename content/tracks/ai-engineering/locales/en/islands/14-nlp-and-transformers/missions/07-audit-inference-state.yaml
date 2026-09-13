@@ -1,0 +1,65 @@
+id: ai-nlp-07
+title: Audit inference state
+track: ai-engineering
+island: nlp-and-transformers
+order: 7
+difficulty: challenging
+tags: [ai-engineering, transformers, inference, eval-mode, requires-ai-ml]
+xp: 45
+concepts: [inference-pipelines, model-config-and-weights]
+teaching:
+  analogy: Before measurement, an inspector locks adjustable machinery and stops recording workshop changes. A reading taken in workshop mode is not a controlled inspection.
+  explanation: "`model.eval()` switches stateful layers such as dropout to inference behavior. `torch.inference_mode()` stops autograd recording. They solve different problems and a reliable pipeline uses both."
+  worked_example: |
+    model.eval()
+    with torch.inference_mode():
+        output = model(inputs)
+  key_points:
+    - Eval mode changes layer behavior.
+    - Inference mode disables gradient recording.
+    - Both states are independently auditable.
+brief: >
+  Write `audit_inference_state(sequence_length) -> dict`. Build the tiny BERT classifier from
+  mission 02, record its initial training flag, switch to eval, and infer over one all-valid token
+  row under `torch.inference_mode()`. Return flags, output shape, whether logits require gradients,
+  and rounded logits after zeroing all parameters. Accept sequence lengths 2 through 16 only.
+signature:
+  entrypoint: audit_inference_state
+  stub: |
+    def audit_inference_state(sequence_length):
+        # Prove that layer mode and autograd state are both controlled.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [4]
+      expect: {initial_training: true, eval_training: false, output_shape: [1, 2], requires_grad: false, logits: [0.0, 0.0]}
+    - args: [16]
+      expect: {initial_training: true, eval_training: false, output_shape: [1, 2], requires_grad: false, logits: [0.0, 0.0]}
+  hidden:
+    - {args: [1], raises: ValueError}
+    - {args: [17], raises: ValueError}
+    - {args: [true], raises: ValueError}
+    - {args: [4.0], raises: ValueError}
+    - {args: [-4], raises: ValueError}
+hints:
+  - {level: 1, text: "Which switch controls layers, and which context controls graph recording?"}
+  - {level: 2, text: "Capture `model.training`, call `model.eval()`, then enter `torch.inference_mode()`."}
+  - {level: 3, text: "Inspect `logits.requires_grad` and return the output shape after the controlled call."}
+solution: |
+  def audit_inference_state(sequence_length):
+      import torch
+      from transformers import BertConfig, BertForSequenceClassification
+      if type(sequence_length) is not int or not 2 <= sequence_length <= 16:
+          raise ValueError("invalid sequence length")
+      config = BertConfig(vocab_size=10, hidden_size=8, num_hidden_layers=1, num_attention_heads=2, intermediate_size=16, num_labels=2, max_position_embeddings=16)
+      model = BertForSequenceClassification(config)
+      initial = model.training
+      with torch.no_grad():
+          for parameter in model.parameters(): parameter.zero_()
+      model.eval()
+      inputs = torch.full((1, sequence_length), 5, dtype=torch.int64)
+      mask = torch.ones_like(inputs)
+      with torch.inference_mode():
+          logits = model(input_ids=inputs, attention_mask=mask).logits
+      return {"initial_training": initial, "eval_training": model.training, "output_shape": list(logits.shape), "requires_grad": logits.requires_grad, "logits": [round(value, 6) for value in logits[0].tolist()]}

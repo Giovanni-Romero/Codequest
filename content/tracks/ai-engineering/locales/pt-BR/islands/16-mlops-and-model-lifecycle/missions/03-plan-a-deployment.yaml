@@ -1,0 +1,92 @@
+id: ai-mlops-03
+title: Planeje uma implantação
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 3
+difficulty: challenging
+tags: [ai-engineering, mlops, deployment, rollback]
+xp: 45
+concepts: [deployment-strategies]
+teaching:
+  analogy: Um porto pode trocar todas as cartas de rota durante a noite, testar uma nova carta sem conduzir navios, enviar poucas embarcações primeiro ou manter duas salas de controle prontas. Cada escolha precisa preservar a carta antiga para recuar.
+  explanation: Implantações batch, shadow, canary e blue-green expõem quantidades diferentes de tráfego real e risco. Shadow observa sem servir resultados do candidato. Canary envia uma parcela limitada a um candidato aprovado, enquanto blue-green troca todo o tráfego entre ambientes completos. Um alvo de rollback precisa estar explícito antes do lançamento.
+  worked_example: |
+    rotas = {"antiga": 90, "nova": 10}
+    modo = "canary"
+    permitido = {
+        "canary": 0 < rotas["nova"] < 100,
+        "batch": rotas["nova"] == 100,
+    }
+    print(modo, permitido[modo])
+  key_points:
+    - Faça a porcentagem de tráfego corresponder à estratégia escolhida.
+    - Mantenha a versão atual aprovada como alvo de rollback.
+    - Diferencie observação em shadow de servir a saída do candidato.
+brief: >
+  Escreva `plan_deployment(strategy, current_version, candidate_version,
+  traffic_percent) -> dict`. A estratégia é `batch`, `shadow`, `canary` ou `blue-green`.
+  Cada versão é um mapeamento exato com `version` string não vazia e `state` entre
+  `pending`, `approved`, `rejected` ou `retired`; os IDs de versão devem ser diferentes.
+  A versão atual de rollback deve estar aprovada. Tráfego é um número finito de 0 a 100,
+  sem booleanos. Shadow exige 0 e aceita candidato pendente ou aprovado; canary exige
+  candidato aprovado e tráfego estritamente entre 0 e 100; batch e blue-green exigem
+  candidato aprovado e 100. Retorne o plano explícito mostrado nos testes. Rejeite dados
+  malformados ou inconsistentes e não altere nenhuma versão.
+signature:
+  entrypoint: plan_deployment
+  stub: |
+    def plan_deployment(strategy, current_version, candidate_version, traffic_percent):
+        # Match release exposure to an explicit approved rollback target.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [canary, {version: model-v1, state: approved}, {version: model-v2, state: approved}, 10]
+      expect: {strategy: canary, current_version: model-v1, candidate_version: model-v2, traffic_percent: 10, candidate_state: approved, rollback: {version: model-v1, state: approved}}
+    - args: [shadow, {version: model-v1, state: approved}, {version: model-v2, state: pending}, 0]
+      expect: {strategy: shadow, current_version: model-v1, candidate_version: model-v2, traffic_percent: 0, candidate_state: pending, rollback: {version: model-v1, state: approved}}
+    - args: [blue-green, {version: blue, state: approved}, {version: green, state: approved}, 100]
+      expect: {strategy: blue-green, current_version: blue, candidate_version: green, traffic_percent: 100, candidate_state: approved, rollback: {version: blue, state: approved}}
+  hidden:
+    - args: [batch, {version: v1, state: approved}, {version: v2, state: approved}, 100]
+      expect: {strategy: batch, current_version: v1, candidate_version: v2, traffic_percent: 100, candidate_state: approved, rollback: {version: v1, state: approved}}
+    - {args: [canary, {version: v1, state: pending}, {version: v2, state: approved}, 10], raises: ValueError}
+    - {args: [canary, {version: v1, state: approved}, {version: v2, state: pending}, 10], raises: ValueError}
+    - {args: [canary, {version: v1, state: approved}, {version: v2, state: approved}, 0], raises: ValueError}
+    - {args: [shadow, {version: v1, state: approved}, {version: v2, state: approved}, true], raises: ValueError}
+    - {args: [blue-green, {version: v1, state: approved}, {version: v2, state: approved}, 101], raises: ValueError}
+    - {args: [batch, {version: v1, state: approved, note: x}, {version: v2, state: approved}, 100], raises: ValueError}
+    - {args: [canary, {version: same, state: approved}, {version: same, state: approved}, 10], raises: ValueError}
+hints:
+  - {level: 1, text: "Quanto tráfego real esta estratégia expõe e para onde o rollback retorna?"}
+  - {level: 2, text: "Valide os estados das duas versões e aplique uma regra de tráfego por estratégia."}
+  - {level: 3, text: "Para uma tabela de rotas, guarde predicados como dados: `permitido = {'quiet': limite == 0}`."}
+solution: |
+  def plan_deployment(strategy, current_version, candidate_version, traffic_percent):
+      import math
+      strategies = {"batch", "shadow", "canary", "blue-green"}
+      states = {"pending", "approved", "rejected", "retired"}
+      if type(strategy) is not str or strategy not in strategies:
+          raise ValueError("invalid strategy")
+      for version in (current_version, candidate_version):
+          if type(version) is not dict or set(version) != {"version", "state"}:
+              raise ValueError("invalid version")
+          if type(version["version"]) is not str or not version["version"].strip() or type(version["state"]) is not str or version["state"] not in states:
+              raise ValueError("invalid version")
+      if current_version["version"] == candidate_version["version"] or current_version["state"] != "approved":
+          raise ValueError("invalid rollback version")
+      if type(traffic_percent) not in (int, float):
+          raise ValueError("invalid traffic")
+      try:
+          traffic_ok = math.isfinite(traffic_percent) and 0 <= traffic_percent <= 100
+      except (OverflowError, TypeError):
+          traffic_ok = False
+      if not traffic_ok:
+          raise ValueError("invalid traffic")
+      candidate_state = candidate_version["state"]
+      valid = strategy == "shadow" and traffic_percent == 0 and candidate_state in ("pending", "approved")
+      valid = valid or strategy == "canary" and 0 < traffic_percent < 100 and candidate_state == "approved"
+      valid = valid or strategy in ("batch", "blue-green") and traffic_percent == 100 and candidate_state == "approved"
+      if not valid:
+          raise ValueError("strategy and traffic disagree")
+      return {"strategy": strategy, "current_version": current_version["version"], "candidate_version": candidate_version["version"], "traffic_percent": traffic_percent, "candidate_state": candidate_state, "rollback": {"version": current_version["version"], "state": current_version["state"]}}

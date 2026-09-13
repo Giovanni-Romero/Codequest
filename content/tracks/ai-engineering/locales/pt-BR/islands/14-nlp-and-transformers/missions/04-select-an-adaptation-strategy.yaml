@@ -1,0 +1,62 @@
+id: ai-nlp-04
+title: Selecione uma estratégia de adaptação
+track: ai-engineering
+island: nlp-and-transformers
+order: 4
+difficulty: challenging
+tags: [ai-engineering, transformers, adaptation, fine-tuning, requires-ai-ml]
+xp: 45
+concepts: [fine-tuning-boundaries, inference-pipelines]
+teaching:
+  analogy: Um navio com uma nova rota pode precisar de cartas atualizadas, um instrumento removível ou uma reforma do motor. Reformar o motor para cada rota desperdiça evidências e dinheiro.
+  explanation: Prompting muda instruções, retrieval fornece fatos externos mutáveis, adapters treinam um pequeno subconjunto de parâmetros e atualização de pesos muda o modelo inteiro. A escolha segue o modo de falha, rótulos disponíveis, limite de computação e contrato de avaliação.
+  worked_example: |
+    if needs_current_facts:
+        strategy = "retrieval"
+    print(strategy)
+  key_points:
+    - Fatos mutáveis favorecem retrieval em vez de memorização.
+    - Sem exemplos rotulados, não há atualização supervisionada.
+    - Atualizar pesos exige dados versionados e avaliação reservada.
+brief: >
+  Escreva `select_adaptation(external_knowledge, labeled_examples, limited_compute) -> dict`.
+  Escolha `retrieval` quando conhecimento externo for necessário; caso contrário, `prompting`
+  sem rótulos, `adapters` com computação limitada e `weight-update` nos demais casos. Retorne a
+  estratégia, seus dados exigidos e o artefato de avaliação. Rejeite entradas inválidas.
+signature:
+  entrypoint: select_adaptation
+  stub: |
+    def select_adaptation(external_knowledge, labeled_examples, limited_compute):
+        # Associe a menor adaptação às evidências e restrições explícitas.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [true, 0, false]
+      expect: {strategy: retrieval, required_data: indexed-evidence, evaluation: grounded-answer-set}
+    - args: [false, 100, true]
+      expect: {strategy: adapters, required_data: labeled-examples, evaluation: held-out-task-set}
+  hidden:
+    - args: [false, 0, false]
+      expect: {strategy: prompting, required_data: prompt-cases, evaluation: capability-eval-set}
+    - args: [false, 100, false]
+      expect: {strategy: weight-update, required_data: versioned-labeled-dataset, evaluation: held-out-task-set}
+    - {args: [1, 0, false], raises: ValueError}
+    - {args: [false, -1, false], raises: ValueError}
+    - {args: [false, true, false], raises: ValueError}
+    - {args: [false, 1, 0], raises: ValueError}
+hints:
+  - {level: 1, text: "O problema exige novos fatos, novas instruções ou pesos alterados?"}
+  - {level: 2, text: "Trate primeiro conhecimento externo, depois ausência de rótulos e então limites de computação."}
+  - {level: 3, text: "Retorne um contrato fixo de dados e avaliação para cada estratégia selecionada."}
+solution: |
+  def select_adaptation(external_knowledge, labeled_examples, limited_compute):
+      if type(external_knowledge) is not bool or type(limited_compute) is not bool or type(labeled_examples) is not int or labeled_examples < 0:
+          raise ValueError("invalid adaptation evidence")
+      if external_knowledge:
+          return {"strategy": "retrieval", "required_data": "indexed-evidence", "evaluation": "grounded-answer-set"}
+      if labeled_examples == 0:
+          return {"strategy": "prompting", "required_data": "prompt-cases", "evaluation": "capability-eval-set"}
+      if limited_compute:
+          return {"strategy": "adapters", "required_data": "labeled-examples", "evaluation": "held-out-task-set"}
+      return {"strategy": "weight-update", "required_data": "versioned-labeled-dataset", "evaluation": "held-out-task-set"}

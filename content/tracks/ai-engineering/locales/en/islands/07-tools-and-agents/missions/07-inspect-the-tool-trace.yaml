@@ -1,0 +1,78 @@
+id: ai-tools-07
+title: Inspect the tool trace
+track: ai-engineering
+island: tools-and-agents
+order: 7
+difficulty: moderate
+tags: [ai-engineering, tools, trace]
+xp: 30
+concepts: [tool-contracts, tool-routing, orchestration-gates, idempotent-effects]
+teaching:
+  analogy: |
+    A flight recorder lets investigators find the first unsafe move without flying another plane.
+  explanation: |
+    Trace inspection reduces construction work and exposes sequence mistakes. Validate the whole trace before diagnosing it. Effects require earlier validation. A failure must stop that operation, and one key must not produce two effects.
+  worked_example: |
+    events = ["validation", "routing"]
+    print(events[-1])
+  key_points:
+    - Diagnosis follows chronological order.
+    - Operations can be interleaved.
+    - Trace inspection returns no execution plan.
+brief: |
+  Write `inspect_tool_trace(events)`. Events have exact `operation_id`, `stage`, `status`, `tool`,
+  and `idempotency_key`. Stages are validation, routing, policy, execution, persistence; statuses
+  are pass, fail, effect, saved only where valid. Return the first issue among effect_before_validation,
+  unauthorized_route, continued_after_failure, duplicate_effect, or sound with first-seen operation IDs.
+signature:
+  entrypoint: inspect_tool_trace
+  stub: |
+    def inspect_tool_trace(events):
+        # Diagnose an ordered trace without planning any effect.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[{operation_id: a, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: a, stage: routing, status: pass, tool: lookup, idempotency_key: one}, {operation_id: a, stage: policy, status: pass, tool: lookup, idempotency_key: one}, {operation_id: a, stage: execution, status: effect, tool: lookup, idempotency_key: one}, {operation_id: a, stage: persistence, status: saved, tool: lookup, idempotency_key: one}]]
+      expect: {status: sound, operations: [a]}
+    - args: [[{operation_id: a, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: a, stage: policy, status: fail, tool: lookup, idempotency_key: one}, {operation_id: a, stage: execution, status: effect, tool: lookup, idempotency_key: one}]]
+      expect: {status: issue, kind: continued_after_failure, event: 2}
+  hidden:
+    - args: [[{operation_id: a, stage: execution, status: effect, tool: lookup, idempotency_key: one}]]
+      expect: {status: issue, kind: effect_before_validation, event: 0}
+    - args: [[{operation_id: a, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: a, stage: routing, status: fail, tool: null, idempotency_key: one}, {operation_id: a, stage: policy, status: pass, tool: lookup, idempotency_key: one}]]
+      expect: {status: issue, kind: unauthorized_route, event: 2}
+    - args: [[{operation_id: a, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: a, stage: execution, status: effect, tool: lookup, idempotency_key: one}, {operation_id: b, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: b, stage: execution, status: effect, tool: lookup, idempotency_key: one}]]
+      expect: {status: issue, kind: duplicate_effect, event: 3}
+    - args: [[]]
+      expect: {status: sound, operations: []}
+    - args: [[{operation_id: a, stage: validation, status: effect, tool: null, idempotency_key: one}]]
+      raises: ValueError
+    - args: [[{operation_id: a, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: b, stage: validation, status: pass, tool: null, idempotency_key: two}, {operation_id: a, stage: execution, status: effect, tool: x, idempotency_key: one}, {operation_id: b, stage: execution, status: effect, tool: x, idempotency_key: two}]]
+      expect: {status: sound, operations: [a, b]}
+    - args: [[{operation_id: a, stage: validation, status: pass, tool: null, idempotency_key: one}, {operation_id: a, stage: routing, status: fail, tool: null, idempotency_key: one}, {operation_id: a, stage: execution, status: effect, tool: lookup, idempotency_key: one}]]
+      expect: {status: issue, kind: unauthorized_route, event: 2}
+hints:
+  - {level: 1, text: "What earlier event must an effect be able to point to?"}
+  - {level: 2, text: "Validate event pairs first, then maintain state per operation and per key."}
+  - {level: 3, text: "For a recorder, store whether each flight cleared validation before accepting its takeoff."}
+solution: |
+  def inspect_tool_trace(events):
+      if not isinstance(events, list): raise ValueError("invalid events")
+      allowed = {"validation": {"pass", "fail"}, "routing": {"pass", "fail"}, "policy": {"pass", "fail"}, "execution": {"effect", "fail"}, "persistence": {"saved", "fail"}}
+      for event in events:
+          if not isinstance(event, dict) or set(event) != {"operation_id", "stage", "status", "tool", "idempotency_key"} or not isinstance(event["operation_id"], str) or not event["operation_id"] or not isinstance(event["stage"], str) or event["stage"] not in allowed or not isinstance(event["status"], str) or event["status"] not in allowed[event["stage"]] or not isinstance(event["tool"], (str, type(None))) or (isinstance(event["tool"], str) and not event["tool"]) or not isinstance(event["idempotency_key"], (str, type(None))) or (isinstance(event["idempotency_key"], str) and not event["idempotency_key"]): raise ValueError("invalid event")
+      states, keys, operations = {}, set(), []
+      for index, event in enumerate(events):
+          op = event["operation_id"]; state = states.setdefault(op, {"validation": False, "failed": False, "routing_failed": False})
+          if op not in operations: operations.append(op)
+          if state["routing_failed"]: return {"status": "issue", "kind": "unauthorized_route", "event": index}
+          if state["failed"]: return {"status": "issue", "kind": "continued_after_failure", "event": index}
+          if event["stage"] == "execution" and event["status"] == "effect":
+              if not state["validation"]: return {"status": "issue", "kind": "effect_before_validation", "event": index}
+              if event["idempotency_key"] in keys: return {"status": "issue", "kind": "duplicate_effect", "event": index}
+              keys.add(event["idempotency_key"])
+          if event["stage"] == "validation" and event["status"] == "pass": state["validation"] = True
+          if event["stage"] == "routing" and event["status"] == "fail": state["routing_failed"] = state["failed"] = True
+          elif event["status"] == "fail": state["failed"] = True
+      return {"status": "sound", "operations": operations}

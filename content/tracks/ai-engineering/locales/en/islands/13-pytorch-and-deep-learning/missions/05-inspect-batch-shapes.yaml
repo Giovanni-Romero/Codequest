@@ -1,0 +1,61 @@
+id: ai-pytorch-05
+title: Inspect batch shapes
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 5
+difficulty: challenging
+tags: [ai-engineering, pytorch, tensor, batching, requires-ai-ml]
+xp: 45
+concepts: [tensors-and-shapes, datasets-and-batches]
+teaching:
+  analogy: A harbor log records both crate dimensions and how many crates each boat carries. The last boat may carry less without changing crate dimensions.
+  explanation: Tensor shape and batch shape answer different questions. A DataLoader adds a leading batch axis while preserving each example's feature axis. Deterministic order makes the report reproducible.
+  worked_example: |
+    import torch
+    rows = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+    print(list(rows.shape), list(rows[:1].shape))
+  key_points:
+    - The first batch dimension varies on the final batch.
+    - Feature dimensions remain stable across batches.
+    - Report plain lists across the JSON boundary.
+brief: >
+  Write `inspect_batch_shapes(rows, batch_size) -> dict`. Build a float32 tensor and a
+  `DataLoader` from it with `shuffle=False`. Return tensor shape, dtype, each batch shape,
+  and flattened batch values. Reject empty, ragged, boolean, non-finite, or invalid inputs.
+signature:
+  entrypoint: inspect_batch_shapes
+  stub: |
+    def inspect_batch_shapes(rows, batch_size):
+        # Compare the full tensor with every deterministic batch.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[[1, 2], [3, 4], [5, 6]], 2]
+      expect: {tensor_shape: [3, 2], dtype: float32, batch_shapes: [[2, 2], [1, 2]], batches: [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0]]}
+    - args: [[[7]], 3]
+      expect: {tensor_shape: [1, 1], dtype: float32, batch_shapes: [[1, 1]], batches: [[7.0]]}
+  hidden:
+    - {args: [[], 1], raises: ValueError}
+    - {args: [[[1], [2, 3]], 1], raises: ValueError}
+    - {args: [[[true]], 1], raises: ValueError}
+    - {args: [[[.nan]], 1], raises: ValueError}
+    - {args: [[[1]], 0], raises: ValueError}
+hints:
+  - {level: 1, text: "Which axis belongs to the loader rather than to one example?"}
+  - {level: 2, text: "Iterate `DataLoader(tensor, batch_size=n, shuffle=False)`."}
+  - {level: 3, text: "For another matrix, collect `list(part.shape)` and `part.flatten().tolist()` for each part."}
+solution: |
+  def inspect_batch_shapes(rows, batch_size):
+      import math
+      import torch
+      from torch.utils.data import DataLoader
+      if not isinstance(rows, list) or not rows or type(batch_size) is not int or batch_size <= 0 or any(not isinstance(row, list) or not row for row in rows):
+          raise ValueError("invalid input")
+      width = len(rows[0])
+      limit = torch.finfo(torch.float32).max
+      if any(len(row) != width for row in rows) or any(type(value) not in (int, float) or not -limit <= value <= limit for row in rows for value in row):
+          raise ValueError("invalid rows")
+      tensor = torch.tensor(rows, dtype=torch.float32)
+      batches = list(DataLoader(tensor, batch_size=batch_size, shuffle=False))
+      return {"tensor_shape": list(tensor.shape), "dtype": "float32", "batch_shapes": [list(batch.shape) for batch in batches], "batches": [batch.flatten().tolist() for batch in batches]}

@@ -1,0 +1,9 @@
+id: data-engineering-for-ai
+name: Data Engineering for AI
+track: ai-engineering
+order: 12
+theme: Explicit contracts, measurable quality, immutable lineage, and reproducible transformations
+concepts: [data-contracts, data-quality, dataset-versioning, reproducible-pipelines]
+unlock_requires:
+  requires_mission: ai-reasoning-08
+completion_reward_xp: 220

@@ -1,0 +1,41 @@
+id: ai-math-01
+title: Add aligned vectors
+track: ai-engineering
+island: mathematical-statistical-foundations
+order: 1
+difficulty: challenging
+tags: [ai-engineering, mathematics, vectors]
+xp: 45
+concepts: [vector-operations]
+teaching:
+  analogy: Two checkout receipts can be added line by line only when they list the same number of items in the same order.
+  explanation: A vector is an ordered list of numeric coordinates. Vector addition adds coordinates at matching positions. The vectors must have the same nonzero length. Validate the whole input before adding anything.
+  worked_example: "names = [\"Ada\", \"Lin\"]\nroles = [\"pilot\", \"engineer\"]\npairs = [names[i] + \": \" + roles[i] for i in range(len(names))]\nprint(pairs)"
+  key_points: ["Position gives each coordinate its meaning.", "Equal length is required before pairing.", "bool is not a numeric coordinate here."]
+brief: Write `add_vectors(left, right) -> list`. Return the pairwise sums of two equal, nonempty lists of finite int or float values. Raise `ValueError` for invalid types, values, lengths, or empty lists.
+signature:
+  entrypoint: add_vectors
+  stub: "def add_vectors(left, right):\n    # Return pairwise sums for validated aligned vectors.\n    pass\n"
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+  - args: [[1, 2], [3, 4]]
+    expect: [4, 6]
+  - args: [[1.5, -2], [0.5, 2]]
+    expect: [2.0, 0]
+  hidden:
+  - args: [[0], [0]]
+    expect: [0]
+  - args: [[1], [1, 2]]
+    raises: ValueError
+  - args: [[], []]
+    raises: ValueError
+  - args: [[true], [1]]
+    raises: ValueError
+  - args: [[.nan], [1]]
+    raises: ValueError
+hints:
+- {level: 1, text: "What must be true about positions before two coordinates can meet?"}
+- {level: 2, text: Validate both lists before using matching indexes.}
+- {level: 3, text: "Pattern: `result = [a[i] + b[i] for i in range(len(a))]`."}
+solution: "def add_vectors(left, right):\n    import math\n    def valid(v):\n        return isinstance(v, list) and bool(v) and all(type(x) in (int, float) and math.isfinite(x) for x in v)\n    if not valid(left) or not valid(right) or len(left) != len(right): raise ValueError('invalid vectors')\n    return [a + b for a, b in zip(left, right)]\n"

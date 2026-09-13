@@ -1,0 +1,41 @@
+id: ai-math-02
+title: Meça um par de vetores alinhados
+track: ai-engineering
+island: mathematical-statistical-foundations
+order: 2
+difficulty: challenging
+tags: [ai-engineering, mathematics, vectors]
+xp: 45
+concepts: [vector-operations]
+teaching:
+  analogy: Multiplique cada preço pela quantidade correspondente e depois some o recibo.
+  explanation: O produto escalar multiplica coordenadas alinhadas e soma os produtos. Ele produz um escalar a partir de dois vetores. A norma L2 é a raiz quadrada do produto escalar de um vetor por ele mesmo, então mede o comprimento do vetor. Alinhamento e valores numéricos finitos continuam obrigatórios.
+  worked_example: "precos = [2, 3]\nquantidades = [4, 5]\ntotal = sum(precos[i] * quantidades[i] for i in range(len(precos)))\nprint(total)"
+  key_points: ["Um produto escalar retorna um escalar.", "A norma L2 mede comprimento, não direção.", "Cada produto usa posições correspondentes.", "A validação vem antes de todo cálculo."]
+brief: 'Escreva `vector_metrics(left, right) -> dict`. Retorne `{"dot_product": number, "left_norm": number, "right_norm": number}` para listas numéricas finitas, iguais e não vazias. Cada norma é a norma L2. Lance `ValueError` para vetores inválidos.'
+signature:
+  entrypoint: vector_metrics
+  stub: "def vector_metrics(left, right):\n    # Retorne evidências de produto escalar e normas L2 de vetores validados.\n    pass\n"
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+  - args: [[1, 2, 3], [4, 5, 6]]
+    expect: {dot_product: 32, left_norm: 3.7416573867739413, right_norm: 8.774964387392123}
+  - args: [[1.5, -2], [2, 3]]
+    expect: {dot_product: -3.0, left_norm: 2.5, right_norm: 3.605551275463989}
+  hidden:
+  - args: [[0], [9]]
+    expect: {dot_product: 0, left_norm: 0.0, right_norm: 9.0}
+  - args: [[1], [2, 3]]
+    raises: ValueError
+  - args: [[], []]
+    raises: ValueError
+  - args: [[1], [false]]
+    raises: ValueError
+  - args: [[1], [.inf]]
+    raises: ValueError
+hints:
+- {level: 1, text: "O que cada coordenada contribui para o escalar e para o comprimento do vetor?"}
+- {level: 2, text: Some produtos correspondentes para o produto escalar e coordenadas ao quadrado para cada norma.}
+- {level: 3, text: "Padrão: `math.sqrt(sum(x * x for x in values))`."}
+solution: "def vector_metrics(left, right):\n    import math\n    def valid(v):\n        return isinstance(v, list) and bool(v) and all(type(x) in (int, float) and math.isfinite(x) for x in v)\n    if not valid(left) or not valid(right) or len(left) != len(right): raise ValueError('invalid vectors')\n    return {'dot_product': sum(a * b for a, b in zip(left, right)), 'left_norm': math.sqrt(sum(x * x for x in left)), 'right_norm': math.sqrt(sum(x * x for x in right))}\n"

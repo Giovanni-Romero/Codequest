@@ -1,0 +1,74 @@
+id: ai-prompts-03
+title: Carregue o contexto merecido
+track: ai-engineering
+island: prompt-contracts
+order: 3
+difficulty: moderate
+tags: [ai-engineering, prompts, context, budgeting]
+xp: 30
+concepts: [prompt-templates, context-assembly]
+teaching:
+  analogy: |
+    Um bote salva-vidas leva suprimentos úteis sob limite de peso. Uma caixa inútil não
+    ganha espaço, e uma caixa grande demais não impede itens menores de embarcar.
+  explanation: |
+    A montagem de contexto escolhe evidências antes da geração. Relevância e orçamento
+    são regras de entrada. Uma varredura estável reproduz a mesma seleção.
+  worked_example: |
+    supplies = [{"name": "water", "useful": True, "weight": 2}]
+    loaded = [item["name"] for item in supplies if item["useful"]]
+    print(loaded)
+  key_points:
+    - Contexto irrelevante consome atenção sem ajudar a tarefa.
+    - O orçamento rígido nunca é ultrapassado.
+    - Pular um item não encerra a varredura.
+brief: |
+  Escreva `assemble_context`. Cada chunk possui `text` e `relevant`. Percorra em ordem
+  e retorne o texto dos chunks relevantes, não vazios e que caibam em `max_words`.
+  Pule o que não couber e continue. Lance `ValueError` para orçamento negativo.
+signature:
+  entrypoint: assemble_context
+  stub: |
+    def assemble_context(chunks, max_words):
+        # Selecione apenas evidências relevantes e acessíveis.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+tests:
+  visible:
+    - args: [[{text: "alpha beta", relevant: true}, {text: noise, relevant: false}, {text: gamma, relevant: true}], 3]
+      expect: ["alpha beta", gamma]
+    - args: [[{text: "one two three", relevant: true}, {text: four, relevant: true}], 1]
+      expect: [four]
+  hidden:
+    - args: [[], 4]
+      expect: []
+    - args: [[{text: " ", relevant: true}], 2]
+      expect: []
+    - args: [[{text: one, relevant: true}], 0]
+      expect: []
+    - args: [[{text: one, relevant: false}], 4]
+      expect: []
+    - args: [[{text: one, relevant: true}], -1]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Quais duas condições um chunk precisa cumprir antes de receber orçamento?"}
+  - {level: 2, text: "Acompanhe as palavras usadas e aplique `continue` a chunks vazios, irrelevantes ou caros."}
+  - level: 3
+    text: |
+      Um laço de carga pode pular pacotes inúteis, adicionar os que cabem e atualizar
+      um peso acumulado sem parar no primeiro pacote pesado.
+solution: |
+  def assemble_context(chunks, max_words):
+      if max_words < 0:
+          raise ValueError("max_words must not be negative")
+      selected = []
+      used = 0
+      for chunk in chunks:
+          text = " ".join(chunk["text"].split())
+          if not chunk["relevant"] or not text:
+              continue
+          cost = len(text.split())
+          if used + cost <= max_words:
+              selected.append(text)
+              used += cost
+      return selected

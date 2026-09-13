@@ -1,0 +1,93 @@
+id: ai-pytorch-04
+title: Execute etapas de treinamento
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 4
+difficulty: challenging
+tags: [ai-engineering, pytorch, autograd, training, requires-ai-ml]
+xp: 45
+concepts: [autograd-training-loop, modules-and-forward]
+teaching:
+  analogy: "Ajustar uma bússola segue uma lista fixa: leia o erro, calcule a correção, mova o mostrador e apague a marca antiga. Reutilizar a marca de ontem corrompe a correção de hoje."
+  explanation: O treinamento ordena forward, perda, backward, passo do otimizador e limpeza dos gradientes. O Autograd registra derivadas durante o cálculo forward. Otimizadores alteram parâmetros registrados. Gradientes acumulam se não forem apagados explicitamente.
+  worked_example: |
+    import torch
+    value = torch.tensor(2.0, requires_grad=True)
+    loss = (value - 5) ** 2
+    loss.backward()
+    print(value.grad.item())
+  key_points:
+    - Backward calcula gradientes; ele não atualiza pesos.
+    - O passo do otimizador altera parâmetros.
+    - Limpe os gradientes em cada iteração de treinamento.
+brief: >
+  Escreva `train_line(xs, ys, learning_rate, steps) -> dict`. Treine `nn.Linear(1, 1)`
+  partindo de peso e viés zero, com SGD e erro quadrático médio. Cada iteração deve executar
+  forward, perda, limpeza dos gradientes, backward e passo do otimizador. Retorne perda inicial
+  e final, peso e viés, arredondados para seis casas. Rejeite entradas e configurações inválidas.
+signature:
+  entrypoint: train_line
+  stub: |
+    def train_line(xs, ys, learning_rate, steps):
+        # Execute as etapas que alteram estado na ordem obrigatória.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[0, 1], [0, 2], 0.1, 2]
+      expect: {initial_loss: 2.0, final_loss: 0.9028, weight: 0.36, bias: 0.34}
+    - args: [[1], [1], 0.25, 1]
+      expect: {initial_loss: 1.0, final_loss: 0.0, weight: 0.5, bias: 0.5}
+  hidden:
+    - args: [[], [], 0.1, 1]
+      raises: ValueError
+    - args: [[1], [1, 2], 0.1, 1]
+      raises: ValueError
+    - args: [[true], [1], 0.1, 1]
+      raises: ValueError
+    - args: [[1], [1], 0, 1]
+      raises: ValueError
+    - args: [[1], [1], 0.1, 0]
+      raises: ValueError
+    - args: [[1], [.inf], 0.1, 1]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Qual estado da iteração anterior não pode vazar para a próxima?"}
+  - {level: 2, text: "Use `MSELoss`, `SGD`, `zero_grad`, `backward` e `step` nessa ordem."}
+  - {level: 3, text: "Para outro parâmetro, guarde a primeira perda, limpe gradientes antes de backward e meça novamente após as atualizações."}
+solution: |
+  def train_line(xs, ys, learning_rate, steps):
+      import math
+      import torch
+      from torch import nn
+      if not isinstance(xs, list) or not xs or not isinstance(ys, list) or len(xs) != len(ys):
+          raise ValueError("invalid samples")
+      limit = torch.finfo(torch.float32).max
+      if any(type(value) not in (int, float) or not -limit <= value <= limit for value in xs + ys):
+          raise ValueError("invalid values")
+      if type(learning_rate) not in (int, float) or not math.isfinite(learning_rate) or learning_rate <= 0 or type(steps) is not int or steps <= 0:
+          raise ValueError("invalid training settings")
+      inputs = torch.tensor(xs, dtype=torch.float32).reshape(-1, 1)
+      targets = torch.tensor(ys, dtype=torch.float32).reshape(-1, 1)
+      model = nn.Linear(1, 1)
+      with torch.no_grad():
+          model.weight.zero_()
+          model.bias.zero_()
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+      initial = loss_fn(model(inputs), targets).item()
+      if not math.isfinite(initial):
+          raise ValueError("non-finite training state")
+      for _ in range(steps):
+          loss = loss_fn(model(inputs), targets)
+          if not torch.isfinite(loss):
+              raise ValueError("non-finite training state")
+          optimizer.zero_grad()
+          loss.backward()
+          optimizer.step()
+          if any(not torch.isfinite(parameter).all() for parameter in model.parameters()):
+              raise ValueError("non-finite training state")
+      final = loss_fn(model(inputs), targets).item()
+      if not math.isfinite(final):
+          raise ValueError("non-finite training state")
+      return {"initial_loss": round(initial, 6), "final_loss": round(final, 6), "weight": round(model.weight.item(), 6), "bias": round(model.bias.item(), 6)}

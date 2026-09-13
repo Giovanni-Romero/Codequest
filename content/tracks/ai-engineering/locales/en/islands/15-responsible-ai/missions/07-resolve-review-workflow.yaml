@@ -1,0 +1,193 @@
+id: ai-responsible-07
+title: Resolve a review workflow
+track: ai-engineering
+island: responsible-ai
+order: 7
+difficulty: challenging
+tags: [ai-engineering, responsible-ai, explainability, oversight, workflow]
+xp: 45
+concepts: [explainability-records, human-oversight-governance]
+teaching:
+  analogy: A harbor appeal ledger accepts only legal next stamps. A pending inspection may be approved, rejected, or time out; a rejection may be appealed, and every stamp names its officer and time.
+  explanation: Accountable oversight is a state machine, not a confirmation button. Explicit transitions prevent impossible histories. Approve, reject, appeal, and timeout events record who acted and when. An append-only history makes the resulting state auditable.
+  worked_example: |
+    transitions = {("queued", "start"): "running", ("running", "finish"): "done"}
+    current = "queued"
+    event = "start"
+    transition = (current, event)
+    current = transitions[transition]
+    print(current)
+  key_points:
+    - Validate a transition before changing state.
+    - Keep actor and timestamp with every event for accountability.
+    - Append a new history entry instead of rewriting prior evidence.
+brief: >
+  Write `resolve_review_workflow(state, event, actor, occurred_at) -> dict`. `state` has
+  exactly `status` and `history`. A new workflow is `{status: pending, history: []}`.
+  Legal transitions are pending plus approve to approved, reject to rejected, or timeout
+  to timed_out; rejected plus appeal to appealed; and appealed plus approve to approved,
+  reject to rejected, or timeout to timed_out. Approved and timed-out states are terminal.
+  Each history entry has exactly `event`, `actor`, `occurred_at`, `from`, and `to`, and must
+  form a valid chronological chain ending in the declared status. Actors are non-empty strings.
+  Timestamps are strings in UTC ISO form `YYYY-MM-DDTHH:MM:SSZ` and must increase strictly.
+  Append the legal event and return a new state without mutating the input. Reject malformed
+  histories, invalid transitions, and non-increasing timestamps.
+signature:
+  entrypoint: resolve_review_workflow
+  stub: |
+    def resolve_review_workflow(state, event, actor, occurred_at):
+        # Preserve a legal, chronological, and accountable review history.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [{status: pending, history: []}, approve, reviewer-1, '2026-01-01T10:00:00Z']
+      expect:
+        status: approved
+        history:
+          - {event: approve, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: approved}
+    - args:
+        - status: rejected
+          history:
+            - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+        - appeal
+        - reviewer-2
+        - '2026-01-01T11:00:00Z'
+      expect:
+        status: appealed
+        history:
+          - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+          - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+  hidden:
+    - args: [{status: pending, history: []}, timeout, system-reviewer, '2026-01-02T00:00:00Z']
+      expect:
+        status: timed_out
+        history:
+          - {event: timeout, actor: system-reviewer, occurred_at: '2026-01-02T00:00:00Z', from: pending, to: timed_out}
+    - args: [{status: approved, history: [{event: approve, actor: r, occurred_at: '2026-01-01T00:00:00Z', from: pending, to: approved}]}, reject, r, '2026-01-02T00:00:00Z']
+      raises: ValueError
+    - args: [{status: pending, history: []}, appeal, r, '2026-01-02T00:00:00Z']
+      raises: ValueError
+    - args: [{status: pending, history: []}, approve, r, '2026-01-02']
+      raises: ValueError
+    - args: [{status: pending, history: []}, approve, r, '2026-1-2T3:4:5Z']
+      raises: ValueError
+    - args:
+        - status: rejected
+          history:
+            - {event: reject, actor: r, occurred_at: '2026-1-2T3:4:5Z', from: pending, to: rejected}
+        - appeal
+        - r
+        - '2026-01-03T00:00:00Z'
+      raises: ValueError
+    - args:
+        - status: appealed
+          history:
+            - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+            - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+        - approve
+        - reviewer-3
+        - '2026-01-01T12:00:00Z'
+      expect:
+        status: approved
+        history:
+          - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+          - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+          - {event: approve, actor: reviewer-3, occurred_at: '2026-01-01T12:00:00Z', from: appealed, to: approved}
+    - args:
+        - status: appealed
+          history:
+            - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+            - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+        - reject
+        - reviewer-3
+        - '2026-01-01T12:00:00Z'
+      expect:
+        status: rejected
+        history:
+          - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+          - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+          - {event: reject, actor: reviewer-3, occurred_at: '2026-01-01T12:00:00Z', from: appealed, to: rejected}
+    - args:
+        - status: appealed
+          history:
+            - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+            - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+        - timeout
+        - reviewer-3
+        - '2026-01-01T12:00:00Z'
+      expect:
+        status: timed_out
+        history:
+          - {event: reject, actor: reviewer-1, occurred_at: '2026-01-01T10:00:00Z', from: pending, to: rejected}
+          - {event: appeal, actor: reviewer-2, occurred_at: '2026-01-01T11:00:00Z', from: rejected, to: appealed}
+          - {event: timeout, actor: reviewer-3, occurred_at: '2026-01-01T12:00:00Z', from: appealed, to: timed_out}
+    - args:
+        - status: appealed
+          history:
+            - {event: reject, actor: r, occurred_at: '2026-01-01T00:00:00Z', from: pending, to: rejected}
+            - {event: appeal, actor: r, occurred_at: '2026-01-02T00:00:00Z', from: pending, to: appealed}
+        - approve
+        - r
+        - '2026-01-03T00:00:00Z'
+      raises: ValueError
+
+    - args:
+        - status: rejected
+          history:
+            - {event: reject, actor: r, occurred_at: '2026-01-02T00:00:00Z', from: pending, to: rejected}
+        - appeal
+        - r
+        - '2026-01-01T00:00:00Z'
+      raises: ValueError
+    - {args: [[], approve, r, '2026-01-02T00:00:00Z'], raises: ValueError}
+hints:
+  - {level: 1, text: "Which event is legal from the current status, and what evidence must accompany it?"}
+  - {level: 2, text: "Represent legal `(status, event)` pairs in a transition mapping and validate the existing chain first."}
+  - {level: 3, text: "In another workflow, `next_state = transitions.get((current, action))` separates lookup from the append."}
+solution: |
+  def resolve_review_workflow(state, event, actor, occurred_at):
+      from datetime import datetime
+      transitions = {
+          ("pending", "approve"): "approved",
+          ("pending", "reject"): "rejected",
+          ("pending", "timeout"): "timed_out",
+          ("rejected", "appeal"): "appealed",
+          ("appealed", "approve"): "approved",
+          ("appealed", "reject"): "rejected",
+          ("appealed", "timeout"): "timed_out",
+      }
+      def parse_time(value):
+          if type(value) is not str or len(value) != 20 or not value.endswith("Z"):
+              raise ValueError("invalid timestamp")
+          try:
+              parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+          except ValueError as error:
+              raise ValueError("invalid timestamp") from error
+          if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+              raise ValueError("invalid timestamp")
+          return parsed
+      if type(state) is not dict or set(state) != {"status", "history"} or type(state["status"]) is not str or type(state["history"]) is not list:
+          raise ValueError("invalid state")
+      current = "pending"
+      previous_time = None
+      required_entry = {"event", "actor", "occurred_at", "from", "to"}
+      for entry in state["history"]:
+          if type(entry) is not dict or set(entry) != required_entry or any(type(entry[key]) is not str for key in required_entry) or not entry["actor"].strip():
+              raise ValueError("invalid history")
+          expected = transitions.get((current, entry["event"]))
+          if entry["from"] != current or entry["to"] != expected or expected is None:
+              raise ValueError("invalid history")
+          timestamp = parse_time(entry["occurred_at"])
+          if previous_time is not None and timestamp <= previous_time:
+              raise ValueError("invalid history")
+          current = expected
+          previous_time = timestamp
+      if state["status"] != current or type(event) is not str or type(actor) is not str or not actor.strip():
+          raise ValueError("invalid transition")
+      next_status = transitions.get((current, event))
+      timestamp = parse_time(occurred_at)
+      if next_status is None or previous_time is not None and timestamp <= previous_time:
+          raise ValueError("invalid transition")
+      entry = {"event": event, "actor": actor, "occurred_at": occurred_at, "from": current, "to": next_status}
+      return {"status": next_status, "history": [dict(item) for item in state["history"]] + [entry]}

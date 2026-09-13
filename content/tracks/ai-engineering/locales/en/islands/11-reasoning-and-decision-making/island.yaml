@@ -1,0 +1,9 @@
+id: reasoning-and-decision-making
+name: Reasoning and Decision Making
+track: ai-engineering
+order: 11
+theme: Explicit search, constrained plans, and evidence-based value updates
+concepts: [state-space-search, heuristic-search, constraint-planning, reinforcement-updates]
+unlock_requires:
+  requires_mission: ai-ml-08
+completion_reward_xp: 220

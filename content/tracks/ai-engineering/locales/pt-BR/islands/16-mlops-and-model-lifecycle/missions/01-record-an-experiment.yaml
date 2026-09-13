@@ -1,0 +1,99 @@
+id: ai-mlops-01
+title: Registre um experimento
+track: ai-engineering
+island: mlops-and-model-lifecycle
+order: 1
+difficulty: challenging
+tags: [ai-engineering, mlops, experiments, lineage]
+xp: 45
+concepts: [experiment-tracking]
+teaching:
+  analogy: Um diário do porto registra navio, edição da carta, manifesto de carga, medições, recibos e resultado de cada viagem. Uma foto de um único medidor não permite recriar o percurso.
+  explanation: O rastreamento de experimentos liga resultados ao código, aos dados, à configuração e aos artefatos que os produziram. Execuções com falha importam porque explicam caminhos descartados e problemas recorrentes. Um registro completo copia suas entradas para que mudanças posteriores não reescrevam a história.
+  worked_example: |
+    fonte = {"equipe": {"lider": "Mara"}, "etiquetas": ["noite"]}
+    copia = {"equipe": dict(fonte["equipe"]), "etiquetas": list(fonte["etiquetas"])}
+    fonte["equipe"]["lider"] = "Niko"
+    fonte["etiquetas"].append("tempestade")
+    print(fonte["equipe"]["lider"])
+    print(copia["equipe"]["lider"], copia["etiquetas"])
+  key_points:
+    - Fixe versões de código e dados porque métricas isoladas não reproduzem uma execução.
+    - Registre falhas porque omiti-las cria uma confiança falsa.
+    - Copie entradas aninhadas para manter o registro armazenado estável.
+brief: >
+  Escreva `record_experiment(run_id, code_version, data_version, config, metrics,
+  artifacts, status) -> dict`. IDs e versões são strings não vazias. `config` é um
+  mapeamento JSON-like não vazio com chaves string; valores aninhados podem ser null,
+  booleanos, strings, números finitos, listas ou mapeamentos do mesmo tipo. `metrics`
+  associa nomes string únicos e não vazios a números finitos, sem booleanos. `artifacts`
+  associa nomes string únicos e não vazios a strings de digest não vazias. O estado é
+  `running`, `completed` ou `failed`; uma execução concluída precisa de ao menos uma
+  métrica e um artefato. Retorne um registro profundo e independente com exatamente os
+  sete campos de entrada. Rejeite dados malformados ou não finitos e não altere argumentos.
+signature:
+  entrypoint: record_experiment
+  stub: |
+    def record_experiment(run_id, code_version, data_version, config, metrics, artifacts, status):
+        # Bind every result to reproducible inputs and artifacts.
+        pass
+constraints: {max_runtime_ms: 1000, max_memory_mb: 128, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [run-7, code-a1, data-v3, {epochs: 3, model: {width: 8}, flags: [fast, true]}, {loss: 0.25, accuracy: 0.9}, {weights: sha256:abc}, completed]
+      expect: {run_id: run-7, code_version: code-a1, data_version: data-v3, config: {epochs: 3, model: {width: 8}, flags: [fast, true]}, metrics: {loss: 0.25, accuracy: 0.9}, artifacts: {weights: sha256:abc}, status: completed}
+    - args: [run-fail, code-a2, data-v3, {epochs: 1}, {}, {}, failed]
+      expect: {run_id: run-fail, code_version: code-a2, data_version: data-v3, config: {epochs: 1}, metrics: {}, artifacts: {}, status: failed}
+  hidden:
+    - {args: ['', code-a1, data-v1, {x: 1}, {loss: 1}, {weights: digest}, completed], raises: ValueError}
+    - {args: [run, code, data, {}, {}, {}, running], raises: ValueError}
+    - {args: [run, code, data, {x: .nan}, {}, {}, failed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {loss: true}, {}, failed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {loss: .inf}, {}, failed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {loss: 1}, {weights: ''}, completed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {}, {}, completed], raises: ValueError}
+    - {args: [run, code, data, {x: 1}, {}, {}, unknown], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais fatos outra pessoa precisaria para distinguir e reproduzir esta execução?"}
+  - {level: 2, text: "Valide o registro completo e depois copie recursivamente contêineres JSON-like."}
+  - {level: 3, text: "Em outro manifesto, reconstrua contêineres aninhados explicitamente: `copia = {'equipe': dict(fonte['equipe'])}`."}
+solution: |
+  def record_experiment(run_id, code_version, data_version, config, metrics, artifacts, status):
+      import math
+      def copy_json(value):
+          if value is None or type(value) in (str, bool):
+              return value
+          if type(value) in (int, float):
+              try:
+                  if math.isfinite(value):
+                      return value
+              except (OverflowError, TypeError):
+                  pass
+              raise ValueError("invalid JSON number")
+          if type(value) is list:
+              return [copy_json(item) for item in value]
+          if type(value) is dict and all(type(key) is str for key in value):
+              return {key: copy_json(item) for key, item in value.items()}
+          raise ValueError("invalid JSON value")
+      if any(type(value) is not str or not value.strip() for value in (run_id, code_version, data_version)):
+          raise ValueError("invalid run identity")
+      if type(config) is not dict or not config or any(type(key) is not str or not key.strip() for key in config):
+          raise ValueError("invalid config")
+      if type(metrics) is not dict or any(type(key) is not str or not key.strip() for key in metrics):
+          raise ValueError("invalid metrics")
+      for value in metrics.values():
+          if type(value) not in (int, float):
+              raise ValueError("invalid metric")
+          try:
+              finite = math.isfinite(value)
+          except (OverflowError, TypeError):
+              finite = False
+          if not finite:
+              raise ValueError("invalid metric")
+      if type(artifacts) is not dict or any(type(key) is not str or not key.strip() or type(value) is not str or not value.strip() for key, value in artifacts.items()):
+          raise ValueError("invalid artifacts")
+      if status not in ("running", "completed", "failed") or type(status) is not str:
+          raise ValueError("invalid status")
+      if status == "completed" and (not metrics or not artifacts):
+          raise ValueError("incomplete completed run")
+      return {"run_id": run_id, "code_version": code_version, "data_version": data_version, "config": copy_json(config), "metrics": dict(metrics), "artifacts": dict(artifacts), "status": status}

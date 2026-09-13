@@ -1,0 +1,72 @@
+id: ai-nlp-03
+title: Trace an inference pipeline
+track: ai-engineering
+island: nlp-and-transformers
+order: 3
+difficulty: challenging
+tags: [ai-engineering, transformers, inference, pipeline, requires-ai-ml]
+xp: 45
+concepts: [inference-pipelines, tokenizer-boundaries, model-config-and-weights]
+teaching:
+  analogy: A harbor inspection has separate desks for intake, measurement, and release. The final stamp is not the raw scale reading.
+  explanation: An inference pipeline preprocesses text into tensors, runs the model without training, then postprocesses logits into probabilities and a task label. Keeping the stages explicit exposes shapes, transformations, and decision rules.
+  worked_example: |
+    stages = ["tokenize", "model", "softmax", "label"]
+    print(" -> ".join(stages))
+  key_points:
+    - Tokenization is preprocessing.
+    - Logits are raw model outputs.
+    - Probabilities and labels are postprocessing.
+brief: >
+  Write `trace_inference(text, max_length) -> dict`. Use the local vocabulary from mission 01
+  and a tiny BERT classifier configured as in mission 02. Zero every parameter, then set classifier
+  bias to `[0.25, 0.75]`. Run eval inference and return stage names, tokens, input shape, rounded
+  logits and probabilities, and label `negative` or `positive`. Reject invalid input.
+signature:
+  entrypoint: trace_inference
+  stub: |
+    def trace_inference(text, max_length):
+        # Preserve preprocessing, model, and postprocessing evidence.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [Hello seas, 6]
+      expect: {stages: [tokenize, model, softmax, label], tokens: ['[CLS]', hello, sea, '##s', '[SEP]', '[PAD]'], input_shape: [1, 6], logits: [0.25, 0.75], probabilities: [0.377541, 0.622459], label: positive}
+    - args: [unknown, 4]
+      expect: {stages: [tokenize, model, softmax, label], tokens: ['[CLS]', '[UNK]', '[SEP]', '[PAD]'], input_shape: [1, 4], logits: [0.25, 0.75], probabilities: [0.377541, 0.622459], label: positive}
+  hidden:
+    - {args: ['', 4], raises: ValueError}
+    - {args: [hello, 1], raises: ValueError}
+    - {args: [hello, true], raises: ValueError}
+    - {args: [[], 4], raises: ValueError}
+    - {args: [hello, 17], raises: ValueError}
+hints:
+  - {level: 1, text: "Which returned values belong before, inside, and after the model?"}
+  - {level: 2, text: "Tokenize to tensors, call `model.eval()`, then run under `torch.inference_mode()`."}
+  - {level: 3, text: "Apply `torch.softmax(logits, dim=-1)` and map the largest index to the task label."}
+solution: |
+  def trace_inference(text, max_length):
+      from pathlib import Path
+      from tempfile import TemporaryDirectory
+      import torch
+      from transformers import BertConfig, BertForSequenceClassification, BertTokenizer
+      if not isinstance(text, str) or not text.strip() or type(max_length) is not int or not 2 <= max_length <= 16:
+          raise ValueError("invalid inference input")
+      vocabulary = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "hello", "world", "sea", "##s", "model"]
+      with TemporaryDirectory() as folder:
+          path = Path(folder) / "vocab.txt"; path.write_text("\n".join(vocabulary), encoding="utf-8")
+          tokenizer = BertTokenizer(vocab=str(path), do_lower_case=True)
+          encoded = tokenizer(text, max_length=max_length, truncation=True, padding="max_length", return_tensors="pt")
+      config = BertConfig(vocab_size=10, hidden_size=8, num_hidden_layers=1, num_attention_heads=2, intermediate_size=16, num_labels=2, max_position_embeddings=16)
+      model = BertForSequenceClassification(config)
+      with torch.no_grad():
+          for parameter in model.parameters(): parameter.zero_()
+          model.classifier.bias.copy_(torch.tensor([0.25, 0.75]))
+      model.eval()
+      with torch.inference_mode():
+          logits = model(**encoded).logits
+          probabilities = torch.softmax(logits, dim=-1)
+      ids = encoded["input_ids"][0].tolist()
+      scores = [round(value, 6) for value in probabilities[0].tolist()]
+      return {"stages": ["tokenize", "model", "softmax", "label"], "tokens": tokenizer.convert_ids_to_tokens(ids), "input_shape": list(encoded["input_ids"].shape), "logits": [round(value, 6) for value in logits[0].tolist()], "probabilities": scores, "label": ["negative", "positive"][probabilities.argmax(dim=-1).item()]}

@@ -1,0 +1,80 @@
+id: ai-retrieval-02
+title: Meça o ângulo
+track: ai-engineering
+island: retrieval
+order: 2
+difficulty: moderate
+tags: [ai-engineering, retrieval, cosine-similarity]
+xp: 30
+concepts: [sparse-representation, similarity-scoring]
+teaching:
+  analogy: |
+    Duas bússolas podem apontar na mesma direção mesmo quando uma seta é maior. O ângulo
+    compara direção; ele não premia o desenho maior.
+  explanation: |
+    Similaridade de cosseno compara a direção de dois vetores esparsos. O produto escalar
+    mede peso compartilhado e as magnitudes removem a vantagem de textos longos. Um vetor
+    zero não tem direção e recebe similaridade zero.
+  worked_example: |
+    from math import sqrt
+    a = [1, 1]
+    b = [2, 0]
+    dot = sum(left * right for left, right in zip(a, b))
+    cosine = dot / (sqrt(sum(x * x for x in a)) * sqrt(sum(x * x for x in b)))
+    print(cosine)
+  key_points:
+    - Similaridade é uma pontuação, não uma probabilidade.
+    - Termos ausentes em vetores esparsos contribuem com zero.
+    - Normalizar a magnitude impede textos longos de vencerem apenas pelo tamanho.
+brief: |
+  Escreva `cosine_similarity(left, right)` para dicionários de pesos numéricos não
+  negativos. Retorne um float entre 0 e 1, ou `0.0` se uma magnitude for zero. Lance
+  `ValueError` para peso negativo ou não numérico.
+signature:
+  entrypoint: cosine_similarity
+  stub: |
+    def cosine_similarity(left, right):
+        # Compare a direção dos vetores, não o tamanho bruto.
+        pass
+constraints: {max_runtime_ms: 2000, max_memory_mb: 128}
+tests:
+  visible:
+    - args: [{port: 1, tide: 1}, {port: 2, tide: 2}]
+      expect: 1.0
+      tolerance: 0.000001
+    - args: [{port: 1}, {tide: 4}]
+      expect: 0.0
+      tolerance: 0.000001
+  hidden:
+    - args: [{}, {}]
+      expect: 0.0
+    - args: [{port: 0}, {port: 1}]
+      expect: 0.0
+    - args: [{a: 1, b: 1}, {a: 1}]
+      expect: 0.7071067811865475
+      tolerance: 0.000001
+    - args: [{a: 1}, {a: -1}]
+      raises: ValueError
+    - args: [{a: high}, {a: 1}]
+      raises: ValueError
+hints:
+  - {level: 1, text: "Quais termos entram no produto escalar e como se calcula cada magnitude?"}
+  - {level: 2, text: "Valide os mapas, calcule o produto compartilhado e divida pelas duas magnitudes."}
+  - level: 3
+    text: |
+      Para listas numéricas, divida o produto escalar por
+      `sqrt(sum(x*x)) * sqrt(sum(y*y))`, exceto quando uma magnitude for zero.
+solution: |
+  def cosine_similarity(left, right):
+      from math import sqrt
+
+      for vector in (left, right):
+          for weight in vector.values():
+              if not isinstance(weight, (int, float)) or weight < 0:
+                  raise ValueError("weights must be non-negative numbers")
+      left_size = sqrt(sum(weight * weight for weight in left.values()))
+      right_size = sqrt(sum(weight * weight for weight in right.values()))
+      if left_size == 0 or right_size == 0:
+          return 0.0
+      dot = sum(weight * right.get(term, 0) for term, weight in left.items())
+      return dot / (left_size * right_size)

@@ -1,0 +1,66 @@
+id: ai-nlp-07
+title: Audite o estado da inferência
+track: ai-engineering
+island: nlp-and-transformers
+order: 7
+difficulty: challenging
+tags: [ai-engineering, transformers, inference, eval-mode, requires-ai-ml]
+xp: 45
+concepts: [inference-pipelines, model-config-and-weights]
+teaching:
+  analogy: Antes de medir, um inspetor trava máquinas ajustáveis e para de registrar alterações da oficina. Uma leitura feita no modo de oficina não é uma inspeção controlada.
+  explanation: "`model.eval()` muda camadas com estado, como dropout, para o comportamento de inferência. `torch.inference_mode()` interrompe o registro do autograd. Eles resolvem problemas diferentes e um pipeline confiável usa ambos."
+  worked_example: |
+    model.eval()
+    with torch.inference_mode():
+        output = model(inputs)
+  key_points:
+    - O modo eval altera o comportamento das camadas.
+    - O modo de inferência desativa o registro de gradientes.
+    - Os dois estados podem ser auditados separadamente.
+brief: >
+  Escreva `audit_inference_state(sequence_length) -> dict`. Construa o classificador BERT
+  minúsculo da missão 02, registre seu sinalizador de treinamento inicial, mude para eval e faça
+  inferência sobre uma linha de tokens válidos sob `torch.inference_mode()`. Retorne sinalizadores,
+  formato da saída, se os logits exigem gradientes e logits arredondados após zerar os parâmetros.
+  Aceite apenas comprimentos de 2 a 16.
+signature:
+  entrypoint: audit_inference_state
+  stub: |
+    def audit_inference_state(sequence_length):
+        # Prove que o modo das camadas e o estado do autograd estão controlados.
+        pass
+constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [4]
+      expect: {initial_training: true, eval_training: false, output_shape: [1, 2], requires_grad: false, logits: [0.0, 0.0]}
+    - args: [16]
+      expect: {initial_training: true, eval_training: false, output_shape: [1, 2], requires_grad: false, logits: [0.0, 0.0]}
+  hidden:
+    - {args: [1], raises: ValueError}
+    - {args: [17], raises: ValueError}
+    - {args: [true], raises: ValueError}
+    - {args: [4.0], raises: ValueError}
+    - {args: [-4], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual chave controla as camadas e qual contexto controla o registro do grafo?"}
+  - {level: 2, text: "Registre `model.training`, chame `model.eval()` e então entre em `torch.inference_mode()`."}
+  - {level: 3, text: "Inspecione `logits.requires_grad` e retorne o formato da saída após a chamada controlada."}
+solution: |
+  def audit_inference_state(sequence_length):
+      import torch
+      from transformers import BertConfig, BertForSequenceClassification
+      if type(sequence_length) is not int or not 2 <= sequence_length <= 16:
+          raise ValueError("invalid sequence length")
+      config = BertConfig(vocab_size=10, hidden_size=8, num_hidden_layers=1, num_attention_heads=2, intermediate_size=16, num_labels=2, max_position_embeddings=16)
+      model = BertForSequenceClassification(config)
+      initial = model.training
+      with torch.no_grad():
+          for parameter in model.parameters(): parameter.zero_()
+      model.eval()
+      inputs = torch.full((1, sequence_length), 5, dtype=torch.int64)
+      mask = torch.ones_like(inputs)
+      with torch.inference_mode():
+          logits = model(input_ids=inputs, attention_mask=mask).logits
+      return {"initial_training": initial, "eval_training": model.training, "output_shape": list(logits.shape), "requires_grad": logits.requires_grad, "logits": [round(value, 6) for value in logits[0].tolist()]}

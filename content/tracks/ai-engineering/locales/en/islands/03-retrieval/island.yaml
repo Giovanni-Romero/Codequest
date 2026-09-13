@@ -1,0 +1,19 @@
+id: retrieval
+name: Retrieval
+track: ai-engineering
+order: 3
+theme: Finding evidence before asking for an answer
+description: |
+  A model cannot use evidence it never receives. You turn text into transparent term
+  features, score relevance, rank results, and refuse weak matches.
+
+concepts:
+  - sparse-representation
+  - similarity-scoring
+  - top-k-ranking
+  - relevance-thresholds
+
+unlock_requires:
+  requires_mission: ai-prompts-08
+
+completion_reward_xp: 180

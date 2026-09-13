@@ -1,0 +1,77 @@
+id: ai-pytorch-07
+title: Audit gradient reset
+track: ai-engineering
+island: pytorch-and-deep-learning
+order: 7
+difficulty: challenging
+tags: [ai-engineering, pytorch, module, autograd, requires-ai-ml]
+xp: 45
+concepts: [modules-and-forward, autograd-training-loop]
+teaching:
+  analogy: A navigator erases the previous correction mark before drawing the next one. Otherwise old and new errors add together and steer too far.
+  explanation: PyTorch accumulates gradients in parameter buffers. A correct loop clears them before every backward pass. Recording losses and final parameters makes the state changes auditable. This mission compares the trace, not only the final prediction.
+  worked_example: |
+    import torch
+    value = torch.tensor(1.0, requires_grad=True)
+    (value * 2).backward()
+    print(value.grad.item())
+    value.grad = None
+  key_points:
+    - Gradients accumulate by default.
+    - Clear them once per optimization step.
+    - Trace intermediate losses to diagnose training order.
+brief: >
+  Write `audit_gradient_reset(xs, ys, learning_rate) -> dict`. Train a zero-initialized
+  `nn.Linear(1, 1)` for exactly two SGD steps. Clear gradients before each backward pass.
+  Return the two pre-update losses and final weight and bias, rounded to six decimals.
+  Reject invalid inputs.
+signature:
+  entrypoint: audit_gradient_reset
+  stub: |
+    def audit_gradient_reset(xs, ys, learning_rate):
+        # Preserve a two-step trace proving gradients were reset.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args: [[0, 1], [0, 2], 0.1]
+      expect: {losses: [2.0, 1.3], weight: 0.36, bias: 0.34}
+    - args: [[1], [1], 0.25]
+      expect: {losses: [1.0, 0.0], weight: 0.5, bias: 0.5}
+  hidden:
+    - {args: [[], [], 0.1], raises: ValueError}
+    - {args: [[1], [1, 2], 0.1], raises: ValueError}
+    - {args: [[true], [1], 0.1], raises: ValueError}
+    - {args: [[1], [1], 0], raises: ValueError}
+    - {args: [[1], [.inf], 0.1], raises: ValueError}
+hints:
+  - {level: 1, text: "What remains in each parameter's gradient buffer after backward?"}
+  - {level: 2, text: "Call `optimizer.zero_grad()` before each `loss.backward()`."}
+  - {level: 3, text: "For another optimizer, append `loss.item()` before clearing, backpropagating, and stepping."}
+solution: |
+  def audit_gradient_reset(xs, ys, learning_rate):
+      import math
+      import torch
+      from torch import nn
+      if not isinstance(xs, list) or not xs or not isinstance(ys, list) or len(xs) != len(ys):
+          raise ValueError("invalid samples")
+      limit = torch.finfo(torch.float32).max
+      if any(type(value) not in (int, float) or not -limit <= value <= limit for value in xs + ys) or type(learning_rate) not in (int, float) or not math.isfinite(learning_rate) or learning_rate <= 0:
+          raise ValueError("invalid values")
+      inputs = torch.tensor(xs, dtype=torch.float32).reshape(-1, 1)
+      targets = torch.tensor(ys, dtype=torch.float32).reshape(-1, 1)
+      model = nn.Linear(1, 1)
+      with torch.no_grad():
+          model.weight.zero_(); model.bias.zero_()
+      optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+      loss_fn = nn.MSELoss()
+      losses = []
+      for _ in range(2):
+          loss = loss_fn(model(inputs), targets)
+          if not torch.isfinite(loss):
+              raise ValueError("non-finite training state")
+          losses.append(round(loss.item(), 6))
+          optimizer.zero_grad(); loss.backward(); optimizer.step()
+          if any(not torch.isfinite(parameter).all() for parameter in model.parameters()):
+              raise ValueError("non-finite training state")
+      return {"losses": losses, "weight": round(model.weight.item(), 6), "bias": round(model.bias.item(), 6)}
