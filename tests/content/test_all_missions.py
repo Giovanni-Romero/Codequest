@@ -44,6 +44,9 @@ AI_NEW_CONCEPT_ISLANDS = (
     "15-responsible-ai",
     "16-mlops-and-model-lifecycle",
     "17-langchain",
+    "18-langgraph",
+    "19-llamaindex",
+    "20-pydanticai",
 )
 MISSION_PATHS = [path for catalogue in CATALOGUES for path in iter_mission_paths(catalogue)]
 SOURCE_MISSION_PATHS = [
@@ -119,9 +122,12 @@ def test_the_declared_solution_passes_its_own_tests(path):
     ):
         pytest.skip("install the ai-ml extra to execute this mission")
     if "requires-ai-orchestration" in mission.tags and any(
-        importlib.util.find_spec(package) is None for package in ("langchain", "langgraph")
+        importlib.util.find_spec(package) is None
+        for package in ("langchain", "langgraph", "pydantic_ai")
     ):
         pytest.skip("install the ai-orchestration extra to execute this mission")
+    if "requires-ai-rag" in mission.tags and importlib.util.find_spec("llama_index") is None:
+        pytest.skip("install the ai-rag extra to execute this mission")
 
     outcome = GameSession().check_solution(mission)
 
@@ -246,7 +252,7 @@ def test_ai_engineering_ships_complete_islands_in_order(locale):
     assert [
         island.unlock_requires.requires_mission for island in service.islands
     ] == expected_unlocks
-    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-langchain-08"
+    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-pydanticai-08"
 
 
 def test_ai_orchestration_extra_pins_the_shipped_frameworks():
@@ -255,6 +261,15 @@ def test_ai_orchestration_extra_pins_the_shipped_frameworks():
     assert project["project"]["optional-dependencies"]["ai-orchestration"] == [
         "langchain>=1.4,<1.5",
         "langgraph>=1.2,<1.3",
+        "pydantic-ai-slim>=2.43,<2.44",
+    ]
+
+
+def test_ai_rag_extra_pins_llamaindex():
+    project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert project["project"]["optional-dependencies"]["ai-rag"] == [
+        "llama-index>=0.14,<0.15",
     ]
 
 

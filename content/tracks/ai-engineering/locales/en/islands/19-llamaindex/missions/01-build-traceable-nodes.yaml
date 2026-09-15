@@ -1,0 +1,56 @@
+id: ai-llamaindex-01
+title: Build traceable nodes
+track: ai-engineering
+island: llamaindex
+order: 1
+difficulty: expert
+tags: [ai-engineering, llamaindex, requires-ai-rag]
+xp: 60
+concepts: [llamaindex-documents-nodes]
+teaching:
+  analogy: A library card keeps every copied note tied to its original book.
+  explanation: "A Document is the raw source the pipeline receives. A TextNode is the retrievable unit built from it, carrying text plus metadata. The source_id metadata is the durable link back to the owning Document. This mission builds one node per document and returns each node id with its text and source link."
+  worked_example: |
+    from llama_index.core import Document
+    from llama_index.core.schema import TextNode
+    source = Document(text="rye needs cold soil", doc_id="packet-7")
+    node = TextNode(text=source.text, id_="packet-7", metadata={"source_id": source.doc_id})
+    print(node.node_id, node.text, node.metadata["source_id"])
+  key_points:
+    - Create one node per document, because retrieval can only cite what was explicitly stored.
+    - Copy the document id into source_id metadata, because list position is not a durable identifier.
+    - Reject malformed documents with ValueError, because a node without provenance poisons every later answer.
+brief: Write `build_traceable_nodes(documents) -> list[dict]`. Each document has string `id` and `text`. Build a real `Document` per input and a `TextNode` carrying `source_id` metadata; return node records with `id`, `text`, and `source_id`.
+signature:
+  entrypoint: build_traceable_nodes
+  stub: |
+    def build_traceable_nodes(documents):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{id: d1, text: blue sky}]], expect: [{id: d1, text: blue sky, source_id: d1}]}
+    - {args: [[{id: d2, text: green field}, {id: d3, text: red boat}]], expect: [{id: d2, text: green field, source_id: d2}, {id: d3, text: red boat, source_id: d3}]}
+  hidden:
+    - {args: [[]], raises: ValueError}
+    - {args: [[{id: '', text: x}]], raises: ValueError}
+    - {args: [[{id: d, text: 1}]], raises: ValueError}
+    - {args: [not-a-list], raises: ValueError}
+hints:
+  - {level: 1, text: "What value lets a later answer point back to its document?"}
+  - {level: 2, text: "Create a Document and a TextNode with source_id metadata."}
+  - {level: 3, text: "A node can use `TextNode(text=note, id_=key, metadata={'source_id': key})`."}
+solution: |
+  def build_traceable_nodes(documents):
+      from llama_index.core import Document
+      from llama_index.core.schema import TextNode
+      if type(documents) is not list or not documents:
+          raise ValueError("documents must be a non-empty list")
+      result = []
+      for document in documents:
+          if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
+              raise ValueError("invalid document")
+          source = Document(text=document["text"], doc_id=document["id"])
+          node = TextNode(text=source.text, id_=document["id"], metadata={"source_id": source.doc_id})
+          result.append({"id": node.node_id, "text": node.text, "source_id": node.metadata["source_id"]})
+      return result

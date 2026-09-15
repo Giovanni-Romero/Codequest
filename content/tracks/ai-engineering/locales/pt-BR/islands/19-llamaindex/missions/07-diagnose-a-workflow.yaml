@@ -1,0 +1,66 @@
+id: ai-llamaindex-07
+title: Diagnostique um workflow
+track: ai-engineering
+island: llamaindex
+order: 7
+difficulty: expert
+tags: [ai-engineering, llamaindex, requires-ai-rag]
+xp: 60
+concepts: [llamaindex-query-engines, llamaindex-workflows]
+teaching:
+  analogy: Um painel de voos mostra a primeira conexão cancelada.
+  explanation: "Um diagnóstico repete eventos ordenados de etapa num Workflow real. Um @step consome um evento Chain com os itens restantes e emite o próximo Chain ou um veredito StopEvent. Uma entrada failed:etapa para a repetição e nomeia a etapa. Etapas desconhecidas levantam ValueError em vez de passar em silêncio."
+  worked_example: |
+    import asyncio
+    from llama_index.core.workflow import Context, Event, StartEvent, StopEvent, Workflow, step
+    class Scanned(Event):
+        code: str
+    class ScanFlow(Workflow):
+        @step
+        async def scan(self, ctx: Context, ev: StartEvent) -> StopEvent:
+            return StopEvent(result=f"parcel:{ev.code}")
+    async def scan_parcel(): return await ScanFlow(timeout=30).run(code="ZX-9")
+    print(asyncio.run(scan_parcel()))
+  key_points:
+    - Repita eventos por métodos @step, porque um for-loop sobre Eventos nunca exercita o runtime do workflow.
+    - Carregue itens restantes num evento Chain tipado, porque listas sem tipo deixam etapas com erro passar em silêncio.
+    - Pare na primeira entrada com falha, porque eventos seguintes descrevem trabalho que nunca houve.
+brief: >
+  Escreva `diagnose_workflow(events) -> str`. Aceite uma lista não vazia ordenada de
+  strings e repita-a num `Workflow` real do LlamaIndex: um `@step` consome um evento
+  tipado `Chain` de itens restantes e emite o próximo `Chain` ou um veredito
+  `StopEvent`. Devolva a etapa com falha para entrada `failed:<etapa>`, ou
+  `complete`; levante ValueError para etapas desconhecidas.
+signature: {entrypoint: diagnose_workflow, stub: "def diagnose_workflow(events):\n    pass"}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: [[ingest, retrieve, 'failed:retrieve']], expect: retrieve}, {args: [[ingest, retrieve, respond]], expect: complete}]
+  hidden: [{args: [[ingest, 'failed:ingest']], expect: ingest}, {args: [[ingest, failed:other]], raises: ValueError}, {args: [[]], raises: ValueError}, {args: [bad], raises: ValueError}]
+hints: [{level: 1, text: "Qual evento carrega a fronteira da falha?"}, {level: 2, text: "Repita a lista num Workflow cujo @step consome eventos Chain."}, {level: 3, text: "Uma falha começa com `failed:` e nomeia uma etapa conhecida."}]
+solution: |
+  def diagnose_workflow(events):
+      import asyncio
+      from llama_index.core.workflow import Context, Event, StartEvent, StopEvent, Workflow, step
+      stages = {"ingest", "retrieve", "respond"}
+      if type(events) is not list or not events or any(type(item) is not str for item in events):
+          raise ValueError("invalid events")
+      class Chain(Event):
+          remaining: list
+      class AuditFlow(Workflow):
+          @step
+          async def consume(self, ctx: Context, ev: StartEvent | Chain) -> Chain | StopEvent:
+              items = ev.remaining if isinstance(ev, Chain) else getattr(ev, "entries", [])
+              if not items:
+                  return StopEvent(result="complete")
+              head, rest = items[0], items[1:]
+              if head.startswith("failed:"):
+                  failed = head.removeprefix("failed:")
+                  if failed not in stages:
+                      raise ValueError("unknown stage")
+                  return StopEvent(result=failed)
+              if head not in stages:
+                  raise ValueError("unknown stage")
+              return Chain(remaining=rest)
+      async def audit():
+          return await AuditFlow(timeout=30).run(entries=events)
+      return asyncio.run(audit())

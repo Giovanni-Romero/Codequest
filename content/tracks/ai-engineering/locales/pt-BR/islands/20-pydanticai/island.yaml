@@ -1,0 +1,9 @@
+id: pydanticai
+name: PydanticAI
+track: ai-engineering
+order: 20
+theme: Contratos tipados, dependências injetadas, ferramentas autorizadas e falhas explícitas
+concepts: [pydanticai-agent-contracts, pydanticai-dependencies, pydanticai-tools, pydanticai-typed-output]
+unlock_requires: {requires_mission: ai-llamaindex-08}
+completion_reward_xp: 300
+

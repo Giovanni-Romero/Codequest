@@ -23,7 +23,7 @@ which was Island 7's `files:` feature — so this is the seventh.
 
 ### 2. `[AI-ENG:debugging-methodology]` was promised and never attached
 
-`docs/curriculum/python-syllabus.md` said *"bridge, to attach when mission 4 is
+`docs/curriculum/python/syllabus.md` said *"bridge, to attach when mission 4 is
 written"*. Island 6 mission 4 was written months ago and the bridge was nowhere: not in
 `src/`, not in the mission, not in the index.
 
@@ -36,7 +36,7 @@ and its Portuguese mirror.
 
 ### 3. Bridges that live in content had no index and no verification
 
-`docs/ai-eng-bookmarks.md` indexed 19 bookmarks, all in `src/`. `concurrency-cost` lived
+`docs/curriculum/ai-engineering/bookmarks.md` indexed 19 bookmarks, all in `src/`. `concurrency-cost` lived
 in a mission YAML and appeared in no index at all.
 
 This mattered more than it looked. The whole argument for the index is that a stale

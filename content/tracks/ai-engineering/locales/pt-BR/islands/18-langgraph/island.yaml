@@ -1,0 +1,8 @@
+id: langgraph
+name: LangGraph
+track: ai-engineering
+order: 18
+theme: Estado explicito, checkpoints duraveis e decisoes humanas responsaveis
+concepts: [langgraph-state, langgraph-nodes-edges, langgraph-checkpoints, langgraph-human-loop]
+unlock_requires: {requires_mission: ai-langchain-08}
+completion_reward_xp: 300

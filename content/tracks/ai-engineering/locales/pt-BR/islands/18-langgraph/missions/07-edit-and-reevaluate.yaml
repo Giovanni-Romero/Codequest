@@ -1,0 +1,36 @@
+id: ai-langgraph-07
+title: Edite e reavalie
+track: ai-engineering
+island: langgraph
+order: 7
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-checkpoints, langgraph-human-loop]
+teaching: {analogy: "Alterar uma receita a devolve ao farmaceutico antes de ser atendida.", explanation: "Uma edicao humana altera o estado e deve voltar para a verificacao de politica. Aprovacao nunca pula validacao.", worked_example: "scope = edited; risk = assess(scope)", key_points: ["Edicoes alteram estado", "Reavalie edicoes", "Silencio nao concede"]}
+brief: "Escreva `edit_and_reevaluate(decision, edited_risk) -> dict`. Um pedido de risco 3 aguarda revisao humana: `edit` deve voltar para avaliacao levando o novo risco como estado, e apenas risco 1 termina concedido. `reject` termina rejeitado. Represente revisao e avaliacao como nos do grafo que leem estado explicito, nunca entradas capturadas."
+signature: {entrypoint: edit_and_reevaluate, stub: "def edit_and_reevaluate(decision, edited_risk):\n    pass"}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: [edit, 1], expect: {risk: 1, status: granted, trace: [review, assess, grant]}}, {args: [reject, 1], expect: {risk: 3, status: rejected, trace: [review, reject]}}]
+  hidden: [{args: [edit, 3], expect: {risk: 3, status: expired, trace: [review, assess, expire]}}, {args: [approve, 1], raises: ValueError}, {args: [edit, 0], raises: ValueError}, {args: [true, 1], raises: ValueError}]
+hints: [{level: 1, text: "Uma edicao precisa de nova verificacao de politica?"}, {level: 2, text: "Represente revisao e avaliacao como nos do grafo."}, {level: 3, text: "Encaminhe com `return 'grant' if risk == 1 else 'expire'`."}]
+solution: |
+  def edit_and_reevaluate(decision, edited_risk):
+      from typing import TypedDict
+      from langgraph.checkpoint.memory import InMemorySaver
+      from langgraph.graph import END, START, StateGraph
+      from langgraph.types import Command, interrupt
+      if type(decision) is not str or decision not in ("edit", "reject") or type(edited_risk) is not int or not 1 <= edited_risk <= 3: raise ValueError("invalid input")
+      class State(TypedDict, total=False):
+          risk: int
+          trace: list[str]
+          status: str
+      def review(s):
+          answer = interrupt({"action": "access"})
+          if answer == "edit": return Command(update={"risk": edited_risk, "trace": s.get("trace", []) + ["review"]}, goto="assess")
+          return Command(update={"trace": s.get("trace", []) + ["review"]}, goto="reject")
+      def reject(s): return {"status": "rejected", "trace": s["trace"] + ["reject"]}
+      def assess(s): return {"status": "granted" if s.get("risk") == 1 else "expired", "trace": s["trace"] + ["assess", "grant" if s.get("risk") == 1 else "expire"]}
+      b=StateGraph(State); b.add_node("review",review); b.add_node("reject",reject); b.add_node("assess",assess); b.add_edge(START,"review"); b.add_edge("reject",END); b.add_edge("assess",END)
+      g=b.compile(checkpointer=InMemorySaver()); c={"configurable":{"thread_id":"edit"}}; g.invoke({"risk": 3, "trace":[]},c); return g.invoke(Command(resume=decision),c)

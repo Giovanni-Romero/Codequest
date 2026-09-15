@@ -22,6 +22,7 @@ saves/
 
 # Testing and tooling
 .pytest_cache/
+.pytest-*/
 .ruff_cache/
 .coverage
 htmlcov/

@@ -1,0 +1,90 @@
+id: ai-pydanticai-03
+title: Autorize uma tool
+track: ai-engineering
+island: pydanticai
+order: 3
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-tools]
+teaching:
+  analogy: O cofre do banco precisa de duas chaves giradas juntas, e o guarda confere seu crachá antes que alguém toque numa chave.
+  explanation: "Uma tool é código com consequências, então a aplicação autoriza cada chamada antes que o corpo rode. A checagem da allowlist vem primeiro: chamadores desconhecidos ou fora da lista recebem negação sem nenhuma execução de tool. Só um chamador autorizado alcança o Agent, cuja tool stamp registra sua única chamada. TestModel dirige o loop offline, mas a fronteira de autorização é Python comum."
+  worked_example: |
+    from pydantic_ai import Agent, RunContext
+    from pydantic_ai.models.test import TestModel
+    agent = Agent(TestModel(), deps_type=dict)
+    @agent.tool
+    def shelve(ctx: RunContext) -> str:
+        return "oats:" + ctx.deps["shelf"]
+    print(agent.run_sync("shelve it", deps={"shelf": "top"}).output)
+  key_points:
+    - Autorize antes de construir a execução, porque checagem depois do corpo da tool é registro, não portão.
+    - Valide os argumentos da tool além do chamador, porque entrada ruim deve falhar mesmo para autorizados.
+    - Registre cada execução de tool, porque o log de chamadas é a evidência de que a negação nada rodou.
+    - Mantenha o modelo offline com TestModel, porque autorização não pode depender de provedor.
+brief: >
+  Escreva `pydanticai_tool(caller, document, allowed_callers) -> dict`. Exija strings
+  não vazias para caller e document, e lista não vazia de strings únicas não vazias
+  para allowed_callers, senão ValueError. Se o caller sem espaços não estiver listado,
+  devolva `{"status": "denied", "calls": [], "answer": None}` sem tocar em nenhuma
+  tool. Senão defina um `@dataclass Deps` com `caller: str`, construa um `Agent` real
+  com `TestModel` e `deps_type=Deps`, e registre uma tool `stamp(ctx:
+  RunContext[Deps])` que anexe `{"tool": "stamp", "caller": ...}` a uma lista calls e
+  devolva `"<caller>:<document sem espaços>"`. Execute `run_sync` com
+  `deps=Deps(...)`, parseie a saída JSON e devolva `{"status": "completed", "calls":
+  [...], "answer": <resultado da tool>}`. Sem rede ou provedor.
+signature:
+  entrypoint: pydanticai_tool
+  stub: |
+    def pydanticai_tool(caller, document, allowed_callers):
+        # Negue primeiro, depois rode a tool de carimbo para autorizados.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [ana, charter, [ana, beth]], expect: {status: completed, calls: [{tool: stamp, caller: ana}], answer: 'ana:charter'}}
+    - {args: [bob, charter, [ana]], expect: {status: denied, calls: [], answer: null}}
+  hidden:
+    - {args: [beth, '  charter  ', [ana, beth]], expect: {status: completed, calls: [{tool: stamp, caller: beth}], answer: 'beth:charter'}}
+    - {args: ['', charter, [ana]], raises: ValueError}
+    - {args: [ana, '   ', [ana]], raises: ValueError}
+    - {args: [ana, charter, []], raises: ValueError}
+    - {args: [ana, charter, [ana, ana]], raises: ValueError}
+    - {args: [ana, charter, [ana, 1]], raises: ValueError}
+    - {args: [ana, charter, ana], raises: ValueError}
+    - {args: [true, charter, [ana]], raises: ValueError}
+hints:
+  - {level: 1, text: "O que roda primeiro na sua função — a checagem da allowlist, ou o agente?"}
+  - {level: 2, text: "Devolva o mapeamento de negação antes de construir o Agent, e anexe a calls dentro da tool stamp."}
+  - {level: 3, text: "Um guarda de despensa devolve negação cedo com calls vazio, senão roda um Agent sobre TestModel com tool que registra."}
+solution: |
+  def pydanticai_tool(caller, document, allowed_callers):
+      import json
+      from dataclasses import dataclass
+      from pydantic_ai import Agent, RunContext
+      from pydantic_ai.models.test import TestModel
+      if type(caller) is not str or not caller.strip():
+          raise ValueError("invalid caller")
+      if type(document) is not str or not document.strip():
+          raise ValueError("invalid document")
+      if (type(allowed_callers) is not list or not allowed_callers
+              or any(type(name) is not str or not name.strip() for name in allowed_callers)
+              or len({name.strip() for name in allowed_callers}) != len(allowed_callers)):
+          raise ValueError("invalid allowlist")
+      clean_caller = caller.strip()
+      clean_document = document.strip()
+      if clean_caller not in [name.strip() for name in allowed_callers]:
+          return {"status": "denied", "calls": [], "answer": None}
+      calls = []
+      @dataclass
+      class Deps:
+          caller: str
+      agent = Agent(TestModel(), deps_type=Deps)
+      @agent.tool
+      def stamp(ctx: RunContext[Deps]) -> str:
+          calls.append({"tool": "stamp", "caller": ctx.deps.caller})
+          return ctx.deps.caller + ":" + clean_document
+      result = agent.run_sync("stamp it", deps=Deps(caller=clean_caller))
+      payload = json.loads(result.output)
+      return {"status": "completed", "calls": calls, "answer": payload["stamp"]}

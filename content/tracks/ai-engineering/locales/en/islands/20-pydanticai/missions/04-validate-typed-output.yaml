@@ -1,0 +1,119 @@
+id: ai-pydanticai-04
+title: Validate typed output
+track: ai-engineering
+island: pydanticai
+order: 4
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-typed-output]
+teaching:
+  analogy: "A customs form has three fates: accepted, one fixable typo you may correct and resubmit, or rejected with the reasons listed."
+  explanation: "output_type turns the agent answer into an application type, and strict fields reject anything off-shape. A repairable payload gets normalized and the run is retried inside the max_repairs budget. When the budget runs out or nothing can be repaired, the mission reports a typed failure instead of raising. TestModel keeps every attempt offline and deterministic."
+  worked_example: |
+    from pydantic import BaseModel, Field, StrictInt, StrictStr
+    from pydantic_ai import Agent
+    from pydantic_ai.models.test import TestModel
+    class BookReview(BaseModel):
+        title: StrictStr
+        stars: StrictInt = Field(ge=1, le=5)
+    agent = Agent(TestModel(custom_output_args={"title": "Dune", "stars": 5}), output_type=BookReview)
+    print(agent.run_sync("review it").output.model_dump())
+  key_points:
+    - Declare strict output fields, because lax coercion hides the difference between valid and repairable.
+    - Retry only after a real repair, because resubmitting the same payload wastes the budget.
+    - Honor max_repairs exactly, because an unbounded loop turns bad input into a hang.
+    - Report exhaustion as data with errors, because a raw exception tells the caller nothing actionable.
+brief: >
+  Write `pydanticai_output(payload, max_repairs) -> dict`. Require a dict payload and
+  a max_repairs of 0, 1, or 2, else ValueError. Define `Reading(BaseModel)` with
+  `code: StrictStr` (non-blank, checked by a validator that never strips) and `score:
+  StrictInt` between 0 and 10. A payload whose keys are not exactly code and score
+  fails at once. Otherwise run a real `Agent` with `TestModel(custom_output_args=...)`
+  and `output_type=Reading`: on success return `{"status": "ok", "report": {...},
+  "repairs": n}`. On `UnexpectedModelBehavior`, repair once per attempt (strip code;
+  convert padded numeric strings to int) while attempts remain; when the budget is
+  spent or no repair makes progress, return `{"status": "failed", "errors": [...]}`,
+  where each error reads `"field: reason"`. No network or provider.
+signature:
+  entrypoint: pydanticai_output
+  stub: |
+    def pydanticai_output(payload, max_repairs):
+        # Validate strictly, repair inside the budget, report exhaustion as data.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{code: g1, score: 7}, 1], expect: {status: ok, report: {code: g1, score: 7}, repairs: 0}}
+    - {args: [{code: '  g1  ', score: '7'}, 2], expect: {status: ok, report: {code: g1, score: 7}, repairs: 1}}
+  hidden:
+    - {args: [{code: g1, score: '7'}, 0], expect: {status: failed, errors: ['score: must be an integer from 0 to 10']}}
+    - {args: [{code: g1, score: high}, 2], expect: {status: failed, errors: ['score: must be an integer from 0 to 10']}}
+    - {args: [{code: '   ', score: 4}, 2], expect: {status: failed, errors: ['code: must be a non-blank string']}}
+    - {args: [{code: g1, score: 99}, 2], expect: {status: failed, errors: ['score: must be an integer from 0 to 10']}}
+    - {args: [{code: g1}, 2], expect: {status: failed, errors: ['payload: must hold exactly code and score']}}
+    - {args: [[code], 1], raises: ValueError}
+    - {args: [{code: g1, score: 7}, true], raises: ValueError}
+    - {args: [{code: g1, score: 7}, 3], raises: ValueError}
+hints:
+  - {level: 1, text: "Which payloads can a strip plus int() rescue, and which must stay failed?"}
+  - {level: 2, text: "Catch UnexpectedModelBehavior around run_sync, repair inside the budget, and return failed with errors."}
+  - {level: 3, text: "A library desk retries its strict review agent after normalizing, else files a failed verdict with errors."}
+solution: |
+  def pydanticai_output(payload, max_repairs):
+      from pydantic import BaseModel, Field, StrictInt, StrictStr, field_validator
+      from pydantic_ai import Agent
+      from pydantic_ai.exceptions import UnexpectedModelBehavior
+      from pydantic_ai.models.test import TestModel
+      if type(payload) is not dict:
+          raise ValueError("invalid payload")
+      if type(max_repairs) is not int or max_repairs not in (0, 1, 2):
+          raise ValueError("invalid repair budget")
+      class Reading(BaseModel):
+          code: StrictStr
+          score: StrictInt = Field(ge=0, le=10)
+          @field_validator("code")
+          @classmethod
+          def _non_blank(cls, value):
+              if not value.strip():
+                  raise ValueError("must be a non-blank string")
+              return value
+      def problems(candidate):
+          errors = []
+          code = candidate["code"]
+          score = candidate["score"]
+          if type(code) is not str or not code.strip():
+              errors.append("code: must be a non-blank string")
+          if type(score) is bool or not isinstance(score, int) or not 0 <= score <= 10:
+              errors.append("score: must be an integer from 0 to 10")
+          return errors
+      def repair(candidate):
+          nxt = dict(candidate)
+          if type(nxt.get("code")) is str:
+              nxt["code"] = nxt["code"].strip()
+          raw = nxt.get("score")
+          if type(raw) is str:
+              cleaned = raw.strip()
+              if cleaned.lstrip("+-").isdigit():
+                  nxt["score"] = int(cleaned)
+          if problems(nxt) == problems(candidate):
+              return None
+          return nxt
+      current = dict(payload)
+      if set(current) != {"code", "score"}:
+          return {"status": "failed", "errors": ["payload: must hold exactly code and score"]}
+      used = 0
+      while True:
+          try:
+              agent = Agent(TestModel(custom_output_args=current), output_type=Reading)
+              outcome = agent.run_sync("read the gauge")
+              return {"status": "ok", "report": outcome.output.model_dump(), "repairs": used}
+          except UnexpectedModelBehavior:
+              errors = problems(current)
+              if used >= max_repairs:
+                  return {"status": "failed", "errors": errors}
+              nxt = repair(current)
+              if nxt is None:
+                  return {"status": "failed", "errors": errors}
+              current = nxt
+              used += 1

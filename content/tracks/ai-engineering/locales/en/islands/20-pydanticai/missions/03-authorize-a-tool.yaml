@@ -1,0 +1,90 @@
+id: ai-pydanticai-03
+title: Authorize a tool
+track: ai-engineering
+island: pydanticai
+order: 3
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-tools]
+teaching:
+  analogy: A bank vault needs two keys turned together, and the guard checks your badge before anyone touches a key.
+  explanation: "A tool is code with consequences, so the application authorizes each call before the body runs. The allowlist check happens first: unknown or unlisted callers get a denial with no tool execution at all. Only an authorized caller reaches the Agent, whose stamp tool records its one call. TestModel drives the loop offline, but the authorization boundary is ordinary Python."
+  worked_example: |
+    from pydantic_ai import Agent, RunContext
+    from pydantic_ai.models.test import TestModel
+    agent = Agent(TestModel(), deps_type=dict)
+    @agent.tool
+    def shelve(ctx: RunContext) -> str:
+        return "oats:" + ctx.deps["shelf"]
+    print(agent.run_sync("shelve it", deps={"shelf": "top"}).output)
+  key_points:
+    - Authorize before constructing the run, because a check after the tool body is a log entry, not a gate.
+    - Validate tool arguments as well as the caller, because bad input must fail even for authorized callers.
+    - Record each tool execution, because the call log is the evidence that denial ran nothing.
+    - Keep the model offline with TestModel, because authorization must not depend on a provider.
+brief: >
+  Write `pydanticai_tool(caller, document, allowed_callers) -> dict`. Require
+  non-blank strings for caller and document, and a non-empty list of unique non-blank
+  strings for allowed_callers, else ValueError. If the stripped caller is not listed,
+  return `{"status": "denied", "calls": [], "answer": None}` without touching any
+  tool. Otherwise define a `@dataclass Deps` with `caller: str`, build a real `Agent`
+  with `TestModel` and `deps_type=Deps`, and register one tool
+  `stamp(ctx: RunContext[Deps])` that appends `{"tool": "stamp", "caller": ...}` to a
+  calls list and returns `"<caller>:<stripped document>"`. Execute `run_sync` with
+  `deps=Deps(...)`, parse the JSON output, and return `{"status": "completed",
+  "calls": [...], "answer": <tool result>}`. No network or provider.
+signature:
+  entrypoint: pydanticai_tool
+  stub: |
+    def pydanticai_tool(caller, document, allowed_callers):
+        # Deny first, then run the stamping tool for authorized callers.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [ana, charter, [ana, beth]], expect: {status: completed, calls: [{tool: stamp, caller: ana}], answer: 'ana:charter'}}
+    - {args: [bob, charter, [ana]], expect: {status: denied, calls: [], answer: null}}
+  hidden:
+    - {args: [beth, '  charter  ', [ana, beth]], expect: {status: completed, calls: [{tool: stamp, caller: beth}], answer: 'beth:charter'}}
+    - {args: ['', charter, [ana]], raises: ValueError}
+    - {args: [ana, '   ', [ana]], raises: ValueError}
+    - {args: [ana, charter, []], raises: ValueError}
+    - {args: [ana, charter, [ana, ana]], raises: ValueError}
+    - {args: [ana, charter, [ana, 1]], raises: ValueError}
+    - {args: [ana, charter, ana], raises: ValueError}
+    - {args: [true, charter, [ana]], raises: ValueError}
+hints:
+  - {level: 1, text: "Which runs first in your function — the allowlist check, or the agent?"}
+  - {level: 2, text: "Return the denied mapping before building the Agent, and append to calls inside the stamp tool."}
+  - {level: 3, text: "A pantry guard returns denied early with empty calls, else runs an Agent on TestModel with a recording tool."}
+solution: |
+  def pydanticai_tool(caller, document, allowed_callers):
+      import json
+      from dataclasses import dataclass
+      from pydantic_ai import Agent, RunContext
+      from pydantic_ai.models.test import TestModel
+      if type(caller) is not str or not caller.strip():
+          raise ValueError("invalid caller")
+      if type(document) is not str or not document.strip():
+          raise ValueError("invalid document")
+      if (type(allowed_callers) is not list or not allowed_callers
+              or any(type(name) is not str or not name.strip() for name in allowed_callers)
+              or len({name.strip() for name in allowed_callers}) != len(allowed_callers)):
+          raise ValueError("invalid allowlist")
+      clean_caller = caller.strip()
+      clean_document = document.strip()
+      if clean_caller not in [name.strip() for name in allowed_callers]:
+          return {"status": "denied", "calls": [], "answer": None}
+      calls = []
+      @dataclass
+      class Deps:
+          caller: str
+      agent = Agent(TestModel(), deps_type=Deps)
+      @agent.tool
+      def stamp(ctx: RunContext[Deps]) -> str:
+          calls.append({"tool": "stamp", "caller": ctx.deps.caller})
+          return ctx.deps.caller + ":" + clean_document
+      result = agent.run_sync("stamp it", deps=Deps(caller=clean_caller))
+      payload = json.loads(result.output)
+      return {"status": "completed", "calls": calls, "answer": payload["stamp"]}

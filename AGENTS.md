@@ -5,6 +5,10 @@ Read it fully before the first action of every session.
 Before curriculum-island work, also read `.cursor/rules/curriculum-island-error-ledger.mdc`
 and enforce its preflight and append-before-commit contract.
 
+> **Codex on Windows:** run every `rtk` command with the command tool's
+> `sandbox_permissions: "require_escalated"`. The Codex sandbox account has no Windows
+> Known Folder profile, so RTK cannot resolve its home or open its global tracking database.
+> The `rtk` prefix is approved; do not fall back to unprefixed commands.
 
 > ## ⚠️ Section 0 is SUSPENDED as of 2026-08-03
 >

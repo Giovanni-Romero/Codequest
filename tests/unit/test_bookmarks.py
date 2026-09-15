@@ -1,4 +1,4 @@
-"""Keeps docs/ai-eng-bookmarks.md honest.
+"""Keeps the AI Engineering bookmark index honest.
 
 An index with a stale line number is worse than no index: it sends the reader somewhere
 specific and wrong, with the confidence of a citation. These tests fail the build the
@@ -13,7 +13,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_ROOT = PROJECT_ROOT / "src" / "codequest"
 CONTENT_ROOT = PROJECT_ROOT / "content"
-INDEX = PROJECT_ROOT / "docs" / "ai-eng-bookmarks.md"
+INDEX = PROJECT_ROOT / "docs" / "curriculum" / "ai-engineering" / "bookmarks.md"
 
 BOOKMARK = re.compile(r"\[AI-ENG:([a-z-]+)\]")
 #: Rows look like: | `slug` | [src/codequest/x.py:42](src/codequest/x.py#L42) | ... |
@@ -32,11 +32,7 @@ def _bookmarked_files() -> list[Path]:
     """
     paths = sorted(PACKAGE_ROOT.rglob("*.py"))
     if CONTENT_ROOT.is_dir():
-        paths += sorted(
-            path
-            for path in CONTENT_ROOT.rglob("*.yaml")
-            if not any(part.endswith("-pt") for part in path.parts)
-        )
+        paths += sorted(path for path in CONTENT_ROOT.rglob("*.yaml") if "pt-BR" not in path.parts)
     return paths
 
 
@@ -58,7 +54,12 @@ def bookmarks_in_index() -> dict[str, tuple[str, int]]:
 
 def test_the_index_exists_and_has_rows():
     """Guards against a vacuous suite: an empty index would satisfy every check below."""
-    assert bookmarks_in_index(), "docs/ai-eng-bookmarks.md lists no bookmarks"
+    assert bookmarks_in_index(), "the AI Engineering bookmark index lists no bookmarks"
+
+
+def test_translated_catalogues_do_not_supply_bookmark_targets():
+    """The canonical English source must own each indexed learning bookmark."""
+    assert all("pt-BR" not in path.parts for path in _bookmarked_files())
 
 
 def test_every_indexed_bookmark_points_at_a_real_line():

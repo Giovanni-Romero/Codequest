@@ -1,0 +1,40 @@
+id: ai-langgraph-08
+title: Audit an access workflow
+track: ai-engineering
+island: langgraph
+order: 8
+difficulty: expert
+tags: [ai-engineering, langgraph, capstone, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-state, langgraph-nodes-edges, langgraph-checkpoints, langgraph-human-loop]
+teaching: {analogy: "An airport control room records the flight, routes it, waits for clearance, then opens one gate once.", explanation: "A durable graph makes access decisions inspectable. State holds the request, edges hold policy, checkpoints hold the place, and interrupt collects the human decision.", worked_example: "if approved: return {'status': 'granted'}", key_points: ["Use real LangGraph APIs", "Reevaluate edits", "Timeout never grants"]}
+brief: Write `audit_access_workflow(risk, decision, edited_risk) -> dict`. Use StateGraph, InMemorySaver, interrupt(), and Command. Decisions are approve, reject, edit, or timeout. Edit reevaluates risk; no path grants twice.
+signature: {entrypoint: audit_access_workflow, stub: "def audit_access_workflow(risk, decision, edited_risk):\n    pass"}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: [1, approve, 1], expect: {risk: 1, edited: false, status: granted, grants: 1, trace: [assess, review, grant]}}, {args: [3, reject, 1], expect: {risk: 3, edited: false, status: rejected, grants: 0, trace: [assess, review, reject]}}]
+  hidden: [{args: [3, edit, 1], expect: {risk: 1, edited: true, status: granted, grants: 1, trace: [assess, review, assess, grant]}}, {args: [2, timeout, 1], expect: {risk: 2, edited: false, status: expired, grants: 0, trace: [assess, review, expire]}}, {args: [0, approve, 1], raises: ValueError}, {args: [1, yes, 1], raises: ValueError}]
+hints: [{level: 1, text: "Which node must pause before access changes?"}, {level: 2, text: "Compile with InMemorySaver and resume interrupt with Command."}, {level: 3, text: "Keep the grant effect after the resumed review branch."}]
+solution: |
+  def audit_access_workflow(risk, decision, edited_risk):
+      from typing import TypedDict
+      from langgraph.checkpoint.memory import InMemorySaver
+      from langgraph.graph import END, START, StateGraph
+      from langgraph.types import Command, interrupt
+      if type(risk) is not int or type(edited_risk) is not int or not 1 <= risk <= 3 or not 1 <= edited_risk <= 3 or type(decision) is not str or decision not in ("approve", "reject", "edit", "timeout"): raise ValueError("invalid input")
+      class State(TypedDict, total=False):
+          risk: int
+          trace: list[str]
+          status: str
+          grants: int
+          edited: bool
+      def assess(s): return {"trace": s.get("trace", []) + ["assess"]}
+      def review(s):
+          answer = interrupt({"risk": s["risk"]})
+          if answer == "edit": return Command(update={"risk": edited_risk, "edited": True, "trace": s["trace"] + ["review"]}, goto="assess")
+          return Command(update={"trace": s["trace"] + ["review"]}, goto="grant" if answer == "approve" and s["risk"] == 1 else "reject" if answer == "reject" else "expire")
+      def grant(s): return {"status":"granted","grants":1,"trace":s["trace"]+["grant"]}
+      def reject(s): return {"status":"rejected","grants":0,"trace":s["trace"]+["reject"]}
+      def expire(s): return {"status":"expired","grants":0,"trace":s["trace"]+["expire"]}
+      b=StateGraph(State); [b.add_node(n,f) for n,f in (("assess",assess),("review",review),("grant",grant),("reject",reject),("expire",expire))]; b.add_edge(START,"assess"); b.add_conditional_edges("assess",lambda s: "grant" if s.get("edited") and s["risk"] == 1 else "expire" if s.get("edited") else "review"); b.add_edge("review",END); b.add_edge("grant",END); b.add_edge("reject",END); b.add_edge("expire",END)
+      g=b.compile(checkpointer=InMemorySaver()); c={"configurable":{"thread_id":"access"}}; g.invoke({"risk":risk,"trace":[],"edited":False},c); return g.invoke(Command(resume=decision),c)

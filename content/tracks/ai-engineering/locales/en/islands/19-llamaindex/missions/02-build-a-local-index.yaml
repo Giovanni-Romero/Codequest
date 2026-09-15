@@ -1,0 +1,57 @@
+id: ai-llamaindex-02
+title: Build a local index
+track: ai-engineering
+island: llamaindex
+order: 2
+difficulty: expert
+tags: [ai-engineering, llamaindex, requires-ai-rag]
+xp: 60
+concepts: [llamaindex-indexes]
+teaching:
+  analogy: A card catalog is rebuilt from books; it is not the books themselves.
+  explanation: "A VectorStoreIndex is derived data: it stores nodes plus embeddings for similarity search. MockEmbedding produces deterministic vectors, so the build stays offline and repeatable. The docstore holds every stored node by id. This mission returns those stored ids sorted, which is the auditable fingerprint of the build."
+  worked_example: |
+    from llama_index.core import VectorStoreIndex
+    from llama_index.core.embeddings.mock_embed_model import MockEmbedding
+    from llama_index.core.schema import TextNode
+    seeds = [TextNode(text="rye", id_="s1"), TextNode(text="oats", id_="s2")]
+    index = VectorStoreIndex(seeds, embed_model=MockEmbedding(embed_dim=2))
+    print(sorted(index.docstore.docs))
+  key_points:
+    - Index nodes, not raw strings, because only nodes carry the metadata retrieval must return.
+    - Use MockEmbedding offline, because real embeddings need network and break determinism.
+    - Return sorted stored ids, because an order-stable fingerprint is what a rebuild can be checked against.
+brief: Write `build_local_index(documents) -> list[str]`. Build `TextNode` objects and a real in-memory `VectorStoreIndex` with `MockEmbedding`, then return its stored node ids sorted.
+signature:
+  entrypoint: build_local_index
+  stub: |
+    def build_local_index(documents):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{id: b, text: blue}, {id: a, text: amber}]], expect: [a, b]}
+    - {args: [[{id: one, text: one}]], expect: [one]}
+  hidden:
+    - {args: [[]], raises: ValueError}
+    - {args: [[{id: '', text: x}]], raises: ValueError}
+    - {args: [[{id: a, text: 3}]], raises: ValueError}
+    - {args: [false], raises: ValueError}
+hints:
+  - {level: 1, text: "Which object receives nodes and keeps them in memory?"}
+  - {level: 2, text: "Use VectorStoreIndex with MockEmbedding."}
+  - {level: 3, text: "The pattern is `VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))`."}
+solution: |
+  def build_local_index(documents):
+      from llama_index.core import VectorStoreIndex
+      from llama_index.core.embeddings.mock_embed_model import MockEmbedding
+      from llama_index.core.schema import TextNode
+      if type(documents) is not list or not documents:
+          raise ValueError("documents must be a non-empty list")
+      nodes = []
+      for document in documents:
+          if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
+              raise ValueError("invalid document")
+          nodes.append(TextNode(text=document["text"], id_=document["id"], metadata={"source_id": document["id"]}))
+      index = VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))
+      return sorted(index.docstore.docs)

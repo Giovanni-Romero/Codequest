@@ -13,13 +13,13 @@ concept this mission introduces. One mission introduces exactly one new concept.
 
 ## File location
 
-`content/<language>/islands/<NN>-<island>/missions/<NN>-<slug>.yaml`
+`content/tracks/<track-id>/locales/<locale>/islands/<NN>-<island>/missions/<NN>-<slug>.yaml`
 
 ## Every mission ships bilingual: English, then a Portuguese mirror
 
-Established with the Foundations island (`content/python-pt/`). Once the English
-mission in `content/python/` is finished and passes review, produce its mirror in
-`content/python-pt/` at the identical path. Rules for the mirror, no exceptions:
+Established with the Foundations island. Once the English mission under locale `en`
+passes review, produce its mirror under locale `pt-BR` at the identical island and
+mission path. Rules for the mirror, no exceptions:
 
 - `id`, `track`, `island`, `order`, `difficulty`, `xp`, `concepts`, `tags`,
   `signature.entrypoint`, `tests`, `constraints`, and `solution` are **byte-identical**
@@ -33,14 +33,10 @@ mission in `content/python/` is finished and passes review, produce its mirror i
   English needs a real Portuguese equivalent, not a literal translation that loses the
   shape. If the analogy breaks in translation, find a new one for that language rather
   than force the original through.
-- Run `codequest check --content content --track python-pt` after the mirror is done —
-  the same solution file, unchanged, must still pass every hidden test. `--content` is
-  the *root* content directory, not the language folder itself: `MissionService` joins
-  `--content` with `--track` to find `track.yaml` (`<content>/<track>/track.yaml`), so
-  `--content content/python-pt` doubles up into `content/python-pt/python-pt/track.yaml`
-  and fails with a confusing `FileNotFoundError`. `python-pt` is a **directory name**
-  passed as `--track`, not a second track id — the loaded `Track.id` inside the file is
-  still `python` either way.
+- Run `codequest check --content content --track python --language pt` after the mirror
+  is done. `--content` is the content root, `--track` is the stable curriculum id, and
+  `--language` selects its localized catalogue. Passing a locale directory as
+  `--content` duplicates the hierarchy and fails with `FileNotFoundError`.
 
 ## The teaching block is the heart
 

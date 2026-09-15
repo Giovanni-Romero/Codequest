@@ -1,0 +1,51 @@
+id: ai-langgraph-02
+title: Route an access request
+track: ai-engineering
+island: langgraph
+order: 2
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-nodes-edges]
+teaching:
+  analogy: A rail switch sends each train to one declared track; it does not guess a destination halfway through.
+  explanation: Nodes do work and edges decide where work goes next. Conditional edges make a policy visible. Every branch needs a terminal path.
+  worked_example: |
+    def route(state):
+        return "fast" if state["priority"] else "normal"
+  key_points: [Nodes do work, Edges route work, Every path ends]
+brief: "Write `route_access_request(risk) -> dict`. Accept only integer risks 1 through 3. Build a StateGraph with a conditional edge: risk 3 is `review`, lower risks are `deny`."
+signature:
+  entrypoint: route_access_request
+  stub: |
+    def route_access_request(risk):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [3], expect: {risk: 3, status: review, trace: [route, review]}}
+    - {args: [1], expect: {risk: 1, status: denied, trace: [route, deny]}}
+  hidden:
+    - {args: [2], expect: {risk: 2, status: denied, trace: [route, deny]}}
+    - {args: [0], raises: ValueError}
+    - {args: [4], raises: ValueError}
+    - {args: [true], raises: ValueError}
+hints:
+  - {level: 1, text: "What single policy value selects the next node?"}
+  - {level: 2, text: "Use add_conditional_edges after the route node."}
+  - {level: 3, text: "A router may return `'left' if state['x'] else 'right'`."}
+solution: |
+  def route_access_request(risk):
+      from typing import TypedDict
+      from langgraph.graph import END, START, StateGraph
+      if type(risk) is not int or not 1 <= risk <= 3: raise ValueError("invalid risk")
+      class State(TypedDict):
+          risk: int
+          status: str
+          trace: list
+      def route(state): return {"trace": ["route"]}
+      def review(state): return {"status": "review", "trace": state["trace"] + ["review"]}
+      def deny(state): return {"status": "denied", "trace": state["trace"] + ["deny"]}
+      builder = StateGraph(State); builder.add_node("route", route); builder.add_node("review", review); builder.add_node("deny", deny)
+      builder.add_edge(START, "route"); builder.add_conditional_edges("route", lambda state: "review" if state["risk"] == 3 else "deny"); builder.add_edge("review", END); builder.add_edge("deny", END)
+      return builder.compile().invoke({"risk": risk, "trace": []})

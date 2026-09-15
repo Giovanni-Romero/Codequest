@@ -1,0 +1,32 @@
+id: ai-langgraph-06
+title: Retome sem repetir
+track: ai-engineering
+island: langgraph
+order: 6
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-nodes-edges, langgraph-checkpoints]
+teaching: {analogy: "Um bilhete carimbado nao recebe outro carimbo quando voce volta ao portao.", explanation: "Um estado com checkpoint pode registrar um efeito concluido para que a retomada nao o repita.", worked_example: "if state['done']: return {}; return {'done': True}", key_points: ["Registre efeitos", "Reutilize a thread", "Evite repeticao"]}
+brief: Escreva `resume_without_replay(thread_id) -> dict`. Use StateGraph e InMemorySaver. Duas invocacoes na mesma thread devem retornar exatamente uma entrada `grant` no trace.
+signature: {entrypoint: resume_without_replay, stub: "def resume_without_replay(thread_id):\n    pass"}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: [x], expect: {granted: true, grants: 1, trace: [grant]}}]
+  hidden: [{args: [y], expect: {granted: true, grants: 1, trace: [grant]}}, {args: [''], raises: ValueError}, {args: [1], raises: ValueError}, {args: ['  '], raises: ValueError}]
+hints: [{level: 1, text: "Qual fato do estado prova que o efeito ja ocorreu?"}, {level: 2, text: "Compile com InMemorySaver."}, {level: 3, text: "Proteja um efeito com `if state.get('done')`."}]
+solution: |
+  def resume_without_replay(thread_id):
+      from typing import TypedDict
+      from langgraph.checkpoint.memory import InMemorySaver
+      from langgraph.graph import END, START, StateGraph
+      if type(thread_id) is not str or not thread_id.strip(): raise ValueError("invalid thread")
+      class State(TypedDict):
+          granted: bool
+          grants: int
+          trace: list
+      def grant(state):
+          if state.get("granted"): return {}
+          return {"granted": True, "grants": 1, "trace": ["grant"]}
+      b = StateGraph(State); b.add_node("grant", grant); b.add_edge(START, "grant"); b.add_edge("grant", END); g = b.compile(checkpointer=InMemorySaver()); c = {"configurable": {"thread_id": thread_id}}
+      g.invoke({"granted": False, "grants": 0, "trace": []}, c); return g.invoke(None, c)

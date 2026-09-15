@@ -1,0 +1,79 @@
+id: ai-llamaindex-04
+title: Emit workflow events
+track: ai-engineering
+island: llamaindex
+order: 4
+difficulty: expert
+tags: [ai-engineering, llamaindex, requires-ai-rag]
+xp: 60
+concepts: [llamaindex-workflows]
+teaching:
+  analogy: A parcel tracker records each handoff so a lost package has a known last stop.
+  explanation: "A Workflow models work as steps connected by typed events. Each @step consumes one event type and emits the next, so the route is explicit. A failing stage returns a StopEvent whose result names the failure instead of continuing. The run executes offline with no model and no network."
+  worked_example: |
+    import asyncio
+    from llama_index.core.workflow import Event, StartEvent, StopEvent, Workflow, step
+    class Weighed(Event):
+        grams: int
+    class WeighFlow(Workflow):
+        @step
+        async def weigh(self, ev: StartEvent) -> StopEvent:
+            return StopEvent(result=f"sack:{ev.grams}g")
+    async def weigh_sack(): return await WeighFlow(timeout=30).run(grams=50)
+    print(asyncio.run(weigh_sack()))
+  key_points:
+    - Declare one event type per stage, because untyped dicts let misspelled stages pass silently.
+    - Return StopEvent at every terminal route, because a workflow without an explicit end hangs the run.
+    - Stop at the failing stage, because later steps must never observe data from a broken stage.
+brief: Write `emit_workflow_events(fail_stage) -> list[str]`. Run a real LlamaIndex `Workflow` with `@step` methods and typed `Event` subclasses for `ingest`, `retrieve`, and `respond`; each step emits the next stage event, and a matching failing stage returns a `StopEvent` result of `failed:<stage>`. Drive the run with `asyncio` and return the ordered stage log.
+signature:
+  entrypoint: emit_workflow_events
+  stub: |
+    def emit_workflow_events(fail_stage):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [null], expect: [ingest, retrieve, respond]}
+    - {args: [retrieve], expect: [ingest, retrieve, failed:retrieve]}
+  hidden:
+    - {args: [ingest], expect: [ingest, failed:ingest]}
+    - {args: [respond], expect: [ingest, retrieve, respond, failed:respond]}
+    - {args: [other], raises: ValueError}
+    - {args: [3], raises: ValueError}
+hints:
+  - {level: 1, text: "What must the log say when a stage cannot continue?"}
+  - {level: 2, text: "Declare a typed Event per stage and consume one type per @step."}
+  - {level: 3, text: "A parcel scale step returns a StopEvent whose result names the sack."}
+solution: |
+  def emit_workflow_events(fail_stage):
+      import asyncio
+      from llama_index.core.workflow import Event, StartEvent, StopEvent, Workflow, step
+      stages = ["ingest", "retrieve", "respond"]
+      if fail_stage is not None and (type(fail_stage) is not str or fail_stage not in stages):
+          raise ValueError("invalid stage")
+      class Ingested(Event):
+          log: list
+          fail_stage: object = None
+      class Retrieved(Event):
+          log: list
+          fail_stage: object = None
+      class EmitFlow(Workflow):
+          @step
+          async def do_ingest(self, ev: StartEvent) -> Ingested:
+              return Ingested(log=["ingest"], fail_stage=getattr(ev, "fail_stage", None))
+          @step
+          async def do_retrieve(self, ev: Ingested) -> Retrieved | StopEvent:
+              if ev.fail_stage == "ingest":
+                  return StopEvent(result=[*ev.log, "failed:ingest"])
+              return Retrieved(log=[*ev.log, "retrieve"], fail_stage=ev.fail_stage)
+          @step
+          async def do_respond(self, ev: Retrieved) -> StopEvent:
+              if ev.fail_stage == "retrieve":
+                  return StopEvent(result=[*ev.log, "failed:retrieve"])
+              if ev.fail_stage == "respond":
+                  return StopEvent(result=[*ev.log, "respond", "failed:respond"])
+              return StopEvent(result=[*ev.log, "respond"])
+      async def emit():
+          return await EmitFlow(timeout=30).run(fail_stage=fail_stage)
+      return asyncio.run(emit())

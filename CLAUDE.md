@@ -199,7 +199,7 @@ Rules:
   the point.
 - Keep them rare. One per genuine concept. A file peppered with bookmarks has none.
 
-Index every bookmark in `docs/ai-eng-bookmarks.md` with `file:line` and the bridge.
+Index every bookmark in `docs/curriculum/ai-engineering/bookmarks.md` with `file:line` and the bridge.
 A stale line number is worse than no index: it cites a specific wrong place. Line numbers
 move whenever a bookmarked file gains an import, so this is a command, not a memory:
 

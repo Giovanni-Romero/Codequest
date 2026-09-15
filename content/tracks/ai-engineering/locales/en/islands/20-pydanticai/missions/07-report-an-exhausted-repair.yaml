@@ -1,0 +1,116 @@
+id: ai-pydanticai-07
+title: Report an exhausted repair
+track: ai-engineering
+island: pydanticai
+order: 7
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-typed-output]
+teaching:
+  analogy: "A triage nurse never answers with a blank stare: every case leaves with a written verdict, treated or referred with reasons."
+  explanation: "Some payloads cannot be saved, and that outcome is still data. The mission always attempts the strict run first, then repairs what a strip plus int() can rescue. Each attempt runs the real Agent with TestModel and output_type. When no repair makes progress, it returns failed with the error list instead of raising."
+  worked_example: |
+    from pydantic import BaseModel, Field, StrictInt, StrictStr
+    from pydantic_ai import Agent
+    from pydantic_ai.models.test import TestModel
+    class SeedOrder(BaseModel):
+        variety: StrictStr
+        grams: StrictInt = Field(ge=1, le=500)
+    agent = Agent(TestModel(custom_output_args={"variety": "rye", "grams": 50}), output_type=SeedOrder)
+    print(agent.run_sync("order it").output.model_dump())
+  key_points:
+    - Attempt the strict run before repairing, because guessing repairs first hides what was actually wrong.
+    - Repair only what the rules name, because creative fixes invent data the sender never wrote.
+    - Stop when a repair makes no progress, because resubmitting identical content loops forever.
+    - Return failed with errors, because the caller needs reasons it can act on, not a traceback.
+brief: >
+  Write `pydanticai_failed(payload) -> dict`. Require a dict payload, else ValueError.
+  Define `Manifest(BaseModel)` with `dest: StrictStr` (non-blank, checked by a
+  validator that never strips) and `weight: StrictInt` between 1 and 1000. A payload
+  whose keys are not exactly dest and weight fails at once with `{"status": "failed",
+  "errors": ["payload: must hold exactly dest and weight"]}`. Otherwise run a real
+  `Agent` with `TestModel(custom_output_args=...)` and `output_type=Manifest`: on
+  success return `{"status": "ok", "manifest": {...}, "repairs": n}`. On
+  `UnexpectedModelBehavior`, repair (strip dest; convert padded numeric strings to
+  int) and retry up to two repairs; when no repair makes progress, return
+  `{"status": "failed", "errors": [...]}` with `"field: reason"` strings. No network
+  or provider.
+signature:
+  entrypoint: pydanticai_failed
+  stub: |
+    def pydanticai_failed(payload):
+        # Run strictly, repair what the rules allow, report exhaustion as data.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{dest: porto, weight: 40}], expect: {status: ok, manifest: {dest: porto, weight: 40}, repairs: 0}}
+    - {args: [{dest: '  porto  ', weight: '40'}], expect: {status: ok, manifest: {dest: porto, weight: 40}, repairs: 1}}
+  hidden:
+    - {args: [{dest: porto, weight: heavy}], expect: {status: failed, errors: ['weight: must be an integer from 1 to 1000']}}
+    - {args: [{dest: '   ', weight: 40}], expect: {status: failed, errors: ['dest: must be a non-blank string']}}
+    - {args: [{dest: porto, weight: 5000}], expect: {status: failed, errors: ['weight: must be an integer from 1 to 1000']}}
+    - {args: [{dest: porto, weight: true}], expect: {status: failed, errors: ['weight: must be an integer from 1 to 1000']}}
+    - {args: [{dest: porto}], expect: {status: failed, errors: ['payload: must hold exactly dest and weight']}}
+    - {args: [[porto]], raises: ValueError}
+    - {args: [null], raises: ValueError}
+hints:
+  - {level: 1, text: "Which bad payloads can still leave with an ok verdict, and which must leave with errors?"}
+  - {level: 2, text: "Loop run_sync against output_type, apply only the named repairs, and return failed when repair stalls."}
+  - {level: 3, text: "A seed counter retries its strict order agent after normalizing, else files a failed verdict with errors."}
+solution: |
+  def pydanticai_failed(payload):
+      from pydantic import BaseModel, Field, StrictInt, StrictStr, field_validator
+      from pydantic_ai import Agent
+      from pydantic_ai.exceptions import UnexpectedModelBehavior
+      from pydantic_ai.models.test import TestModel
+      if type(payload) is not dict:
+          raise ValueError("invalid payload")
+      class Manifest(BaseModel):
+          dest: StrictStr
+          weight: StrictInt = Field(ge=1, le=1000)
+          @field_validator("dest")
+          @classmethod
+          def _non_blank(cls, value):
+              if not value.strip():
+                  raise ValueError("must be a non-blank string")
+              return value
+      def problems(candidate):
+          errors = []
+          dest = candidate["dest"]
+          weight = candidate["weight"]
+          if type(dest) is not str or not dest.strip():
+              errors.append("dest: must be a non-blank string")
+          if type(weight) is bool or not isinstance(weight, int) or not 1 <= weight <= 1000:
+              errors.append("weight: must be an integer from 1 to 1000")
+          return errors
+      def repair(candidate):
+          nxt = dict(candidate)
+          if type(nxt.get("dest")) is str:
+              nxt["dest"] = nxt["dest"].strip()
+          raw = nxt.get("weight")
+          if type(raw) is str:
+              cleaned = raw.strip()
+              if cleaned.lstrip("+-").isdigit():
+                  nxt["weight"] = int(cleaned)
+          if problems(nxt) == problems(candidate):
+              return None
+          return nxt
+      current = dict(payload)
+      if set(current) != {"dest", "weight"}:
+          return {"status": "failed", "errors": ["payload: must hold exactly dest and weight"]}
+      used = 0
+      for _ in range(3):
+          try:
+              agent = Agent(TestModel(custom_output_args=current), output_type=Manifest)
+              outcome = agent.run_sync("manifest it")
+              return {"status": "ok", "manifest": outcome.output.model_dump(), "repairs": used}
+          except UnexpectedModelBehavior:
+              errors = problems(current)
+              nxt = repair(current)
+              if nxt is None:
+                  return {"status": "failed", "errors": errors}
+              current = nxt
+              used += 1
+      return {"status": "failed", "errors": problems(current)}

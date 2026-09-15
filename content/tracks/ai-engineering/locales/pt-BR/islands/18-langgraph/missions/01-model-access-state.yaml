@@ -1,0 +1,59 @@
+id: ai-langgraph-01
+title: Modele o estado de acesso
+track: ai-engineering
+island: langgraph
+order: 1
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-state]
+teaching:
+  analogy: Um formulario e uma prancheta. Cada mesa preenche apenas seu campo antes de entrega-la.
+  explanation: O estado do LangGraph e o registro explicito compartilhado pelos nos. Um no retorna uma atualizacao em vez de alterar dados globais ocultos. Isso torna o pedido inspecionavel.
+  worked_example: |
+    from typing import TypedDict
+    class AccessState(TypedDict):
+        request_id: str
+        risk: int
+        trace: list
+    def triage(state: AccessState):
+        return {"status": "triaged", "trace": state["trace"] + ["triage"]}
+  key_points: [O estado e explicito, Nos retornam atualizacoes, Rastreie mudancas de estado]
+brief: Escreva `model_access_state(request_id, risk) -> dict`. Rejeite IDs vazios e riscos fora de 1 a 3. Use um StateGraph real com um no que registra `triaged` e retorna o estado final.
+signature:
+  entrypoint: model_access_state
+  stub: |
+    def model_access_state(request_id, risk):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [r1, 2], expect: {request_id: r1, risk: 2, status: triaged, trace: [triage]}}
+    - {args: [r2, 1], expect: {request_id: r2, risk: 1, status: triaged, trace: [triage]}}
+  hidden:
+    - {args: ['', 1], raises: ValueError}
+    - {args: [r, 0], raises: ValueError}
+    - {args: [r, 4], raises: ValueError}
+    - {args: [r, true], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais campos cada no precisa poder inspecionar?"}
+  - {level: 2, text: "Declare um estado TypedDict para que cada campo sobreviva a execucao; depois use StateGraph(State), um no, START e END."}
+  - {level: 3, text: "Um no de estoque pode retornar `{'count': state['count'] - 1}`."}
+solution: |
+  def model_access_state(request_id, risk):
+      from typing import TypedDict
+      from langgraph.graph import END, START, StateGraph
+      if type(request_id) is not str or not request_id.strip() or type(risk) is not int or not 1 <= risk <= 3:
+          raise ValueError("invalid request")
+      class State(TypedDict):
+          request_id: str
+          risk: int
+          status: str
+          trace: list
+      def triage(state):
+          return {"status": "triaged", "trace": state["trace"] + ["triage"]}
+      builder = StateGraph(State)
+      builder.add_node("triage", triage)
+      builder.add_edge(START, "triage")
+      builder.add_edge("triage", END)
+      return builder.compile().invoke({"request_id": request_id, "risk": risk, "trace": []})

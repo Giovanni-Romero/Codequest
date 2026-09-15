@@ -1,4 +1,4 @@
-"""Refresh the file:line targets in docs/ai-eng-bookmarks.md.
+"""Refresh the file:line targets in the AI Engineering bookmark index.
 
 Line numbers move every time a bookmarked file gains an import, and a stale index is
 worse than no index: it sends the reader somewhere specific and wrong, with the
@@ -22,7 +22,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = PROJECT_ROOT / "src"
 CONTENT_ROOT = PROJECT_ROOT / "content"
-INDEX = PROJECT_ROOT / "docs" / "ai-eng-bookmarks.md"
+INDEX = PROJECT_ROOT / "docs" / "curriculum" / "ai-engineering" / "bookmarks.md"
 
 BOOKMARK = re.compile(r"\[AI-ENG:([a-z-]+)\]")
 ROW = re.compile(r"\| `([a-z-]+)` \| \[[^\]]+\]\([^)]+\) \|")
@@ -42,11 +42,7 @@ def _bookmarked_files() -> list[Path]:
     """
     paths = sorted(PACKAGE_ROOT.rglob("*.py"))
     if CONTENT_ROOT.is_dir():
-        paths += sorted(
-            path
-            for path in CONTENT_ROOT.rglob("*.yaml")
-            if not any(part.endswith("-pt") for part in path.parts)
-        )
+        paths += sorted(path for path in CONTENT_ROOT.rglob("*.yaml") if "pt-BR" not in path.parts)
     return paths
 
 

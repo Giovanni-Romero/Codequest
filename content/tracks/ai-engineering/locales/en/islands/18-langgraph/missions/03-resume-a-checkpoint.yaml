@@ -1,0 +1,48 @@
+id: ai-langgraph-03
+title: Resume a checkpoint
+track: ai-engineering
+island: langgraph
+order: 3
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-checkpoints]
+teaching:
+  analogy: A bookmark returns you to the exact page, not the cover of the book.
+  explanation: A checkpointer stores graph state for one thread. The thread id selects that saved timeline. It is not global memory.
+  worked_example: |
+    notes = {"a": {"page": 4}}
+    page = notes["a"]["page"]
+  key_points: [Checkpoints are per thread, Thread ids select state, Resume preserves progress]
+brief: Write `resume_checkpoint(thread_id) -> dict`. Require a non-blank string. Compile a one-node graph with InMemorySaver, invoke it twice with the same thread id, and return the second state with count 2.
+signature:
+  entrypoint: resume_checkpoint
+  stub: |
+    def resume_checkpoint(thread_id):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [case-1], expect: {count: 2, trace: [step, step]}}
+  hidden:
+    - {args: [case-2], expect: {count: 2, trace: [step, step]}}
+    - {args: [''], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: ['   '], raises: ValueError}
+hints:
+  - {level: 1, text: "What key identifies one saved timeline?"}
+  - {level: 2, text: "Compile with InMemorySaver and a configurable thread_id, then resume the same thread from its saved state."}
+  - {level: 3, text: "A counter update can return `{'count': state['count'] + 1}`."}
+solution: |
+  def resume_checkpoint(thread_id):
+      from typing import TypedDict
+      from langgraph.checkpoint.memory import InMemorySaver
+      from langgraph.graph import END, START, StateGraph
+      if type(thread_id) is not str or not thread_id.strip(): raise ValueError("invalid thread")
+      class State(TypedDict):
+          count: int
+          trace: list
+      def step(state): return {"count": state.get("count", 0) + 1, "trace": state.get("trace", []) + ["step"]}
+      builder = StateGraph(State); builder.add_node("step", step); builder.add_edge(START, "step"); builder.add_edge("step", END)
+      graph = builder.compile(checkpointer=InMemorySaver()); config = {"configurable": {"thread_id": thread_id}}
+      graph.invoke({"count": 0, "trace": []}, config); return graph.invoke(graph.get_state(config).values, config)

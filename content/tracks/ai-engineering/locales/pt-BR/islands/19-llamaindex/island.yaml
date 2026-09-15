@@ -1,0 +1,9 @@
+id: llamaindex
+name: LlamaIndex
+track: ai-engineering
+order: 19
+theme: Nós rastreáveis, índices determinísticos, evidências limitadas e eventos de workflow
+concepts: [llamaindex-documents-nodes, llamaindex-indexes, llamaindex-query-engines, llamaindex-workflows]
+unlock_requires: {requires_mission: ai-langgraph-08}
+completion_reward_xp: 300
+

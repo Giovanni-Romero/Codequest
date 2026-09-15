@@ -1,0 +1,8 @@
+id: llamaindex
+name: LlamaIndex
+track: ai-engineering
+order: 19
+theme: Traceable nodes, deterministic indexes, bounded evidence, and workflow events
+concepts: [llamaindex-documents-nodes, llamaindex-indexes, llamaindex-query-engines, llamaindex-workflows]
+unlock_requires: {requires_mission: ai-langgraph-08}
+completion_reward_xp: 300

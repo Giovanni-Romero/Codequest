@@ -1,0 +1,79 @@
+id: ai-pydanticai-01
+title: Declare an agent contract
+track: ai-engineering
+island: pydanticai
+order: 1
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-agent-contracts]
+teaching:
+  analogy: A notary commission states who the notary serves and exactly which certificate they stamp.
+  explanation: "An Agent is a contract: it names the model, the dependency type, and the output type up front. TestModel is an offline stand-in, so the contract runs with no provider and no network. run_sync executes the contract and returns validated output typed as ContractResult. This mission returns that real output instead of a hand-built dictionary."
+  worked_example: |
+    from pydantic import BaseModel
+    from pydantic_ai import Agent
+    from pydantic_ai.models.test import TestModel
+    class ShelfVerdict(BaseModel):
+        item: str
+        shelf: str
+    agent = Agent(TestModel(custom_output_args={"item": "oats", "shelf": "top"}), output_type=ShelfVerdict, deps_type=dict)
+    print(agent.run_sync("shelve the oats", deps={"aisle": "dry"}).output.model_dump())
+  key_points:
+    - Declare deps_type and output_type on the Agent, because the contract is what tests and reviewers check.
+    - Execute the contract with run_sync and TestModel, because only a run proves the wiring works.
+    - Return result.output, because a hand-built dict can pass while the agent itself is broken.
+    - Reject non-string or blank topics with ValueError, because the contract only handles named topics.
+brief: >
+  Write `pydanticai_contract(topic) -> dict`. Reject non-string or blank topics with
+  ValueError. Define `ContractResult(BaseModel)` with `status: str` and `topic: str`,
+  plus a `@dataclass Deps` carrying `request_id: str`. Build a real `Agent` with
+  `TestModel`, `output_type=ContractResult`, and `deps_type=Deps`; execute `run_sync`
+  with `deps=Deps(...)` and return `result.output.model_dump()`. Construct the
+  TestModel per call with `custom_output_args` so the validated output echoes
+  `{"status": "contract", "topic": <stripped topic>}`. No network or provider.
+signature:
+  entrypoint: pydanticai_contract
+  stub: |
+    def pydanticai_contract(topic):
+        # Declare the contract types, run the offline agent, return its output.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [access], expect: {status: contract, topic: access}}
+    - {args: [ledger], expect: {status: contract, topic: ledger}}
+  hidden:
+    - {args: [quarry], expect: {status: contract, topic: quarry}}
+    - {args: ['  ledger  '], expect: {status: contract, topic: ledger}}
+    - {args: [''], raises: ValueError}
+    - {args: ['   '], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [null], raises: ValueError}
+    - {args: [true], raises: ValueError}
+hints:
+  - {level: 1, text: "What does your function return today — the agent's answer, or a dictionary you built by hand?"}
+  - {level: 2, text: "Declare ContractResult and Deps, pass output_type and deps_type to Agent, and execute with run_sync plus deps."}
+  - {level: 3, text: "A pantry agent builds `Agent(TestModel(custom_output_args={...}), output_type=ShelfVerdict, deps_type=dict)` and returns `run_sync(...).output.model_dump()`."}
+solution: |
+  def pydanticai_contract(topic):
+      from dataclasses import dataclass
+      from pydantic import BaseModel
+      from pydantic_ai import Agent
+      from pydantic_ai.models.test import TestModel
+      if type(topic) is not str or not topic.strip():
+          raise ValueError("invalid topic")
+      cleaned = topic.strip()
+      class ContractResult(BaseModel):
+          status: str
+          topic: str
+      @dataclass
+      class Deps:
+          request_id: str
+      agent = Agent(
+          TestModel(custom_output_args={"status": "contract", "topic": cleaned}),
+          output_type=ContractResult,
+          deps_type=Deps,
+      )
+      result = agent.run_sync("declare contract for " + cleaned, deps=Deps(request_id="r1"))
+      return result.output.model_dump()

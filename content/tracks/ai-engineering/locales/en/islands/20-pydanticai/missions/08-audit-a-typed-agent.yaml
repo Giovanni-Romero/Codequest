@@ -1,0 +1,138 @@
+id: ai-pydanticai-08
+title: Audit a typed agent
+track: ai-engineering
+island: pydanticai
+order: 8
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-agent-contracts, pydanticai-dependencies, pydanticai-tools, pydanticai-typed-output]
+teaching:
+  analogy: "A harbor master closes the day with one log: ships cleared, ships turned away at the gate, and cargo impounded with the reasons written down."
+  explanation: "The audit runs every request through the same pipeline: a declared Agent contract, injected Deps, an authorized seal tool, and a typed Seal check. The clearance policy in deps turns away low-clearance items before any tool runs. Granted items execute the tool and validate its combined seal, so a bad tag fails as typed data. The report counts completed, denied, and failed side by side."
+  worked_example: |
+    import json
+    from pydantic_ai import Agent, RunContext
+    from pydantic_ai.models.test import TestModel
+    agent = Agent(TestModel(), output_type=str, deps_type=dict)
+    @agent.tool
+    def seal(ctx: RunContext) -> str:
+        return ctx.deps["topic"] + "#" + ctx.deps["tag"]
+    print(json.loads(agent.run_sync("seal it", deps={"topic": "atlas", "tag": "green"}).output))
+  key_points:
+    - Declare contracts, deps, tools, and output types together, because the audit must exercise all four.
+    - Deny below the floor before any run, because the gate is what keeps denied items out of the call log.
+    - Validate the tool-produced seal, because the model boundary is exactly where bad tags appear.
+    - Count every outcome, because an audit that drops cases is a story, not evidence.
+brief: >
+  Write `pydanticai_audited(batch, clearance) -> dict`. Require a list batch and a
+  clearance that is an int of 0 or more, else ValueError. Define a `@dataclass Deps`
+  with `topic: str`, `tag: str`, and `floor: int = 2`, a `Seal(BaseModel)` with a
+  single `seal: StrictStr` field whose validator accepts only `"<topic>#<tag>"` with
+  a non-blank topic and a tag of lowercase letters, and one tool `seal(ctx:
+  RunContext[Deps])` returning `ctx.deps.topic + "#" + ctx.deps.tag`. For each item:
+  non-mappings and bad topic or tag values fail fast with `"item:"`, `"topic:"`, or
+  `"tag:"` errors; clearance below `deps.floor` denies without a run; otherwise run
+  a real `Agent` with `TestModel`, `output_type=str`, and `deps_type=Deps`, parse the
+  JSON output, and validate the seal — completed items record `{"status":
+  "completed", "seal": ...}`, invalid seals record `{"status": "failed", "errors":
+  [...]}` with `"seal:"` reasons. Return `{"status": "audited", "results": [...],
+  "counts": {"completed": n, "denied": n, "failed": n}}`. No network or provider.
+signature:
+  entrypoint: pydanticai_audited
+  stub: |
+    def pydanticai_audited(batch, clearance):
+        # Audit each item through contract, deps, tool, and typed seal.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{topic: atlas, tag: green}], 5], expect: {status: audited, results: [{status: completed, seal: 'atlas#green'}], counts: {completed: 1, denied: 0, failed: 0}}}
+    - {args: [[{topic: atlas, tag: Green}], 5], expect: {status: audited, results: [{status: failed, errors: ['seal: tag must be lowercase letters']}], counts: {completed: 0, denied: 0, failed: 1}}}
+  hidden:
+    - {args: [[{topic: atlas, tag: green}, {topic: atlas, tag: Green}, {topic: '', tag: x}], 5], expect: {status: audited, results: [{status: completed, seal: 'atlas#green'}, {status: failed, errors: ['seal: tag must be lowercase letters']}, {status: failed, errors: ['topic: must be a non-blank string']}], counts: {completed: 1, denied: 0, failed: 2}}}
+    - {args: [[{topic: atlas, tag: green}], 0], expect: {status: audited, results: [{status: denied}], counts: {completed: 0, denied: 1, failed: 0}}}
+    - {args: [[], 5], expect: {status: audited, results: [], counts: {completed: 0, denied: 0, failed: 0}}}
+    - {args: [[nope], 5], expect: {status: audited, results: [{status: failed, errors: ['item: must be a mapping']}], counts: {completed: 0, denied: 0, failed: 1}}}
+    - {args: [[{topic: atlas}], 5], expect: {status: audited, results: [{status: failed, errors: ['tag: must be a non-blank string']}], counts: {completed: 0, denied: 0, failed: 1}}}
+    - {args: [x, 5], raises: ValueError}
+    - {args: [[], true], raises: ValueError}
+    - {args: [[], -1], raises: ValueError}
+hints:
+  - {level: 1, text: "Which items never reach the agent, and which fail only after the tool runs?"}
+  - {level: 2, text: "Fail fast on item shape, deny below the deps floor, and validate the tool-produced seal into Seal."}
+  - {level: 3, text: "A pantry audit parses the JSON output into its strict seal type and tallies completed, denied, and failed."}
+solution: |
+  def pydanticai_audited(batch, clearance):
+      import json
+      import re
+      from dataclasses import dataclass
+      from pydantic import BaseModel, StrictStr, ValidationError, field_validator
+      from pydantic_ai import Agent, RunContext
+      from pydantic_ai.models.test import TestModel
+      if type(batch) is not list:
+          raise ValueError("invalid batch")
+      if type(clearance) is not int or clearance < 0:
+          raise ValueError("invalid clearance")
+      class Seal(BaseModel):
+          seal: StrictStr
+          @field_validator("seal")
+          @classmethod
+          def _shape(cls, value):
+              if "#" not in value:
+                  raise ValueError("must read <topic>#<tag>")
+              topic, tag = value.split("#", 1)
+              if not topic.strip():
+                  raise ValueError("topic must be a non-blank string")
+              if not re.fullmatch(r"[a-z]+", tag):
+                  raise ValueError("tag must be lowercase letters")
+              return value
+      def seal_errors(text):
+          if type(text) is not str or "#" not in text:
+              return ["seal: must read <topic>#<tag>"]
+          topic, tag = text.split("#", 1)
+          if not topic.strip():
+              return ["seal: topic must be a non-blank string"]
+          return ["seal: tag must be lowercase letters"]
+      @dataclass
+      class Deps:
+          topic: str
+          tag: str
+          floor: int = 2
+      results = []
+      counts = {"completed": 0, "denied": 0, "failed": 0}
+      for item in batch:
+          if type(item) is not dict:
+              results.append({"status": "failed", "errors": ["item: must be a mapping"]})
+              counts["failed"] += 1
+              continue
+          topic = item.get("topic")
+          tag = item.get("tag")
+          if type(topic) is not str or not topic.strip():
+              results.append({"status": "failed", "errors": ["topic: must be a non-blank string"]})
+              counts["failed"] += 1
+              continue
+          if type(tag) is not str or not tag.strip():
+              results.append({"status": "failed", "errors": ["tag: must be a non-blank string"]})
+              counts["failed"] += 1
+              continue
+          deps = Deps(topic=topic.strip(), tag=tag.strip())
+          if clearance < deps.floor:
+              results.append({"status": "denied"})
+              counts["denied"] += 1
+              continue
+          agent = Agent(TestModel(), output_type=str, deps_type=Deps)
+          @agent.tool
+          def seal(ctx: RunContext[Deps]) -> str:
+              return ctx.deps.topic + "#" + ctx.deps.tag
+          outcome = agent.run_sync("seal it", deps=deps)
+          payload = json.loads(outcome.output)
+          try:
+              sealed = Seal(seal=payload["seal"])
+          except ValidationError:
+              results.append({"status": "failed", "errors": seal_errors(payload.get("seal"))})
+              counts["failed"] += 1
+              continue
+          results.append({"status": "completed", "seal": sealed.seal})
+          counts["completed"] += 1
+      return {"status": "audited", "results": results, "counts": counts}

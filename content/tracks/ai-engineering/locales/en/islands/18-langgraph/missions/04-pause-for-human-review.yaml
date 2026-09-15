@@ -1,0 +1,48 @@
+id: ai-langgraph-04
+title: Pause for human review
+track: ai-engineering
+island: langgraph
+order: 4
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-human-loop]
+teaching:
+  analogy: A locked cabinet stays locked until the named keyholder turns the key.
+  explanation: interrupt pauses a node and exposes a serializable question. Command resumes the same thread with the human answer. Approval is data, not a chat message.
+  worked_example: |
+    answer = "yes"
+    status = "open" if answer == "yes" else "closed"
+  key_points: [Interrupt pauses work, Resume uses the same thread, Human input is validated]
+brief: Write `pause_for_review(decision) -> dict`. Accept `approve` or `reject`. Use interrupt(), InMemorySaver, and Command(resume=...) to return granted or rejected after one review.
+signature:
+  entrypoint: pause_for_review
+  stub: |
+    def pause_for_review(decision):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [approve], expect: {status: granted, trace: [review, grant]}}
+    - {args: [reject], expect: {status: rejected, trace: [review, reject]}}
+  hidden:
+    - {args: [edit], raises: ValueError}
+    - {args: [''], raises: ValueError}
+    - {args: [true], raises: ValueError}
+    - {args: [APPROVE], raises: ValueError}
+hints:
+  - {level: 1, text: "Which value must survive the pause?"}
+  - {level: 2, text: "Call interrupt inside a node, then resume with Command."}
+  - {level: 3, text: "A branch can return `{'status': 'ok' if answer else 'no'}`."}
+solution: |
+  def pause_for_review(decision):
+      from langgraph.checkpoint.memory import InMemorySaver
+      from langgraph.graph import END, START, StateGraph
+      from langgraph.types import Command, interrupt
+      if decision not in ("approve", "reject") or type(decision) is not str: raise ValueError("invalid decision")
+      def review(state):
+          answer = interrupt({"request": "access"})
+          return {"status": "granted" if answer == "approve" else "rejected", "trace": ["review", "grant" if answer == "approve" else "reject"]}
+      builder = StateGraph(dict); builder.add_node("review", review); builder.add_edge(START, "review"); builder.add_edge("review", END)
+      graph = builder.compile(checkpointer=InMemorySaver()); config = {"configurable": {"thread_id": "review"}}
+      graph.invoke({}, config); return graph.invoke(Command(resume=decision), config)

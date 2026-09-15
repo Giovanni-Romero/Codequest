@@ -1,0 +1,42 @@
+id: ai-llamaindex-05
+title: Rastreie uma fonte
+track: ai-engineering
+island: llamaindex
+order: 5
+difficulty: expert
+tags: [ai-engineering, llamaindex, requires-ai-rag]
+xp: 60
+concepts: [llamaindex-documents-nodes]
+teaching:
+  analogy: Uma etiqueta de bagagem leva a mala de volta ao dono.
+  explanation: "Procedência se lê, não se decora: a resposta vem dos metadados do nó. Cada TextNode carrega o source_id do seu documento. A busca casa o id de nó pedido e devolve esse elo guardado. Um id desconhecido levanta ValueError em vez de adivinhar."
+  worked_example: |
+    from llama_index.core.schema import TextNode
+    sacks = [TextNode(text="rye", id_="s1", metadata={"source_id": "sack-3"}), TextNode(text="oats", id_="s2", metadata={"source_id": "sack-4"})]
+    wanted = "s2"
+    for sack in sacks:
+        if sack.node_id == wanted:
+            print(sack.metadata["source_id"])
+  key_points:
+    - Leia a procedência dos metadados do nó, porque reconstruí-la pela posição quebra ao reordenar.
+    - Construa um TextNode real por documento, porque a busca deve rodar contra objetos do framework.
+    - Levante ValueError para ids desconhecidos, porque inventar fonte é pior que admitir que nada casou.
+brief: Escreva `trace_source(documents, node_id) -> str`. Construa objetos `TextNode` reais com metadado `source_id` e devolva o id de fonte guardado para o nó correspondente.
+signature: {entrypoint: trace_source, stub: "def trace_source(documents, node_id):\n    pass"}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: [[{id: a, text: blue}], a], expect: a}, {args: [[{id: a, text: blue}, {id: b, text: green}], b], expect: b}]
+  hidden: [{args: [[{id: a, text: blue}], b], raises: ValueError}, {args: [[], a], raises: ValueError}, {args: [[{id: '', text: blue}], a], raises: ValueError}, {args: [[{id: a, text: blue}], 1], raises: ValueError}]
+hints: [{level: 1, text: "Qual campo do nó guarda a procedência?"}, {level: 2, text: "Use metadados de TextNode."}, {level: 3, text: "Leia `node.metadata['source_id']`."}]
+solution: |
+  def trace_source(documents, node_id):
+      from llama_index.core.schema import TextNode
+      if type(documents) is not list or not documents or type(node_id) is not str:
+          raise ValueError("invalid input")
+      for document in documents:
+          if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
+              raise ValueError("invalid document")
+          node = TextNode(text=document["text"], id_=document["id"], metadata={"source_id": document["id"]})
+          if node.node_id == node_id:
+              return node.metadata["source_id"]
+      raise ValueError("unknown node")

@@ -1,0 +1,8 @@
+id: pydanticai
+name: PydanticAI
+track: ai-engineering
+order: 20
+theme: Typed agent contracts, injected dependencies, authorized tools, and explicit failures
+concepts: [pydanticai-agent-contracts, pydanticai-dependencies, pydanticai-tools, pydanticai-typed-output]
+unlock_requires: {requires_mission: ai-llamaindex-08}
+completion_reward_xp: 300

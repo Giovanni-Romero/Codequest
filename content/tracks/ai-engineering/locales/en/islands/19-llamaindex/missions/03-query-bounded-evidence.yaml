@@ -1,0 +1,60 @@
+id: ai-llamaindex-03
+title: Query bounded evidence
+track: ai-engineering
+island: llamaindex
+order: 3
+difficulty: expert
+tags: [ai-engineering, llamaindex, requires-ai-rag]
+xp: 60
+concepts: [llamaindex-query-engines]
+teaching:
+  analogy: A detective reports the case file numbers, or says there is not enough evidence.
+  explanation: "A retriever exposes indexed evidence through a bounded interface: top-k caps how many candidates come back. Each hit carries its node, score, and metadata. The mission keeps only hits whose text contains the query word, then applies the minimum_matches threshold. Below the threshold it abstains with empty sources instead of inventing an answer."
+  worked_example: |
+    from llama_index.core import VectorStoreIndex
+    from llama_index.core.embeddings.mock_embed_model import MockEmbedding
+    from llama_index.core.schema import TextNode
+    seeds = [TextNode(text="rye loves cold", id_="s1"), TextNode(text="oats love rain", id_="s2")]
+    index = VectorStoreIndex(seeds, embed_model=MockEmbedding(embed_dim=2))
+    hits = index.as_retriever(similarity_top_k=2).retrieve("cold")
+    print([hit.node.node_id for hit in hits if "cold" in hit.node.text])
+  key_points:
+    - Read sources from retriever hits, because the hit list is the evidence the interface actually returned.
+    - Filter hits by the query word, because MockEmbedding similarity is arbitrary and proves nothing.
+    - Abstain below minimum_matches, because a top result is not automatically a relevant result.
+brief: Write `query_bounded_evidence(documents, query, minimum_matches) -> dict`. Build `TextNode` objects and a real `VectorStoreIndex` with `MockEmbedding`, call `as_retriever(...).retrieve(query)`, and derive `sources` from the returned hits whose text contains the query word. Return `{status, sources}`; use `grounded` only when at least the requested number of hits match.
+signature:
+  entrypoint: query_bounded_evidence
+  stub: |
+    def query_bounded_evidence(documents, query, minimum_matches):
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{id: a, text: blue boat}, {id: b, text: blue sky}], blue, 2], expect: {status: grounded, sources: [a, b]}}
+    - {args: [[{id: a, text: blue boat}], red, 1], expect: {status: abstain, sources: []}}
+  hidden:
+    - {args: [[{id: a, text: blue}], blue, 2], expect: {status: abstain, sources: []}}
+    - {args: [[{id: a, text: blue}], '', 1], raises: ValueError}
+    - {args: [[{id: a, text: blue}], blue, 0], raises: ValueError}
+    - {args: [[], blue, 1], raises: ValueError}
+hints:
+  - {level: 1, text: "What should a caller receive when evidence is too weak?"}
+  - {level: 2, text: "Build a VectorStoreIndex, then apply the requested threshold."}
+  - {level: 3, text: "Return `{'status': 'abstain', 'sources': []}` below the threshold."}
+solution: |
+  def query_bounded_evidence(documents, query, minimum_matches):
+      from llama_index.core import VectorStoreIndex
+      from llama_index.core.embeddings.mock_embed_model import MockEmbedding
+      from llama_index.core.schema import TextNode
+      if type(documents) is not list or not documents or type(query) is not str or not query.strip() or type(minimum_matches) is not int or minimum_matches < 1:
+          raise ValueError("invalid query")
+      nodes = []
+      for document in documents:
+          if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
+              raise ValueError("invalid document")
+          nodes.append(TextNode(text=document["text"], id_=document["id"], metadata={"source_id": document["id"]}))
+      index = VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))
+      hits = index.as_retriever(similarity_top_k=len(nodes)).retrieve(query)
+      sources = [hit.node.metadata["source_id"] for hit in hits if query.lower() in hit.node.text.lower()]
+      return {"status": "grounded", "sources": sources} if len(sources) >= minimum_matches else {"status": "abstain", "sources": []}

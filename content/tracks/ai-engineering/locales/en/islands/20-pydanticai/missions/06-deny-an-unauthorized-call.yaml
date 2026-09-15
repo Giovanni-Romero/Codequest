@@ -1,0 +1,88 @@
+id: ai-pydanticai-06
+title: Deny an unauthorized call
+track: ai-engineering
+island: pydanticai
+order: 6
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-dependencies]
+teaching:
+  analogy: A library reading room posts a minimum clearance on the door, and the clerk checks your card against it before fetching anything.
+  explanation: "The policy rides inside Deps next to the data it protects. The function reads clearance and floor from the same injected object the tool would use. A shortfall returns a denial with an empty call log, so the tool body never runs. Only a clearance that meets the floor reaches the Agent and its fetch tool."
+  worked_example: |
+    from pydantic_ai import Agent, RunContext
+    from pydantic_ai.models.test import TestModel
+    agent = Agent(TestModel(), deps_type=dict)
+    @agent.tool
+    def park(ctx: RunContext) -> str:
+        return "slot:" + ctx.deps["level"]
+    print(agent.run_sync("park it", deps={"level": "2"}).output)
+  key_points:
+    - Carry the policy inside deps, because a rule kept next to the data cannot drift from it.
+    - Check the policy before run_sync, because denial after the tool body is too late.
+    - Return an empty call log on denial, because that list proves nothing executed.
+    - Reject negative or non-integer clearances with ValueError, because the policy needs a real number to compare.
+brief: >
+  Write `pydanticai_denied(topic, clearance) -> dict`. Require a non-blank string topic
+  and a clearance that is an int of 0 or more, else ValueError. Define a `@dataclass
+  Deps` with `topic: str`, `clearance: int`, and `floor: int = 3`. If
+  `deps.clearance` is below `deps.floor`, return `{"status": "denied", "calls": [],
+  "answer": None}` without touching any tool. Otherwise build a real `Agent` with
+  `TestModel` and `deps_type=Deps`, register one tool `fetch(ctx: RunContext[Deps])`
+  that appends `{"tool": "fetch", "topic": ...}` to a calls list and returns
+  `"file:<stripped topic>"`, execute `run_sync` with the same deps, parse the JSON
+  output, and return `{"status": "completed", "calls": [...], "answer": <tool
+  result>}`. No network or provider.
+signature:
+  entrypoint: pydanticai_denied
+  stub: |
+    def pydanticai_denied(topic, clearance):
+        # Read the policy from deps; deny below the floor, fetch above it.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [atlas, 5], expect: {status: completed, calls: [{tool: fetch, topic: atlas}], answer: 'file:atlas'}}
+    - {args: [atlas, 1], expect: {status: denied, calls: [], answer: null}}
+  hidden:
+    - {args: [quarry, 3], expect: {status: completed, calls: [{tool: fetch, topic: quarry}], answer: 'file:quarry'}}
+    - {args: [atlas, 0], expect: {status: denied, calls: [], answer: null}}
+    - {args: ['', 5], raises: ValueError}
+    - {args: [1, 5], raises: ValueError}
+    - {args: [null, 5], raises: ValueError}
+    - {args: [atlas, -1], raises: ValueError}
+    - {args: [atlas, true], raises: ValueError}
+    - {args: [atlas, '5'], raises: ValueError}
+hints:
+  - {level: 1, text: "Where does the floor live — in a global, or in the same deps the tool receives?"}
+  - {level: 2, text: "Compare deps.clearance against deps.floor before building the Agent, and record fetch calls."}
+  - {level: 3, text: "A garage attendant checks `deps[\"level\"]` before running, else the `park` tool appends its call and returns its slot."}
+solution: |
+  def pydanticai_denied(topic, clearance):
+      import json
+      from dataclasses import dataclass
+      from pydantic_ai import Agent, RunContext
+      from pydantic_ai.models.test import TestModel
+      if type(topic) is not str or not topic.strip():
+          raise ValueError("invalid topic")
+      if type(clearance) is not int or clearance < 0:
+          raise ValueError("invalid clearance")
+      cleaned = topic.strip()
+      calls = []
+      @dataclass
+      class Deps:
+          topic: str
+          clearance: int
+          floor: int = 3
+      deps = Deps(topic=cleaned, clearance=clearance)
+      if deps.clearance < deps.floor:
+          return {"status": "denied", "calls": [], "answer": None}
+      agent = Agent(TestModel(), deps_type=Deps)
+      @agent.tool
+      def fetch(ctx: RunContext[Deps]) -> str:
+          calls.append({"tool": "fetch", "topic": ctx.deps.topic})
+          return "file:" + ctx.deps.topic
+      result = agent.run_sync("fetch it", deps=deps)
+      payload = json.loads(result.output)
+      return {"status": "completed", "calls": calls, "answer": payload["fetch"]}

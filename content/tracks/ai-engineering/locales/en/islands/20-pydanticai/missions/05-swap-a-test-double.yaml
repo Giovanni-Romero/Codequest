@@ -1,0 +1,87 @@
+id: ai-pydanticai-05
+title: Swap a test double
+track: ai-engineering
+island: pydanticai
+order: 5
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-agent-contracts]
+teaching:
+  analogy: An understudy plays the same role from the same script, so the show runs identically whoever is on stage.
+  explanation: "The contract is the Agent declaration, not the model behind it. TestModel and a custom subclass both stay offline and answer through the same output type. Swapping the double changes the model object and nothing else. Both runs must validate into the identical contract result."
+  worked_example: |
+    from pydantic import BaseModel
+    from pydantic_ai import Agent
+    from pydantic_ai.models.test import TestModel
+    class ShelfVerdict(BaseModel):
+        item: str
+        shelf: str
+    class PantryDouble(TestModel):
+        pass
+    for model in (TestModel(custom_output_args={"item": "oats", "shelf": "top"}), PantryDouble(custom_output_args={"item": "oats", "shelf": "top"})):
+        print(Agent(model, output_type=ShelfVerdict).run_sync("shelve it").output.model_dump())
+  key_points:
+    - Swap only the model object, because identical logic with two doubles proves the contract holds.
+    - Keep both doubles offline, because a double that needs a provider is not a double.
+    - Validate both runs into the same output type, because the contract is what must agree.
+    - Reject unknown double names with ValueError, because silently defaulting hides configuration bugs.
+brief: >
+  Write `pydanticai_swap(topic, model_kind) -> dict`. Reject non-string or blank topics
+  and any model_kind outside `"test"` and `"scripted"` with ValueError. Define
+  `Seal(BaseModel)` with `status: str` and `topic: str`, plus a `@dataclass Deps`
+  carrying `request_id: str`. Define a custom `EchoModel(TestModel)` double that takes
+  the topic and answers offline. Build the same real `Agent` with
+  `output_type=Seal` and `deps_type=Deps` for both kinds — `TestModel` for `"test"`,
+  `EchoModel` for `"scripted"` — execute `run_sync` with `deps=Deps(...)`, and return
+  `result.output.model_dump()` echoing `{"status": "contract", "topic": <stripped
+  topic>}` in both cases. No network or provider.
+signature:
+  entrypoint: pydanticai_swap
+  stub: |
+    def pydanticai_swap(topic, model_kind):
+        # Same contract, two doubles; the validated result must agree.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [access, test], expect: {status: contract, topic: access}}
+    - {args: [access, scripted], expect: {status: contract, topic: access}}
+  hidden:
+    - {args: [ledger, scripted], expect: {status: contract, topic: ledger}}
+    - {args: ['  ledger  ', test], expect: {status: contract, topic: ledger}}
+    - {args: ['', test], raises: ValueError}
+    - {args: [1, scripted], raises: ValueError}
+    - {args: [access, live], raises: ValueError}
+    - {args: [access, null], raises: ValueError}
+hints:
+  - {level: 1, text: "What changes between the two runs — the agent logic, or just the model object?"}
+  - {level: 2, text: "Subclass TestModel for EchoModel, branch only on model construction, and share the Agent setup."}
+  - {level: 3, text: "A pantry understudy subclasses TestModel as PantryDouble and both doubles feed the same strict Agent."}
+solution: |
+  def pydanticai_swap(topic, model_kind):
+      from dataclasses import dataclass
+      from pydantic import BaseModel
+      from pydantic_ai import Agent
+      from pydantic_ai.models.test import TestModel
+      if type(topic) is not str or not topic.strip():
+          raise ValueError("invalid topic")
+      if model_kind not in ("test", "scripted"):
+          raise ValueError("invalid model kind")
+      cleaned = topic.strip()
+      class Seal(BaseModel):
+          status: str
+          topic: str
+      @dataclass
+      class Deps:
+          request_id: str
+      class EchoModel(TestModel):
+          def __init__(self, echo_topic):
+              super().__init__(seed=7, custom_output_args={"status": "contract", "topic": echo_topic})
+      if model_kind == "scripted":
+          model = EchoModel(cleaned)
+      else:
+          model = TestModel(custom_output_args={"status": "contract", "topic": cleaned})
+      agent = Agent(model, output_type=Seal, deps_type=Deps)
+      result = agent.run_sync("seal " + cleaned, deps=Deps(request_id="r1"))
+      return result.output.model_dump()

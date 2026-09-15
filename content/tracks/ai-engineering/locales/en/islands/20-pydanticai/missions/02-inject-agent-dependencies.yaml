@@ -1,0 +1,80 @@
+id: ai-pydanticai-02
+title: Inject agent dependencies
+track: ai-engineering
+island: pydanticai
+order: 2
+difficulty: expert
+tags: [ai-engineering, pydanticai, requires-ai-orchestration]
+xp: 60
+concepts: [pydanticai-dependencies]
+teaching:
+  analogy: A pharmacy label printer pulls the dosage from the prescription on file, not from what the customer shouts across the counter.
+  explanation: "Dependencies carry services and state into a run without global variables. Tools read them through ctx.deps instead of trusting model-generated arguments. TestModel still drives the loop offline, calling every tool before answering. Swapping the Deps value changes the result without touching any agent logic."
+  worked_example: |
+    from pydantic_ai import Agent, RunContext
+    from pydantic_ai.models.test import TestModel
+    agent = Agent(TestModel(), deps_type=dict)
+    @agent.tool
+    def shelve(ctx: RunContext) -> str:
+        return "oats:" + ctx.deps["shelf"]
+    print(agent.run_sync("shelve it", deps={"shelf": "top"}).output)
+  key_points:
+    - Put services and state in deps, because globals hide what the agent needs and break parallel runs.
+    - Read tool facts from ctx.deps, because model-generated arguments are untrusted input.
+    - Return the tool result into the answer, because a called-but-unused tool is decoration, not wiring.
+    - Swap doubles through deps=, because unchanged logic with new data proves the injection works.
+brief: >
+  Write `pydanticai_dependency(topic, suffix) -> dict`. Reject non-string or blank
+  arguments with ValueError. Define a `@dataclass Deps` carrying `topic: str` and
+  `suffix: str`. Build a real `Agent` with `TestModel` and `deps_type=Deps`; register
+  one tool `label(ctx: RunContext[Deps])` that returns `ctx.deps.topic +
+  ctx.deps.suffix` and reads nothing else. Execute `run_sync` with `deps=Deps(...)`,
+  parse the JSON output, and return `{"status": "dependency", "label": <tool result>}`
+  using the stripped inputs. Swapping the double must change the label without changing
+  the logic. No network or provider.
+signature:
+  entrypoint: pydanticai_dependency
+  stub: |
+    def pydanticai_dependency(topic, suffix):
+        # Inject Deps, let the tool read ctx.deps, return its result.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [access, '!'], expect: {status: dependency, label: 'access!'}}
+    - {args: [ledger, '#'], expect: {status: dependency, label: 'ledger#'}}
+  hidden:
+    - {args: [quarry, '?'], expect: {status: dependency, label: 'quarry?'}}
+    - {args: ['  access  ', '!'], expect: {status: dependency, label: 'access!'}}
+    - {args: ['', '!'], raises: ValueError}
+    - {args: [access, '   '], raises: ValueError}
+    - {args: [1, '!'], raises: ValueError}
+    - {args: [access, null], raises: ValueError}
+    - {args: [true, '!'], raises: ValueError}
+hints:
+  - {level: 1, text: "Where does the tool get its facts — from the model's arguments, or from the dependencies you injected?"}
+  - {level: 2, text: "Declare Deps, register a tool that reads only ctx.deps, and pass the double via run_sync(deps=...)."}
+  - {level: 3, text: "A pantry tool reads `return \"oats:\" + ctx.deps[\"shelf\"]` and the run prints the parsed `output` field for that tool name."}
+solution: |
+  def pydanticai_dependency(topic, suffix):
+      import json
+      from dataclasses import dataclass
+      from pydantic_ai import Agent, RunContext
+      from pydantic_ai.models.test import TestModel
+      if type(topic) is not str or not topic.strip():
+          raise ValueError("invalid topic")
+      if type(suffix) is not str or not suffix.strip():
+          raise ValueError("invalid suffix")
+      cleaned_topic = topic.strip()
+      cleaned_suffix = suffix.strip()
+      @dataclass
+      class Deps:
+          topic: str
+          suffix: str
+      agent = Agent(TestModel(), deps_type=Deps)
+      @agent.tool
+      def label(ctx: RunContext[Deps]) -> str:
+          return ctx.deps.topic + ctx.deps.suffix
+      result = agent.run_sync("make the label", deps=Deps(topic=cleaned_topic, suffix=cleaned_suffix))
+      payload = json.loads(result.output)
+      return {"status": "dependency", "label": payload["label"]}

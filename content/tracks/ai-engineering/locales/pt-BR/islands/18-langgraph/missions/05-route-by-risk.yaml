@@ -1,0 +1,31 @@
+id: ai-langgraph-05
+title: Encaminhe por risco
+track: ai-engineering
+island: langgraph
+order: 5
+difficulty: expert
+tags: [ai-engineering, langgraph, requires-ai-orchestration]
+xp: 60
+concepts: [langgraph-state, langgraph-nodes-edges]
+teaching: {analogy: "Uma central le o risco antes de escolher a mesa.", explanation: "Estado e arestas condicionais tornam a politica de risco inspecionavel.", worked_example: "route = 'review' if risk else 'deny'", key_points: ["Mantenha a politica explicita", "Encaminhe cada ramo", "Termine cada rota"]}
+brief: Escreva `route_by_risk(risk) -> dict`. Risco 3 exige revisao; 1 ou 2 expiram sem acesso. Use StateGraph e uma aresta condicional.
+signature: {entrypoint: route_by_risk, stub: "def route_by_risk(risk):\n    pass"}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible: [{args: [3], expect: {risk: 3, status: review, trace: [route, review]}}, {args: [1], expect: {risk: 1, status: expired, trace: [route, expire]}}]
+  hidden: [{args: [2], expect: {risk: 2, status: expired, trace: [route, expire]}}, {args: [0], raises: ValueError}, {args: [4], raises: ValueError}, {args: [true], raises: ValueError}]
+hints: [{level: 1, text: "Qual valor de estado seleciona o ramo?"}, {level: 2, text: "Use add_conditional_edges."}, {level: 3, text: "Retorne `'a' if value else 'b'` de um roteador."}]
+solution: |
+  def route_by_risk(risk):
+      from typing import TypedDict
+      from langgraph.graph import END, START, StateGraph
+      if type(risk) is not int or not 1 <= risk <= 3: raise ValueError("invalid risk")
+      class State(TypedDict):
+          risk: int
+          status: str
+          trace: list
+      def route(state): return {"trace": ["route"]}
+      def review(state): return {"status": "review", "trace": state["trace"] + ["review"]}
+      def expire(state): return {"status": "expired", "trace": state["trace"] + ["expire"]}
+      b = StateGraph(State); b.add_node("route", route); b.add_node("review", review); b.add_node("expire", expire); b.add_edge(START, "route"); b.add_conditional_edges("route", lambda state: "review" if state["risk"] == 3 else "expire"); b.add_edge("review", END); b.add_edge("expire", END)
+      return b.compile().invoke({"risk": risk, "trace": []})

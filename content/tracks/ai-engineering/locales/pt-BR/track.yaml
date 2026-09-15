@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  As dezessete primeiras ilhas cobrem sistemas de IA confiáveis, fundamentos centrais e orquestração com LangChain.
+  As vinte primeiras ilhas cobrem sistemas de IA confiáveis, fundamentos centrais e as especializações LangChain, LangGraph, LlamaIndex e PydanticAI.
 
 runner: python
 file_extension: .py
@@ -27,3 +27,6 @@ islands:
   - 15-responsible-ai
   - 16-mlops-and-model-lifecycle
   - 17-langchain
+  - 18-langgraph
+  - 19-llamaindex
+  - 20-pydanticai
