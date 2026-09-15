@@ -287,7 +287,7 @@ find the flaw.
 Missions are YAML files. You do not need to touch the engine to write one.
 
 1. Read `docs/mission-schema.md`
-2. Read `docs/curriculum/python-syllabus.md` and pick a concept that needs coverage
+2. Read `docs/curriculum/python/syllabus.md` and pick a concept that needs coverage
 3. Copy an existing mission from `content/tracks/python/locales/en/islands/01-foundations/missions/`
 4. Fill in the teaching block, the brief, the tests, the hints, and a working solution
 5. Run `pytest tests/content` — it verifies your solution actually passes your own tests
@@ -319,7 +319,7 @@ The rule that matters most: one mission introduces **one** new concept.
 | `docs/architecture.md` | How the layers fit together |
 | `docs/mission-schema.md` | Every field in a mission file |
 | `docs/curriculum/` | Concept ordering and learning objectives |
-| `docs/ai-eng-bookmarks.md` | The 21 places in this code that teach something about AI engineering |
+| `docs/curriculum/ai-engineering/bookmarks.md` | The places in this code that teach something about AI engineering |
 | `docs/project-audit.md` | What was owed when the Python track closed, and what is deferred on purpose |
 | `docs/aulas/` | One HTML lesson per phase, teaching the AI-engineering concept that phase's code carries. Portuguese — the one deliberate exception to the English-only rule |
 | `AGENTS.md` | How AI agents should work in this repo |

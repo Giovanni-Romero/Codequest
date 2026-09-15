@@ -109,6 +109,11 @@ must teach fully with the mentor disabled.
 
 **Read `PROJECT_PLAN.md` for architecture and roadmap. It is the source of truth.**
 
+### Repo hygiene (no duplicates, no junk)
+
+- Canonical authorities: content lives at `content/tracks/<track>/locales/<locale>` (never recreate legacy `content/*` roots); curriculum docs live at `docs/curriculum/<track>/syllabus.md` and `bookmarks.md`. A move is delete-plus-create in one change: `git rm` the legacy path and grep for remaining references before committing.
+- Each agent run deletes its own `.pytest-*` basetemps and generated logs when the gate is done. Never touch `saves/`, `.venv/`, or active worktrees (`git worktree list` first).
+
 ### Stack
 
 | Concern | Choice |
