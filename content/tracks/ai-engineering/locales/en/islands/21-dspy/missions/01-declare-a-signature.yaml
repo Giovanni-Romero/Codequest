@@ -1,0 +1,72 @@
+id: ai-dspy-01
+title: Declare a signature
+track: ai-engineering
+island: dspy
+order: 1
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-signatures]
+teaching:
+  analogy: A harbor manifest lists every crate by name, weight, and destination — no crate boards without a line on the manifest.
+  explanation: "A dspy.Signature declares the input and output fields of an LM task with types and descriptions. The docstring becomes the instruction. InputField and OutputField carry metadata (desc, format). The signature replaces ad-hoc prompting with a typed contract. Run it with DummyLM to prove the wiring without any provider: the scripted answer must use the exact output field names the signature declares."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class ExtractCity(dspy.Signature):
+        """Extract the city name from a shipping log entry."""
+        log: str = dspy.InputField(desc="raw log line")
+        city: str = dspy.OutputField(desc="city name only")
+    lm = DummyLM([{"city": "Rotterdam"}])
+    with dspy.context(lm=lm):
+        pred = dspy.Predict(ExtractCity)(log="Vessel arrived at Rotterdam port")
+        print(pred.city)
+  key_points:
+    - Declare inputs with InputField and outputs with OutputField; the docstring is the task instruction.
+    - Use DummyLM with a list of dict answers for deterministic offline runs.
+    - DummyLM answer keys must match the signature's output field names exactly, or parsing fails.
+    - Reject non-string or blank inputs with ValueError; the contract only handles valid data.
+brief: >
+  Write `dspy_signature(log) -> dict`. Reject non-string or blank logs with ValueError.
+  Define a `dspy.Signature` subclass `ExtractPort` with `log: str` input (desc="raw log line")
+  and `port: str` output (desc="port name only"). Take the port as the final whitespace-separated
+  token of the stripped log, script `DummyLM([{"port": <port>}])` with it, run
+  `dspy.Predict(ExtractPort)(log=cleaned)`, and return `{"port": pred.port}`. No network.
+signature:
+  entrypoint: dspy_signature
+  stub: |
+    def dspy_signature(log):
+        # Declare the signature, run with DummyLM, return the output.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: ["Vessel docked at Singapore"], expect: {port: Singapore}}
+    - {args: ["Cargo loaded in Hamburg"], expect: {port: Hamburg}}
+  hidden:
+    - {args: ["Tanker anchored near Fujairah"], expect: {port: Fujairah}}
+    - {args: ["  Vessel at  Rotterdam  "], expect: {port: Rotterdam}}
+    - {args: [""], raises: ValueError}
+    - {args: ["   "], raises: ValueError}
+    - {args: [123], raises: ValueError}
+    - {args: [null], raises: ValueError}
+    - {args: [true], raises: ValueError}
+hints:
+  - {level: 1, text: "What does the signature declare — the prompt text, or the structured fields the model must fill?"}
+  - {level: 2, text: "Subclass dspy.Signature, add InputField and OutputField with desc, then call dspy.Predict(sig) inside a DummyLM context."}
+  - {level: 3, text: "A port extractor builds `class ExtractPort(dspy.Signature): log=dspy.InputField(); port=dspy.OutputField()` and runs `dspy.Predict(ExtractPort)(log=cleaned).port`."}
+solution: |
+  def dspy_signature(log):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      if type(log) is not str or not log.strip():
+          raise ValueError("invalid log")
+      cleaned = log.strip()
+      port = cleaned.split()[-1]
+      class ExtractPort(dspy.Signature):
+          """Extract the port name from a shipping log entry."""
+          log: str = dspy.InputField(desc="raw log line")
+          port: str = dspy.OutputField(desc="port name only")
+      with dspy.context(lm=DummyLM([{"port": port}])):
+          pred = dspy.Predict(ExtractPort)(log=cleaned)
+      return {"port": pred.port}

@@ -1,0 +1,102 @@
+id: ai-capstone-03
+title: Gastar o orçamento de falhas
+track: ai-engineering
+island: capstone
+order: 3
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [failure-budget-review]
+teaching:
+  analogy: 'O capitão distribui o orçamento da tempestade: "podemos perder um motor e um radar e ainda chegar ao porto" — cada modo degradado tem limite e fallback definidos antes da viagem.'
+  explanation: "A revisão do orçamento de falhas testa quatro classes: normal, degradada, hostil e indisponível. Cada cenário declara quais componentes falham e como falham. O orçamento limita o impacto permitido em cada métrica da matriz de aceitação. Cenários acima do limite bloqueiam o lançamento."
+  worked_example: |
+    def failure_budget(architecture, scenarios):
+        results = []
+        for sc in scenarios:
+            impact = {}
+            for comp in architecture["components"]:
+                if comp["name"] in sc.get("failed", []):
+                    if comp["function"] == "inference":
+                        impact["accuracy"] = 0.15  # degrades accuracy
+                    elif comp["function"] == "latency_reduction":
+                        impact["p99_ms"] = 500   # latency spikes
+                if comp["name"] in sc.get("slow", []):
+                    if comp["function"] == "latency_reduction":
+                        impact["p99_ms"] = 300
+            within = all(
+                (impact.get("accuracy", 0) <= 0.1 and
+                 impact.get("p99_ms", 0) <= 300)
+            )
+            results.append({"scenario": sc["name"], "impact": impact, "within_budget": within})
+        return {"results": results, "blockers": [r["scenario"] for r in results if not r["within_budget"]]}
+  key_points:
+    - As quatro classes são normal, degradada, hostil e indisponível.
+    - Cada cenário nomeia componentes afetados e o modo da falha.
+    - O impacto é medido nas métricas da matriz de aceitação.
+    - Um cenário cabe no orçamento quando nenhuma métrica excede o limite.
+    - A revisão retorna o impacto por cenário e a lista de bloqueadores.
+brief: >
+  Escreva `failure_budget(architecture, scenarios) -> dict`. `architecture` vem da missão 2.
+  `scenarios` contém `name`, `class`, `failed` e `slow`. Rejeite entrada ruim. Os limites são:
+  queda de accuracy <= 0.1, aumento de p99_ms <= 300, custo <= 0.2, fairness_gap <= 0.02
+  e queda de uptime <= 0.001. Calcule o impacto a partir dos componentes falhos ou lentos.
+  Retorne `{"results": [...], "blockers": [...]}` com impacto e `within_budget` por cenário.
+signature:
+  entrypoint: failure_budget
+  stub: |
+    def failure_budget(architecture, scenarios):
+        # Compute metric impact per scenario, compare to budget, list blockers.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}]}, [{name: "normal", class: normal, failed: [], slow: []}]], expect: {results: [{scenario: normal, impact: {}, within_budget: true}], blockers: []}}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}]}, [{name: "cache_down", class: degraded, failed: [cache], slow: []}]], expect: {results: [{scenario: cache_down, impact: {p99_ms: 500}, within_budget: false}], blockers: [cache_down]}}
+  hidden:
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}, {name: optimizer, function: cost_control, stack: dspy}, {name: guard, function: bias_check, stack: custom}, {name: monitor, function: uptime_tracking, stack: pydantic-ai}]}, [{name: "normal", class: normal, failed: [], slow: []}, {name: "model_slow", class: degraded, failed: [], slow: [model]}, {name: "cache_down", class: unavailable, failed: [cache], slow: []}, {name: "guard_down", class: hostile, failed: [guard], slow: []}]], expect: {results: [{scenario: normal, impact: {}, within_budget: true}, {scenario: model_slow, impact: {accuracy: 0.075}, within_budget: true}, {scenario: cache_down, impact: {p99_ms: 500}, within_budget: false}, {scenario: guard_down, impact: {fairness_gap: 0.05}, within_budget: false}], blockers: [cache_down, guard_down]}}
+    - {args: [{components: []}, []], raises: ValueError}
+    - {args: [1, []], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, [{name: "x", class: "invalid", failed: [], slow: []}]], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, [{name: "x", class: normal, failed: "not a list", slow: []}]], raises: ValueError}
+hints:
+  - {level: 1, text: "Qual falha de componente afeta qual métrica?"}
+  - {level: 2, text: "Defina uma tabela de impacto; some os efeitos de failed e slow e compare com os limites."}
+  - {level: 3, text: "O revisor percorre os cenários, consulta o impacto de cada componente e verifica se alguma variação excede o orçamento."}
+solution: |
+  def failure_budget(architecture, scenarios):
+      if type(architecture) is not dict or type(architecture.get("components")) is not list or not architecture["components"]:
+          raise ValueError("invalid architecture")
+      if type(scenarios) is not list:
+          raise ValueError("invalid scenarios")
+      valid_classes = {"normal", "degraded", "hostile", "unavailable"}
+      impact_map = {
+          "inference": {"accuracy": 0.15},
+          "latency_reduction": {"p99_ms": 500},
+          "cost_control": {"usd_per_1k": 0.25},
+          "bias_check": {"fairness_gap": 0.05},
+          "uptime_tracking": {"uptime": 0.002},
+      }
+      budget = {"accuracy": 0.1, "p99_ms": 300, "usd_per_1k": 0.2, "fairness_gap": 0.02, "uptime": 0.001}
+      results = []
+      for sc in scenarios:
+          if type(sc) is not dict:
+              raise ValueError("invalid scenario")
+          name = sc.get("name")
+          sc_class = sc.get("class")
+          failed = sc.get("failed", [])
+          slow = sc.get("slow", [])
+          if type(name) is not str or sc_class not in valid_classes or type(failed) is not list or type(slow) is not list:
+              raise ValueError("invalid scenario")
+          impact = {}
+          for comp in architecture["components"]:
+              cname = comp.get("name")
+              cfunc = comp.get("function")
+              if cname in failed or cname in slow:
+                  mult = 1.0 if cname in failed else 0.5
+                  for metric, delta in impact_map.get(cfunc, {}).items():
+                      impact[metric] = impact.get(metric, 0) + delta * mult
+          within = all(impact.get(m, 0) <= budget[m] for m in budget)
+          results.append({"scenario": name, "impact": impact, "within_budget": within})
+      blockers = [r["scenario"] for r in results if not r["within_budget"]]
+      return {"results": results, "blockers": blockers}

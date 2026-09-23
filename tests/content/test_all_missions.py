@@ -13,6 +13,7 @@ names the file instead of saying "content is broken".
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import tomllib
 
@@ -40,6 +41,11 @@ TRACK_PAIRS = (
 CATALOGUES = [catalogue for pair in TRACK_PAIRS for catalogue in pair]
 AI_CATALOGUES = (_catalogue("ai-engineering", "en"), _catalogue("ai-engineering", "pt-BR"))
 AI_EN_ROOT = AI_CATALOGUES[0]
+DSPY_EXAMPLE_PATHS = [
+    path
+    for catalogue in AI_CATALOGUES
+    for path in sorted((catalogue / "islands" / "21-dspy" / "missions").glob("*.yaml"))
+]
 AI_NEW_CONCEPT_ISLANDS = (
     "15-responsible-ai",
     "16-mlops-and-model-lifecycle",
@@ -47,6 +53,8 @@ AI_NEW_CONCEPT_ISLANDS = (
     "18-langgraph",
     "19-llamaindex",
     "20-pydanticai",
+    "21-dspy",
+    "22-capstone",
 )
 MISSION_PATHS = [path for catalogue in CATALOGUES for path in iter_mission_paths(catalogue)]
 SOURCE_MISSION_PATHS = [
@@ -123,7 +131,7 @@ def test_the_declared_solution_passes_its_own_tests(path):
         pytest.skip("install the ai-ml extra to execute this mission")
     if "requires-ai-orchestration" in mission.tags and any(
         importlib.util.find_spec(package) is None
-        for package in ("langchain", "langgraph", "pydantic_ai")
+        for package in ("langchain", "langgraph", "pydantic_ai", "dspy")
     ):
         pytest.skip("install the ai-orchestration extra to execute this mission")
     if "requires-ai-rag" in mission.tags and importlib.util.find_spec("llama_index") is None:
@@ -252,7 +260,7 @@ def test_ai_engineering_ships_complete_islands_in_order(locale):
     assert [
         island.unlock_requires.requires_mission for island in service.islands
     ] == expected_unlocks
-    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-pydanticai-08"
+    assert service.missions_in(service.islands[-1].id)[-1].id == "ai-capstone-08"
 
 
 def test_ai_orchestration_extra_pins_the_shipped_frameworks():
@@ -262,6 +270,7 @@ def test_ai_orchestration_extra_pins_the_shipped_frameworks():
         "langchain>=1.4,<1.5",
         "langgraph>=1.2,<1.3",
         "pydantic-ai-slim>=2.43,<2.44",
+        "dspy>=3.3,<3.4",
     ]
 
 
@@ -271,6 +280,45 @@ def test_ai_rag_extra_pins_llamaindex():
     assert project["project"]["optional-dependencies"]["ai-rag"] == [
         "llama-index>=0.14,<0.15",
     ]
+
+
+@pytest.mark.parametrize("path", DSPY_EXAMPLE_PATHS, ids=_ids(DSPY_EXAMPLE_PATHS))
+def test_dspy_worked_example_runs_without_leaking_lm(path, capsys):
+    """Players can run each example and then start the next one with a clean LM."""
+    dspy = pytest.importorskip("dspy")
+    example = yaml.safe_load(path.read_text(encoding="utf-8"))["teaching"]["worked_example"]
+    previous_lm = dspy.settings.lm
+
+    exec(compile(example, str(path), "exec"), {})
+
+    assert dspy.settings.lm is previous_lm, f"{path.name} leaked its DummyLM"
+    if path.name.startswith(("06-", "08-")):
+        report = ast.literal_eval(capsys.readouterr().out.splitlines()[-1])
+        assert all(score == 1.0 for key, score in report.items() if key != "demos")
+
+
+@pytest.mark.parametrize(
+    ("mission_number", "required"),
+    (
+        (1, ("ExtractPort", '"port"', "pred.port")),
+        (2, ("ClassifyRisk", '"vessel"', '"risk"', '" at "')),
+        (3, ("Classify", "exact_match", '"passed"', "pred.label")),
+        (4, ("question", "answer", "sample=False")),
+        (5, ("PlanRoute", "RoutePlanner", '"route"', "vessel")),
+        (6, ("action", "reasoning", "turn", "anchor")),
+        (7, ("question", '"leakage"', '"foreign"')),
+        (8, ("ExtractPort", "PortExtractor", '"demo_ports"', "compiled.predict.demos")),
+    ),
+)
+def test_dspy_pt_contract_keeps_executable_names(mission_number, required):
+    """Translated instructions must describe the inputs and outputs that are graded."""
+    path = next(
+        (AI_CATALOGUES[1] / "islands" / "21-dspy" / "missions").glob(f"{mission_number:02d}-*.yaml")
+    )
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    instructions = raw["brief"] + " ".join(hint["text"] for hint in raw["hints"])
+
+    assert all(term in instructions for term in required), f"{path.name}: missing {required}"
 
 
 @pytest.mark.parametrize("locale", ("en", "pt-BR"))

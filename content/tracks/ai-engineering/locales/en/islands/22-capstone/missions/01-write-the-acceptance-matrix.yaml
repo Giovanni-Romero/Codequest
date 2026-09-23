@@ -1,0 +1,88 @@
+id: ai-capstone-01
+title: Write the acceptance matrix
+track: ai-engineering
+island: capstone
+order: 1
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [requirements-to-metrics]
+teaching:
+  analogy: 'A shipowner tells the yard: "must carry 10k containers, cross the Atlantic in 12 days, burn less than 80 tons of fuel per day" — the contract is not "build a fast ship" but numbers the yard can prove.'
+  explanation: "Requirements-to-metrics translates stakeholder prose into measurable, testable targets. Each requirement becomes a row: capability (what), metric (how measured), threshold (pass line), owner (who validates). Quality targets cover accuracy, latency, cost, safety (fairness, privacy), and reliability. A matrix without thresholds is a wish list; with thresholds it is a contract."
+  worked_example: |
+    def build_matrix(requirements):
+        matrix = []
+        for req in requirements:
+            if req["domain"] == "quality":
+                matrix.append({"metric": "accuracy", "threshold": 0.9, "owner": "ml-team"})
+            elif req["domain"] == "latency":
+                matrix.append({"metric": "p99_ms", "threshold": 200, "owner": "platform"})
+            elif req["domain"] == "cost":
+                matrix.append({"metric": "usd_per_1k", "threshold": 0.50, "owner": "finance"})
+            elif req["domain"] == "safety":
+                matrix.append({"metric": "fairness_gap", "threshold": 0.05, "owner": "governance"})
+        return {"matrix": matrix, "count": len(matrix)}
+  key_points:
+    - Every requirement maps to exactly one metric with a numeric threshold and a named owner.
+    - Domains: quality, latency, cost, safety, reliability — at least one metric per domain mentioned.
+    - Thresholds are numbers, not words; "fast" is not a threshold, "p99 < 200ms" is.
+    - The matrix is data, not prose — it can be validated programmatically.
+brief: >
+  Write `acceptance_matrix(requirements) -> dict`. Requirements: list of dicts with `id` (str),
+  `text` (str), `domain` ("quality"|"latency"|"cost"|"safety"|"reliability"). Reject non-lists,
+  empty lists, bad items, or unknown domains with ValueError. For each requirement, produce
+  a matrix row: `metric` (str), `threshold` (float|int), `owner` (str). Quality -> accuracy
+  threshold 0.9; latency -> p99_ms threshold 200; cost -> usd_per_1k threshold 0.5; safety ->
+  fairness_gap threshold 0.05; reliability -> uptime threshold 0.999. Return
+  `{"matrix": [...], "count": <int>}`.
+signature:
+  entrypoint: acceptance_matrix
+  stub: |
+    def acceptance_matrix(requirements):
+        # Map each requirement to a measurable metric with threshold and owner.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{id: "r1", text: "accurate predictions", domain: quality}, {id: "r2", text: "fast response", domain: latency}]], expect: {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: p99_ms, threshold: 200, owner: platform}], count: 2}}
+    - {args: [[{id: "r1", text: "low cost", domain: cost}, {id: "r2", text: "fair outcomes", domain: safety}, {id: "r3", text: "always up", domain: reliability}]], expect: {matrix: [{metric: usd_per_1k, threshold: 0.5, owner: finance}, {metric: fairness_gap, threshold: 0.05, owner: governance}, {metric: uptime, threshold: 0.999, owner: sre}], count: 3}}
+  hidden:
+    - {args: [[{id: "r1", text: "x", domain: quality}, {id: "r2", text: "y", domain: latency}, {id: "r3", text: "z", domain: cost}, {id: "r4", text: "w", domain: safety}, {id: "r5", text: "v", domain: reliability}]], expect: {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: p99_ms, threshold: 200, owner: platform}, {metric: usd_per_1k, threshold: 0.5, owner: finance}, {metric: fairness_gap, threshold: 0.05, owner: governance}, {metric: uptime, threshold: 0.999, owner: sre}], count: 5}}
+    - {args: [[]], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [[{id: "r1", text: "x"}]], raises: ValueError}
+    - {args: [[{id: "r1", text: "x", domain: "unknown"}]], raises: ValueError}
+    - {args: [[{id: 1, text: "x", domain: "quality"}]], raises: ValueError}
+    - {args: [[{id: "r1", text: "x", domain: "quality"}, {id: "r1", text: "y", domain: "latency"}]], raises: ValueError}
+hints:
+  - {level: 1, text: "What five domains does the brief mention, and what metric+threshold+owner does each map to?"}
+  - {level: 2, text: "Build a domain->(metric, threshold, owner) mapping; validate each requirement has id, text, domain; reject duplicates."}
+  - {level: 3, text: "A matrix builder iterates requirements, looks up the domain in a fixed table, and appends a row with the prescribed values."}
+solution: |
+  def acceptance_matrix(requirements):
+      if type(requirements) is not list or not requirements:
+          raise ValueError("invalid requirements")
+      seen = set()
+      domain_map = {
+          "quality": ("accuracy", 0.9, "ml-team"),
+          "latency": ("p99_ms", 200, "platform"),
+          "cost": ("usd_per_1k", 0.5, "finance"),
+          "safety": ("fairness_gap", 0.05, "governance"),
+          "reliability": ("uptime", 0.999, "sre"),
+      }
+      matrix = []
+      for req in requirements:
+          if type(req) is not dict:
+              raise ValueError("invalid requirement")
+          rid = req.get("id")
+          text = req.get("text")
+          domain = req.get("domain")
+          if type(rid) is not str or type(text) is not str or domain not in domain_map:
+              raise ValueError("invalid requirement")
+          if rid in seen:
+              raise ValueError("duplicate id")
+          seen.add(rid)
+          metric, threshold, owner = domain_map[domain]
+          matrix.append({"metric": metric, "threshold": threshold, "owner": owner})
+      return {"matrix": matrix, "count": len(matrix)}

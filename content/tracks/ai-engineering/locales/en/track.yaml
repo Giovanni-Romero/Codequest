@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Build reliable AI systems from deterministic foundations to production frameworks.
-  The first twenty islands cover reliable AI systems, core foundations, and the LangChain, LangGraph, LlamaIndex, and PydanticAI specializations.
+  Twenty-two islands cover foundations, five framework specializations, and an end-to-end capstone.
 
 runner: python
 file_extension: .py
@@ -30,3 +30,5 @@ islands:
   - 18-langgraph
   - 19-llamaindex
   - 20-pydanticai
+  - 21-dspy
+  - 22-capstone

@@ -1,0 +1,99 @@
+id: ai-capstone-07
+title: Revisar a lista de entrada em produção
+track: ai-engineering
+island: capstone
+order: 7
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [failure-budget-review, operational-readiness]
+teaching:
+  analogy: "O mestre do porto percorre a lista antes da partida: documentos, combustível, tripulação, carga e motores. Um item sem marcação mantém o navio atracado."
+  explanation: "A revisão audita o pacote da missão 4 quanto a completude e especificidade. Confere versões, comandos, gatilho de rollback e supervisão. Campos ausentes ou vagos viram lacunas. A auditoria não constrói o pacote; apenas diagnostica o que recebeu."
+  worked_example: |
+    def review_checklist(pack):
+        gaps = []
+        for k in ("code_version", "data_version", "config_hash"):
+            if not pack.get("lineage", {}).get(k, "").strip():
+                gaps.append(f"lineage.{k}")
+        for k in ("start", "stop", "scale", "rollback"):
+            if not pack.get("runbook", {}).get(k, "").strip():
+                gaps.append(f"runbook.{k}")
+        rt = pack.get("rollback_trigger", {})
+        if rt.get("action") != "auto_rollback":
+            gaps.append("rollback_trigger.action")
+        if type(rt.get("threshold")) not in (int, float):
+            gaps.append("rollback_trigger.threshold")
+        ov = pack.get("oversight", {})
+        if not ov.get("approver", "").strip():
+            gaps.append("oversight.approver")
+        if not ov.get("alert_recipients"):
+            gaps.append("oversight.alert_recipients")
+        return {"gaps": gaps, "ready": len(gaps) == 0}
+  key_points:
+    - A auditoria apenas valida; ela não constrói o pacote.
+    - Cada campo tem uma verificação concreta de tipo e conteúdo.
+    - Lacunas são caminhos como "lineage.code_version".
+    - ready só é true quando gaps está vazio.
+brief: >
+  Escreva `review_checklist(pack) -> dict`. O pacote tem `lineage`, `runbook`,
+  `rollback_trigger` e `oversight`. Rejeite valores que não sejam dict e seções ausentes
+  com ValueError. Verifique todos os campos pelas regras acima. Retorne
+  `{"gaps": [...], "ready": <bool>}` com gaps ordenado para manter determinismo.
+signature:
+  entrypoint: review_checklist
+  stub: |
+    def review_checklist(pack):
+        # Audit a readiness pack for missing or vague fields.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{lineage: {code_version: v1.0.0, data_version: d-2024-01-01, config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: accuracy, threshold: 0.85, action: auto_rollback}, oversight: {approver: ml-lead, alert_recipients: [sre]}}], expect: {gaps: [], ready: true}}
+    - {args: [{lineage: {code_version: v1.0.0, data_version: "", config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: accuracy, threshold: 0.85, action: auto_rollback}, oversight: {approver: ml-lead, alert_recipients: [sre]}}], expect: {gaps: [lineage.data_version], ready: false}}
+  hidden:
+    - {args: [{lineage: {code_version: "", data_version: "", config_hash: ""}, runbook: {start: "", stop: "", scale: "", rollback: ""}, rollback_trigger: {metric: accuracy, threshold: 0.85, action: manual}, oversight: {approver: "", alert_recipients: []}}], expect: {gaps: [lineage.code_version, lineage.config_hash, lineage.data_version, oversight.alert_recipients, oversight.approver, rollback_trigger.action, runbook.rollback, runbook.scale, runbook.start, runbook.stop], ready: false}}
+    - {args: [{lineage: {code_version: v1.0.0, data_version: d-2024-01-01, config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: accuracy, threshold: "not a number", action: auto_rollback}, oversight: {approver: ml-lead, alert_recipients: [sre]}}], expect: {gaps: [rollback_trigger.threshold], ready: false}}
+    - {args: ["not a dict"], raises: ValueError}
+    - {args: [{}], raises: ValueError}
+    - {args: [{lineage: {code_version: v1.0.0, data_version: d-2024-01-01, config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: accuracy, threshold: 0.85, action: auto_rollback}}], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais são as quatro seções, e qual verificação concreta cada campo exige?"}
+  - {level: 2, text: "Confira as chaves obrigatórias, registre caminhos para falhas e ordene a lista."}
+  - {level: 3, text: "O auditor valida a estrutura sem construí-la; cada campo tem uma regra de aprovação."}
+solution: |
+  def review_checklist(pack):
+      if type(pack) is not dict:
+          raise ValueError("invalid pack")
+      required_sections = ("lineage", "runbook", "rollback_trigger", "oversight")
+      for s in required_sections:
+          if s not in pack:
+              raise ValueError(f"missing section {s}")
+      gaps = []
+      lineage = pack.get("lineage", {})
+      for k in ("code_version", "data_version", "config_hash"):
+          if type(lineage.get(k)) is not str or not lineage[k].strip():
+              gaps.append(f"lineage.{k}")
+      runbook = pack.get("runbook", {})
+      for k in ("start", "stop", "scale", "rollback"):
+          if type(runbook.get(k)) is not str or not runbook[k].strip():
+              gaps.append(f"runbook.{k}")
+      rt = pack.get("rollback_trigger", {})
+      if rt.get("action") != "auto_rollback":
+          gaps.append("rollback_trigger.action")
+      if type(rt.get("threshold")) not in (int, float):
+          gaps.append("rollback_trigger.threshold")
+      if type(rt.get("metric")) is not str or not rt["metric"].strip():
+          gaps.append("rollback_trigger.metric")
+      ov = pack.get("oversight", {})
+      if type(ov.get("approver")) is not str or not ov["approver"].strip():
+          gaps.append("oversight.approver")
+      recipients = ov.get("alert_recipients")
+      if type(recipients) is not list or not recipients:
+          gaps.append("oversight.alert_recipients")
+      else:
+          for r in recipients:
+              if type(r) is not str or not r.strip():
+                  gaps.append("oversight.alert_recipients")
+                  break
+      return {"gaps": sorted(gaps), "ready": len(gaps) == 0}

@@ -1,0 +1,74 @@
+id: ai-dspy-07
+title: Auditar uma execução de otimização
+track: ai-engineering
+island: dspy
+order: 7
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-metrics, dspy-optimization]
+teaching:
+  analogy: O perito revê o diário do estaleiro — as soldas marcadas "ok" mas o teste de pressão falhou; o diário diz "passou" mas o teste held-out foi copiado do treino.
+  explanation: "Uma auditoria de otimização checa três coisas: (1) treino e held-out são disjuntos, (2) a métrica mede o que importa, (3) as demos do programa compilado vêm só do treino. Dado um registro com trainset, heldout, demos e scores, sinalize vazamento, métrica errada, ou contaminação de demos."
+  worked_example: |
+    def audita(trainset, heldout, demos, nome_metrica):
+        train_qs = {ex.pergunta for ex in trainset}
+        heldout_qs = {ex.pergunta for ex in heldout}
+        if train_qs & heldout_qs:
+            return {"vazamento": True, "sobreposicao": list(train_qs & heldout_qs)}
+        demo_qs = {d.pergunta for d in demos}
+        if not demo_qs <= train_qs:
+            return {"contaminacao": True, "estrangeiras": list(demo_qs - train_qs)}
+        return {"vazamento": False, "contaminacao": False}
+  key_points:
+    - Vazamento: qualquer pergunta aparecendo tanto no trainset quanto no heldout.
+    - Contaminação: uma demo no programa compilado cuja pergunta não está no trainset.
+    - Métrica errada: a métrica reportada não bate com a usada na otimização (difícil de detectar sem o objeto optimizer; sinalize se nome da métrica faltar).
+    - A auditoria é inspeção pura de dados — sem chamadas de LM.
+brief: >
+  Escreva `dspy_audit(trainset, heldout, demos) -> dict`. Cada um é lista de dicts com `question`
+  (str) e `answer` (str). Rejeite entrada ruim com ValueError. Cheque: (1) sem sobreposição
+  de perguntas entre trainset e heldout, (2) toda pergunta de demo está no trainset. Retorne
+  `{"leakage": <bool>, "contamination": <bool>, "overlap": [...], "foreign": [...]}`;
+  overlap lista perguntas compartilhadas e foreign lista perguntas de demo fora do trainset.
+signature:
+  entrypoint: dspy_audit
+  stub: |
+    def dspy_audit(trainset, heldout, demos):
+        # Check for leakage and demo contamination.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{question: "1+1", answer: "2"}], [{question: "2+2", answer: "4"}], [{question: "1+1", answer: "2"}]], expect: {leakage: false, contamination: false, overlap: [], foreign: []}}
+    - {args: [[{question: "a", answer: "1"}], [{question: "a", answer: "1"}], [{question: "a", answer: "1"}]], expect: {leakage: true, contamination: false, overlap: ["a"], foreign: []}}
+  hidden:
+    - {args: [[{question: "x", answer: "1"}, {question: "y", answer: "2"}], [{question: "z", answer: "3"}], [{question: "x", answer: "1"}, {question: "w", answer: "4"}]], expect: {leakage: false, contamination: true, overlap: [], foreign: ["w"]}}
+    - {args: [[{question: "a", answer: "1"}], [{question: "b", answer: "2"}], [{question: "c", answer: "3"}]], expect: {leakage: false, contamination: true, overlap: [], foreign: ["c"]}}
+    - {args: [[], [{question: "x", answer: "y"}], []], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], [], []], raises: ValueError}
+    - {args: [[{question: "x"}], [{question: "y", answer: "z"}], []], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], 1, []], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], [{question: "y", answer: "z"}], "not a list"], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais dois conjuntos devem ser disjuntos, e qual conjunto deve ser subconjunto das perguntas de treino?"}
+  - {level: 2, text: "Construa conjuntos de perguntas de trainset, heldout, demos; cheque interseção e relação de subconjunto."}
+  - {level: 3, text: "Um auditor constrói train_qs = {ex['question'] for ex in trainset}, depois checa heldout_qs & train_qs e demo_qs - train_qs."}
+solution: |
+  def dspy_audit(trainset, heldout, demos):
+      if type(trainset) is not list or not trainset:
+          raise ValueError("invalid trainset")
+      if type(heldout) is not list or not heldout:
+          raise ValueError("invalid heldout")
+      if type(demos) is not list:
+          raise ValueError("invalid demos")
+      for name, data in [("trainset", trainset), ("heldout", heldout), ("demos", demos)]:
+          for item in data:
+              if type(item) is not dict or type(item.get("question")) is not str or type(item.get("answer")) is not str:
+                  raise ValueError(f"invalid {name} item")
+      train_qs = {item["question"] for item in trainset}
+      heldout_qs = {item["question"] for item in heldout}
+      demo_qs = {item["question"] for item in demos}
+      overlap = sorted(train_qs & heldout_qs)
+      foreign = sorted(demo_qs - train_qs)
+      return {"leakage": bool(overlap), "contamination": bool(foreign), "overlap": overlap, "foreign": foreign}

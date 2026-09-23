@@ -1,0 +1,101 @@
+id: ai-dspy-06
+title: Comparar dois programas
+track: ai-engineering
+island: dspy
+order: 6
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-modules, dspy-metrics]
+teaching:
+  analogy: Dois capitães fazem a mesma rota — um usa a carta antiga, outro a nova. O diário mostra quem chega no horário e quem deriva; a métrica decide quem ganha o contrato.
+  explanation: "A mesma métrica aplicada a dois módulos diferentes revela qual design funciona melhor. Construa dois módulos (ex.: um com ChainOfThought, outro com Predict) compartilhando uma assinatura. Rode dspy.Evaluate no mesmo devset para ambos. Compare pontuações. A métrica é o juiz; o módulo é o concorrente."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class Nav(dspy.Signature):
+        log: str = dspy.InputField()
+        acao: str = dspy.OutputField(desc="virar|manter|ancorar")
+    def exatidao(ex, pred):
+        return pred.acao == ex.acao
+    devset = [
+        dspy.Example(log="tempestade à frente", acao="ancorar").with_inputs("log"),
+        dspy.Example(log="céu limpo", acao="manter").with_inputs("log"),
+    ]
+    respostas_predict = [{"acao": "ancorar"}, {"acao": "manter"}]
+    with dspy.context(lm=DummyLM(respostas_predict)):
+        s1 = dspy.Evaluate(devset=devset, metric=exatidao, num_threads=1)(dspy.Predict(Nav)).score
+    respostas_cot = [{"reasoning": "pensar", "acao": "ancorar"}, {"reasoning": "pensar", "acao": "manter"}]
+    with dspy.context(lm=DummyLM(respostas_cot)):
+        s2 = dspy.Evaluate(devset=devset, metric=exatidao, num_threads=1)(dspy.ChainOfThought(Nav)).score
+    print({"predict": s1 / 100, "cot": s2 / 100})
+  key_points:
+    - Mesma assinatura, tipos de módulo diferentes (Predict vs ChainOfThought) = comportamento interno diferente.
+    - Mesmo devset, mesma métrica = comparação justa.
+    - Reporte ambos os scores; o maior vence para aquela métrica nesses dados.
+    - ChainOfThought adiciona o campo reasoning; inclua-o nas respostas de DummyLM.
+brief: >
+  Escreva `dspy_compare(devset) -> dict`. Devset: lista de dicts com `log` (str) e `action`
+  ("turn"|"hold"|"anchor"). Rejeite entrada ruim com ValueError. Defina assinatura `Nav`.
+  Métrica: correspondência exata em `action`. Construa `Predict(Nav)` e `ChainOfThought(Nav)`.
+  Use respostas `DummyLM` com `{"action": ...}` para Predict e
+  `{"reasoning": ..., "action": ...}` para ChainOfThought, na ordem do devset.
+  Rode `dspy.Evaluate` no mesmo devset para ambos e leia `.score` de cada resultado.
+  Retorne `{"predict_score": <fração>, "cot_score": <fração>,
+  "winner": "predict"|"cot"|"tie"}`. Sem rede.
+signature:
+  entrypoint: dspy_compare
+  stub: |
+    def dspy_compare(devset):
+        # Two modules, same signature, same metric, same data, compare scores.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{log: "storm ahead", action: anchor}, {log: "clear", action: hold}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+    - {args: [[{log: "fog", action: turn}, {log: "calm", action: hold}, {log: "rocks", action: anchor}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+  hidden:
+    - {args: [[{log: "wind", action: turn}, {log: "rain", action: hold}, {log: "ice", action: anchor}, {log: "sun", action: hold}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+    - {args: [[]], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [[{log: "x"}]], raises: ValueError}
+    - {args: [[{log: "x", action: "sail"}]], raises: ValueError}
+    - {args: [[{log: 1, action: "turn"}]], raises: ValueError}
+    - {args: [[{log: "x", action: "turn"}, {log: "y", action: "turn"}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+hints:
+  - {level: 1, text: "O que fica igual e o que muda ao comparar Predict vs ChainOfThought?"}
+  - {level: 2, text: "Mesma assinatura Nav, mesmo devset e métrica; ChainOfThought precisa de reasoning nas respostas DummyLM."}
+  - {level: 3, text: "Rode Evaluate duas vezes com DummyLM novo para cada módulo e compare .score / 100; action mantém os valores turn, hold ou anchor."}
+solution: |
+  def dspy_compare(devset):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      valid_actions = {"turn", "hold", "anchor"}
+      if type(devset) is not list or not devset:
+          raise ValueError("invalid devset")
+      for item in devset:
+          if type(item) is not dict or type(item.get("log")) is not str or type(item.get("action")) is not str:
+              raise ValueError("invalid devset item")
+          if item["action"] not in valid_actions:
+              raise ValueError("invalid action")
+      class Nav(dspy.Signature):
+          log: str = dspy.InputField()
+          action: str = dspy.OutputField(desc="turn|hold|anchor")
+      def exact(ex, pred):
+          return pred.action == ex.action
+      examples = [dspy.Example(log=i["log"], action=i["action"]).with_inputs("log") for i in devset]
+      predict_answers = {i["log"]: {"action": i["action"]} for i in devset}
+      with dspy.context(lm=DummyLM(predict_answers)):
+          predict_result = dspy.Evaluate(devset=examples, metric=exact)(dspy.Predict(Nav))
+      cot_answers = {i["log"]: {"reasoning": "brief reasoning", "action": i["action"]} for i in devset}
+      with dspy.context(lm=DummyLM(cot_answers)):
+          cot_result = dspy.Evaluate(devset=examples, metric=exact)(dspy.ChainOfThought(Nav))
+      predict_score = predict_result.score / 100
+      cot_score = cot_result.score / 100
+      if predict_score > cot_score:
+          winner = "predict"
+      elif cot_score > predict_score:
+          winner = "cot"
+      else:
+          winner = "tie"
+      return {"predict_score": predict_score, "cot_score": cot_score, "winner": winner}

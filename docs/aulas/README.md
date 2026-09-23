@@ -1,6 +1,6 @@
 # Aulas — material de estudo
 
-Sete aulas em HTML, uma por fase do projeto. Cada uma pega o que foi construído naquela
+Oito aulas em HTML, uma por fase concluída do projeto. Cada uma pega o que foi construído naquela
 fase e ensina o conceito de AI Engineering que ele carrega: analogia primeiro, teoria
 depois, o **código real que shippou** anotado, e um exercício com a resposta escondida
 atrás de um `<details>`.
@@ -35,9 +35,10 @@ espelhada para cá.
 | 5 | [Integração com LLM](Fase5-Integracao-com-LLM.html) | Prompt desloca probabilidade, filtro decide | `guardrails`, `context-assembly`, `graceful-degradation` |
 | 6 | [Arquivos no Sandbox](Fase6-Arquivos-no-Sandbox.html) | Path traversal, e por que rejeitar ganha de sanear | `path-traversal`, `schema-validation`, `sandboxing`, `blocklist-vs-allowlist` |
 | 7 | [Currículo como Eval Design](Fase7-Curriculo-como-Eval-Design.html) | Projetar missões é projetar um eval harness | `deferred-results`, `debugging-methodology`, `concurrency-cost`, `failure-taxonomy` |
+| 8 | [Engenharia de IA de Ponta a Ponta](Fase8-Engenharia-de-IA-de-Ponta-a-Ponta.html) | Certificar um sistema por contratos, evidências e gates | `orchestration-gates`, `schema-validation`, `failure-taxonomy`, `guardrails`, `graceful-degradation`, `idempotency` |
 
 O índice completo dos bookmarks, com `arquivo:linha` verificado por teste, está em
-[`../ai-eng-bookmarks.md`](../ai-eng-bookmarks.md).
+[`../curriculum/ai-engineering/bookmarks.md`](../curriculum/ai-engineering/bookmarks.md).
 
 ## O que as aulas ainda não cobrem
 

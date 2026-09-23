@@ -1,0 +1,89 @@
+id: ai-dspy-05
+title: Alinhar campos a um contrato
+track: ai-engineering
+island: dspy
+order: 5
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-signatures, dspy-modules]
+teaching:
+  analogy: Um formulário de embarque tem campos fixos — navio, porto, carga — se o escriturário escreve "embarcação" em vez de "navio", o manifesto rejeita antes do navio atracar.
+  explanation: "Os nomes dos campos da assinatura são o contrato. O forward() do módulo deve passar exatamente esses nomes. Um typo num nome de campo (ex.: 'porto' vs 'terminal') quebra a cadeia silenciosamente em runtime a menos que validado. Valide as chaves do dict de entrada contra os campos declarados da assinatura antes de chamar Predict; rejeite chaves extras ou faltando com erro claro."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class Rota(dspy.Signature):
+        navio: str = dspy.InputField()
+        destino: str = dspy.InputField()
+        rota: str = dspy.OutputField()
+    class Roteador(dspy.Module):
+        def __init__(self):
+            self.predict = dspy.Predict(Rota)
+        def forward(self, navio, destino):
+            return self.predict(navio=navio, destino=destino)
+    lm = DummyLM([{"rota": "Mar do Norte"}])
+    with dspy.context(lm=lm):
+        r = Roteador()
+        print(r(navio="MSC Zoe", destino="Roterdã"))
+  key_points:
+    - Nomes dos campos da assinatura (navio, destino) são o contrato; kwargs do Predict devem bater exatamente.
+    - Valide dicts fornecidos pelo chamador contra os campos de entrada da assinatura antes de chamar forward().
+    - Rejeite chaves extras, chaves faltando, e tipos errados com ValueError nomeando o campo.
+    - O forward() do módulo é o ponto de enforcement — ele é dono do contrato.
+brief: >
+  Escreva `dspy_contract(data) -> dict`. Rejeite não-dict, chaves faltando, chaves extras ou valores
+  não-string com ValueError. Chaves obrigatórias: `vessel` (str), `port` (str), `cargo` (str).
+  Defina assinatura `PlanRoute(vessel, port, cargo -> route)`. O módulo `RoutePlanner` chama
+  `dspy.Predict(PlanRoute)` com esses três campos. Use `DummyLM([{"route": "computed"}])`.
+  Retorne `{"route": <str>}`. Sem rede.
+signature:
+  entrypoint: dspy_contract
+  stub: |
+    def dspy_contract(data):
+        # Validate input against signature fields, run module, return output.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{vessel: "MSC Zoe", port: "Rotterdam", cargo: "containers"}], expect: {route: computed}}
+    - {args: [{vessel: "Ever Given", port: "Suez", cargo: "crude"}], expect: {route: computed}}
+  hidden:
+    - {args: [{vessel: "Maersk", port: "Singapore", cargo: "electronics"}], expect: {route: computed}}
+    - {args: [{vessel: "MSC Zoe", port: "Rotterdam"}], raises: ValueError}
+    - {args: [{vessel: "MSC Zoe", port: "Rotterdam", cargo: "x", extra: "y"}], raises: ValueError}
+    - {args: [{vessel: 1, port: "Rotterdam", cargo: "x"}], raises: ValueError}
+    - {args: ["not a dict"], raises: ValueError}
+    - {args: [null], raises: ValueError}
+    - {args: [{}], raises: ValueError}
+hints:
+  - {level: 1, text: "Onde o contrato vive — no módulo, na assinatura, ou no dict do chamador?"}
+  - {level: 2, text: "Pegue os campos de entrada de PlanRoute via input_fields; compare com as chaves de data antes de chamar Predict."}
+  - {level: 3, text: "Um validador confere type(data) is dict, chaves vessel/port/cargo e valores str; depois passa data a RoutePlanner."}
+solution: |
+  def dspy_contract(data):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      required = {"vessel", "port", "cargo"}
+      if type(data) is not dict:
+          raise ValueError("invalid data")
+      if set(data.keys()) != required:
+          raise ValueError("invalid keys")
+      for k in required:
+          if type(data[k]) is not str or not data[k].strip():
+              raise ValueError(f"invalid {k}")
+      class PlanRoute(dspy.Signature):
+          """Plan a route for a vessel."""
+          vessel: str = dspy.InputField()
+          port: str = dspy.InputField()
+          cargo: str = dspy.InputField()
+          route: str = dspy.OutputField()
+      class RoutePlanner(dspy.Module):
+          def __init__(self):
+              self.predict = dspy.Predict(PlanRoute)
+          def forward(self, vessel, port, cargo):
+              return self.predict(vessel=vessel, port=port, cargo=cargo)
+      lm = DummyLM([{"route": "computed"}])
+      with dspy.context(lm=lm):
+          result = RoutePlanner()(vessel=data["vessel"].strip(), port=data["port"].strip(), cargo=data["cargo"].strip())
+      return {"route": result.route}

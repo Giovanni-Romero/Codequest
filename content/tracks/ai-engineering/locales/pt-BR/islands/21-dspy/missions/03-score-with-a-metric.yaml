@@ -1,0 +1,87 @@
+id: ai-dspy-03
+title: Pontuar com uma métrica
+track: ai-engineering
+island: dspy
+order: 3
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-metrics]
+teaching:
+  analogy: O fiscal da alfândega confere cada container contra o manifesto — peso, lacres, conteúdo — e carimba passa ou falha; a pontuação é quantos containers passaram.
+  explanation: "Uma métrica no DSPy é um chamável `metrica(exemplo, predicao, trace=None) -> bool | float`. Ela compara a predição contra a saída esperada do exemplo. dspy.Evaluate roda a métrica sobre um devset e reporta a pontuação agregada. A métrica deve ser determinística e livre de efeitos colaterais. Use-a para medir capacidade, não para treinar."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class Classifica(dspy.Signature):
+        texto: str = dspy.InputField()
+        rotulo: str = dspy.OutputField(desc="spam|ham")
+    def exatidao(ex, pred):
+        return pred.rotulo == ex.rotulo
+    devset = [
+        dspy.Example(texto="dinheiro grátis", rotulo="spam").with_inputs("texto"),
+        dspy.Example(texto="reunião às 3", rotulo="ham").with_inputs("texto"),
+    ]
+    lm = DummyLM([{"rotulo": "spam"}, {"rotulo": "ham"}])
+    with dspy.context(lm=lm):
+        score = dspy.Evaluate(devset=devset, metric=exatidao, num_threads=1)(dspy.Predict(Classifica))
+        print(score)
+  key_points:
+    - Assinatura da métrica: (exemplo, predicao, trace=None) -> bool ou float.
+    - dspy.Evaluate recebe um devset de Examples com inputs declarados via with_inputs().
+    - A métrica roda em cada exemplo; o valor de retorno é a média (para float) ou taxa de acerto (para bool).
+    - Mantenha métricas puras: sem I/O, sem mutação, sem aleatoriedade.
+brief: >
+  Escreva `dspy_metric(devset) -> dict`. Rejeite devset não-lista ou vazio com ValueError.
+  Cada item deve ser dict com `text` (str) e `label` ("spam"|"ham"), senão ValueError.
+  Defina assinatura `Classify` (text -> label). Defina a métrica `exact_match(example, prediction)`
+  que compara `pred.label == ex.label`. Construa `DummyLM` com uma resposta por rótulo, na ordem.
+  Rode `dspy.Evaluate(devset=..., metric=exact_match)(dspy.Predict(Classify))` e retorne
+  `{"score": <res.score / 100>, "total": <int>, "passed": <contagem de acertos>}`. Sem rede.
+signature:
+  entrypoint: dspy_metric
+  stub: |
+    def dspy_metric(devset):
+        # Define signature, metric, DummyLM, run Evaluate, return score breakdown.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{text: "free money", label: spam}, {text: "meeting at 3", label: ham}]], expect: {score: 1.0, total: 2, passed: 2}}
+    - {args: [[{text: "win prize", label: spam}, {text: "lunch tomorrow", label: ham}, {text: "click here", label: spam}]], expect: {score: 1.0, total: 3, passed: 3}}
+  hidden:
+    - {args: [[{text: "urgent", label: spam}, {text: "ok", label: ham}, {text: "buy now", label: spam}, {text: "thanks", label: ham}]], expect: {score: 1.0, total: 4, passed: 4}}
+    - {args: [[]], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [[{text: "x"}]], raises: ValueError}
+    - {args: [[{text: "x", label: "spam"}, {text: "y"}]], raises: ValueError}
+    - {args: [[{text: "x", label: "spam"}, {text: "y", label: "junk"}]], raises: ValueError}
+    - {args: [[{text: "x", label: "spam"}, {text: 1, label: "ham"}]], raises: ValueError}
+hints:
+  - {level: 1, text: "O que a função métrica recebe, e o que ela deve retornar?"}
+  - {level: 2, text: "Construa devset com dspy.Example(...).with_inputs('text'); a métrica compara pred.label com ex.label."}
+  - {level: 3, text: "Use EvaluationResult.score / 100 para score e conte os resultados individuais verdadeiros para passed."}
+solution: |
+  def dspy_metric(devset):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      if type(devset) is not list or not devset:
+          raise ValueError("invalid devset")
+      for item in devset:
+          if type(item) is not dict:
+              raise ValueError("invalid devset item")
+          if type(item.get("text")) is not str or type(item.get("label")) is not str:
+              raise ValueError("invalid devset item")
+          if item["label"] not in ("spam", "ham"):
+              raise ValueError("invalid label")
+      class Classify(dspy.Signature):
+          text: str = dspy.InputField()
+          label: str = dspy.OutputField(desc="spam|ham")
+      def exact_match(ex, pred):
+          return pred.label == ex.label
+      examples = [dspy.Example(text=item["text"], label=item["label"]).with_inputs("text") for item in devset]
+      answers = {item["text"]: {"label": item["label"]} for item in devset}
+      with dspy.context(lm=DummyLM(answers)):
+          result = dspy.Evaluate(devset=examples, metric=exact_match)(dspy.Predict(Classify))
+      passed = sum(1 for *_, score in result.results if score)
+      return {"score": result.score / 100, "total": len(devset), "passed": passed}

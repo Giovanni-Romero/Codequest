@@ -1,0 +1,8 @@
+id: capstone
+name: Capstone de Engenharia de IA
+track: ai-engineering
+order: 22
+theme: De requisitos das partes interessadas a um sistema de IA defensável e operável
+concepts: [requirements-to-metrics, end-to-end-system-design, failure-budget-review, operational-readiness]
+unlock_requires: {requires_mission: ai-dspy-08}
+completion_reward_xp: 300

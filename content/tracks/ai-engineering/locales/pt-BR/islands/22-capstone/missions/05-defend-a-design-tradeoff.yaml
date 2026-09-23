@@ -1,0 +1,103 @@
+id: ai-capstone-05
+title: Defender um trade-off de design
+track: ai-engineering
+island: capstone
+order: 5
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [requirements-to-metrics, end-to-end-system-design]
+teaching:
+  analogy: Dois estaleiros disputam o mesmo contrato. O A propõe um casco rápido que gasta mais; o B é lento, mas cabe no orçamento. O armador compara ambos com a mesma matriz e escolhe quem cumpre mais limites.
+  explanation: "A defesa do trade-off pontua duas arquiteturas candidatas contra a mesma matriz. Cada componente contribui para métricas, e vence a arquitetura que cumpre mais limiares. A saída registra pontuações, aprovações por métrica e a escolha final com motivo."
+  worked_example: |
+    def defend_tradeoff(matrix, design_a, design_b):
+        def score(design):
+            hits = {}
+            for comp in design["components"]:
+                if comp["function"] == "inference":
+                    hits["accuracy"] = 0.92
+                elif comp["function"] == "latency_reduction":
+                    hits["p99_ms"] = 180
+            return hits
+        sa = score(design_a)
+        sb = score(design_b)
+        metrics = {row["metric"]: row["threshold"] for row in matrix["matrix"]}
+        a_clear = {m: sa.get(m, 0) >= thresh if m in ("accuracy", "uptime") else sa.get(m, 999) <= thresh for m, thresh in metrics.items()}
+        b_clear = {m: sb.get(m, 0) >= thresh if m in ("accuracy", "uptime") else sb.get(m, 999) <= thresh for m, thresh in metrics.items()}
+        a_count = sum(a_clear.values())
+        b_count = sum(b_clear.values())
+        winner = "A" if a_count >= b_count else "B"
+        return {"design_a": sa, "design_b": sb, "a_clears": a_clear, "b_clears": b_clear, "winner": winner, "reason": f"Design {winner} clears {max(a_count, b_count)} thresholds"}
+  key_points:
+    - Os dois designs usam exatamente a mesma matriz.
+    - Accuracy e uptime usam >=; latência, custo e fairness_gap usam <=.
+    - A saída inclui pontuações, aprovação por métrica, vencedor e motivo.
+    - O motivo é texto, mas seu conteúdo vem da lógica de comparação.
+brief: >
+  Escreva `defend_tradeoff(matrix, design_a, design_b) -> dict`. A matriz vem da missão 1
+  e os designs são manifestos da missão 2. Rejeite entrada ruim. Pontue cada função de
+  componente com os valores declarados nos testes. Métricas sem componente recebem o pior
+  valor: 0 para accuracy/uptime e 999 para as demais. Compare cada valor com o limiar e
+  retorne pontuações, aprovações, vencedor e `"Design X clears N thresholds"`.
+signature:
+  entrypoint: defend_tradeoff
+  stub: |
+    def defend_tradeoff(matrix, design_a, design_b):
+        # Score both designs against matrix, count cleared thresholds, pick winner.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: p99_ms, threshold: 200, owner: platform}]}, {components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}]}, {components: [{name: model, function: inference, stack: pytorch}]}], expect: {design_a: {accuracy: 0.92, p99_ms: 180}, design_b: {accuracy: 0.92}, a_clears: {accuracy: true, p99_ms: true}, b_clears: {accuracy: true, p99_ms: false}, winner: A, reason: Design A clears 2 thresholds}}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}]}, {components: []}, {components: [{name: model, function: inference, stack: pytorch}]}], expect: {design_a: {}, design_b: {accuracy: 0.92}, a_clears: {accuracy: false}, b_clears: {accuracy: true}, winner: B, reason: Design B clears 1 thresholds}}
+  hidden:
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: p99_ms, threshold: 200, owner: platform}, {metric: usd_per_1k, threshold: 0.5, owner: finance}, {metric: fairness_gap, threshold: 0.05, owner: governance}, {metric: uptime, threshold: 0.999, owner: sre}]}, {components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}, {name: optimizer, function: cost_control, stack: dspy}, {name: guard, function: bias_check, stack: custom}, {name: monitor, function: uptime_tracking, stack: pydantic-ai}]}, {components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}]}], expect: {design_a: {accuracy: 0.92, p99_ms: 180, usd_per_1k: 0.4, fairness_gap: 0.03, uptime: 0.9995}, design_b: {accuracy: 0.92, p99_ms: 180}, a_clears: {accuracy: true, p99_ms: true, usd_per_1k: true, fairness_gap: true, uptime: true}, b_clears: {accuracy: true, p99_ms: true, usd_per_1k: false, fairness_gap: false, uptime: false}, winner: A, reason: Design A clears 5 thresholds}}
+    - {args: [{matrix: []}, {components: []}, {components: []}], raises: ValueError}
+    - {args: [1, {components: []}, {components: []}], raises: ValueError}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}]}, 1, {components: []}], raises: ValueError}
+hints:
+  - {level: 1, text: "Em quais métricas um valor maior é melhor, e em quais um valor menor é melhor?"}
+  - {level: 2, text: "Crie uma tabela função->pontuação; métricas ausentes recebem o pior valor padrão."}
+  - {level: 3, text: "O defensor percorre as métricas, aplica o operador correto, conta aprovações e escolhe a maior contagem."}
+solution: |
+  def defend_tradeoff(matrix, design_a, design_b):
+      if type(matrix) is not dict or type(matrix.get("matrix")) is not list or not matrix["matrix"]:
+          raise ValueError("invalid matrix")
+      if type(design_a) is not dict or "components" not in design_a:
+          raise ValueError("invalid design_a")
+      if type(design_b) is not dict or "components" not in design_b:
+          raise ValueError("invalid design_b")
+      score_map = {
+          "inference": {"accuracy": 0.92},
+          "latency_reduction": {"p99_ms": 180},
+          "cost_control": {"usd_per_1k": 0.4},
+          "bias_check": {"fairness_gap": 0.03},
+          "uptime_tracking": {"uptime": 0.9995},
+      }
+      higher_better = {"accuracy", "uptime"}
+      def score_design(design):
+          scores = {}
+          for comp in design["components"]:
+              func = comp.get("function")
+              for metric, val in score_map.get(func, {}).items():
+                  scores[metric] = val
+          return scores
+      sa = score_design(design_a)
+      sb = score_design(design_b)
+      metrics = {row["metric"]: row["threshold"] for row in matrix["matrix"]}
+      a_clears = {}
+      b_clears = {}
+      for metric, thresh in metrics.items():
+          av = sa.get(metric, 0 if metric in higher_better else 999)
+          bv = sb.get(metric, 0 if metric in higher_better else 999)
+          if metric in higher_better:
+              a_clears[metric] = av >= thresh
+              b_clears[metric] = bv >= thresh
+          else:
+              a_clears[metric] = av <= thresh
+              b_clears[metric] = bv <= thresh
+      a_count = sum(a_clears.values())
+      b_count = sum(b_clears.values())
+      winner = "A" if a_count >= b_count else "B"
+      return {"design_a": sa, "design_b": sb, "a_clears": a_clears, "b_clears": b_clears, "winner": winner, "reason": f"Design {winner} clears {max(a_count, b_count)} thresholds"}

@@ -4,7 +4,7 @@ language: python
 version: "0.1"
 description: |
   Construa sistemas de IA confiáveis, de fundamentos determinísticos a frameworks de produção.
-  As vinte primeiras ilhas cobrem sistemas de IA confiáveis, fundamentos centrais e as especializações LangChain, LangGraph, LlamaIndex e PydanticAI.
+  Vinte e duas ilhas cobrem fundamentos, cinco especializações de frameworks e um capstone ponta a ponta.
 
 runner: python
 file_extension: .py
@@ -30,3 +30,5 @@ islands:
   - 18-langgraph
   - 19-llamaindex
   - 20-pydanticai
+  - 21-dspy
+  - 22-capstone

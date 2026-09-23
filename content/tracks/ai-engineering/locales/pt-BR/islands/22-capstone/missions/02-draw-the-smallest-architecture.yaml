@@ -1,0 +1,82 @@
+id: ai-capstone-02
+title: Desenhar a menor arquitetura
+track: ai-engineering
+island: capstone
+order: 2
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [end-to-end-system-design]
+teaching:
+  analogy: "Um arquiteto naval desenha o menor navio que atende às especificações do armador. Casco, motor e navegação: cada peça precisa ser justificada por uma linha da matriz de aceitação."
+  explanation: "O desenho de sistema ponta a ponta produz um manifesto de componentes. Cada componente declara função, tecnologia, entradas, saídas e a linha da matriz que satisfaz. A menor arquitetura não inclui peças sem justificativa. Frameworks aparecem como escolhas declaradas de stack, não como imports. Cada componente usa a primeira preferência disponível na stack informada."
+  worked_example: |
+    def draw_architecture(matrix, stack):
+        components = []
+        for row in matrix["matrix"]:
+            if row["metric"] == "accuracy":
+                components.append({"name": "model", "function": "inference", "stack": "pytorch", "satisfies": "accuracy>=0.9"})
+            elif row["metric"] == "p99_ms":
+                components.append({"name": "cache", "function": "latency_reduction", "stack": "redis", "satisfies": "p99_ms<200"})
+        return {"components": components, "stack": stack}
+  key_points:
+    - Todo componente aponta para ao menos uma linha da matriz por `satisfies`.
+    - Escolhas de stack são strings declaradas; não há imports de frameworks.
+    - Cada tipo de componente tem uma ordem de preferência e usa a primeira opção disponível.
+    - Componentes declaram entradas e saídas como nomes para manter rastreabilidade.
+brief: >
+  Escreva `system_architecture(matrix, stack) -> dict`. `matrix` contém uma lista não vazia
+  de linhas com métricas aceitas. `stack` contém strings únicas da lista permitida. Rejeite
+  entrada ruim com ValueError. Para cada linha, crie um componente com `name`, `function`,
+  `stack`, `inputs`, `outputs` e `satisfies`. Respeite a ordem de preferência declarada no
+  enunciado e escolha "custom" quando nenhuma preferência estiver presente. Retorne
+  `{"components": [...], "stack": stack}`.
+signature:
+  entrypoint: system_architecture
+  stub: |
+    def system_architecture(matrix, stack):
+        # Build component manifest from matrix rows, validate stack choices.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: p99_ms, threshold: 200, owner: platform}]}, [pytorch, redis]], expect: {components: [{name: model, function: inference, stack: pytorch, inputs: [features], outputs: [predictions], satisfies: "accuracy>=0.9"}, {name: cache, function: latency_reduction, stack: redis, inputs: [requests], outputs: [cached_responses], satisfies: "p99_ms<200"}], stack: [pytorch, redis]}}
+    - {args: [{matrix: [{metric: fairness_gap, threshold: 0.05, owner: governance}]}, [custom]], expect: {components: [{name: guard, function: bias_check, stack: custom, inputs: [predictions, groups], outputs: [flags], satisfies: "fairness_gap<0.05"}], stack: [custom]}}
+  hidden:
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: p99_ms, threshold: 200, owner: platform}, {metric: usd_per_1k, threshold: 0.5, owner: finance}, {metric: fairness_gap, threshold: 0.05, owner: governance}, {metric: uptime, threshold: 0.999, owner: sre}]}, [pytorch, langgraph, pydantic-ai, dspy, custom]], expect: {components: [{name: model, function: inference, stack: pytorch, inputs: [features], outputs: [predictions], satisfies: "accuracy>=0.9"}, {name: cache, function: latency_reduction, stack: langgraph, inputs: [requests], outputs: [cached_responses], satisfies: "p99_ms<200"}, {name: optimizer, function: cost_control, stack: dspy, inputs: [usage], outputs: [optimized_usage], satisfies: "usd_per_1k<0.5"}, {name: guard, function: bias_check, stack: custom, inputs: [predictions, groups], outputs: [flags], satisfies: "fairness_gap<0.05"}, {name: monitor, function: uptime_tracking, stack: pydantic-ai, inputs: [events], outputs: [alerts], satisfies: "uptime>=0.999"}], stack: [pytorch, langgraph, pydantic-ai, dspy, custom]}}
+    - {args: [{matrix: []}, []], raises: ValueError}
+    - {args: [1, []], raises: ValueError}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}]}, ["invalid"]], raises: ValueError}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}]}, [pytorch, pytorch]], raises: ValueError}
+    - {args: [{matrix: [{metric: mystery, threshold: 1, owner: x}]}, [custom]], raises: ValueError}
+hints:
+  - {level: 1, text: "O que todo componente precisa ter para justificar sua existência na arquitetura?"}
+  - {level: 2, text: "Mapeie cada métrica a um componente; cada tipo percorre sua lista de preferências e usa a primeira opção disponível."}
+  - {level: 3, text: "O arquiteto percorre as linhas da matriz, cria um componente por linha com a stack preferida e declara entradas e saídas."}
+solution: |
+  def system_architecture(matrix, stack):
+      allowed_stack = {"langchain", "langgraph", "llamaindex", "pydantic-ai", "dspy", "pytorch", "redis", "custom"}
+      if type(matrix) is not dict or type(matrix.get("matrix")) is not list or not matrix["matrix"]:
+          raise ValueError("invalid matrix")
+      if type(stack) is not list:
+          raise ValueError("invalid stack")
+      for s in stack:
+          if s not in allowed_stack:
+              raise ValueError("invalid stack entry")
+      if len(set(stack)) != len(stack):
+          raise ValueError("duplicate stack entry")
+      component_specs = {
+          "accuracy": ("model", "inference", ["pytorch", "custom"], ["features"], ["predictions"], "accuracy>=0.9"),
+          "p99_ms": ("cache", "latency_reduction", ["redis", "langgraph", "custom"], ["requests"], ["cached_responses"], "p99_ms<200"),
+          "usd_per_1k": ("optimizer", "cost_control", ["dspy", "custom"], ["usage"], ["optimized_usage"], "usd_per_1k<0.5"),
+          "fairness_gap": ("guard", "bias_check", ["custom"], ["predictions", "groups"], ["flags"], "fairness_gap<0.05"),
+          "uptime": ("monitor", "uptime_tracking", ["pydantic-ai", "custom"], ["events"], ["alerts"], "uptime>=0.999"),
+      }
+      components = []
+      for row in matrix["matrix"]:
+          if type(row) is not dict or row.get("metric") not in component_specs:
+              raise ValueError("unknown metric")
+          name, function, preferences, inputs, outputs, satisfies = component_specs[row["metric"]]
+          chosen = next((p for p in preferences if p in stack), "custom")
+          components.append({"name": name, "function": function, "stack": chosen, "inputs": inputs, "outputs": outputs, "satisfies": satisfies})
+      return {"components": components, "stack": stack}

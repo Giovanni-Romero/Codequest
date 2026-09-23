@@ -1,0 +1,8 @@
+id: dspy
+name: DSPy
+track: ai-engineering
+order: 21
+theme: Programas de LM declarados como assinaturas, compostos como módulos, medidos por métricas e otimizados sem vazamento de dados
+concepts: [dspy-signatures, dspy-modules, dspy-metrics, dspy-optimization]
+unlock_requires: {requires_mission: ai-pydanticai-08}
+completion_reward_xp: 300

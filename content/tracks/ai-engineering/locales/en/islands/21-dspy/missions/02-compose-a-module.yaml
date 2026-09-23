@@ -1,0 +1,104 @@
+id: ai-dspy-02
+title: Compose a module
+track: ai-engineering
+island: dspy
+order: 2
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-modules]
+teaching:
+  analogy: "A ship's pilot follows a checklist: check charts, verify draft, confirm tugs — each step feeds the next, and the log records every decision."
+  explanation: "A dspy.Module composes multiple Predict (or other) modules in a forward() method. Each stage takes the previous output as input. The module is a regular Python class with explicit control flow. DummyLM answers are consumed in order across all Predict calls. Trace inputs and outputs per stage to debug the pipeline."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class ParseLog(dspy.Signature):
+        log: str = dspy.InputField()
+        vessel: str = dspy.OutputField()
+        port: str = dspy.OutputField()
+    class AssessRisk(dspy.Signature):
+        vessel: str = dspy.InputField()
+        port: str = dspy.InputField()
+        risk: str = dspy.OutputField(desc="low|medium|high")
+    class LogPipeline(dspy.Module):
+        def __init__(self):
+            self.parse = dspy.Predict(ParseLog)
+            self.assess = dspy.Predict(AssessRisk)
+        def forward(self, log):
+            parsed = self.parse(log=log)
+            risk = self.assess(vessel=parsed.vessel, port=parsed.port)
+            return {"vessel": parsed.vessel, "port": parsed.port, "risk": risk.risk}
+    lm = DummyLM([{"vessel": "MSC Zoe", "port": "Antwerp"}, {"risk": "low"}])
+    with dspy.context(lm=lm):
+        pipe = LogPipeline()
+        print(pipe("MSC Zoe arrived at Antwerp"))
+  key_points:
+    - Subclass dspy.Module, instantiate Predict (or ChainOfThought) in __init__, chain them in forward().
+    - DummyLM answers are consumed sequentially across all Predict calls in forward().
+    - Each stage's signature is explicit; the module boundary is the forward() contract.
+    - Return a dict that aggregates every stage's output for traceability.
+brief: >
+  Write `dspy_module(log) -> dict`. Reject non-string or blank logs with ValueError.
+  Define two signatures: `ParseEntry` (log -> vessel, port) and `ClassifyRisk` (vessel, port -> risk: "low"|"medium"|"high").
+  Build a `dspy.Module` subclass `LogRiskModule` with `parse = dspy.Predict(ParseEntry)` and
+  `assess = dspy.Predict(ClassifyRisk)`. In `forward(log)`, call parse then assess and return
+  `{"vessel": ..., "port": ..., "risk": ...}`. Use `DummyLM([{"vessel": <v>, "port": <p>}, {"risk": "low"}])`
+  with the vessel/port parsed from the log (split on " at " for vessel, port). No network.
+signature:
+  entrypoint: dspy_module
+  stub: |
+    def dspy_module(log):
+        # Compose a two-stage module, run with DummyLM, return aggregated output.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: ["MSC Zoe at Antwerp"], expect: {vessel: "MSC Zoe", port: "Antwerp", risk: low}}
+    - {args: ["Ever Given at Suez"], expect: {vessel: "Ever Given", port: "Suez", risk: low}}
+  hidden:
+    - {args: ["CMA CGM Marco Polo at Singapore"], expect: {vessel: "CMA CGM Marco Polo", port: "Singapore", risk: low}}
+    - {args: ["  Maersk Edinburgh  at  Rotterdam  "], expect: {vessel: "Maersk Edinburgh", port: "Rotterdam", risk: low}}
+    - {args: [""], raises: ValueError}
+    - {args: ["   "], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [null], raises: ValueError}
+    - {args: [true], raises: ValueError}
+hints:
+  - {level: 1, text: "How do you chain two Predict calls so the second uses the first's output?"}
+  - {level: 2, text: "Create a Module subclass with two Predict instances; in forward, call the first, pass its fields to the second, return the combined dict."}
+  - {level: 3, text: "A pipeline splits the log on ' at ' to get vessel and port, feeds both to the risk classifier, and returns all three fields."}
+solution: |
+  def dspy_module(log):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      if type(log) is not str or not log.strip():
+          raise ValueError("invalid log")
+      cleaned = log.strip()
+      if " at " not in cleaned:
+          raise ValueError("invalid log format")
+      vessel, port = cleaned.split(" at ", 1)
+      vessel = vessel.strip()
+      port = port.strip()
+      class ParseEntry(dspy.Signature):
+          """Parse a log entry into vessel and port."""
+          log: str = dspy.InputField()
+          vessel: str = dspy.OutputField()
+          port: str = dspy.OutputField()
+      class ClassifyRisk(dspy.Signature):
+          """Classify risk for a vessel-port pair."""
+          vessel: str = dspy.InputField()
+          port: str = dspy.InputField()
+          risk: str = dspy.OutputField(desc="low|medium|high")
+      class LogRiskModule(dspy.Module):
+          def __init__(self):
+              self.parse = dspy.Predict(ParseEntry)
+              self.assess = dspy.Predict(ClassifyRisk)
+          def forward(self, log):
+              parsed = self.parse(log=log)
+              risk = self.assess(vessel=parsed.vessel, port=parsed.port)
+              return {"vessel": parsed.vessel, "port": parsed.port, "risk": risk.risk}
+      lm = DummyLM([{"vessel": vessel, "port": port}, {"risk": "low"}])
+      with dspy.context(lm=lm):
+          result = LogRiskModule()(cleaned)
+      return result

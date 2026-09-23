@@ -1,0 +1,90 @@
+id: ai-capstone-04
+title: Montar o pacote de prontidão
+track: ai-engineering
+island: capstone
+order: 4
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [operational-readiness]
+teaching:
+  analogy: "Antes da primeira viagem, o navio organiza certificado, tripulação, manifesto, procedimentos de emergência e seguro. Se faltar um documento, ele fica no porto."
+  explanation: "Prontidão operacional produz um pacote com linhagem, runbook, gatilho de rollback e rota de supervisão. Cada item é um registro estruturado. O pacote prova que o sistema pode ser implantado, observado, revertido e governado."
+  worked_example: |
+    def readiness_pack(architecture, matrix):
+        return {
+            "lineage": {"code_version": "v1.2.3", "data_version": "d-2024-01-15", "config_hash": "abc123"},
+            "runbook": {"start": "deploy.sh", "stop": "kubectl delete", "scale": "hpa", "rollback": "kubectl rollout undo"},
+            "rollback_trigger": {"metric": "accuracy", "threshold": 0.85, "action": "auto_rollback"},
+            "oversight": {"approver": "ml-lead", "alert_recipients": ["sre", "governance"]},
+        }
+  key_points:
+    - Linhagem guarda versões imutáveis de código, dados e configuração.
+    - O runbook traz comandos concretos para iniciar, parar, escalar e reverter.
+    - O gatilho de rollback combina métrica, limiar numérico e ação automática.
+    - Supervisão nomeia quem aprova e quem recebe alertas.
+    - O pacote é validado como dado; campos ausentes ou vagos são erros.
+brief: >
+  Escreva `readiness_pack(architecture, matrix) -> dict`. As entradas vêm das missões 2 e 1.
+  Rejeite entrada ruim com ValueError. Retorne `lineage`, `runbook`, `rollback_trigger` e
+  `oversight`. Versões, comandos e nomes não podem estar vazios. A métrica de rollback deve
+  existir na matriz, o limiar deve ser numérico, a ação deve ser "auto_rollback" e a lista
+  de destinatários deve ter ao menos um nome válido.
+signature:
+  entrypoint: readiness_pack
+  stub: |
+    def readiness_pack(architecture, matrix):
+        # Build structured readiness pack with lineage, runbook, rollback trigger, oversight.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}]}], expect: {lineage: {code_version: v1.0.0, data_version: d-2024-01-01, config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: accuracy, threshold: 0.85, action: auto_rollback}, oversight: {approver: ml-lead, alert_recipients: [sre]}}}
+    - {args: [{components: [{name: cache, function: latency_reduction, stack: redis}]}, {matrix: [{metric: p99_ms, threshold: 200, owner: platform}]}], expect: {lineage: {code_version: v1.0.0, data_version: d-2024-01-01, config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: p99_ms, threshold: 0.85, action: auto_rollback}, oversight: {approver: ml-lead, alert_recipients: [sre]}}}
+  hidden:
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}, {name: guard, function: bias_check, stack: custom}]}, {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}, {metric: fairness_gap, threshold: 0.05, owner: governance}]}], expect: {lineage: {code_version: v1.0.0, data_version: d-2024-01-01, config_hash: abc123}, runbook: {start: deploy.sh, stop: stop.sh, scale: hpa, rollback: rollback.sh}, rollback_trigger: {metric: accuracy, threshold: 0.85, action: auto_rollback}, oversight: {approver: ml-lead, alert_recipients: [sre]}}}
+    - {args: [{components: []}, {matrix: []}], raises: ValueError}
+    - {args: [1, {matrix: []}], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, "invalid"], raises: ValueError}
+    - {args: [{components: "invalid"}, {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}]}], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, {matrix: []}], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, {matrix: [{metric: "unknown", threshold: 0.5, owner: governance}]}], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais quatro artefatos formam o pacote, e o que torna cada um concreto?"}
+  - {level: 2, text: "Valide strings não vazias, métrica presente na matriz e lista de destinatários não vazia."}
+  - {level: 3, text: "O construtor extrai as métricas da matriz e monta quatro dicts com valores fixos e validados."}
+solution: |
+  def readiness_pack(architecture, matrix):
+      if type(architecture) is not dict or type(architecture.get("components")) is not list or not architecture["components"]:
+          raise ValueError("invalid architecture")
+      if type(matrix) is not dict or type(matrix.get("matrix")) is not list or not matrix["matrix"]:
+          raise ValueError("invalid matrix")
+      allowed_metrics = {"accuracy", "p99_ms", "usd_per_1k", "fairness_gap", "uptime"}
+      metrics = []
+      for row in matrix["matrix"]:
+          if type(row) is not dict or row.get("metric") not in allowed_metrics:
+              raise ValueError("invalid matrix row")
+          metrics.append(row["metric"])
+      lineage = {"code_version": "v1.0.0", "data_version": "d-2024-01-01", "config_hash": "abc123"}
+      runbook = {"start": "deploy.sh", "stop": "stop.sh", "scale": "hpa", "rollback": "rollback.sh"}
+      first_metric = metrics[0]
+      rollback_trigger = {"metric": first_metric, "threshold": 0.85, "action": "auto_rollback"}
+      oversight = {"approver": "ml-lead", "alert_recipients": ["sre"]}
+      for k, v in lineage.items():
+          if type(v) is not str or not v.strip():
+              raise ValueError(f"invalid lineage {k}")
+      for k, v in runbook.items():
+          if type(v) is not str or not v.strip():
+              raise ValueError(f"invalid runbook {k}")
+      if type(rollback_trigger["metric"]) is not str or rollback_trigger["metric"] not in metrics:
+          raise ValueError("invalid rollback metric")
+      if type(rollback_trigger["threshold"]) not in (int, float):
+          raise ValueError("invalid threshold")
+      if type(oversight["approver"]) is not str or not oversight["approver"].strip():
+          raise ValueError("invalid approver")
+      if type(oversight["alert_recipients"]) is not list or not oversight["alert_recipients"]:
+          raise ValueError("invalid recipients")
+      for r in oversight["alert_recipients"]:
+          if type(r) is not str or not r.strip():
+              raise ValueError("invalid recipient")
+      return {"lineage": lineage, "runbook": runbook, "rollback_trigger": rollback_trigger, "oversight": oversight}

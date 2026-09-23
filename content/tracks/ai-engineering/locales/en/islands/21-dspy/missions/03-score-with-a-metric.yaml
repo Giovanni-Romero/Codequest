@@ -1,0 +1,88 @@
+id: ai-dspy-03
+title: Score with a metric
+track: ai-engineering
+island: dspy
+order: 3
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-metrics]
+teaching:
+  analogy: A customs officer checks each container against the manifest — weight, seals, contents — and stamps pass or fail; the score is how many containers cleared.
+  explanation: "A metric in DSPy is a callable `metric(example, prediction) -> bool | float`. It compares the prediction against the example's expected output. dspy.Evaluate runs the metric over a devset and returns an EvaluationResult object: `.score` is a percentage (100.0 for a perfect run) and `.results` holds one (example, prediction, score) tuple per case. The metric must be deterministic and side-effect-free. Use it to measure capability, not to train."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class Classify(dspy.Signature):
+        text: str = dspy.InputField()
+        label: str = dspy.OutputField(desc="spam|ham")
+    def accuracy(ex, pred):
+        return pred.label == ex.label
+    devset = [
+        dspy.Example(text="free money", label="spam").with_inputs("text"),
+        dspy.Example(text="meeting at 3", label="ham").with_inputs("text"),
+    ]
+    lm = DummyLM([{"label": "spam"}, {"label": "ham"}])
+    with dspy.context(lm=lm):
+        result = dspy.Evaluate(devset=devset, metric=accuracy, num_threads=1)(dspy.Predict(Classify))
+        print(result.score / 100)
+  key_points:
+    - Metric signature: (example, prediction) -> bool or float; Evaluate calls it once per example.
+    - dspy.Evaluate returns EvaluationResult, not a bare number: read .score (a percentage) and .results.
+    - Build the devset as dspy.Example(...).with_inputs(...) so Evaluate knows which fields are inputs.
+    - Keep metrics pure: no I/O, no mutation, no randomness.
+brief: >
+  Write `dspy_metric(devset) -> dict`. Reject non-list or empty devset with ValueError.
+  Each item must be a dict with `text` (str) and `label` ("spam"|"ham"), else ValueError.
+  Define a `Classify` signature (text -> label). Define metric `exact_match(example, prediction)`
+  returning `pred.label == ex.label`. Build a `DummyLM` with one answer per devset label, in order.
+  Run `dspy.Evaluate(devset=..., metric=exact_match)(dspy.Predict(Classify))`, take the
+  EvaluationResult, and return `{"score": <res.score / 100>, "total": <int>,
+  "passed": <count of truthy per-example scores>}`. No network.
+signature:
+  entrypoint: dspy_metric
+  stub: |
+    def dspy_metric(devset):
+        # Define signature, metric, DummyLM, run Evaluate, return score breakdown.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{text: "free money", label: spam}, {text: "meeting at 3", label: ham}]], expect: {score: 1.0, total: 2, passed: 2}}
+    - {args: [[{text: "win prize", label: spam}, {text: "lunch tomorrow", label: ham}, {text: "click here", label: spam}]], expect: {score: 1.0, total: 3, passed: 3}}
+  hidden:
+    - {args: [[{text: "urgent", label: spam}, {text: "ok", label: ham}, {text: "buy now", label: spam}, {text: "thanks", label: ham}]], expect: {score: 1.0, total: 4, passed: 4}}
+    - {args: [[]], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [[{text: "x"}]], raises: ValueError}
+    - {args: [[{text: "x", label: "spam"}, {text: "y"}]], raises: ValueError}
+    - {args: [[{text: "x", label: "spam"}, {text: "y", label: "junk"}]], raises: ValueError}
+    - {args: [[{text: "x", label: "spam"}, {text: 1, label: "ham"}]], raises: ValueError}
+hints:
+  - {level: 1, text: "What does the metric function receive, and what does the EvaluationResult object give you back?"}
+  - {level: 2, text: "Build devset as list of dspy.Example(...).with_inputs('text'); the metric compares pred.label to ex.label; read .score and .results off the result."}
+  - {level: 3, text: "A classifier metric iterates the devset, runs Predict on each text, and counts exact label matches; Evaluate reports a percentage in result.score."}
+solution: |
+  def dspy_metric(devset):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      if type(devset) is not list or not devset:
+          raise ValueError("invalid devset")
+      for item in devset:
+          if type(item) is not dict:
+              raise ValueError("invalid devset item")
+          if type(item.get("text")) is not str or type(item.get("label")) is not str:
+              raise ValueError("invalid devset item")
+          if item["label"] not in ("spam", "ham"):
+              raise ValueError("invalid label")
+      class Classify(dspy.Signature):
+          text: str = dspy.InputField()
+          label: str = dspy.OutputField(desc="spam|ham")
+      def exact_match(ex, pred):
+          return pred.label == ex.label
+      examples = [dspy.Example(text=item["text"], label=item["label"]).with_inputs("text") for item in devset]
+      answers = {item["text"]: {"label": item["label"]} for item in devset}
+      with dspy.context(lm=DummyLM(answers)):
+          result = dspy.Evaluate(devset=examples, metric=exact_match)(dspy.Predict(Classify))
+      passed = sum(1 for *_, score in result.results if score)
+      return {"score": result.score / 100, "total": len(devset), "passed": passed}

@@ -1,0 +1,89 @@
+id: ai-dspy-05
+title: Align fields to a contract
+track: ai-engineering
+island: dspy
+order: 5
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-signatures, dspy-modules]
+teaching:
+  analogy: A shipping form has fixed fields — vessel, port, cargo — if the clerk writes "ship" instead of "vessel", the manifest rejects it before the vessel even docks.
+  explanation: "A signature's field names are its contract. The module's forward() must pass exactly those names. A typo in a field name (e.g., 'port' vs 'harbor') breaks the chain silently at runtime unless validated. Validate input dict keys against the signature's declared fields before calling Predict; reject extra or missing keys with a clear error."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class Route(dspy.Signature):
+        vessel: str = dspy.InputField()
+        destination: str = dspy.InputField()
+        route: str = dspy.OutputField()
+    class Router(dspy.Module):
+        def __init__(self):
+            self.predict = dspy.Predict(Route)
+        def forward(self, vessel, destination):
+            return self.predict(vessel=vessel, destination=destination)
+    lm = DummyLM([{"route": "North Sea"}])
+    with dspy.context(lm=lm):
+        r = Router()
+        print(r(vessel="MSC Zoe", destination="Rotterdam"))
+  key_points:
+    - Signature field names (vessel, destination) are the contract; Predict kwargs must match exactly.
+    - Validate caller-provided dicts against the signature's input fields before calling forward().
+    - Reject extra keys, missing keys, and wrong types with ValueError naming the field.
+    - The module's forward() is the enforcement point — it owns the contract.
+brief: >
+  Write `dspy_contract(data) -> dict`. Reject non-dict, missing keys, extra keys, or non-string
+  values with ValueError. Required keys: `vessel` (str), `port` (str), `cargo` (str).
+  Define signature `PlanRoute(vessel, port, cargo -> route)`. Module `RoutePlanner` calls
+  `dspy.Predict(PlanRoute)` with those three fields. Use `DummyLM([{"route": "computed"}])`.
+  Return `{"route": <str>}`. No network.
+signature:
+  entrypoint: dspy_contract
+  stub: |
+    def dspy_contract(data):
+        # Validate input against signature fields, run module, return output.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{vessel: "MSC Zoe", port: "Rotterdam", cargo: "containers"}], expect: {route: computed}}
+    - {args: [{vessel: "Ever Given", port: "Suez", cargo: "crude"}], expect: {route: computed}}
+  hidden:
+    - {args: [{vessel: "Maersk", port: "Singapore", cargo: "electronics"}], expect: {route: computed}}
+    - {args: [{vessel: "MSC Zoe", port: "Rotterdam"}], raises: ValueError}
+    - {args: [{vessel: "MSC Zoe", port: "Rotterdam", cargo: "x", extra: "y"}], raises: ValueError}
+    - {args: [{vessel: 1, port: "Rotterdam", cargo: "x"}], raises: ValueError}
+    - {args: ["not a dict"], raises: ValueError}
+    - {args: [null], raises: ValueError}
+    - {args: [{}], raises: ValueError}
+hints:
+  - {level: 1, text: "Where does the contract live — in the module, the signature, or the caller's dict?"}
+  - {level: 2, text: "Get signature input fields via PlanRoute.input_fields().keys(); compare to data keys before calling Predict."}
+  - {level: 3, text: "A validator checks type(data) is dict, exact key set match, all values are str; then forwards to the module."}
+solution: |
+  def dspy_contract(data):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      required = {"vessel", "port", "cargo"}
+      if type(data) is not dict:
+          raise ValueError("invalid data")
+      if set(data.keys()) != required:
+          raise ValueError("invalid keys")
+      for k in required:
+          if type(data[k]) is not str or not data[k].strip():
+              raise ValueError(f"invalid {k}")
+      class PlanRoute(dspy.Signature):
+          """Plan a route for a vessel."""
+          vessel: str = dspy.InputField()
+          port: str = dspy.InputField()
+          cargo: str = dspy.InputField()
+          route: str = dspy.OutputField()
+      class RoutePlanner(dspy.Module):
+          def __init__(self):
+              self.predict = dspy.Predict(PlanRoute)
+          def forward(self, vessel, port, cargo):
+              return self.predict(vessel=vessel, port=port, cargo=cargo)
+      lm = DummyLM([{"route": "computed"}])
+      with dspy.context(lm=lm):
+          result = RoutePlanner()(vessel=data["vessel"].strip(), port=data["port"].strip(), cargo=data["cargo"].strip())
+      return {"route": result.route}

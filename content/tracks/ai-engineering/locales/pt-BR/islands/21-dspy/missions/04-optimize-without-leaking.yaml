@@ -1,0 +1,106 @@
+id: ai-dspy-04
+title: Otimizar sem vazamento
+track: ai-engineering
+island: dspy
+order: 4
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-optimization]
+teaching:
+  analogy: O capitão treina a tripulação nos exercícios do ano passado, depois testa num cenário novo — se o teste usa os mesmos exercícios, a nota é inflada e a tripulação não está pronta.
+  explanation: "Otimização no DSPy compila um programa selecionando demonstrações de um conjunto de treino. LabeledFewShot pega exemplos rotulados como demos — sem chamadas de LM professor, totalmente determinístico. O conjunto de treino e o held-out devem ser disjuntos; vazamento significa que o otimizador vê respostas do held-out durante a compilação. Sempre divida antes de otimizar, depois avalie só no held-out."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    from dspy.teleprompt import LabeledFewShot
+    class QA(dspy.Signature):
+        pergunta: str = dspy.InputField()
+        resposta: str = dspy.OutputField()
+    def exato(ex, pred):
+        return pred.resposta == ex.resposta
+    trainset = [
+        dspy.Example(pergunta="1+1", resposta="2").with_inputs("pergunta"),
+        dspy.Example(pergunta="2+2", resposta="4").with_inputs("pergunta"),
+    ]
+    heldout = [
+        dspy.Example(pergunta="3+3", resposta="6").with_inputs("pergunta"),
+    ]
+    lm = DummyLM([{"resposta": "2"}, {"resposta": "4"}, {"resposta": "6"}])
+    with dspy.context(lm=lm):
+        optimizer = LabeledFewShot(k=2)
+        compiled = optimizer.compile(dspy.Predict(QA), trainset=trainset)
+        train_score = dspy.Evaluate(devset=trainset, metric=exato, num_threads=1)(compiled)
+        heldout_score = dspy.Evaluate(devset=heldout, metric=exato, num_threads=1)(compiled)
+        print({"treino": train_score, "heldout": heldout_score})
+  key_points:
+    - LabeledFewShot(k) seleciona até k exemplos rotulados como demonstrações — sem professor LM, determinístico.
+    - Divida dados em trainset e heldout ANTES de compilar; heldout nunca deve tocar o otimizador.
+    - Avalie em ambos os conjuntos; uma grande diferença sinaliza overfitting nas demos.
+    - O programa compilado guarda demos no atributo `demos`; inspecione-o para verificar a separação.
+brief: >
+  Escreva `dspy_optimize(trainset, heldout) -> dict`. Cada um é lista de dicts com `question` (str)
+  e `answer` (str). Rejeite não-listas, listas vazias, itens ruins ou perguntas sobrepostas entre
+  conjuntos com ValueError. Defina assinatura `QA` (question -> answer) e métrica de resposta exata.
+  Use `LabeledFewShot(k=2)` com `sample=False` para compilar `dspy.Predict(QA)` no trainset.
+  Avalie ambos os conjuntos com `dspy.Evaluate` e leia `.score` de cada EvaluationResult.
+  Use `DummyLM` com respostas na ordem trainset e depois heldout. Retorne
+  `{"train_score": <fração>, "heldout_score": <fração>, "num_demos": <int>}`. Sem rede.
+signature:
+  entrypoint: dspy_optimize
+  stub: |
+    def dspy_optimize(trainset, heldout):
+        # Split, compile with LabeledFewShot, evaluate both sets, return scores.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{question: "1+1", answer: "2"}, {question: "2+2", answer: "4"}], [{question: "3+3", answer: "6"}]], expect: {train_score: 1.0, heldout_score: 1.0, num_demos: 2}}
+    - {args: [[{question: "a", answer: "1"}, {question: "b", answer: "2"}, {question: "c", answer: "3"}], [{question: "d", answer: "4"}]], expect: {train_score: 1.0, heldout_score: 1.0, num_demos: 2}}
+  hidden:
+    - {args: [[{question: "x", answer: "1"}, {question: "y", answer: "2"}], [{question: "z", answer: "3"}, {question: "w", answer: "4"}]], expect: {train_score: 1.0, heldout_score: 1.0, num_demos: 2}}
+    - {args: [[{question: "1+1", answer: "2"}], [{question: "1+1", answer: "2"}]], raises: ValueError}
+    - {args: [[], [{question: "x", answer: "y"}]], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], []], raises: ValueError}
+    - {args: [[{question: "x"}], [{question: "y", answer: "z"}]], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], 1], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], [{question: 1, answer: "z"}]], raises: ValueError}
+hints:
+  - {level: 1, text: "O que deve ser verdade sobre os conjuntos de treino e held-out antes de chamar o otimizador?"}
+  - {level: 2, text: "Use LabeledFewShot(k=2); compile no trainset; avalie ambos com dspy.Evaluate; confira len(compiled.demos)."}
+  - {level: 3, text: "Um otimizador usa demos só do trainset; valores de question do heldout não podem aparecer no trainset."}
+solution: |
+  def dspy_optimize(trainset, heldout):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      from dspy.teleprompt import LabeledFewShot
+      if type(trainset) is not list or not trainset:
+          raise ValueError("invalid trainset")
+      if type(heldout) is not list or not heldout:
+          raise ValueError("invalid heldout")
+      train_qs = set()
+      for item in trainset:
+          if type(item) is not dict or type(item.get("question")) is not str or type(item.get("answer")) is not str:
+              raise ValueError("invalid trainset item")
+          train_qs.add(item["question"])
+      for item in heldout:
+          if type(item) is not dict or type(item.get("question")) is not str or type(item.get("answer")) is not str:
+              raise ValueError("invalid heldout item")
+          if item["question"] in train_qs:
+              raise ValueError("leakage detected")
+      class QA(dspy.Signature):
+          question: str = dspy.InputField()
+          answer: str = dspy.OutputField()
+      def exact(ex, pred):
+          return pred.answer == ex.answer
+      train_examples = [dspy.Example(question=i["question"], answer=i["answer"]).with_inputs("question") for i in trainset]
+      heldout_examples = [dspy.Example(question=i["question"], answer=i["answer"]).with_inputs("question") for i in heldout]
+      optimizer = LabeledFewShot(k=2)
+      compiled = optimizer.compile(dspy.Predict(QA), trainset=train_examples, sample=False)
+      train_answers = [{"answer": i["answer"]} for i in trainset]
+      heldout_answers = [{"answer": i["answer"]} for i in heldout]
+      with dspy.context(lm=DummyLM(train_answers)):
+          train_result = dspy.Evaluate(devset=train_examples, metric=exact, num_threads=1)(compiled)
+      with dspy.context(lm=DummyLM(heldout_answers)):
+          heldout_result = dspy.Evaluate(devset=heldout_examples, metric=exact, num_threads=1)(compiled)
+      return {"train_score": train_result.score / 100, "heldout_score": heldout_result.score / 100, "num_demos": len(compiled.demos)}

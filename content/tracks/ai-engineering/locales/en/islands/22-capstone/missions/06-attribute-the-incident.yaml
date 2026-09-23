@@ -1,0 +1,82 @@
+id: ai-capstone-06
+title: Attribute the incident
+track: ai-engineering
+island: capstone
+order: 6
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [end-to-end-system-design, failure-budget-review]
+teaching:
+  analogy: "After a collision, the inquiry traces the chain: radar failed -> officer didn't see obstacle -> autopilot held course -> hull breached. The earliest broken link is the radar; the budget impact is the cost of the breach."
+  explanation: "Attribute-the-incident takes a multi-stage incident trace (list of events with component, state, and timestamp) and finds the earliest event that violated a contract (component failed/slow when it should be healthy). It then computes the budget impact by propagating that failure through the architecture's component dependencies. The output names the root-cause component, the violated contract, and the metric deltas."
+  worked_example: |
+    def attribute_incident(architecture, trace):
+        for event in trace:
+            comp_name = event["component"]
+            state = event["state"]
+            comp = next((c for c in architecture["components"] if c["name"] == comp_name), None)
+            if comp and state in ("failed", "slow"):
+                impact_map = {"inference": {"accuracy": 0.15}, "latency_reduction": {"p99_ms": 500}}
+                return {"root_cause": comp_name, "violated_contract": f"{comp['function']} must be healthy", "impact": impact_map.get(comp["function"], {})}
+        return {"root_cause": None, "violated_contract": None, "impact": {}}
+  key_points:
+    - The trace is ordered by time; the first event with state "failed" or "slow" on a component that should be healthy is the root cause.
+    - Contract violation: component's function has an implicit "healthy" contract; failed/slow breaks it.
+    - Impact is derived from the component's function (same mapping as failure-budget-review).
+    - If no failed/slow events, root_cause is None and impact is empty.
+brief: >
+  Write `attribute_incident(architecture, trace) -> dict`. Architecture: output of mission 2.
+  Trace: list of dicts with `component` (str), `state` ("healthy"|"slow"|"failed"), `timestamp` (int).
+  Reject bad input. Iterate trace in order; first event with state in ("failed","slow") on a component
+  that exists in architecture -> root cause. Map component function to impact (same as mission 3).
+  Return `{"root_cause": <str|null>, "violated_contract": <str|null>, "impact": {...}}`.
+  If no violation, return all null/empty.
+signature:
+  entrypoint: attribute_incident
+  stub: |
+    def attribute_incident(architecture, trace):
+        # Find first failed/slow event, map to impact, return root cause and contract.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}]}, [{component: model, state: healthy, timestamp: 1}, {component: cache, state: failed, timestamp: 2}]], expect: {root_cause: cache, violated_contract: latency_reduction must be healthy, impact: {p99_ms: 500}}}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, [{component: model, state: healthy, timestamp: 1}, {component: model, state: healthy, timestamp: 2}]], expect: {root_cause: null, violated_contract: null, impact: {}}}
+  hidden:
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}, {name: cache, function: latency_reduction, stack: redis}, {name: guard, function: bias_check, stack: custom}]}, [{component: model, state: healthy, timestamp: 1}, {component: cache, state: slow, timestamp: 2}, {component: guard, state: failed, timestamp: 3}]], expect: {root_cause: cache, violated_contract: latency_reduction must be healthy, impact: {p99_ms: 250}}}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, [{component: model, state: failed, timestamp: 1}]], expect: {root_cause: model, violated_contract: inference must be healthy, impact: {accuracy: 0.15}}}
+    - {args: [{components: []}, []], raises: ValueError}
+    - {args: [1, []], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, "not a list"], raises: ValueError}
+    - {args: [{components: [{name: model, function: inference, stack: pytorch}]}, [{component: "x", state: failed, timestamp: 1}]], expect: {root_cause: null, violated_contract: null, impact: {}}}
+hints:
+  - {level: 1, text: "What makes an event a contract violation — the component name, the state, or both?"}
+  - {level: 2, text: "Build a name->component lookup; iterate trace in timestamp order; first failed/slow on a known component is the root cause."}
+  - {level: 3, text: "An attributor maps the root cause's function to an impact dict using the same table as the failure budget review."}
+solution: |
+  def attribute_incident(architecture, trace):
+      if type(architecture) is not dict or type(architecture.get("components")) is not list or not architecture["components"]:
+          raise ValueError("invalid architecture")
+      if type(trace) is not list:
+          raise ValueError("invalid trace")
+      comp_by_name = {c["name"]: c for c in architecture["components"]}
+      impact_map = {
+          "inference": {"accuracy": 0.15},
+          "latency_reduction": {"p99_ms": 500},
+          "cost_control": {"usd_per_1k": 0.25},
+          "bias_check": {"fairness_gap": 0.05},
+          "uptime_tracking": {"uptime": 0.002},
+      }
+      for event in trace:
+          if type(event) is not dict:
+              continue
+          comp_name = event.get("component")
+          state = event.get("state")
+          if comp_name in comp_by_name and state in ("failed", "slow"):
+              comp = comp_by_name[comp_name]
+              func = comp.get("function")
+              mult = 1.0 if state == "failed" else 0.5
+              impact = {m: v * mult for m, v in impact_map.get(func, {}).items()}
+              return {"root_cause": comp_name, "violated_contract": f"{func} must be healthy", "impact": impact}
+      return {"root_cause": None, "violated_contract": None, "impact": {}}

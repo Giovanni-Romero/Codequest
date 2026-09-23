@@ -1,0 +1,74 @@
+id: ai-dspy-07
+title: Audit an optimization run
+track: ai-engineering
+island: dspy
+order: 7
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-metrics, dspy-optimization]
+teaching:
+  analogy: A surveyor reviews the shipyard's work log — the welds marked "done" but the pressure test failed; the log says "passed" but the held-out test was copied from the training set.
+  explanation: "An optimization audit checks three things: (1) training and held-out sets are disjoint, (2) the metric measures what matters, (3) the compiled program's demos come only from the training set. Given a run record with trainset, heldout, demos, and scores, flag any leakage, metric mismatch, or demo contamination."
+  worked_example: |
+    def audit(trainset, heldout, demos, metric_name):
+        train_qs = {ex.question for ex in trainset}
+        heldout_qs = {ex.question for ex in heldout}
+        if train_qs & heldout_qs:
+            return {"leakage": True, "overlap": list(train_qs & heldout_qs)}
+        demo_qs = {d.question for d in demos}
+        if not demo_qs <= train_qs:
+            return {"contamination": True, "foreign": list(demo_qs - train_qs)}
+        return {"leakage": False, "contamination": False}
+  key_points:
+    - Leakage: any question appearing in both trainset and heldout.
+    - Contamination: a demo in the compiled program whose question is not in the trainset.
+    - Metric mismatch: the reported metric doesn't match the one used in optimization (hard to detect without the optimizer object; flag if metric name is missing).
+    - The audit is pure data inspection — no LM calls.
+brief: >
+  Write `dspy_audit(trainset, heldout, demos) -> dict`. Each is a list of dicts with `question`
+  (str) and `answer` (str). Reject bad input with ValueError. Check: (1) no question overlap
+  between trainset and heldout, (2) every demo question is in trainset. Return
+  `{"leakage": <bool>, "contamination": <bool>, "overlap": [...], "foreign": [...]}`
+  where overlap lists shared questions, foreign lists demo questions not in trainset.
+signature:
+  entrypoint: dspy_audit
+  stub: |
+    def dspy_audit(trainset, heldout, demos):
+        # Check for leakage and demo contamination.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{question: "1+1", answer: "2"}], [{question: "2+2", answer: "4"}], [{question: "1+1", answer: "2"}]], expect: {leakage: false, contamination: false, overlap: [], foreign: []}}
+    - {args: [[{question: "a", answer: "1"}], [{question: "a", answer: "1"}], [{question: "a", answer: "1"}]], expect: {leakage: true, contamination: false, overlap: ["a"], foreign: []}}
+  hidden:
+    - {args: [[{question: "x", answer: "1"}, {question: "y", answer: "2"}], [{question: "z", answer: "3"}], [{question: "x", answer: "1"}, {question: "w", answer: "4"}]], expect: {leakage: false, contamination: true, overlap: [], foreign: ["w"]}}
+    - {args: [[{question: "a", answer: "1"}], [{question: "b", answer: "2"}], [{question: "c", answer: "3"}]], expect: {leakage: false, contamination: true, overlap: [], foreign: ["c"]}}
+    - {args: [[], [{question: "x", answer: "y"}], []], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], [], []], raises: ValueError}
+    - {args: [[{question: "x"}], [{question: "y", answer: "z"}], []], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], 1, []], raises: ValueError}
+    - {args: [[{question: "x", answer: "y"}], [{question: "y", answer: "z"}], "not a list"], raises: ValueError}
+hints:
+  - {level: 1, text: "What two sets must be disjoint, and what set must be a subset of the training questions?"}
+  - {level: 2, text: "Build sets of questions from trainset, heldout, demos; check intersection and subset relations."}
+  - {level: 3, text: "An auditor builds train_qs = {ex.question for ex in trainset}, then checks heldout_qs & train_qs and demo_qs - train_qs."}
+solution: |
+  def dspy_audit(trainset, heldout, demos):
+      if type(trainset) is not list or not trainset:
+          raise ValueError("invalid trainset")
+      if type(heldout) is not list or not heldout:
+          raise ValueError("invalid heldout")
+      if type(demos) is not list:
+          raise ValueError("invalid demos")
+      for name, data in [("trainset", trainset), ("heldout", heldout), ("demos", demos)]:
+          for item in data:
+              if type(item) is not dict or type(item.get("question")) is not str or type(item.get("answer")) is not str:
+                  raise ValueError(f"invalid {name} item")
+      train_qs = {item["question"] for item in trainset}
+      heldout_qs = {item["question"] for item in heldout}
+      demo_qs = {item["question"] for item in demos}
+      overlap = sorted(train_qs & heldout_qs)
+      foreign = sorted(demo_qs - train_qs)
+      return {"leakage": bool(overlap), "contamination": bool(foreign), "overlap": overlap, "foreign": foreign}

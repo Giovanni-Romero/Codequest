@@ -1,0 +1,101 @@
+id: ai-dspy-06
+title: Compare two programs
+track: ai-engineering
+island: dspy
+order: 6
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-modules, dspy-metrics]
+teaching:
+  analogy: Two captains run the same route — one uses the old chart, one the new. The log shows which arrives on time and which drifts; the metric decides who gets the contract.
+  explanation: "The same metric applied to two different modules reveals which design works better. Build two modules (e.g., one with ChainOfThought, one with Predict) sharing a signature. Run dspy.Evaluate on the same devset for both and compare the .score values of the two EvaluationResults. ChainOfThought adds a reasoning field to the signature, so a scripted DummyLM must supply a reasoning key alongside the declared output, or parsing fails."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    class Nav(dspy.Signature):
+        log: str = dspy.InputField()
+        action: str = dspy.OutputField(desc="turn|hold|anchor")
+    def accuracy(ex, pred):
+        return pred.action == ex.action
+    devset = [
+        dspy.Example(log="storm ahead", action="anchor").with_inputs("log"),
+        dspy.Example(log="clear", action="hold").with_inputs("log"),
+    ]
+    lm = DummyLM([{"action": "anchor"}, {"action": "hold"}])
+    with dspy.context(lm=lm):
+        s1 = dspy.Evaluate(devset=devset, metric=accuracy, num_threads=1)(dspy.Predict(Nav)).score
+        cot_answers = [{"reasoning": "think", "action": "anchor"}, {"reasoning": "think", "action": "hold"}]
+    with dspy.context(lm=DummyLM(cot_answers)):
+        s2 = dspy.Evaluate(devset=devset, metric=accuracy, num_threads=1)(dspy.ChainOfThought(Nav)).score
+        print({"predict": s1 / 100, "cot": s2 / 100})
+  key_points:
+    - Same signature, different module types (Predict vs ChainOfThought) = different internal behavior.
+    - Same devset, same metric = fair comparison; compare .score from each EvaluationResult.
+    - ChainOfThought adds a reasoning field; DummyLM answers for it must include a reasoning key.
+    - Fresh DummyLM per evaluation: list-mode answers are consumed one per LM call.
+brief: >
+  Write `dspy_compare(devset) -> dict`. Devset: list of dicts with `log` (str) and `action`
+  ("turn"|"hold"|"anchor"). Reject bad input with ValueError. Define `Nav` signature.
+  Metric: exact match on `action`. Build `Predict(Nav)` and `ChainOfThought(Nav)`. Script
+  `DummyLM` answers with `{"action": ...}` for Predict and `{"reasoning": ..., "action": ...}`
+  for ChainOfThought, cycling through the devset actions. Run `dspy.Evaluate` on the same
+  devset for both modules and read `.score` off each result. Return
+  `{"predict_score": <float fraction>, "cot_score": <float fraction>,
+  "winner": "predict"|"cot"|"tie"}`. No network.
+signature:
+  entrypoint: dspy_compare
+  stub: |
+    def dspy_compare(devset):
+        # Two modules, same signature, same metric, same data, compare scores.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{log: "storm ahead", action: anchor}, {log: "clear", action: hold}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+    - {args: [[{log: "fog", action: turn}, {log: "calm", action: hold}, {log: "rocks", action: anchor}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+  hidden:
+    - {args: [[{log: "wind", action: turn}, {log: "rain", action: hold}, {log: "ice", action: anchor}, {log: "sun", action: hold}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+    - {args: [[]], raises: ValueError}
+    - {args: [1], raises: ValueError}
+    - {args: [[{log: "x"}]], raises: ValueError}
+    - {args: [[{log: "x", action: "sail"}]], raises: ValueError}
+    - {args: [[{log: 1, action: "turn"}]], raises: ValueError}
+    - {args: [[{log: "x", action: "turn"}, {log: "y", action: "turn"}]], expect: {predict_score: 1.0, cot_score: 1.0, winner: tie}}
+hints:
+  - {level: 1, text: "What stays the same and what changes when you compare Predict vs ChainOfThought?"}
+  - {level: 2, text: "Same Nav signature, same devset, same metric; ChainOfThought needs a reasoning key in the scripted answers."}
+  - {level: 3, text: "A comparer runs Evaluate twice — once with dspy.Predict, once with dspy.ChainOfThought — and compares the two .score percentages."}
+solution: |
+  def dspy_compare(devset):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      valid_actions = {"turn", "hold", "anchor"}
+      if type(devset) is not list or not devset:
+          raise ValueError("invalid devset")
+      for item in devset:
+          if type(item) is not dict or type(item.get("log")) is not str or type(item.get("action")) is not str:
+              raise ValueError("invalid devset item")
+          if item["action"] not in valid_actions:
+              raise ValueError("invalid action")
+      class Nav(dspy.Signature):
+          log: str = dspy.InputField()
+          action: str = dspy.OutputField(desc="turn|hold|anchor")
+      def exact(ex, pred):
+          return pred.action == ex.action
+      examples = [dspy.Example(log=i["log"], action=i["action"]).with_inputs("log") for i in devset]
+      predict_answers = {i["log"]: {"action": i["action"]} for i in devset}
+      with dspy.context(lm=DummyLM(predict_answers)):
+          predict_result = dspy.Evaluate(devset=examples, metric=exact)(dspy.Predict(Nav))
+      cot_answers = {i["log"]: {"reasoning": "brief reasoning", "action": i["action"]} for i in devset}
+      with dspy.context(lm=DummyLM(cot_answers)):
+          cot_result = dspy.Evaluate(devset=examples, metric=exact)(dspy.ChainOfThought(Nav))
+      predict_score = predict_result.score / 100
+      cot_score = cot_result.score / 100
+      if predict_score > cot_score:
+          winner = "predict"
+      elif cot_score > predict_score:
+          winner = "cot"
+      else:
+          winner = "tie"
+      return {"predict_score": predict_score, "cot_score": cot_score, "winner": winner}

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeQuest — Aula 8: Engenharia de IA de ponta a ponta</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f5f3ec; --card:#fffdf6; --text:#20231f; --muted:#5c655d; --accent:#176b55; --line:#c9d2ca; --code:#17211d; --code-text:#e8f3ec; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#111713; --card:#18201b; --text:#edf3ee; --muted:#aebbb1; --accent:#6ed5ae; --line:#39483e; --code:#0a0f0c; --code-text:#dff4e7; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    main { width:min(900px,calc(100% - 32px)); margin:0 auto; padding:48px 0 80px; }
+    header,section { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:clamp(22px,5vw,44px); margin:0 0 22px; }
+    h1,h2 { line-height:1.15; margin-top:0; } h1 { font-size:clamp(2rem,6vw,3.7rem); } h2 { font-size:clamp(1.45rem,4vw,2.2rem); }
+    .eyebrow { color:var(--accent); font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+    .lead { font-size:1.18rem; color:var(--muted); }
+    code { font-family:"Cascadia Code",Consolas,monospace; }
+    pre { overflow:auto; padding:20px; border-radius:12px; background:var(--code); color:var(--code-text); font-size:.88rem; line-height:1.55; }
+    .note { border-left:5px solid var(--accent); padding-left:18px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+    .gate { border:1px solid var(--line); border-radius:12px; padding:14px; }
+    .gate strong { display:block; color:var(--accent); }
+    svg { width:100%; height:auto; } .box { fill:var(--card); stroke:var(--accent); stroke-width:2; } .arrow { stroke:var(--accent); stroke-width:3; marker-end:url(#arrow); }
+    details { border:1px solid var(--line); border-radius:12px; padding:14px 18px; } summary { cursor:pointer; font-weight:750; }
+    footer { color:var(--muted); text-align:center; padding-top:20px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">CodeQuest · Aula 8 · Fase 7</p>
+    <h1>Engenharia de IA de ponta a ponta</h1>
+    <p class="lead">Como 22 ilhas transformaram “fazer algo com IA” em contratos, evidências e gates de produção.</p>
+  </header>
+
+  <section>
+    <h2>1. O que foi construído</h2>
+    <p>A trilha de Engenharia de IA terminou com 22 ilhas bilíngues e 176 missões. Ela começa preparando contexto e contratos, passa por retrieval, RAG, evals, agentes, matemática, ML, dados, responsabilidade e MLOps, pratica cinco frameworks e fecha com um capstone. As missões rodam offline e de forma determinística: frameworks são ferramentas declaradas, nunca substitutos para arquitetura ou critérios de aceitação.</p>
+  </section>
+
+  <section>
+    <h2>2. Analogia: certificado de navegação</h2>
+    <p>Um navio não recebe permissão para sair porque o motor parece bom. O contrato precisa dizer o que “bom” significa; o projeto precisa atender ao contrato; o teste de mar precisa caber no orçamento de falhas; e o operador precisa saber observar e reverter.</p>
+    <p class="note">A certificação não calcula uma média. Se o casco falha, uma ótima cozinha não compensa. Em produção, um rollback ausente também não é compensado por accuracy alta.</p>
+    <div class="grid">
+      <div class="gate"><strong>1. Requisitos</strong>Métricas, limiares e responsáveis.</div>
+      <div class="gate"><strong>2. Arquitetura</strong>Cada componente justifica seu custo.</div>
+      <div class="gate"><strong>3. Falhas</strong>Caminhos degradados têm limites.</div>
+      <div class="gate"><strong>4. Operação</strong>Observar, governar e reverter.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. A teoria</h2>
+    <p>Um sistema de IA de ponta a ponta é uma cadeia de contratos verificáveis entre dados, transformação, modelo ou retrieval, orquestração, avaliação e operação. O requisito vira uma métrica com limiar. A arquitetura só contém componentes ligados a esses requisitos. Os cenários adversos medem impacto contra um orçamento explícito. A prontidão operacional exige linhagem, runbook, rollback e supervisão.</p>
+    <p>O padrão formal é uma conjunção de gates:</p>
+    <pre><code>certificado = requisitos ∧ arquitetura ∧ orçamento_de_falhas ∧ operação</code></pre>
+    <p>Se qualquer termo for falso, o resultado é falso e deve trazer uma causa acionável. Esse desenho evita dois erros comuns: usar um framework como se fosse arquitetura e usar uma métrica média para esconder uma falha crítica.</p>
+    <svg viewBox="0 0 820 180" role="img" aria-label="Fluxo de quatro gates até a certificação">
+      <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="currentColor"/></marker></defs>
+      <rect class="box" x="10" y="55" width="145" height="65" rx="12"/><text x="82" y="93" text-anchor="middle" fill="currentColor">Requisitos</text>
+      <line class="arrow" x1="155" y1="87" x2="200" y2="87"/>
+      <rect class="box" x="205" y="55" width="145" height="65" rx="12"/><text x="277" y="93" text-anchor="middle" fill="currentColor">Arquitetura</text>
+      <line class="arrow" x1="350" y1="87" x2="395" y2="87"/>
+      <rect class="box" x="400" y="55" width="145" height="65" rx="12"/><text x="472" y="93" text-anchor="middle" fill="currentColor">Falhas</text>
+      <line class="arrow" x1="545" y1="87" x2="590" y2="87"/>
+      <rect class="box" x="595" y="55" width="145" height="65" rx="12"/><text x="667" y="93" text-anchor="middle" fill="currentColor">Operação</text>
+      <text x="410" y="160" text-anchor="middle" fill="currentColor">todos passam → certificado</text>
+    </svg>
+  </section>
+
+  <section>
+    <h2>4. O código real</h2>
+    <p>A missão final usa evidência já produzida. O trecho abaixo é da solução canônica de <code>08-certify-the-system.yaml</code>:</p>
+    <pre><code>gates = {
+    "requirements": True,
+    "architecture": True,
+    "failure_budget": (
+        not failure_review["blockers"]
+        and all(result["within_budget"] for result in failure_review["results"])
+    ),
+    "operations": readiness_review["ready"] and not readiness_review["gaps"],
+}
+blockers = [name for name, passed in gates.items() if not passed]
+return {"certified": not blockers, "gates": gates, "blockers": blockers}</code></pre>
+    <p>Há três decisões importantes. O dict preserva a ordem do relatório. <code>all</code> exige que todo cenário caiba no orçamento. E <code>not blockers</code> torna a regra legível: certificado significa ausência de bloqueadores, não uma pontuação arbitrária.</p>
+    <p>O motor do jogo aplica a mesma forma em <code>GameSession.check_solution</code>: análise estática, preparação, execução, julgamento e persistência são gates; uma rejeição interrompe o restante com uma razão tipada.</p>
+  </section>
+
+  <section>
+    <h2>5. Ponte para AI Engineering</h2>
+    <p><code>[AI-ENG:orchestration-gates]</code> aparece na cadeia do motor e reaparece na certificação do capstone. <code>[AI-ENG:schema-validation]</code> explica por que YAML, entradas e saídas precisam de forma verificável. <code>[AI-ENG:failure-taxonomy]</code> impede que timeout, código proibido e resposta errada virem o mesmo “falhou”. <code>[AI-ENG:guardrails]</code> mostra que controles são camadas executáveis. <code>[AI-ENG:graceful-degradation]</code> exige fallback explícito quando uma dependência some. <code>[AI-ENG:idempotency]</code> lembra que repetir uma operação não pode duplicar efeitos.</p>
+    <p class="note">A ideia central da fase: IA confiável não nasce de um prompt brilhante. Nasce de limites observáveis entre partes comuns do software.</p>
+  </section>
+
+  <section>
+    <h2>6. Exercício de fixação</h2>
+    <p>Um sistema cumpre accuracy e latência. O cenário “provedor fora” excede o orçamento, mas o runbook e o rollback estão completos. Ele pode ser certificado? Escreva os quatro booleans de <code>gates</code> e a lista <code>blockers</code>.</p>
+    <details>
+      <summary>Mostrar resposta</summary>
+      <pre><code>gates = {
+    "requirements": True,
+    "architecture": True,
+    "failure_budget": False,
+    "operations": True,
+}
+blockers = ["failure_budget"]
+certified = False</code></pre>
+      <p>Não importa que três gates passem. O cenário indisponível viola um limite declarado e bloqueia o lançamento até existir fallback seguro ou um orçamento aprovado diferente.</p>
+    </details>
+  </section>
+
+  <footer>CodeQuest · Aula 8 · escrita em 2026-09-21 a partir do conteúdo que shippou.</footer>
+</main>
+</body>
+</html>

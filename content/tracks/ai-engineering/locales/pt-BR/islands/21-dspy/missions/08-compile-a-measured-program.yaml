@@ -1,0 +1,123 @@
+id: ai-dspy-08
+title: Compilar um programa medido
+track: ai-engineering
+island: dspy
+order: 8
+difficulty: expert
+tags: [ai-engineering, dspy, requires-ai-orchestration]
+xp: 60
+concepts: [dspy-signatures, dspy-modules, dspy-metrics, dspy-optimization]
+teaching:
+  analogy: "O diário do navio mostra a viagem completa: manifesto declarado (assinatura), prático seguiu a lista (módulo), alfândega pontuou cada porto (métrica), e o capitão escolheu a melhor rota após treinar em viagens passadas (otimização)."
+  explanation: "A missão final encadeia os quatro conceitos: declare uma assinatura, construa um módulo que a use, defina uma métrica, otimize num conjunto de treino com LabeledFewShot, avalie no held-out, e retorne o relatório completo. O programa compilado carrega suas demos; o score do held-out prova generalização. Cada etapa é explícita e auditável."
+  worked_example: |
+    import dspy
+    from dspy.utils.dummies import DummyLM
+    from dspy.teleprompt import LabeledFewShot
+    class RouteQA(dspy.Signature):
+        """Responda perguntas de roteamento a partir de logs."""
+        log: str = dspy.InputField()
+        resposta: str = dspy.OutputField()
+    class Roteador(dspy.Module):
+        def __init__(self):
+            self.predict = dspy.Predict(RouteQA)
+        def forward(self, log):
+            return self.predict(log=log)
+    def exato(ex, pred):
+        return pred.resposta == ex.resposta
+    trainset = [
+        dspy.Example(log="navio em Roterdã", resposta="Roterdã").with_inputs("log"),
+        dspy.Example(log="navio em Singapura", resposta="Singapura").with_inputs("log"),
+    ]
+    heldout = [
+        dspy.Example(log="navio em Hamburgo", resposta="Hamburgo").with_inputs("log"),
+    ]
+    all_answers = ["Roterdã", "Singapura", "Hamburgo"]
+    lm = DummyLM([{"resposta": a} for a in all_answers])
+    with dspy.context(lm=lm):
+        optimizer = LabeledFewShot(k=2)
+        compiled = optimizer.compile(Roteador(), trainset=trainset, sample=False)
+        train_score = dspy.Evaluate(devset=trainset, metric=exato, num_threads=1)(compiled)
+        heldout_score = dspy.Evaluate(devset=heldout, metric=exato, num_threads=1)(compiled)
+        print({"treino": train_score.score / 100, "heldout": heldout_score.score / 100,
+               "demos": len(compiled.predict.demos)})
+  key_points:
+    - Assinatura declara o contrato; Módulo encadeia Predict; Métrica define sucesso; Otimizador seleciona demos só do treino.
+    - LabeledFewShot(k) num Módulo compila anexando demos a cada Predict dentro do módulo.
+    - Avalie em ambos os conjuntos; heldout_score é a evidência de generalização.
+    - Retorne o rastro de auditoria completo: scores, contagem de demos, e a estrutura do programa compilado.
+brief: >
+  Escreva `dspy_compile(trainset, heldout) -> dict`. Cada um é lista de dicts com `log` (str)
+  e `answer` (str). Rejeite entrada ruim, listas vazias ou logs sobrepostos com ValueError.
+  Defina assinatura `ExtractPort(log -> port)`. O módulo `PortExtractor` encapsula
+  `Predict(ExtractPort)`. Métrica: correspondência exata em `port`. Compile o módulo com
+  `LabeledFewShot(k=2)` e `sample=False` no trainset. Use `DummyLM` com respostas
+  `{"port": ...}` na ordem trainset e depois heldout. Avalie ambos os conjuntos e leia
+  `.score` de cada EvaluationResult. Retorne `{"train_score": <fração>,
+  "heldout_score": <fração>, "num_demos": <int>, "demo_ports": [...]}`; demo_ports
+  contém os valores de port em `compiled.predict.demos`.
+signature:
+  entrypoint: dspy_compile
+  stub: |
+    def dspy_compile(trainset, heldout):
+        # Full pipeline: signature -> module -> metric -> optimize -> evaluate both.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - {args: [[{log: "vessel at Rotterdam", answer: Rotterdam}, {log: "vessel at Singapore", answer: Singapore}], [{log: "vessel at Hamburg", answer: Hamburg}]], expect: {train_score: 1.0, heldout_score: 1.0, num_demos: 2, demo_ports: [Rotterdam, Singapore]}}
+    - {args: [[{log: "ship at Antwerp", answer: Antwerp}, {log: "ship at Busan", answer: Busan}, {log: "ship at Jebel Ali", answer: "Jebel Ali"}], [{log: "ship at Los Angeles", answer: "Los Angeles"}]], expect: {train_score: 1.0, heldout_score: 1.0, num_demos: 2, demo_ports: [Antwerp, Busan]}}
+  hidden:
+    - {args: [[{log: "v at A", answer: A}, {log: "v at B", answer: B}], [{log: "v at A", answer: A}]], raises: ValueError}
+    - {args: [[{log: "x", answer: "y"}], [{log: "z", answer: "w"}, {log: "u", answer: "v"}]], expect: {train_score: 1.0, heldout_score: 1.0, num_demos: 1, demo_ports: ["y"]}}
+    - {args: [[], [{log: "x", answer: "y"}]], raises: ValueError}
+    - {args: [[{log: "x", answer: "y"}], []], raises: ValueError}
+    - {args: [[{log: "x"}], [{log: "y", answer: "z"}]], raises: ValueError}
+    - {args: [[{log: 1, answer: "y"}], [{log: "z", answer: "w"}]], raises: ValueError}
+    - {args: [[{log: "x", answer: "y"}], [{log: "z", answer: 1}]], raises: ValueError}
+hints:
+  - {level: 1, text: "Quais quatro peças devem conectar — assinatura, módulo, métrica, otimizador?"}
+  - {level: 2, text: "Construa PortExtractor com Predict interno; compile o módulo com LabeledFewShot e sample=False; demos ficam no Predict interno."}
+  - {level: 3, text: "Rode Evaluate em trainset e heldout, leia .score e extraia os valores de port de compiled.predict.demos."}
+solution: |
+  def dspy_compile(trainset, heldout):
+      import dspy
+      from dspy.utils.dummies import DummyLM
+      from dspy.teleprompt import LabeledFewShot
+      if type(trainset) is not list or not trainset:
+          raise ValueError("invalid trainset")
+      if type(heldout) is not list or not heldout:
+          raise ValueError("invalid heldout")
+      train_logs = set()
+      for item in trainset:
+          if type(item) is not dict or type(item.get("log")) is not str or type(item.get("answer")) is not str:
+              raise ValueError("invalid trainset item")
+          train_logs.add(item["log"])
+      for item in heldout:
+          if type(item) is not dict or type(item.get("log")) is not str or type(item.get("answer")) is not str:
+              raise ValueError("invalid heldout item")
+          if item["log"] in train_logs:
+              raise ValueError("leakage detected")
+      class ExtractPort(dspy.Signature):
+          """Extract the port from a log entry."""
+          log: str = dspy.InputField()
+          port: str = dspy.OutputField()
+      class PortExtractor(dspy.Module):
+          def __init__(self):
+              self.predict = dspy.Predict(ExtractPort)
+          def forward(self, log):
+              return self.predict(log=log)
+      def exact(ex, pred):
+          return pred.port == ex.port
+      train_examples = [dspy.Example(log=i["log"], port=i["answer"]).with_inputs("log") for i in trainset]
+      heldout_examples = [dspy.Example(log=i["log"], port=i["answer"]).with_inputs("log") for i in heldout]
+      optimizer = LabeledFewShot(k=2)
+      compiled = optimizer.compile(PortExtractor(), trainset=train_examples, sample=False)
+      train_answers = {i["log"]: {"port": i["answer"]} for i in trainset}
+      heldout_answers = {i["log"]: {"port": i["answer"]} for i in heldout}
+      with dspy.context(lm=DummyLM(train_answers)):
+          train_result = dspy.Evaluate(devset=train_examples, metric=exact)(compiled)
+      with dspy.context(lm=DummyLM(heldout_answers)):
+          heldout_result = dspy.Evaluate(devset=heldout_examples, metric=exact)(compiled)
+      demo_ports = [demo.port for demo in compiled.predict.demos]
+      return {"train_score": train_result.score / 100, "heldout_score": heldout_result.score / 100, "num_demos": len(compiled.predict.demos), "demo_ports": demo_ports}

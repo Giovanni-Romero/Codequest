@@ -1,0 +1,109 @@
+id: ai-capstone-08
+title: Certify the system
+track: ai-engineering
+island: capstone
+order: 8
+difficulty: expert
+tags: [ai-engineering, capstone]
+xp: 60
+concepts: [requirements-to-metrics, end-to-end-system-design, failure-budget-review, operational-readiness]
+teaching:
+  analogy: "A ship receives its sailing certificate only after four inspectors sign: the contract is measurable, the design matches it, sea trials stay inside the failure budget, and the operating papers are complete."
+  explanation: "Certification is a gate, not an average. A strong score in one area cannot hide a missing safety control or rollback path. This final review consumes evidence produced by the earlier missions and records one decision for each required gate. The result names every blocker so the owner knows what must change before launch."
+  worked_example: |
+    def certify(matrix, architecture, failure_review, readiness_review):
+        gates = {
+            "requirements": bool(matrix["matrix"]),
+            "architecture": bool(architecture["components"]),
+            "failure_budget": not failure_review["blockers"],
+            "operations": readiness_review["ready"],
+        }
+        blockers = [name for name, passed in gates.items() if not passed]
+        return {"certified": not blockers, "gates": gates, "blockers": blockers}
+  key_points:
+    - Certification requires all four gates; no weighted average can waive a blocker.
+    - Inputs are evidence records from earlier missions, not a new framework pipeline.
+    - The architecture must trace every component to a measurable requirement.
+    - The decision returns named blockers in stable gate order for an auditable review.
+brief: >
+  Write `certify_system(matrix, architecture, failure_review, readiness_review) -> dict`.
+  `matrix` is mission 1 output and must contain at least one valid metric row. `architecture`
+  is mission 2 output and must contain at least one component; every component needs a
+  non-blank `satisfies` contract naming a metric present in the matrix. `failure_review`
+  is mission 3 output with `results` and `blockers`; its gate passes only when every result
+  is within budget and blockers is empty. `readiness_review` is mission 7 output with
+  `gaps` and `ready`; its gate passes only when ready is true and gaps is empty. Reject
+  malformed inputs with ValueError. Return `{"certified": <bool>, "gates": {requirements,
+  architecture, failure_budget, operations}, "blockers": [...]}`. Keep blocker order as
+  requirements, architecture, failure_budget, operations.
+signature:
+  entrypoint: certify_system
+  stub: |
+    def certify_system(matrix, architecture, failure_review, readiness_review):
+        # Validate the evidence and require every release gate to pass.
+        pass
+constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+tests:
+  visible:
+    - args:
+        - {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}], count: 1}
+        - {components: [{name: model, function: inference, stack: pytorch, satisfies: "accuracy>=0.9"}], stack: [pytorch]}
+        - {results: [{scenario: normal, impact: {}, within_budget: true}], blockers: []}
+        - {gaps: [], ready: true}
+      expect: {certified: true, gates: {requirements: true, architecture: true, failure_budget: true, operations: true}, blockers: []}
+    - args:
+        - {matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}], count: 1}
+        - {components: [{name: model, function: inference, stack: pytorch, satisfies: "accuracy>=0.9"}], stack: [pytorch]}
+        - {results: [{scenario: model_down, impact: {accuracy: 0.15}, within_budget: false}], blockers: [model_down]}
+        - {gaps: [runbook.rollback], ready: false}
+      expect: {certified: false, gates: {requirements: true, architecture: true, failure_budget: false, operations: false}, blockers: [failure_budget, operations]}
+  hidden:
+    - args:
+        - {matrix: [{metric: p99_ms, threshold: 200, owner: platform}], count: 1}
+        - {components: [{name: cache, function: latency_reduction, stack: redis, satisfies: "p99_ms<200"}], stack: [redis]}
+        - {results: [{scenario: normal, impact: {}, within_budget: true}, {scenario: cache_slow, impact: {p99_ms: 250}, within_budget: true}], blockers: []}
+        - {gaps: [], ready: true}
+      expect: {certified: true, gates: {requirements: true, architecture: true, failure_budget: true, operations: true}, blockers: []}
+    - {args: [{matrix: [], count: 0}, {components: [], stack: []}, {results: [], blockers: []}, {gaps: [], ready: true}], raises: ValueError}
+    - {args: [1, {components: [], stack: []}, {results: [], blockers: []}, {gaps: [], ready: true}], raises: ValueError}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}], count: 1}, {components: [{name: model, satisfies: "uptime>=0.999"}], stack: [custom]}, {results: [], blockers: []}, {gaps: [], ready: true}], raises: ValueError}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}], count: 1}, {components: [{name: model, satisfies: "inaccuracy>=0.9"}], stack: [custom]}, {results: [], blockers: []}, {gaps: [], ready: true}], raises: ValueError}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}], count: 1}, {components: [{name: model, satisfies: "accuracy>=0.9"}], stack: [custom]}, {results: [{scenario: bad, within_budget: true}], blockers: [bad]}, {gaps: [], ready: true}], expect: {certified: false, gates: {requirements: true, architecture: true, failure_budget: false, operations: true}, blockers: [failure_budget]}}
+    - {args: [{matrix: [{metric: accuracy, threshold: 0.9, owner: ml-team}], count: 1}, {components: [{name: model, satisfies: "accuracy>=0.9"}], stack: [custom]}, {results: [], blockers: []}, {gaps: [oversight.approver], ready: true}], expect: {certified: false, gates: {requirements: true, architecture: true, failure_budget: true, operations: false}, blockers: [operations]}}
+hints:
+  - {level: 1, text: "Which evidence makes each of the four release gates pass, and can any failed gate be averaged away?"}
+  - {level: 2, text: "Validate each record first, then build four booleans and collect the names whose value is false."}
+  - {level: 3, text: "A certification function checks matrix rows, component satisfies strings, scenario flags plus blockers, and readiness gaps plus ready."}
+solution: |
+  def certify_system(matrix, architecture, failure_review, readiness_review):
+      if type(matrix) is not dict or type(matrix.get("matrix")) is not list or not matrix["matrix"]:
+          raise ValueError("invalid matrix")
+      metrics = []
+      for row in matrix["matrix"]:
+          if type(row) is not dict or type(row.get("metric")) is not str or not row["metric"].strip():
+              raise ValueError("invalid matrix row")
+          if type(row.get("threshold")) not in (int, float) or type(row.get("owner")) is not str or not row["owner"].strip():
+              raise ValueError("invalid matrix row")
+          metrics.append(row["metric"])
+      if type(architecture) is not dict or type(architecture.get("components")) is not list or not architecture["components"]:
+          raise ValueError("invalid architecture")
+      for component in architecture["components"]:
+          if type(component) is not dict or type(component.get("satisfies")) is not str or not component["satisfies"].strip():
+              raise ValueError("invalid component")
+          if not any(component["satisfies"].startswith((metric + "<", metric + ">", metric + "=")) for metric in metrics):
+              raise ValueError("component has no matching requirement")
+      if type(failure_review) is not dict or type(failure_review.get("results")) is not list or type(failure_review.get("blockers")) is not list:
+          raise ValueError("invalid failure review")
+      for result in failure_review["results"]:
+          if type(result) is not dict or type(result.get("within_budget")) is not bool:
+              raise ValueError("invalid scenario result")
+      if type(readiness_review) is not dict or type(readiness_review.get("gaps")) is not list or type(readiness_review.get("ready")) is not bool:
+          raise ValueError("invalid readiness review")
+      gates = {
+          "requirements": True,
+          "architecture": True,
+          "failure_budget": not failure_review["blockers"] and all(result["within_budget"] for result in failure_review["results"]),
+          "operations": readiness_review["ready"] and not readiness_review["gaps"],
+      }
+      blockers = [name for name, passed in gates.items() if not passed]
+      return {"certified": not blockers, "gates": gates, "blockers": blockers}
