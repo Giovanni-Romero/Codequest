@@ -30,7 +30,7 @@ signature:
     def audit_inference_state(sequence_length):
         # Prove que o modo das camadas e o estado do autograd estão controlados.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [4]

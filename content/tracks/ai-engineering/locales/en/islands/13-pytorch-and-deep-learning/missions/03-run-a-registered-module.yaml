@@ -33,7 +33,7 @@ signature:
     def run_registered_module(rows):
         # Register one layer and run its forward computation.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[[2, 4], [0, 2]]]

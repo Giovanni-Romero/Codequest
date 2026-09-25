@@ -10,7 +10,7 @@ concepts: [langgraph-nodes-edges, langgraph-checkpoints]
 teaching: {analogy: "A stamped ticket is not stamped again when you return to the gate.", explanation: "A checkpointed state can record a completed effect so a resume does not repeat it.", worked_example: "if state['done']: return {}; return {'done': True}", key_points: ["Record effects", "Reuse the thread", "Avoid replay"]}
 brief: Write `resume_without_replay(thread_id) -> dict`. Use StateGraph and InMemorySaver. Two invokes on one thread must return exactly one `grant` trace entry.
 signature: {entrypoint: resume_without_replay, stub: "def resume_without_replay(thread_id):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [x], expect: {granted: true, grants: 1, trace: [grant]}}]
   hidden: [{args: [y], expect: {granted: true, grants: 1, trace: [grant]}}, {args: [''], raises: ValueError}, {args: [1], raises: ValueError}, {args: ['  '], raises: ValueError}]

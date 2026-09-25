@@ -31,7 +31,7 @@ signature:
     def audit_gradient_reset(xs, ys, learning_rate):
         # Preserve um rastro de dois passos que prove a limpeza dos gradientes.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[0, 1], [0, 2], 0.1]

@@ -10,7 +10,7 @@ concepts: [langgraph-state, langgraph-nodes-edges, langgraph-checkpoints, langgr
 teaching: {analogy: "Uma torre de aeroporto registra o voo, encaminha-o, espera liberacao e abre um portao uma vez.", explanation: "Um grafo duravel torna decisoes de acesso inspecionaveis. Estado guarda o pedido, arestas guardam a politica, checkpoints guardam o ponto e interrupt coleta a decisao humana.", worked_example: "if approved: return {'status': 'granted'}", key_points: ["Use APIs reais do LangGraph", "Reavalie edicoes", "Timeout nunca concede"]}
 brief: Escreva `audit_access_workflow(risk, decision, edited_risk) -> dict`. Use StateGraph, InMemorySaver, interrupt() e Command. As decisoes sao approve, reject, edit ou timeout. Edit reavalia o risco; nenhum caminho concede duas vezes.
 signature: {entrypoint: audit_access_workflow, stub: "def audit_access_workflow(risk, decision, edited_risk):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [1, approve, 1], expect: {risk: 1, edited: false, status: granted, grants: 1, trace: [assess, review, grant]}}, {args: [3, reject, 1], expect: {risk: 3, edited: false, status: rejected, grants: 0, trace: [assess, review, reject]}}]
   hidden: [{args: [3, edit, 1], expect: {risk: 1, edited: true, status: granted, grants: 1, trace: [assess, review, assess, grant]}}, {args: [2, timeout, 1], expect: {risk: 2, edited: false, status: expired, grants: 0, trace: [assess, review, expire]}}, {args: [0, approve, 1], raises: ValueError}, {args: [1, yes, 1], raises: ValueError}]

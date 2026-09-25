@@ -20,7 +20,7 @@ signature:
   stub: |
     def resume_checkpoint(thread_id):
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - {args: [case-1], expect: {count: 2, trace: [step, step]}}

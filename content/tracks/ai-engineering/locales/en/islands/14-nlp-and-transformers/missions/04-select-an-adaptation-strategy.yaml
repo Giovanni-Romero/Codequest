@@ -29,7 +29,7 @@ signature:
     def select_adaptation(external_knowledge, labeled_examples, limited_compute):
         # Match the smallest adaptation to explicit evidence and constraints.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [true, 0, false]

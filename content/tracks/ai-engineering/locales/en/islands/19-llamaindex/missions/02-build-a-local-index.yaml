@@ -11,10 +11,11 @@ teaching:
   analogy: A card catalog is rebuilt from books; it is not the books themselves.
   explanation: "A VectorStoreIndex is derived data: it stores nodes plus embeddings for similarity search. MockEmbedding produces deterministic vectors, so the build stays offline and repeatable. The docstore holds every stored node by id. This mission returns those stored ids sorted, which is the auditable fingerprint of the build."
   worked_example: |
-    from llama_index.core import VectorStoreIndex
+    from llama_index.core import Settings, VectorStoreIndex
     from llama_index.core.embeddings.mock_embed_model import MockEmbedding
     from llama_index.core.schema import TextNode
     seeds = [TextNode(text="rye", id_="s1"), TextNode(text="oats", id_="s2")]
+    Settings.tokenizer = str.split
     index = VectorStoreIndex(seeds, embed_model=MockEmbedding(embed_dim=2))
     print(sorted(index.docstore.docs))
   key_points:
@@ -27,7 +28,7 @@ signature:
   stub: |
     def build_local_index(documents):
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - {args: [[{id: b, text: blue}, {id: a, text: amber}]], expect: [a, b]}
@@ -43,7 +44,7 @@ hints:
   - {level: 3, text: "The pattern is `VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))`."}
 solution: |
   def build_local_index(documents):
-      from llama_index.core import VectorStoreIndex
+      from llama_index.core import Settings, VectorStoreIndex
       from llama_index.core.embeddings.mock_embed_model import MockEmbedding
       from llama_index.core.schema import TextNode
       if type(documents) is not list or not documents:
@@ -53,5 +54,6 @@ solution: |
           if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
               raise ValueError("invalid document")
           nodes.append(TextNode(text=document["text"], id_=document["id"], metadata={"source_id": document["id"]}))
+      Settings.tokenizer = str.split
       index = VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))
       return sorted(index.docstore.docs)

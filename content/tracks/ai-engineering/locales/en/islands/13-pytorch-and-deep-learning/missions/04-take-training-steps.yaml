@@ -31,7 +31,7 @@ signature:
     def train_line(xs, ys, learning_rate, steps):
         # Execute the state-changing training steps in their required order.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[0, 1], [0, 2], 0.1, 2]

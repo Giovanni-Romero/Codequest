@@ -11,10 +11,11 @@ teaching:
   analogy: Dois arquivistas devem fichar as mesmas fichas na mesma ordem.
   explanation: "Um índice é dado derivado, então reconstruir a partir dos mesmos nós deve produzir os mesmos ids guardados. MockEmbedding mantém ambas as construções determinísticas e offline. Comparar as duas listas ordenadas transforma estabilidade em asserção checável. Uma divergência levanta ValueError em vez de embarcar uma bifurcação silenciosa."
   worked_example: |
-    from llama_index.core import VectorStoreIndex
+    from llama_index.core import Settings, VectorStoreIndex
     from llama_index.core.embeddings.mock_embed_model import MockEmbedding
     from llama_index.core.schema import TextNode
     seeds = [TextNode(text="rye", id_="s1")]
+    Settings.tokenizer = str.split
     first = sorted(VectorStoreIndex(seeds, embed_model=MockEmbedding(embed_dim=2)).docstore.docs)
     second = sorted(VectorStoreIndex(list(seeds), embed_model=MockEmbedding(embed_dim=2)).docstore.docs)
     print(first == second)
@@ -24,14 +25,14 @@ teaching:
     - Rejeite divergência com ValueError, porque reconstruções divergentes indicam estado oculto.
 brief: Escreva `rebuild_index(documents) -> list[str]`. Construa dois objetos `VectorStoreIndex` locais reais com `MockEmbedding` a partir dos mesmos objetos `TextNode` e devolva seus ids comuns em ordem; rejeite resultado não repetível.
 signature: {entrypoint: rebuild_index, stub: "def rebuild_index(documents):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [[{id: b, text: blue}, {id: a, text: amber}]], expect: [a, b]}, {args: [[{id: z, text: zoom}]], expect: [z]}]
   hidden: [{args: [[{id: a, text: x}]], expect: [a]}, {args: [[]], raises: ValueError}, {args: [[{id: '', text: x}]], raises: ValueError}, {args: [true], raises: ValueError}]
 hints: [{level: 1, text: "Que comparação prova que uma reconstrução é estável?"}, {level: 2, text: "Construa VectorStoreIndex duas vezes com MockEmbedding."}, {level: 3, text: "Compare `index.docstore.docs` ordenados das duas construções."}]
 solution: |
   def rebuild_index(documents):
-      from llama_index.core import VectorStoreIndex
+      from llama_index.core import Settings, VectorStoreIndex
       from llama_index.core.embeddings.mock_embed_model import MockEmbedding
       from llama_index.core.schema import TextNode
       if type(documents) is not list or not documents:
@@ -41,6 +42,7 @@ solution: |
           if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
               raise ValueError("invalid document")
           nodes.append(TextNode(text=document["text"], id_=document["id"]))
+      Settings.tokenizer = str.split
       first = sorted(VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2)).docstore.docs)
       second = sorted(VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2)).docstore.docs)
       if first != second:

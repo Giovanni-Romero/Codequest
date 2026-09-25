@@ -11,10 +11,11 @@ teaching:
   analogy: Um detetive relata os números dos autos, ou diz que não há evidência bastante.
   explanation: "Um retriever expõe evidência indexada por uma interface limitada: top-k limita quantos candidatos voltam. Cada hit carrega seu nó, escore e metadados. A missão guarda só hits cujo texto contém a palavra da consulta, depois aplica o limiar minimum_matches. Abaixo do limiar ela se abstém com fontes vazias em vez de inventar resposta."
   worked_example: |
-    from llama_index.core import VectorStoreIndex
+    from llama_index.core import Settings, VectorStoreIndex
     from llama_index.core.embeddings.mock_embed_model import MockEmbedding
     from llama_index.core.schema import TextNode
     seeds = [TextNode(text="rye loves cold", id_="s1"), TextNode(text="oats love rain", id_="s2")]
+    Settings.tokenizer = str.split
     index = VectorStoreIndex(seeds, embed_model=MockEmbedding(embed_dim=2))
     hits = index.as_retriever(similarity_top_k=2).retrieve("cold")
     print([hit.node.node_id for hit in hits if "cold" in hit.node.text])
@@ -28,7 +29,7 @@ signature:
   stub: |
     def query_bounded_evidence(documents, query, minimum_matches):
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - {args: [[{id: a, text: blue boat}, {id: b, text: blue sky}], blue, 2], expect: {status: grounded, sources: [a, b]}}
@@ -44,7 +45,7 @@ hints:
   - {level: 3, text: "Devolva `{'status': 'abstain', 'sources': []}` abaixo do limiar."}
 solution: |
   def query_bounded_evidence(documents, query, minimum_matches):
-      from llama_index.core import VectorStoreIndex
+      from llama_index.core import Settings, VectorStoreIndex
       from llama_index.core.embeddings.mock_embed_model import MockEmbedding
       from llama_index.core.schema import TextNode
       if type(documents) is not list or not documents or type(query) is not str or not query.strip() or type(minimum_matches) is not int or minimum_matches < 1:
@@ -54,6 +55,7 @@ solution: |
           if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
               raise ValueError("invalid document")
           nodes.append(TextNode(text=document["text"], id_=document["id"], metadata={"source_id": document["id"]}))
+      Settings.tokenizer = str.split
       index = VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))
       hits = index.as_retriever(similarity_top_k=len(nodes)).retrieve(query)
       sources = [hit.node.metadata["source_id"] for hit in hits if query.lower() in hit.node.text.lower()]

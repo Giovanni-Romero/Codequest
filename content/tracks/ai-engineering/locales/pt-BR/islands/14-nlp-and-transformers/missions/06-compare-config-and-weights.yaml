@@ -29,7 +29,7 @@ signature:
     def compare_model_states(first_seed, second_seed):
         # Prove que igualdade de arquitetura e de pesos são afirmações separadas.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [7, 7]

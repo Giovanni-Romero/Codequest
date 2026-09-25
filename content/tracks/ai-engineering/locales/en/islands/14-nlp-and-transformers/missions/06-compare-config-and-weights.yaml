@@ -29,7 +29,7 @@ signature:
     def compare_model_states(first_seed, second_seed):
         # Prove that architecture equality and weight equality are separate claims.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [7, 7]

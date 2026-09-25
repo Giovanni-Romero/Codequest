@@ -28,7 +28,7 @@ signature:
     def inspect_batch_shapes(rows, batch_size):
         # Compare the full tensor with every deterministic batch.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[[1, 2], [3, 4], [5, 6]], 2]

@@ -10,7 +10,7 @@ concepts: [langgraph-checkpoints, langgraph-human-loop]
 teaching: {analogy: "Changing a prescription sends it back to the pharmacist before it is filled.", explanation: "A human edit changes state and must re-enter the policy check. Approval never skips validation.", worked_example: "scope = edited; risk = assess(scope)", key_points: ["Edits change state", "Reevaluate edits", "Do not grant by silence"]}
 brief: "Write `edit_and_reevaluate(decision, edited_risk) -> dict`. A risk-3 request awaits human review: `edit` must return to assessment carrying the edited risk as state, and only risk 1 can end granted. `reject` ends rejected. Represent review and assessment as graph nodes that read explicit state, never captured inputs."
 signature: {entrypoint: edit_and_reevaluate, stub: "def edit_and_reevaluate(decision, edited_risk):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [edit, 1], expect: {risk: 1, status: granted, trace: [review, assess, grant]}}, {args: [reject, 1], expect: {risk: 3, status: rejected, trace: [review, reject]}}]
   hidden: [{args: [edit, 3], expect: {risk: 3, status: expired, trace: [review, assess, expire]}}, {args: [approve, 1], raises: ValueError}, {args: [edit, 0], raises: ValueError}, {args: [true, 1], raises: ValueError}]

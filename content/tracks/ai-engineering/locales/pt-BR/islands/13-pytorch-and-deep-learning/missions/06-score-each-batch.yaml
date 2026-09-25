@@ -31,7 +31,7 @@ signature:
     def score_batches(rows, batch_size):
         # Reutilize um módulo registrado em todos os lotes.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[[3, 1], [2, 5], [4, 4]], 2]

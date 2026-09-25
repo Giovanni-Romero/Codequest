@@ -11,11 +11,12 @@ teaching:
   analogy: An audit checks the note, catalog, citation, and delivery log together.
   explanation: "The audit exercises all four island concepts in one pipeline. Nodes carry source ids, the index stores them deterministically, retriever hits bound the evidence, and workflow events expose the stage order. Grounded needs at least one word-matching hit, otherwise the audit abstains. The report returns node ids, status, sources, and events together."
   worked_example: |
-    from llama_index.core import VectorStoreIndex
+    from llama_index.core import Settings, VectorStoreIndex
     from llama_index.core.embeddings.mock_embed_model import MockEmbedding
     from llama_index.core.schema import TextNode
     from llama_index.core.workflow import Event
     seeds = [TextNode(text="rye loves cold", id_="s1", metadata={"source_id": "s1"})]
+    Settings.tokenizer = str.split
     index = VectorStoreIndex(seeds, embed_model=MockEmbedding(embed_dim=2))
     hits = index.as_retriever(similarity_top_k=1).retrieve("cold")
     print([hit.node.node_id for hit in hits], [Event(stage=name)["stage"] for name in ("ingest", "retrieve")])
@@ -26,14 +27,14 @@ teaching:
     - Emit the stage events in order, because the delivery log is what makes the pipeline replayable.
 brief: Write `audit_local_query(documents, query) -> dict`. Build real `TextNode` objects with `source_id` metadata, a `VectorStoreIndex` with `MockEmbedding`, and `Event` objects for the three workflow stages. Call `as_retriever(...).retrieve(query)` and derive matching source ids from the returned hits; return sorted node ids, grounded or abstain status, matching source ids, and the three workflow stages.
 signature: {entrypoint: audit_local_query, stub: "def audit_local_query(documents, query):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [[{id: a, text: blue boat}, {id: b, text: red boat}], blue], expect: {nodes: [a, b], status: grounded, sources: [a], events: [ingest, retrieve, respond]}}, {args: [[{id: a, text: blue boat}, {id: b, text: blue sky}], blue], expect: {nodes: [a, b], status: grounded, sources: [a, b], events: [ingest, retrieve, respond]}}]
   hidden: [{args: [[{id: a, text: blue}], green], expect: {nodes: [a], status: abstain, sources: [], events: [ingest, retrieve, respond]}}, {args: [[], blue], raises: ValueError}, {args: [[{id: '', text: x}], x], raises: ValueError}, {args: [[{id: a, text: x}], ''], raises: ValueError}]
 hints: [{level: 1, text: "Which four records prove the pipeline is accountable?"}, {level: 2, text: "Use TextNode, VectorStoreIndex, a bounded match, and Event."}, {level: 3, text: "Build the report from node ids, sources, status, and `['ingest', 'retrieve', 'respond']`."}]
 solution: |
   def audit_local_query(documents, query):
-      from llama_index.core import VectorStoreIndex
+      from llama_index.core import Settings, VectorStoreIndex
       from llama_index.core.embeddings.mock_embed_model import MockEmbedding
       from llama_index.core.schema import TextNode
       from llama_index.core.workflow import Event
@@ -44,6 +45,7 @@ solution: |
           if type(document) is not dict or type(document.get("id")) is not str or not document["id"].strip() or type(document.get("text")) is not str:
               raise ValueError("invalid document")
           nodes.append(TextNode(text=document["text"], id_=document["id"], metadata={"source_id": document["id"]}))
+      Settings.tokenizer = str.split
       index = VectorStoreIndex(nodes, embed_model=MockEmbedding(embed_dim=2))
       node_ids = sorted(index.docstore.docs)
       hits = index.as_retriever(similarity_top_k=len(nodes)).retrieve(query)

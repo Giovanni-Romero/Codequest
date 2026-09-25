@@ -25,6 +25,7 @@ import contextlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -78,8 +79,6 @@ def _kill_process_tree(process: subprocess.Popen) -> None:
             check=False,
         )
     else:
-        import signal
-
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
 
@@ -276,6 +275,16 @@ class PythonRunner:
         stderr = _truncate(stderr or "")
 
         if not result_path.exists():
+            cpu_signal = getattr(signal, "SIGXCPU", None)
+            if cpu_signal is not None and exit_code == -cpu_signal:
+                return ExecutionResult(
+                    status="timeout",
+                    stdout=stdout,
+                    stderr=stderr,
+                    exit_code=exit_code,
+                    duration_ms=duration_ms,
+                    timed_out=True,
+                )
             # No result file: the process died before writing. On POSIX a SIGKILL from
             # the memory limit shows up exactly like this.
             killed_by_signal = exit_code < 0

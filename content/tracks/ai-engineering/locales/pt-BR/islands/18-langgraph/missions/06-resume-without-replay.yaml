@@ -10,7 +10,7 @@ concepts: [langgraph-nodes-edges, langgraph-checkpoints]
 teaching: {analogy: "Um bilhete carimbado nao recebe outro carimbo quando voce volta ao portao.", explanation: "Um estado com checkpoint pode registrar um efeito concluido para que a retomada nao o repita.", worked_example: "if state['done']: return {}; return {'done': True}", key_points: ["Registre efeitos", "Reutilize a thread", "Evite repeticao"]}
 brief: Escreva `resume_without_replay(thread_id) -> dict`. Use StateGraph e InMemorySaver. Duas invocacoes na mesma thread devem retornar exatamente uma entrada `grant` no trace.
 signature: {entrypoint: resume_without_replay, stub: "def resume_without_replay(thread_id):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [x], expect: {granted: true, grants: 1, trace: [grant]}}]
   hidden: [{args: [y], expect: {granted: true, grants: 1, trace: [grant]}}, {args: [''], raises: ValueError}, {args: [1], raises: ValueError}, {args: ['  '], raises: ValueError}]

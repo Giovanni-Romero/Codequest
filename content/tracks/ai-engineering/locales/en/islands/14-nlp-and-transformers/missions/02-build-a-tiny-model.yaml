@@ -29,7 +29,7 @@ signature:
     def build_tiny_model(vocab_size, hidden_size, layers, heads, labels):
         # Separate the architecture declaration from its new parameter tensors.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [10, 8, 1, 2, 2]

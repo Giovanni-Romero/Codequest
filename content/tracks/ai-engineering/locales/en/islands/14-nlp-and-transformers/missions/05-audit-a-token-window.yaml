@@ -27,7 +27,7 @@ signature:
     def audit_token_window(texts, max_length):
         # Report how truncation and padding shape a deterministic batch.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[hello, hello seas], 6]

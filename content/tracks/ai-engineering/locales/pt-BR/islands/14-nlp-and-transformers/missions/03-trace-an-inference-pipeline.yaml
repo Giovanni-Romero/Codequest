@@ -29,7 +29,7 @@ signature:
     def trace_inference(text, max_length):
         # Preserve evidências de pré-processamento, modelo e pós-processamento.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [Hello seas, 6]

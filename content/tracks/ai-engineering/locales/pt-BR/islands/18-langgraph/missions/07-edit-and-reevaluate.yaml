@@ -10,7 +10,7 @@ concepts: [langgraph-checkpoints, langgraph-human-loop]
 teaching: {analogy: "Alterar uma receita a devolve ao farmaceutico antes de ser atendida.", explanation: "Uma edicao humana altera o estado e deve voltar para a verificacao de politica. Aprovacao nunca pula validacao.", worked_example: "scope = edited; risk = assess(scope)", key_points: ["Edicoes alteram estado", "Reavalie edicoes", "Silencio nao concede"]}
 brief: "Escreva `edit_and_reevaluate(decision, edited_risk) -> dict`. Um pedido de risco 3 aguarda revisao humana: `edit` deve voltar para avaliacao levando o novo risco como estado, e apenas risco 1 termina concedido. `reject` termina rejeitado. Represente revisao e avaliacao como nos do grafo que leem estado explicito, nunca entradas capturadas."
 signature: {entrypoint: edit_and_reevaluate, stub: "def edit_and_reevaluate(decision, edited_risk):\n    pass"}
-constraints: {max_runtime_ms: 5000, max_memory_mb: 256, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 4096, forbidden_builtins: [eval, exec]}
 tests:
   visible: [{args: [edit, 1], expect: {risk: 1, status: granted, trace: [review, assess, grant]}}, {args: [reject, 1], expect: {risk: 3, status: rejected, trace: [review, reject]}}]
   hidden: [{args: [edit, 3], expect: {risk: 3, status: expired, trace: [review, assess, expire]}}, {args: [approve, 1], raises: ValueError}, {args: [edit, 0], raises: ValueError}, {args: [true, 1], raises: ValueError}]

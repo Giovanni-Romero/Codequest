@@ -30,7 +30,7 @@ signature:
     def describe_tensor(values, dtype):
         # Crie um tensor e reporte sua descrição segura para a fronteira.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[1, 2, 3], float32]

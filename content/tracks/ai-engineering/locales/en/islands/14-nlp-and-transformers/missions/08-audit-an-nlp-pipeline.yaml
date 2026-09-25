@@ -29,7 +29,7 @@ signature:
     def audit_nlp_pipeline(text, max_length, external_knowledge, labeled_examples, limited_compute):
         # Bind every reproducibility and adaptation boundary into one audit.
         pass
-constraints: {max_runtime_ms: 10000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 10000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [Hello seas, 6, true, 0, false]

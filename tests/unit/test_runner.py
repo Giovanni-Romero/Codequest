@@ -7,6 +7,7 @@ forging a result — only exist once a real process is involved.
 
 from __future__ import annotations
 
+import signal
 import sys
 from pathlib import Path
 
@@ -89,6 +90,26 @@ def test_infinite_loop_hits_the_wall_clock_timeout(runner):
 
     assert result.timed_out
     assert result.status == "timeout"
+
+
+def test_cpu_limit_signal_is_a_timeout(runner, tmp_path, monkeypatch):
+    """A CPU deadline cannot be reported to the player as exhausted memory."""
+    monkeypatch.setattr(signal, "SIGXCPU", 24, raising=False)
+
+    result = runner._read_result(tmp_path / "missing.json", "", "", -24, 1250)
+
+    assert result.status == "timeout"
+    assert result.timed_out
+
+
+def test_missing_cpu_signal_does_not_make_clean_exit_a_timeout(runner, tmp_path, monkeypatch):
+    """Platforms without SIGXCPU still classify a missing result normally."""
+    monkeypatch.delattr(signal, "SIGXCPU", raising=False)
+
+    result = runner._read_result(tmp_path / "missing.json", "", "", 0, 1250)
+
+    assert result.status == "crashed"
+    assert not result.timed_out
 
 
 def test_missing_entrypoint_is_reported_by_the_harness(runner):

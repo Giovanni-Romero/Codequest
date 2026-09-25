@@ -29,7 +29,7 @@ signature:
     def tokenize_local(text, max_length):
         # Expose every boundary between source text and model input.
         pass
-constraints: {max_runtime_ms: 30000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 30000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [Hello seas, 6]

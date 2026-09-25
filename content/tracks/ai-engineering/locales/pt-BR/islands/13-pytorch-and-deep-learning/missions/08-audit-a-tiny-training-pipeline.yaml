@@ -33,7 +33,7 @@ signature:
     def audit_training_pipeline(rows, labels, batch_size, learning_rate):
         # Conecte tensores, lotes, um módulo e uma época explícita de treinamento.
         pass
-constraints: {max_runtime_ms: 5000, max_memory_mb: 2048, forbidden_builtins: [eval, exec]}
+constraints: {max_runtime_ms: 5000, max_memory_mb: 8192, forbidden_builtins: [eval, exec]}
 tests:
   visible:
     - args: [[[1, 0], [0, 1]], [1, -1], 1, 0.1]
