@@ -86,10 +86,10 @@ solution: |
       examples = [dspy.Example(log=i["log"], action=i["action"]).with_inputs("log") for i in devset]
       predict_answers = {i["log"]: {"action": i["action"]} for i in devset}
       with dspy.context(lm=DummyLM(predict_answers)):
-          predict_result = dspy.Evaluate(devset=examples, metric=exact)(dspy.Predict(Nav))
+          predict_result = dspy.Evaluate(devset=examples, metric=exact, num_threads=1)(dspy.Predict(Nav))
       cot_answers = {i["log"]: {"reasoning": "brief reasoning", "action": i["action"]} for i in devset}
       with dspy.context(lm=DummyLM(cot_answers)):
-          cot_result = dspy.Evaluate(devset=examples, metric=exact)(dspy.ChainOfThought(Nav))
+          cot_result = dspy.Evaluate(devset=examples, metric=exact, num_threads=1)(dspy.ChainOfThought(Nav))
       predict_score = predict_result.score / 100
       cot_score = cot_result.score / 100
       if predict_score > cot_score:

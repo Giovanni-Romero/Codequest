@@ -86,7 +86,7 @@ class SettingsScreen(Screen):
             ("", ""),
             (f"[$brass]{t('settings.paths')}[/$brass]", ""),
             (f"  {t('settings.paths_content')}", str(settings.content_dir)),
-            (f"  {t('settings.paths_saves')}", str(settings.database_path)),
+            (f"  {t('settings.paths_saves')}", settings.database_path.as_posix()),
         ]
 
         lines = [f"{label:<24}{value}" if label else "" for label, value in rows]
