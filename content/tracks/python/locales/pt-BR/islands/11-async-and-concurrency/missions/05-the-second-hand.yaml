@@ -146,7 +146,7 @@ signature:
 
 constraints:
   max_runtime_ms: 5000
-  max_memory_mb: 128
+  max_memory_mb: 512
 
 tests:
   visible:
