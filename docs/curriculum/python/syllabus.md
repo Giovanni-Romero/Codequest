@@ -3,7 +3,7 @@
 The concept map for the Python track. **Missions are written from this document, never
 the other way around.**
 
-Read `.claude/skills/curriculum-designer/SKILL.md` for the design rules.
+Read `.agents/skills/curriculum-designer/SKILL.md` for the design rules.
 
 ---
 

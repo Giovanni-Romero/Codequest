@@ -219,5 +219,5 @@ Terminals redraw whole cells, so animation is cheap to get wrong and expensive t
 - The contrast table above is the acceptance criterion, not a suggestion
 
 Screen order, the mission-screen layout and the layer rules stay in
-`.claude/skills/tui-developer/SKILL.md`. This document owns *how it looks*; that one owns
+`.agents/skills/tui-developer/SKILL.md`. This document owns *how it looks*; that one owns
 *how it is built*.

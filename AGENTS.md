@@ -157,7 +157,7 @@ saying no.
 
 ## 5. Skills
 
-Specialized skills live in `.claude/skills/`. Load the matching one before working:
+Specialized skills live in `.agents/skills/`. Load the matching one before working:
 
 | Skill | Use when |
 |---|---|
@@ -221,7 +221,7 @@ At the start of every session, the agent should:
 2. For curriculum islands, read `.cursor/rules/curriculum-island-error-ledger.mdc`
 3. Run `git status` and `git branch --show-current`
 4. Ask which phase item Giovanni wants to work on, if it is not obvious
-5. Load the matching skill from `.claude/skills/`
+5. Load the matching skill from `.agents/skills/`
 6. Confirm the teaching contract applies before writing anything
 
 ---

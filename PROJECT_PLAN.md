@@ -139,7 +139,7 @@ codequest/
 ├── AGENTS.md                    # contract for the AI agent working on this repo
 ├── README.md                    # game manual (how to install and play)
 ├── PROJECT_PLAN.md              # this file
-├── FINAL_PLAN.md                # bootstrap prompt for Claude Code
+├── docs/FINAL_PLAN.md          # bootstrap prompt for Claude Code (historical)
 ├── pyproject.toml
 ├── .gitignore
 ├── .env.example

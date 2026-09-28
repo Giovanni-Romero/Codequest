@@ -100,7 +100,7 @@ not just "no".
 
 ## 4. Skill routing
 
-Load the matching skill from `.claude/skills/` **before** acting, not after.
+Load the matching skill from `.agents/skills/` **before** acting, not after.
 
 | Working on | Skill |
 |---|---|

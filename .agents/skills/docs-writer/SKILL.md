@@ -15,7 +15,7 @@ README before reading any code. Documentation quality is part of the deliverable
 | `README.md` | Player and visitor | What is it, how do I install it, how do I play |
 | `PROJECT_PLAN.md` | Giovanni and the agent | Architecture, roadmap, decisions |
 | `AGENTS.md` | AI agents | How to behave in this repo |
-| `FINAL_PLAN.md` | Giovanni | Bootstrap prompt and first sessions |
+| `docs/FINAL_PLAN.md` | Giovanni | Bootstrap prompt and first sessions |
 | `docs/architecture.md` | Contributor | How the layers fit, why |
 | `docs/mission-schema.md` | Mission author | Every field, with examples |
 | `docs/curriculum/*.md` | Curriculum designer | Concept order and objectives |
